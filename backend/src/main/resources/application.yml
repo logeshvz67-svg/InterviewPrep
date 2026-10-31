@@ -1,0 +1,66 @@
+# All secrets come from environment variables. Nothing secret lives in this file.
+spring:
+  application:
+    name: code-quest-api
+  datasource:
+    # Supabase: use the SESSION POOLER connection (port 5432 on *.pooler.supabase.com).
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/codequest}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    hikari:
+      # Free tier = few DB connections + 512 MB RAM. 3 connections is plenty for one user.
+      maximum-pool-size: ${DB_POOL_SIZE:3}
+      minimum-idle: 1
+      idle-timeout: 120000        # close idle connections after 2 min
+      max-lifetime: 600000        # recycle connections every 10 min (poolers drop old ones)
+      connection-timeout: 20000
+  jpa:
+    open-in-view: false           # don't keep DB connections open while JSON is written
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema; Hibernate only checks it matches
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC       # always store UTC
+  flyway:
+    enabled: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework   # Render sits behind a proxy
+
+# /health for Render + UptimeRobot (Spring Actuator)
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health
+      path-mapping:
+        health: health
+  endpoint:
+    health:
+      probes:
+        enabled: false
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+app:
+  default-timezone: ${APP_DEFAULT_TIMEZONE:Asia/Kolkata}
+  registration-enabled: ${REGISTRATION_ENABLED:true}
+  admin-emails: ${ADMIN_EMAILS:}
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  jwt:
+    # Must be at least 32 characters. Generate with: openssl rand -base64 48
+    secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me}
+    access-token-minutes: ${JWT_ACCESS_MINUTES:15}
+    refresh-token-days: ${JWT_REFRESH_DAYS:14}

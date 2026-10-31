@@ -1,0 +1,15 @@
+# Java
+backend/target/
+*.class
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+# Secrets
+.env
+.env.local
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store

@@ -299,7 +299,7 @@ predict:
             if (n == null) return;
             walk(n.left);
             walk(n.right);
-            System.out.print(n.val + " ");
+            System.out.print("[" + n.val + "]");
         }
 
         public static void main(String[] args) {
@@ -311,9 +311,9 @@ predict:
         }
     }
   expectedOutput: |
-    4 5 2 3 1
+    [4][5][2][3][1]
   explanation: |
-    The tree is 1 at the root, 2 and 3 as its children, and 4 and 5 under 2. `walk` prints a node only AFTER both its subtrees: that is **postorder** (Left, Right, Node). So the leaves 4 and 5 come first, then their parent 2, then 3, and the root 1 is printed last. Each value is followed by a space.
+    The tree is 1 at the root, 2 and 3 as its children, and 4 and 5 under 2. `walk` prints a node only AFTER both its subtrees: that is **postorder** (Left, Right, Node). So the leaves 4 and 5 come first, then their parent 2, then 3, and the root 1 is printed last.
 commonMistakes:
   - "Validating a BST by checking only each node's direct children; a deeper node can still break the rule. Pass a (min, max) range."
   - "Forgetting the base case if (n == null) in recursive tree methods, causing NullPointerException."

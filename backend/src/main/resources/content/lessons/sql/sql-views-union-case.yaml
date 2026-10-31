@@ -1,0 +1,337 @@
+slug: sql-views-union-case
+world: SQL
+section: SQL
+order: 11
+title: "Views, UNION and CASE"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_DSE]
+infosysRelevance: "UNION vs UNION ALL, views and CASE WHEN are frequent SQL theory and query-writing practice for DSE and SP rounds."
+otherCompanies: "'Difference between UNION and UNION ALL' and 'what is a view' are common practice questions at TCS, Wipro, Cognizant, Accenture and Capgemini."
+why: |
+  Three small tools that make SQL much more powerful:
+  - A **view** saves a complicated query under a name, so others can use it like a simple table.
+  - **UNION** stacks the results of two queries on top of each other.
+  - **CASE WHEN** is SQL's if-else: it turns numbers into labels, and powers "count how many of each kind" reports.
+
+  Plus **COALESCE**, the standard way to replace NULL with something readable.
+
+  "UNION vs UNION ALL" is a classic interview question, and CASE shows up in almost every practical SQL task.
+analogy: |
+  - A **view** is like a **saved filter in your phone's gallery** ("Photos of Mom"). It doesn't copy the photos; each time you open it, it shows the current matching photos.
+  - **UNION** is like merging **two class attendance lists** into one list for the assembly. **UNION** removes names that appear in both; **UNION ALL** keeps everyone, even repeats (and is faster, because nobody checks for duplicates).
+  - **CASE WHEN** is like the **grading rule** on an exam: 90+ is A, 75+ is B, otherwise C. The teacher checks the rules **from top to bottom** and stops at the first one that fits.
+visual:
+  diagram: |
+    customers.city      departments.location
+    +-----------+       +-----------+
+    | Bengaluru |       | Bengaluru |
+    | Mumbai    |       | Mumbai    |
+    | Pune      |       | Pune      |
+    | Chennai   |       | Chennai   |
+    +-----------+       +-----------+
+          \                  /
+           +-- UNION ALL --+  -> 8 rows (duplicates kept)
+           +-- UNION ------+  -> 4 rows (duplicates removed)
+
+    CASE (checked top to bottom, first match wins)
+      salary >= 80000 ? -> 'High'    Asha, Divya
+      salary >= 60000 ? -> 'Medium'  Ravi, Kiran, Priya
+      otherwise         -> 'Low'     Meena, Arjun
+  caption: "UNION ALL simply stacks both results; UNION also removes duplicate rows. CASE checks its WHEN conditions in order and returns the first match."
+  visualizer: null
+explanation: |
+  ### Views
+  A **view** is a **saved SELECT query** with a name. It looks and behaves like a table when you query it, but normally stores **no data** itself; the query runs each time you use the view.
+  ```sql
+  CREATE VIEW emp_details AS
+  SELECT e.emp_id, e.name, d.dept_name, e.salary
+  FROM employees e
+  LEFT JOIN departments d ON d.dept_id = e.dept_id;
+
+  SELECT name, dept_name FROM emp_details WHERE salary > 70000;
+  ```
+  Why use views?
+  - **Simplicity**: hide a complex join behind a simple name.
+  - **Security**: give a user access to the view (only some columns/rows) instead of the whole table.
+  - **Consistency**: everyone uses the same definition of "employee details".
+
+  Because the view re-runs its query, it always shows **current** data: update a salary in employees, and the view shows the new salary immediately.
+
+  **Updatable views**: a simple view on one table (no joins, GROUP BY, DISTINCT, aggregates) can be updated in PostgreSQL and MySQL, and the change goes to the base table. Complex views are read-only.
+
+  **Materialized view** (PostgreSQL, Oracle): stores the query **result** physically, so reading is fast, but it becomes stale until you run `REFRESH MATERIALIZED VIEW name;`. MySQL has no materialized views.
+
+  `CREATE OR REPLACE VIEW` changes a view; `DROP VIEW name` removes it (the base tables are untouched).
+
+  ### UNION vs UNION ALL
+  Both put the rows of two SELECTs **one after another** in a single result.
+  ```sql
+  SELECT city FROM customers
+  UNION
+  SELECT location FROM departments;        -- 4 rows: duplicates removed
+
+  SELECT city FROM customers
+  UNION ALL
+  SELECT location FROM departments;        -- 8 rows: everything kept
+  ```
+  | UNION | UNION ALL |
+  |---|---|
+  | removes duplicate rows | keeps all rows |
+  | slower (must sort or hash to find duplicates) | faster |
+  | use when duplicates are truly unwanted | use when you know there are no duplicates, or want them |
+
+  Rules for both:
+  - Each SELECT must have the **same number of columns**, with **compatible types** in the same positions.
+  - Column **names come from the first SELECT**.
+  - One `ORDER BY` at the very end sorts the **combined** result.
+
+  Related: `INTERSECT` (rows in both results) and `EXCEPT` (rows in the first but not the second; Oracle calls it `MINUS`). MySQL supports them from version 8.0.31.
+
+  **UNION vs JOIN**: JOIN puts columns **side by side** (wider rows); UNION puts rows **one under another** (more rows).
+
+  ### CASE WHEN: if-else inside SQL
+  ```sql
+  SELECT name, salary,
+         CASE
+           WHEN salary >= 80000 THEN 'High'
+           WHEN salary >= 60000 THEN 'Medium'
+           ELSE 'Low'
+         END AS band
+  FROM employees;
+  ```
+  - Conditions are checked **top to bottom**; the **first true** one wins. Put the most specific condition first.
+  - If no WHEN matches and there is **no ELSE**, the result is **NULL**.
+  - Simple form: `CASE dept_id WHEN 10 THEN 'Tech' WHEN 20 THEN 'Business' END` compares one value with each WHEN.
+  - CASE works anywhere an expression is allowed: SELECT, WHERE, ORDER BY, GROUP BY, inside aggregates.
+
+  ### Conditional aggregation (very common in practice)
+  Count or sum only some rows, in one pass:
+  ```sql
+  SELECT d.dept_name,
+         COUNT(e.emp_id) AS headcount,
+         SUM(CASE WHEN e.salary >= 70000 THEN 1 ELSE 0 END) AS high_paid
+  FROM departments d
+  LEFT JOIN employees e ON e.dept_id = d.dept_id
+  GROUP BY d.dept_name;
+  -- Engineering 3 3 | HR 1 0 | Marketing 0 0 | Sales 2 0
+  ```
+  PostgreSQL also has a shortcut: `COUNT(*) FILTER (WHERE salary >= 70000)`.
+
+  ### COALESCE and NULLIF
+  - `COALESCE(a, b, c)` returns the **first non-NULL** value. Great for display: `COALESCE(d.dept_name, 'Not assigned')` shows Arjun as "Not assigned" instead of NULL.
+  - All arguments should be the same type: `COALESCE(dept_id::text, 'No dept')` converts the number to text first (`::text` is PostgreSQL's cast; standard SQL is `CAST(dept_id AS VARCHAR)`).
+  - `NULLIF(a, b)` returns NULL if a = b, else a. Classic use: avoid division by zero: `total / NULLIF(count, 0)` gives NULL instead of an error.
+
+  > MySQL also has `IFNULL(a, b)`, and SQL Server has `ISNULL(a, b)`; Oracle has `NVL(a, b)`. `COALESCE` works in all of them, so prefer it.
+tinyCode:
+  code: |
+    CREATE VIEW emp_details AS
+    SELECT e.emp_id, e.name, d.dept_name, e.salary
+    FROM employees e
+    LEFT JOIN departments d ON d.dept_id = e.dept_id;
+
+    SELECT name, dept_name
+    FROM emp_details
+    WHERE salary > 70000
+    ORDER BY name;
+
+    -- Result:
+    --  name  |  dept_name
+    -- -------+-------------
+    --  Asha  | Engineering
+    --  Divya | Engineering
+    --  Ravi  | Engineering
+  walkthrough: |
+    - `CREATE VIEW emp_details AS SELECT ...` stores the **query**, not its result.
+    - The view joins employees with departments, so users don't have to write the join every time.
+    - `SELECT ... FROM emp_details WHERE salary > 70000` treats the view like a table. PostgreSQL combines your WHERE with the view's query and runs it on the real tables.
+    - Asha, Divya and Ravi earn more than 70,000 and all work in Engineering.
+    - If someone later changes a salary in employees, the next SELECT on the view shows the new value automatically.
+tryIt:
+  instructions: "Type and run each query. For query 1, count the rows before running: there are 4 customer cities and 4 department locations, and they are the same 4 cities."
+  code: |
+    -- 1. UNION vs UNION ALL
+    SELECT city FROM customers
+    UNION
+    SELECT location FROM departments
+    ORDER BY city;
+
+    -- 2. Salary bands with CASE
+    SELECT name, salary,
+           CASE
+             WHEN salary >= 80000 THEN 'High'
+             WHEN salary >= 60000 THEN 'Medium'
+             ELSE 'Low'
+           END AS band
+    FROM employees
+    ORDER BY salary DESC, name;
+
+    -- 3. Replace NULL for display
+    SELECT e.name,
+           COALESCE(d.dept_name, 'Not assigned') AS dept_name
+    FROM employees e
+    LEFT JOIN departments d ON d.dept_id = e.dept_id;
+predict:
+  code: |
+    SELECT name, salary,
+           CASE
+             WHEN salary > 50000 THEN 'Mid'
+             WHEN salary > 75000 THEN 'High'
+             ELSE 'Low'
+           END AS band
+    FROM employees
+    ORDER BY salary DESC, name;
+  expectedOutput: |2
+     name  | salary | band
+    -------+--------+------
+     Asha  |  90000 | Mid
+     Divya |  80000 | Mid
+     Ravi  |  75000 | Mid
+     Kiran |  60000 | Mid
+     Priya |  60000 | Mid
+     Meena |  50000 | Low
+     Arjun |  45000 | Low
+  explanation: |
+    Nobody gets 'High'! CASE checks the WHEN conditions **in order** and stops at the first true one. Asha's 90000 is `> 50000`, so she gets 'Mid' before the `> 75000` rule is ever checked.
+
+    Meena (exactly 50000) is not `> 50000`, so she falls to ELSE, like Arjun. Fix: put the stricter condition first (`WHEN salary > 75000 THEN 'High'` before `WHEN salary > 50000 THEN 'Mid'`).
+commonMistakes:
+  - "Using UNION when UNION ALL is enough, paying for an unnecessary duplicate-removal step."
+  - "UNION-ing SELECTs with different numbers of columns (error: each UNION query must have the same number of columns)."
+  - "Writing ORDER BY on each part of a UNION; one ORDER BY at the end sorts the whole result."
+  - "Ordering CASE conditions from loosest to strictest, so later WHENs never match."
+  - "Forgetting ELSE in CASE and getting unexpected NULLs."
+  - "Thinking a normal view stores a copy of the data. It stores the query; only a materialized view stores results."
+interviewBox:
+  why: "Why interviewers ask this: these are everyday reporting tools, and UNION vs UNION ALL and views are standard theory questions."
+  questions:
+    - q: "What is the difference between UNION and UNION ALL?"
+      a: "Both combine the rows of two queries. UNION removes duplicate rows, which needs extra work like sorting, so it's slower. UNION ALL keeps all rows including duplicates and is faster. Both need the same number of columns with compatible types."
+    - q: "What is a view? What are its advantages?"
+      a: "A view is a saved SELECT query that you can use like a table. It doesn't store data itself; it runs the query each time. It simplifies complex joins, can hide sensitive columns for security, and keeps one consistent definition for everyone."
+    - q: "What is the difference between a view and a materialized view?"
+      a: "A normal view stores only the query and always shows current data. A materialized view stores the result physically, so it's faster to read, but it can be out of date until you refresh it. PostgreSQL and Oracle have materialized views; MySQL doesn't."
+    - q: "How do you write if-else logic in SQL?"
+      a: "With CASE WHEN condition THEN value ... ELSE value END. Conditions are checked top to bottom and the first true one wins. For example, CASE WHEN salary >= 80000 THEN 'High' WHEN salary >= 60000 THEN 'Medium' ELSE 'Low' END."
+    - q: "What does COALESCE do?"
+      a: "It returns the first non-NULL value from its arguments. For example COALESCE(dept_name, 'Not assigned') shows 'Not assigned' when the department is missing."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Customer cities: Bengaluru, Mumbai, Pune, Chennai. Department locations: Bengaluru, Mumbai, Pune, Chennai. How many rows does each query return?"
+    code: |
+      -- Query A
+      SELECT city FROM customers
+      UNION
+      SELECT location FROM departments;
+
+      -- Query B
+      SELECT city FROM customers
+      UNION ALL
+      SELECT location FROM departments;
+    options: ["A: 8, B: 4", "A: 4, B: 8", "A: 4, B: 4", "A: 8, B: 8"]
+    answer: 1
+    explanation: "UNION removes duplicates, leaving the 4 distinct cities. UNION ALL keeps all 4 + 4 = 8 rows. The first option swaps them."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does area show for Meena (dept 30) and Arjun (dept NULL)?"
+    code: |
+      SELECT name,
+             CASE dept_id
+               WHEN 10 THEN 'Tech'
+               WHEN 20 THEN 'Business'
+             END AS area
+      FROM employees;
+    options: ["'Business' for both", "NULL for both", "An error because ELSE is missing", "'' (empty text) for both"]
+    answer: 1
+    explanation: "No WHEN matches 30 or NULL, and there is no ELSE, so CASE returns NULL. A missing ELSE is not an error."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "PostgreSQL says: each UNION query must have the same number of columns. Why?"
+    code: |
+      SELECT name, city FROM customers
+      UNION
+      SELECT dept_name FROM departments;
+    options:
+      - "UNION cannot combine two different tables"
+      - "The first SELECT has 2 columns and the second has 1; they must match"
+      - "Column names must be identical"
+      - "UNION needs ORDER BY"
+    answer: 1
+    explanation: "Both parts need the same number of columns with compatible types; e.g. SELECT dept_name, location FROM departments. Names don't need to match: the result uses the first SELECT's names."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "Every employee earning 60000 or more gets 'Medium', even Asha (90000). What's wrong?"
+    code: |
+      CASE
+        WHEN salary >= 60000 THEN 'Medium'
+        WHEN salary >= 80000 THEN 'High'
+        ELSE 'Low'
+      END
+    options:
+      - "CASE needs a column name after the word CASE"
+      - "The first true WHEN wins, so the >= 80000 rule must come before >= 60000"
+      - "ELSE must come first"
+      - "Use > instead of >="
+    answer: 1
+    explanation: "90000 >= 60000 is already true, so 'Medium' is returned and the next WHEN is never checked. Order WHENs from strictest to loosest. Changing >= to > doesn't fix the order problem."
+  - id: q5
+    type: MCQ
+    prompt: "Which expression shows 'Not assigned' when d.dept_name is NULL, and the real name otherwise?"
+    code: null
+    options:
+      - "NULLIF(d.dept_name, 'Not assigned')"
+      - "COALESCE(d.dept_name, 'Not assigned')"
+      - "COUNT(d.dept_name)"
+      - "CASE d.dept_name WHEN NULL THEN 'Not assigned' END"
+    answer: 1
+    explanation: "COALESCE returns the first non-NULL argument. NULLIF does the opposite job. The simple CASE compares dept_name = NULL, which is never true, so it would return NULL for every row (CASE WHEN d.dept_name IS NULL ... would work)."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "A normal (non-materialized) view stores a copy of the rows when it is created, so later changes to the base table don't appear in it."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A normal view stores only its query, so it always shows current data. After updating Asha's salary in employees, the view showed the new salary immediately."
+  - id: q7
+    type: MATCH
+    prompt: "Match each tool to its job"
+    pairs:
+      - left: "View"
+        right: "A saved query used like a table"
+      - left: "UNION ALL"
+        right: "Stacks two results, keeping duplicates"
+      - left: "CASE WHEN"
+        right: "If-else logic inside a query"
+      - left: "COALESCE"
+        right: "First non-NULL value"
+    explanation: "Together they cover most reporting tasks: name a query, combine results, label values and clean NULLs."
+explainBack:
+  prompt: "Explain a view, UNION vs UNION ALL, and CASE WHEN to a friend in simple words."
+  rubric:
+    - "I said a view is a saved query that shows current data"
+    - "I said UNION removes duplicates and UNION ALL keeps them (and is faster)"
+    - "I mentioned the same-number-of-columns rule"
+    - "I explained CASE checks conditions top to bottom and the first match wins"
+    - "I mentioned COALESCE or materialized views"
+  modelAnswer: |
+    A view is like a saved filter in the phone gallery. It stores the query, not the data, so every time I open it, I see the latest rows. UNION and UNION ALL stack two query results into one list. UNION removes duplicates, so it's slower, and UNION ALL keeps everything. Both sides must have the same number of columns. CASE WHEN is SQL's if-else, like an exam grading rule: it checks each condition from top to bottom and returns the first one that's true, so I put the strictest rule first. And COALESCE replaces NULL with something readable.
+flashcards:
+  - front: "UNION vs UNION ALL"
+    back: "UNION removes duplicates (slower). UNION ALL keeps all rows (faster). Same column count needed."
+  - front: "View vs materialized view"
+    back: "View stores the query, shows current data. Materialized view stores results, needs REFRESH (not in MySQL)."
+  - front: "CASE evaluation order"
+    back: "Top to bottom; the first true WHEN wins. No match and no ELSE = NULL."
+  - front: "COALESCE(a, b, c)"
+    back: "Returns the first non-NULL argument."
+  - front: "Safe division"
+    back: "x / NULLIF(y, 0) returns NULL instead of a division-by-zero error."
+keyTakeaways:
+  - "A view is a named, saved SELECT; it shows current data and can simplify and secure access."
+  - "UNION removes duplicates; UNION ALL keeps them and is faster."
+  - "UNIONed queries need the same number of compatible columns; one ORDER BY at the end."
+  - "CASE WHEN checks conditions in order; put the strictest first and add ELSE."
+  - "COALESCE replaces NULLs; NULLIF turns a value into NULL (e.g. to avoid divide by zero)."

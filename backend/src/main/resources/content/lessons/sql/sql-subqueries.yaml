@@ -1,0 +1,334 @@
+slug: sql-subqueries
+world: SQL
+section: SQL
+order: 4
+title: "Subqueries and correlated subqueries"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+infosysRelevance: "Subqueries power the classic practice problems (above-average salary, highest per department, rows with no match); important for SP and DSE SQL rounds."
+otherCompanies: "Common in TCS, Wipro, Cognizant, Accenture and Capgemini technical interviews; product companies like the NOT IN with NULL trap and EXISTS vs IN."
+why: |
+  Some questions need **two steps**: "Who earns more than the **average** salary?" First you find the average, then you compare each employee with it. A **subquery** lets you do both steps in one statement.
+
+  Interviewers use subqueries to check:
+  - whether you can break a problem into steps,
+  - whether you know **IN vs EXISTS**,
+  - whether you know the dangerous **NOT IN with NULL** trap,
+  - whether you understand a **correlated** subquery (one that runs once per row).
+analogy: |
+  Think of asking a friend at a canteen: **"Get me whatever costs less than the masala dosa."**
+
+  First your friend must check the price of a masala dosa (the **inner question**, the subquery). Then they scan the menu and pick items cheaper than that price (the **outer question**).
+
+  A **correlated subquery** is like asking: "For **each** student, tell me if they scored above **their own class** average." Your friend must calculate a *different* average for every student, depending on which class that student is in. The inner question changes with each outer row.
+visual:
+  diagram: |
+    Non-correlated (runs ONCE)
+      SELECT name FROM employees
+      WHERE salary > ( SELECT AVG(salary) FROM employees )
+                       '-------------- 65714.28 --------'
+      -> compare every row with the same number
+
+    Correlated (runs once PER OUTER ROW)
+      outer row e        inner query uses e.dept_id      result
+      Asha  (10) 90000 -> AVG of dept 10 = 81666.67  ->  keep
+      Ravi  (10) 75000 -> AVG of dept 10 = 81666.67  ->  drop
+      Priya (20) 60000 -> AVG of dept 20 = 60000     ->  drop
+      Meena (30) 50000 -> AVG of dept 30 = 50000     ->  drop
+      Arjun (NULL)     -> AVG of NULL dept = NULL    ->  drop
+  caption: "A normal subquery is calculated once. A correlated subquery refers to the outer row (e.dept_id), so it is re-calculated for each employee."
+  visualizer: null
+explanation: |
+  ### What is a subquery?
+  A **subquery** (also called an inner query or nested query) is a SELECT written inside brackets inside another query. The outer query uses its result.
+
+  Subqueries can appear in:
+  - **WHERE** (most common): `WHERE salary > (SELECT ...)`
+  - **FROM**: the subquery acts like a temporary table (a **derived table**; it needs an alias)
+  - **SELECT**: a value per row
+
+  ### 1. Scalar subquery: returns one value
+  A **scalar** subquery returns exactly one row and one column, so you can use it like a number.
+  ```sql
+  SELECT name, salary
+  FROM employees
+  WHERE salary > (SELECT AVG(salary) FROM employees)   -- 65714.28...
+  ORDER BY salary DESC;
+  -- Asha 90000, Divya 80000, Ravi 75000
+  ```
+  If a subquery used with `=` or `>` returns **more than one row**, PostgreSQL stops with: `more than one row returned by a subquery used as an expression`.
+
+  ### 2. IN subquery: returns a list
+  ```sql
+  SELECT name
+  FROM employees
+  WHERE dept_id IN (SELECT dept_id FROM departments
+                    WHERE location IN ('Mumbai', 'Pune'))
+  ORDER BY name;
+  -- Kiran, Meena, Priya
+  ```
+  Related operators: `> ALL (subquery)` means "greater than every value", `> ANY (subquery)` means "greater than at least one".
+
+  ### 3. EXISTS: "is there at least one?"
+  `EXISTS (subquery)` is true if the subquery returns **any row at all**. It does not care about the values, so people write `SELECT 1` inside.
+  ```sql
+  SELECT c.name
+  FROM customers c
+  WHERE EXISTS (SELECT 1 FROM orders o
+                WHERE o.customer_id = c.customer_id);
+  -- Anil, Rahul, Sneha (Fatima has no orders)
+  ```
+  EXISTS can stop as soon as it finds the first matching row.
+
+  ### The NOT IN + NULL trap
+  "Which departments have no employees?" Many people write:
+  ```sql
+  SELECT dept_name FROM departments
+  WHERE dept_id NOT IN (SELECT dept_id FROM employees);
+  -- returns ZERO rows!
+  ```
+  The subquery list contains Arjun's **NULL**. `40 NOT IN (10, 20, 30, NULL)` means `40 <> 10 AND 40 <> 20 AND 40 <> 30 AND 40 <> NULL`. The last part is *unknown*, so the whole condition is never true, and nothing is returned.
+
+  Safe versions:
+  ```sql
+  -- NOT EXISTS ignores the NULL problem
+  SELECT d.dept_name FROM departments d
+  WHERE NOT EXISTS (SELECT 1 FROM employees e WHERE e.dept_id = d.dept_id);
+  -- Marketing
+
+  -- or filter NULLs out of the NOT IN list
+  WHERE dept_id NOT IN (SELECT dept_id FROM employees WHERE dept_id IS NOT NULL)
+  ```
+  Rule of thumb: **prefer NOT EXISTS over NOT IN** when the subquery column can be NULL.
+
+  ### 4. Correlated subquery: depends on the outer row
+  A **correlated** subquery uses a column from the outer query, so it is re-evaluated for each outer row.
+  ```sql
+  -- Employees earning more than their own department's average
+  SELECT e.name, e.dept_id, e.salary
+  FROM employees e
+  WHERE e.salary > (SELECT AVG(e2.salary)
+                    FROM employees e2
+                    WHERE e2.dept_id = e.dept_id);   -- e.dept_id comes from outside
+  -- Asha 10 90000
+  ```
+  Dept 10's average is 81666.67, so only Asha is above it. Sales (both 60000) and HR (only Meena) have nobody strictly above their average. Arjun's dept is NULL, so his inner average is NULL and he is dropped.
+
+  Another classic: highest-paid employee(s) in each department.
+  ```sql
+  SELECT e.name, e.dept_id, e.salary
+  FROM employees e
+  WHERE e.salary = (SELECT MAX(e2.salary) FROM employees e2
+                    WHERE e2.dept_id = e.dept_id)
+  ORDER BY e.dept_id, e.name;
+  -- Asha 10 90000 | Kiran 20 60000 | Priya 20 60000 | Meena 30 50000
+  ```
+  Ties are kept: Kiran and Priya both earn the maximum of department 20.
+
+  ### 5. Subquery in FROM (derived table)
+  ```sql
+  SELECT ROUND(AVG(total)) AS avg_dept_total
+  FROM (SELECT dept_id, SUM(salary) AS total
+        FROM employees GROUP BY dept_id) AS t;     -- 115000
+  ```
+  The inner query makes a small table of department totals, and the outer query averages it. In PostgreSQL and MySQL the alias (`AS t`) is required here.
+
+  ### Subquery vs JOIN
+  | | Subquery | JOIN |
+  |---|---|---|
+  | Good for | "exists / not exists", comparing with an aggregate | showing columns from both tables |
+  | Duplicates | `WHERE ... IN (...)` never duplicates outer rows | a parent with 3 children appears 3 times |
+  | Readability | reads like the English question | better when you need many columns |
+  | Speed | modern optimizers often turn IN/EXISTS into a join anyway | |
+
+  Example: "customers with orders" via JOIN returns Anil 3 times (one per order) unless you add DISTINCT; the EXISTS version returns each customer once.
+tinyCode:
+  code: |
+    SELECT name, salary
+    FROM employees
+    WHERE salary > (SELECT AVG(salary) FROM employees)
+    ORDER BY salary DESC;
+
+    -- Result:
+    --  name  | salary
+    -- -------+--------
+    --  Asha  |  90000
+    --  Divya |  80000
+    --  Ravi  |  75000
+  walkthrough: |
+    - The database first runs the inner query `SELECT AVG(salary) FROM employees`. Total salary is 460000 for 7 people, so the average is 65714.28...
+    - That single number replaces the brackets: `WHERE salary > 65714.28`.
+    - The outer query keeps Asha (90000), Divya (80000) and Ravi (75000). Priya and Kiran (60000) are below the average.
+    - `ORDER BY salary DESC` sorts the three results.
+    - The inner query does not mention the outer table, so it is **not correlated**: it runs once.
+tryIt:
+  instructions: "Type each query. For query 3, first say out loud for each employee what the inner MAX will be for their department."
+  code: |
+    -- 1. Scalar subquery in SELECT: gap to the top salary
+    SELECT name, salary,
+           (SELECT MAX(salary) FROM employees) - salary AS gap_to_top
+    FROM employees;
+
+    -- 2. Customers who have at least one order
+    SELECT c.name
+    FROM customers c
+    WHERE EXISTS (SELECT 1 FROM orders o
+                  WHERE o.customer_id = c.customer_id);
+
+    -- 3. Highest paid in each department (correlated)
+    SELECT e.name, e.dept_id, e.salary
+    FROM employees e
+    WHERE e.salary = (SELECT MAX(e2.salary)
+                      FROM employees e2
+                      WHERE e2.dept_id = e.dept_id);
+
+    -- 4. Departments with nobody in them
+    SELECT d.dept_name
+    FROM departments d
+    WHERE NOT EXISTS (SELECT 1 FROM employees e
+                      WHERE e.dept_id = d.dept_id);
+predict:
+  code: |
+    SELECT c.name,
+           (SELECT COUNT(*)
+            FROM orders o
+            WHERE o.customer_id = c.customer_id) AS order_count
+    FROM customers c
+    ORDER BY c.customer_id;
+  expectedOutput: |2
+      name  | order_count
+    --------+-------------
+     Anil   |           3
+     Sneha  |           2
+     Rahul  |           1
+     Fatima |           0
+  explanation: |
+    This is a **correlated scalar subquery in SELECT**: for each customer row, the inner COUNT runs with that customer's id.
+
+    Fatima gets **0**, not NULL, because COUNT over zero rows is 0. (With `LEFT JOIN ... GROUP BY` you would need COUNT(o.order_id) to get the same 0.) Every customer appears exactly once because the subquery never multiplies rows.
+commonMistakes:
+  - "Using NOT IN with a subquery that can return NULL; the result becomes empty. Use NOT EXISTS."
+  - "Using = with a subquery that returns several rows (error: more than one row returned by a subquery used as an expression). Use IN, or make sure it returns one value."
+  - "Forgetting the alias for a subquery in FROM (required in PostgreSQL and MySQL)."
+  - "Forgetting that a correlated subquery must reference the outer alias (e.dept_id); without it, it compares with the whole table."
+  - "Replacing EXISTS with a JOIN and getting duplicate rows for parents with many children."
+interviewBox:
+  why: "Why interviewers ask this: subqueries test step-by-step thinking, and the NOT IN / NULL trap shows whether you truly understand NULL."
+  questions:
+    - q: "What is the difference between a subquery and a correlated subquery?"
+      a: "A normal subquery doesn't depend on the outer query, so it runs once and its result is reused. A correlated subquery uses a column from the outer row, like e.dept_id, so logically it runs once for every outer row. Finding employees who earn more than their own department's average is a correlated subquery."
+    - q: "What is the difference between IN and EXISTS?"
+      a: "IN compares a value with a list of values returned by the subquery. EXISTS only checks whether the subquery returns at least one row, and it can stop at the first match. The big practical difference is with NOT: NOT IN returns nothing if the list contains a NULL, while NOT EXISTS works correctly."
+    - q: "Find employees whose salary is above the company average."
+      a: "SELECT name, salary FROM employees WHERE salary > (SELECT AVG(salary) FROM employees). The inner query calculates the average once and the outer query compares each salary with it."
+    - q: "When would you use a JOIN instead of a subquery?"
+      a: "When I need columns from both tables in the output, a join is natural. When I only need to check existence or compare with an aggregate, a subquery is clearer and doesn't duplicate rows. Performance is often similar because the optimizer rewrites one into the other."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Arjun's dept_id is NULL and Marketing (40) has no employees. What does this return?"
+    code: |
+      SELECT dept_name
+      FROM departments
+      WHERE dept_id NOT IN (SELECT dept_id FROM employees);
+    options: ["Marketing", "No rows", "All four departments", "An error"]
+    answer: 1
+    explanation: "The list is (10, 10, 20, 20, 30, NULL, 10). 40 <> NULL is unknown, so NOT IN is never true and no rows come back. 'Marketing' is what NOT EXISTS (or filtering out NULLs) would return."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Which names does this correlated query return?"
+    code: |
+      SELECT e.name
+      FROM employees e
+      WHERE e.salary > (SELECT AVG(e2.salary)
+                        FROM employees e2
+                        WHERE e2.dept_id = e.dept_id);
+    options: ["Asha", "Asha, Divya, Ravi", "Asha, Divya", "Nobody"]
+    answer: 0
+    explanation: "Dept 10 average is 81666.67: only Asha (90000) is above it; Divya (80000) is just below. Dept 20 average is 60000 and both earn exactly 60000, not more. 'Asha, Divya, Ravi' is the answer for the company-wide average instead."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "PostgreSQL says: more than one row returned by a subquery used as an expression. Fix?"
+    code: |
+      SELECT name
+      FROM employees
+      WHERE salary = (SELECT salary
+                      FROM employees
+                      WHERE dept_id = 20);
+    options:
+      - "Add LIMIT 1 to the outer query"
+      - "Use IN instead of =, because the subquery returns two rows (Priya and Kiran)"
+      - "Rename the inner table alias"
+      - "Use HAVING instead of WHERE"
+    answer: 1
+    explanation: "= needs exactly one value, but dept 20 has two employees. WHERE salary IN (...) accepts a list. A LIMIT on the outer query doesn't change what the subquery returns."
+  - id: q4
+    type: MCQ
+    prompt: "Which query correctly lists employees who manage nobody (no one has them as manager_id), given that Asha's manager_id is NULL?"
+    code: null
+    options:
+      - "WHERE emp_id NOT IN (SELECT manager_id FROM employees)"
+      - "WHERE NOT EXISTS (SELECT 1 FROM employees r WHERE r.manager_id = e.emp_id)"
+      - "WHERE emp_id <> (SELECT manager_id FROM employees)"
+      - "WHERE manager_id IS NULL"
+    answer: 1
+    explanation: "NOT EXISTS returns Arjun, Divya, Kiran and Meena. NOT IN returns nothing because the manager_id list contains Asha's NULL. <> with a multi-row subquery is an error, and manager_id IS NULL finds people who HAVE no manager, a different question."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "A subquery in the FROM clause must be given an alias in PostgreSQL and MySQL."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. FROM (SELECT ...) AS t: the derived table needs a name so the outer query can refer to it."
+  - id: q6
+    type: MATCH
+    prompt: "Match each subquery kind to its description"
+    pairs:
+      - left: "Scalar subquery"
+        right: "Returns exactly one value"
+      - left: "Correlated subquery"
+        right: "Uses a column from the outer row"
+      - left: "EXISTS"
+        right: "True if the subquery returns any row"
+      - left: "Derived table"
+        right: "A subquery in FROM used like a table"
+    explanation: "These four names cover almost every subquery interview question."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the safe query for 'customers with no orders' (returns Fatima)."
+    code: |
+      SELECT c.name
+      FROM customers c
+      WHERE ____ (SELECT 1 FROM orders o
+                  WHERE o.customer_id = c.customer_id);
+    acceptedAnswers: ["NOT EXISTS", "not exists"]
+    explanation: "NOT EXISTS is true when the subquery finds no order for that customer. It's safe even if the subquery column has NULLs."
+explainBack:
+  prompt: "Explain to a friend what a correlated subquery is, and why NOT IN can surprise you."
+  rubric:
+    - "I explained that a subquery is a query inside another query"
+    - "I said a correlated subquery uses the outer row and runs per row"
+    - "I gave the 'above own department average' example"
+    - "I explained that a NULL in the NOT IN list makes the result empty"
+    - "I recommended NOT EXISTS"
+  modelAnswer: |
+    A subquery is a small query inside brackets that answers a first question, like what the average salary is, so the outer query can use that answer. A correlated subquery is special because it uses a value from the outer row, like that employee's department, so it is recalculated for every employee. That's how you find people earning more than their own department's average. One trap is NOT IN: if the list from the subquery contains even one NULL, nothing can be proven "not in" it, so you get zero rows. NOT EXISTS doesn't have that problem, so I prefer it.
+flashcards:
+  - front: "Correlated subquery"
+    back: "A subquery that references the outer query's row (e.g. e.dept_id); re-evaluated per outer row."
+  - front: "NOT IN with a NULL in the list"
+    back: "Returns no rows (x <> NULL is unknown). Use NOT EXISTS or filter NULLs."
+  - front: "EXISTS"
+    back: "True if the subquery returns at least one row; values don't matter (SELECT 1)."
+  - front: "Error: more than one row returned by a subquery used as an expression"
+    back: "You used = or > with a multi-row subquery. Use IN / ANY / ALL or make it return one value."
+  - front: "Derived table"
+    back: "A subquery in FROM; must have an alias: FROM (SELECT ...) AS t."
+keyTakeaways:
+  - "A subquery answers an inner question that the outer query uses."
+  - "Scalar subqueries return one value; IN subqueries return a list; EXISTS checks for any row."
+  - "Correlated subqueries refer to the outer row and run per row."
+  - "NOT IN breaks when the list contains NULL; prefer NOT EXISTS."
+  - "EXISTS/IN don't duplicate outer rows; joins can."

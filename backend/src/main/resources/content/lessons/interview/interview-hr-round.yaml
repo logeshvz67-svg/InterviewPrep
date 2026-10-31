@@ -1,0 +1,228 @@
+slug: interview-hr-round
+world: INTERVIEW
+section: INTERVIEW
+order: 2
+title: "The HR round"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+infosysRelevance: "Infosys-style practice: an HR conversation is a normal part of SP and DSE hiring. A calm, honest, well-structured self-introduction and a clear career-switch story are worth preparing early."
+otherCompanies: "HR questions (introduce yourself, strengths, relocation, shifts, service agreements) are common in interviews at TCS, Wipro, Cognizant, Accenture, Capgemini and most companies."
+why: |
+  Many candidates think the HR round is "easy" and do not prepare. Then they ramble for five minutes on "Tell me about yourself" or give an answer that sounds dishonest.
+
+  The HR round checks:
+  - **Can you communicate?** Not perfect English. Clear English.
+  - **Are you honest and stable?** Will you stay, learn and work with the team?
+  - **Are you flexible?** Relocation, shifts and training are common topics.
+  - **Does your story make sense?** For you: why are you moving from a copy-paste job into development?
+
+  The good news: HR questions are **predictable**. You can prepare strong, honest answers in advance and practise them in the HR boss fight.
+analogy: |
+  The HR round is like **meeting a family before a marriage proposal is accepted** (a very Indian example!).
+
+  - They already saw your "biodata" (resume). Now they want to see **you**.
+  - They ask simple questions: what do you do, what are your plans, can you adjust to a new city?
+  - They are not testing knowledge. They are checking: **is this person honest, respectful, and a good fit for us?**
+  - A rehearsed, fake answer is noticed quickly. A simple, honest, polite answer wins trust.
+visual:
+  diagram: |
+    "TELL ME ABOUT YOURSELF"  =  Present -> Past -> Future
+
+    +-------------+    +--------------------+    +------------------+
+    |  PRESENT    | -> |  PAST              | -> |  FUTURE          |
+    |  who I am   |    |  how I got here    |    |  what I want     |
+    |  now        |    |  1-2 proof points  |    |  & why this role |
+    +-------------+    +--------------------+    +------------------+
+       ~20 sec              ~40 sec                  ~20 sec
+
+    Total: about 60-90 seconds. Stop. Smile. Let them ask.
+  caption: "Present-Past-Future gives your introduction a clear start, middle and end, in about one to one and a half minutes."
+  visualizer: null
+explanation: |
+  ### 1. "Tell me about yourself" with Present-Past-Future (PPF)
+  This is usually the first question. Use three parts:
+  - **Present**: who you are right now.
+  - **Past**: how you got here. Give 1-2 **proof points** (things you actually did).
+  - **Future**: what you want next and why this role fits.
+
+  Keep it to **60-90 seconds**. Do not repeat your full resume. Do not start with your father's job or your school marks unless asked.
+
+  > Example: "Right now I work as a data-entry associate, and for the last year I have been learning Java in my free time. I studied OOP, collections, SQL and data structures, and I built a full-stack practice app called Code Quest with Spring Boot and React. Next, I want to start my career as a developer, and this role is a good fit because I can learn on real projects with a strong team."
+
+  ### 2. Explaining the career switch
+  You will be asked: "Why are you moving from your current job to IT development?" Answer in three moves:
+  1. **Respect** your current job (never insult it or your manager).
+  2. **The spark**: what made you want to build things.
+  3. **Proof**: what you have done about it (courses, practice problems, projects).
+
+  > "My current job taught me accuracy and how to meet deadlines. But I noticed a lot of my work was repetitive, and I got curious about how software could do it. I started learning Java, and I enjoyed it so much that I kept going: I have solved many practice problems and built a Spring Boot project. Now I want to do this as my full-time career."
+
+  ### 3. "Why this company?"
+  Do **10 minutes of research** on the official website first. Mention **one specific thing** (their training programme, the kind of projects they do, the technology they use) and connect it to **your goal**. Avoid "because it is a big company" alone.
+
+  ### 4. Strengths and weaknesses
+  - **Strength**: one quality + one short proof. "I am consistent. I have practised Java almost every day for months, even while working full time."
+  - **Weakness**: a **real but not job-killing** weakness + what you are doing about it. "My spoken English is not yet fluent. I practise speaking every day with mock interviews, and it is improving."
+  - Avoid fake weaknesses like "I work too hard". Interviewers hear it every day.
+
+  ### 5. Relocation, shifts and service agreements (bonds)
+  These questions check **flexibility and honesty**. Policies differ between companies and change over time, so **never state a company's policy yourself**; if you are unsure, ask politely.
+  | Question | Honest, safe answer shape |
+  |---|---|
+  | "Are you ready to relocate?" | If yes: "Yes, I am open to relocating. I understand projects can be in different cities." If you have a real limit, say it calmly with the reason. |
+  | "Can you work in shifts?" | "Yes, I understand some projects support clients in other time zones. I can adjust." Only say yes if it is true. |
+  | "Are you okay with a service agreement / bond?" | "Could you please tell me the details? ... Thank you. Yes, I am comfortable with that, because I plan to grow here for the long term." |
+
+  Never say yes to something you will refuse after joining. A clear, honest answer is better than a fake yes.
+
+  ### 6. Small things that matter
+  - Greet: "Good morning, thank you for the opportunity."
+  - If you did not understand: "Sorry, could you please repeat the question?"
+  - End with a question for them (see the interview box).
+tinyCode:
+  code: |
+    TELL ME ABOUT YOURSELF  (Present -> Past -> Future)
+
+    PRESENT: Right now I work as a ________ at ________,
+             and I am learning Java development.
+
+    PAST:    Over the last ________ months, I learned ________
+             and ________. I also built ________, a ________ app.
+
+    FUTURE:  Next, I want to start my career as a developer.
+             This role fits me because ________.
+  walkthrough: |
+    - **PRESENT** answers "who are you now?" in one or two sentences. Your current job is fine to mention; say it with confidence.
+    - **PAST** gives proof. Fill the blanks with real things: "OOP, collections and SQL", "a Spring Boot and React practice app". Numbers help: "more than 150 practice problems".
+    - **FUTURE** connects you to **this** job. Fill the last blank with one specific reason from your research.
+    - Read it aloud. If it takes more than 90 seconds, cut words from PAST.
+tryIt:
+  instructions: "Type this career-switch answer template. Then fill the blanks with your own true details and say it aloud three times in the Communication Gym."
+  code: |
+    WHY ARE YOU SWITCHING TO DEVELOPMENT?
+
+    1. RESPECT:  My current job taught me ________
+                 (accuracy / deadlines / teamwork).
+
+    2. SPARK:    I noticed ________, and I got curious
+                 about how software could solve it.
+
+    3. PROOF:    So I started learning Java. I have
+                 practised ________ and built ________.
+
+    4. CLOSE:    Now I want to do this as my full-time career,
+                 and this role is the right first step.
+predict:
+  code: |
+    Answer to "Tell me about yourself":
+
+    "Over the last year I learned Java, OOP and SQL,
+     and I built a Spring Boot practice app.
+     Next, I want to start my career as a developer,
+     and this role helps me learn on real projects."
+
+    This answer uses Present-Past-Future.
+    Which ONE part is missing? Type its name.
+  expectedOutput: |
+    Present
+  explanation: |
+    The answer starts with "Over the last year..." which is the **Past** (proof points), then "Next, I want..." which is the **Future**. It never says who the person is **right now**. A one-line Present fixes it: "Right now I work as a data-entry associate and I am learning Java development."
+commonMistakes:
+  - "Repeating the whole resume for 'Tell me about yourself'. Keep it to 60-90 seconds with PPF."
+  - "Insulting your current job or manager when explaining the switch. Always show respect first."
+  - "Giving a fake weakness like 'I am a perfectionist'. Give a real weakness plus what you are doing about it."
+  - "Saying yes to relocation, shifts or a bond when you do not mean it. Be honest; ask for details if unsure."
+  - "Stating a company's policy (bond amount, shift rules) from internet posts. Ask the interviewer instead."
+  - "Saying 'Why this company?' -> 'Because it is a big MNC.' Give one specific, researched reason."
+interviewBox:
+  why: "Why interviewers ask these: HR questions check honesty, stability, flexibility and whether you can explain yourself clearly. Prepared, true answers sound confident."
+  questions:
+    - q: "Why do you want to join our company? (practice question)"
+      a: "I read that your company trains new joiners well and works on projects for clients in many industries. As someone switching into development, strong training and real projects are exactly what I need to grow. I want to learn here and stay for the long term."
+    - q: "What is your greatest weakness? (practice question)"
+      a: "My spoken English is not fully fluent yet. I know it is important, so I practise every day: I record my answers and do mock interviews. I can already see improvement, and I will keep working on it."
+    - q: "You have no IT experience. Why should we hire you? (practice question)"
+      a: "It is true that I have no IT job experience yet. But I have learned Java, SQL and Spring Boot on my own while working full time, and I built a working project. My current job also taught me discipline and deadlines. I am a fast, consistent learner, and I will bring that here."
+    - q: "Are you willing to work in shifts? (practice question)"
+      a: "Yes. I understand some projects support clients in different time zones, and I can adjust my schedule. Could you tell me a little about how shifts work in this team?"
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the right order for 'Tell me about yourself' using PPF?"
+    code: null
+    options: ["Past, Present, Future", "Present, Past, Future", "Future, Past, Present", "Present, Future, Past"]
+    answer: 1
+    explanation: "Present (who you are now), Past (how you got here, with proof), Future (what you want and why this role). Starting with the past often turns into a long life story."
+  - id: q2
+    type: MCQ
+    prompt: "Which is the best weakness answer?"
+    code: null
+    options: ["I have no weaknesses.", "I work too hard and care too much.", "My spoken English is still improving, so I practise mock interviews daily.", "I get angry when people are slow."]
+    answer: 2
+    explanation: "It is real, not job-killing, and shows action. 'No weaknesses' sounds dishonest, 'I work too hard' is a cliche interviewers hear daily, and getting angry is a red flag for teamwork."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "If you are unsure about a company's bond or shift policy, you should state what you read online as fact."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Policies differ and change. Politely ask the interviewer for details, then answer honestly. Quoting internet posts can be wrong and sounds careless."
+  - id: q4
+    type: MATCH
+    prompt: "Match each part of the career-switch answer to an example"
+    pairs:
+      - left: "Respect"
+        right: "My current job taught me accuracy and deadlines."
+      - left: "Spark"
+        right: "I noticed repetitive work and got curious about automating it."
+      - left: "Proof"
+        right: "I learned Java and built a Spring Boot project."
+      - left: "Close"
+        right: "Now I want to do this as my full-time career."
+    explanation: "Respect first (never insult your job), then the reason you got interested, then proof of real effort, then a clear goal."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the polite phrase you use when you did not understand a question."
+    code: |
+      Sorry, could you please ____ the question?
+    acceptedAnswers: ["repeat", "rephrase"]
+    explanation: "Asking to repeat or rephrase is professional. Guessing the question and answering something else is much worse."
+  - id: q6
+    type: MCQ
+    prompt: "About how long should 'Tell me about yourself' take?"
+    code: null
+    options: ["10 seconds", "60 to 90 seconds", "5 minutes", "As long as possible"]
+    answer: 1
+    explanation: "60-90 seconds gives enough proof without boring the listener. 10 seconds is too thin; 5 minutes loses attention and leaves less time for their questions."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "When explaining your career switch, it is fine to say your current job is useless."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Speaking badly about a current job makes interviewers wonder if you will speak badly about them too. Mention what it taught you, then why you want more."
+explainBack:
+  prompt: "Explain to a friend how to answer 'Tell me about yourself' and 'Why are you switching to IT?' in an HR round."
+  rubric:
+    - "I explained Present-Past-Future with the time limit"
+    - "I explained the career-switch answer: respect, spark, proof, close"
+    - "I said to answer relocation/shift/bond questions honestly and ask for details"
+    - "I gave a real example sentence"
+  modelAnswer: |
+    For "Tell me about yourself" I use Present, Past, Future. First I say who I am now, then how I got here with one or two proofs, like my project, then what I want next and why this role fits. It takes about one minute. For "Why switch to IT?" I first respect my current job and say what it taught me. Then I say what made me curious about software, then the proof that I am serious, like learning Java and building a project. For relocation, shifts or a bond, I answer honestly, and if I don't know the details, I politely ask.
+flashcards:
+  - front: "PPF stands for?"
+    back: "Present (who I am now) -> Past (how I got here, proof) -> Future (what I want, why this role). 60-90 seconds."
+  - front: "Career-switch answer in 4 moves"
+    back: "Respect current job -> Spark (why curious) -> Proof (what I did) -> Close (my goal now)."
+  - front: "Good weakness answer shape"
+    back: "A real, not job-killing weakness + what I am actively doing to improve it."
+  - front: "Unsure about a bond or shift policy?"
+    back: "Ask politely for details, then answer honestly. Never state policies you read online."
+keyTakeaways:
+  - "HR checks honesty, stability, flexibility and clear communication, not fancy English."
+  - "Use Present-Past-Future for 'Tell me about yourself' in 60-90 seconds."
+  - "Explain the career switch with respect, spark, proof and a clear goal."
+  - "Weakness: real + action. Strength: quality + proof."
+  - "Answer relocation, shifts and bond questions honestly; ask for details instead of quoting policies."

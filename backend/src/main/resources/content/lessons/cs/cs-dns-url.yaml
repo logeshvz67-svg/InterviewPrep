@@ -1,0 +1,306 @@
+slug: cs-dns-url
+world: CS_CORE
+section: CS
+order: 11
+title: "Networks: DNS and what happens when you type a URL"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "DNS resolution and 'what happens when you type a URL' are good end-to-end networking practice for SP and DSE technical rounds."
+otherCompanies: "'What happens when you type google.com' is a famous open-ended question for both service companies (TCS, Wipro, Cognizant, Accenture, Capgemini) and product companies, who expect depth at every step."
+why: |
+  **"What happens when you type a URL into the browser and press Enter?"** is one of the most famous interview questions in the world. It has no single right answer; it's a chance to **show how much you know**, layer by layer.
+
+  It ties together everything in this world:
+  - **DNS** (names to IP addresses),
+  - **TCP** handshake and **TLS** (HTTPS),
+  - **HTTP** request and response,
+  - servers, load balancers, caching and browser rendering.
+
+  A calm, ordered answer here makes a strong impression.
+analogy: |
+  DNS is like **finding a friend's house using a phone contact list**.
+
+  - You know the **name** "Ravi" (the domain, `google.com`), but the auto driver needs an **address** (the IP address).
+  - First you check **your own memory** (browser cache), then **your phone contacts** (OS cache and hosts file).
+  - If not there, you ask your **building watchman** who knows a lot of addresses (the **recursive resolver**, usually your ISP or 8.8.8.8).
+  - The watchman doesn't know Ravi, so he asks the **city office** (root server): "Ask the Chennai office for .com names." The **Chennai office** (TLD server) says: "Ask Ravi's apartment association." The **association** (authoritative server) gives the exact door number.
+  - The watchman **remembers** it for a while (caching with TTL), so next time it's instant.
+visual:
+  diagram: |
+    You type https://www.example.com/home
+
+    Browser cache -> OS cache/hosts -> Recursive resolver (ISP / 8.8.8.8)
+                                              |
+            +---------------------------------+
+            | 1. "www.example.com?"     -> ROOT server (.)
+            |    "ask .com TLD"         <-
+            | 2. "www.example.com?"     -> .com TLD server
+            |    "ask ns1.example.com"  <-
+            | 3. "www.example.com?"     -> AUTHORITATIVE server
+            |    "93.184.215.14, TTL 300" <-
+            v
+    Resolver caches it -> returns IP to browser
+    Browser: TCP handshake -> TLS handshake -> HTTP GET /home
+             -> response HTML -> parse, fetch CSS/JS/images -> render
+  caption: "DNS lookups go from caches to a recursive resolver, which asks root, TLD and authoritative servers. Then the browser connects, secures, requests and renders."
+  visualizer: null
+explanation: |
+  ### What is DNS?
+  **DNS (Domain Name System)** is the internet's phone book: it converts human-friendly **domain names** (`www.google.com`) into **IP addresses** (like `142.250.183.36`) that computers use to route packets. It is an application-layer protocol that mainly uses **UDP port 53** (TCP for large responses).
+
+  ### Parts of a domain name
+  `www.example.com.` is read **right to left**:
+  - `.` (usually hidden) is the **root**.
+  - `com` is the **TLD (Top-Level Domain)**: com, org, in, edu.
+  - `example` is the **second-level domain** (what you buy).
+  - `www` is a **subdomain**.
+
+  ### DNS servers involved
+  | Server | Job |
+  |---|---|
+  | **Recursive resolver** | Does the whole search for you (ISP's resolver, 8.8.8.8, 1.1.1.1) and caches answers |
+  | **Root server** | Knows where each TLD's servers are (13 named root server sets, many copies worldwide) |
+  | **TLD server** | Knows the authoritative servers for each domain under `.com`, `.in`, etc. |
+  | **Authoritative server** | Has the actual records for the domain; gives the final answer |
+
+  ### DNS resolution steps
+  1. **Browser cache**: has this site been resolved recently?
+  2. **OS cache** and the **hosts file** (`/etc/hosts` or `C:\Windows\System32\drivers\etc\hosts`).
+  3. **Recursive resolver**: if it has a cached answer, it replies immediately.
+  4. Otherwise the resolver asks the **root server** -> gets the address of the `.com` TLD servers.
+  5. Asks the **TLD server** -> gets the address of `example.com`'s authoritative name servers.
+  6. Asks the **authoritative server** -> gets the IP address (an A record).
+  7. The resolver **caches** the answer for its **TTL** and returns it to your computer.
+
+  **Recursive vs iterative**: your computer makes a **recursive** query ("give me the final answer"). The resolver makes **iterative** queries to root, TLD and authoritative servers ("tell me who to ask next").
+
+  ### Caching and TTL
+  Every DNS record has a **TTL (Time To Live)** in seconds. Caches keep the answer until the TTL runs out. Long TTL = fewer lookups and faster browsing, but changes (moving to a new server) take longer to spread. Short TTL = changes spread quickly, more lookups.
+
+  ### Common record types
+  | Record | Meaning |
+  |---|---|
+  | **A** | Name -> IPv4 address |
+  | **AAAA** | Name -> IPv6 address |
+  | **CNAME** | Alias: name -> another name (`www` -> `example.com`) |
+  | **MX** | Mail server for the domain |
+  | **NS** | Authoritative name servers for the domain |
+  | **TXT** | Text, e.g. domain ownership verification |
+
+  ### The full journey: what happens when you type a URL
+  Say you type `https://www.example.com/home` and press Enter.
+  1. **Parse the URL**: scheme `https`, host `www.example.com`, port 443 (default for https), path `/home`. If you typed words without a dot, the browser searches instead. The browser may also upgrade to HTTPS (HSTS).
+  2. **DNS lookup**: find the IP address (steps above).
+  3. **TCP connection**: 3-way handshake (SYN, SYN-ACK, ACK) with the server's IP on port 443.
+  4. **TLS handshake**: verify the certificate, agree on a session key; everything after is encrypted.
+  5. **Send the HTTP request**: `GET /home HTTP/1.1`, with headers like `Host`, `User-Agent`, `Accept`, and cookies.
+  6. **On the server side**: the request may pass through a **CDN** (Content Delivery Network: servers near you that cache static files) and a **load balancer**, reach a **web/app server** (e.g. a Spring Boot app), which may query a **database** or cache, then build the response.
+  7. **HTTP response**: status line (200 OK, or 301 redirect, which repeats the process), headers (`Content-Type: text/html`, `Set-Cookie`, `Cache-Control`) and the HTML body.
+  8. **Browser renders**: parse HTML into the **DOM** (a tree of page elements), parse CSS into the **CSSOM**, combine them into the render tree, compute **layout**, and **paint** pixels. Each `<img>`, `<link>` and `<script>` causes more requests (often reusing the same connection). JavaScript runs and may call APIs.
+  9. **Connection reuse / close**: keep-alive keeps the TCP connection open for more requests; later it closes with FIN/ACK.
+
+  ### How to answer in an interview
+  Say the steps in order with one line each, then offer depth: "I can go deeper into DNS, TLS or rendering if you like." That shows structure and confidence.
+
+  ### Useful commands
+  - `nslookup example.com` or `dig example.com`: see DNS answers.
+  - `ping example.com`: checks reachability (uses ICMP).
+  - `tracert` / `traceroute`: shows the routers on the path.
+tinyCode:
+  code: |
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class MiniResolver {
+        static Map<String, String> root = Map.of("com", "tld-com-server");
+        static Map<String, String> tld  = Map.of("example.com", "ns1.example.com");
+        static Map<String, String> auth = Map.of("www.example.com", "93.184.215.14");
+        static Map<String, String> cache = new HashMap<>();
+
+        static String resolve(String name) {
+            if (cache.containsKey(name)) {
+                System.out.println("  cache HIT");
+                return cache.get(name);
+            }
+            String tldName = name.substring(name.lastIndexOf('.') + 1);       // "com"
+            String domain = name.substring(name.indexOf('.') + 1);            // "example.com"
+            System.out.println("  root says: ask " + root.get(tldName));
+            System.out.println("  TLD says:  ask " + tld.get(domain));
+            String ip = auth.get(name);
+            System.out.println("  authoritative says: " + ip);
+            cache.put(name, ip);
+            return ip;
+        }
+
+        public static void main(String[] args) {
+            System.out.println("Lookup 1:");
+            System.out.println("=> " + resolve("www.example.com"));
+            System.out.println("Lookup 2:");
+            System.out.println("=> " + resolve("www.example.com"));
+        }
+    }
+  walkthrough: |
+    - Three maps imitate the three server levels: **root** knows TLD servers, **tld** knows each domain's name server, **auth** knows the final IP.
+    - `cache` imitates the recursive resolver's cache.
+    - First lookup: cache miss, so we walk root -> TLD -> authoritative and store the answer.
+    - Second lookup: the answer is in the cache, so no servers are asked. That's why the second visit to a site feels faster.
+    - Output:
+    ```
+    Lookup 1:
+      root says: ask tld-com-server
+      TLD says:  ask ns1.example.com
+      authoritative says: 93.184.215.14
+    => 93.184.215.14
+    Lookup 2:
+      cache HIT
+    => 93.184.215.14
+    ```
+    (The string handling here assumes a simple `www.domain.tld` name; real resolvers handle any depth.)
+tryIt:
+  instructions: "Type this URL parser. java.net.URI splits a URL into the same parts the browser uses in step 1 of the journey. No internet is needed. Try your own URLs, with and without a port."
+  code: |
+    import java.net.URI;
+
+    public class UrlParts {
+        public static void main(String[] args) {
+            URI u = URI.create("https://shop.example.in:8443/products/42?color=red#reviews");
+            System.out.println("Scheme:   " + u.getScheme());
+            System.out.println("Host:     " + u.getHost());
+            System.out.println("Port:     " + u.getPort());
+            System.out.println("Path:     " + u.getPath());
+            System.out.println("Query:    " + u.getQuery());
+            System.out.println("Fragment: " + u.getFragment());
+
+            URI noPort = URI.create("https://example.com/home");
+            System.out.println("No port given -> " + noPort.getPort() + " (browser uses 443)");
+        }
+    }
+predict:
+  code: |
+    public class TtlCache {
+        static String cachedIp = null;
+        static int expiresAt = -1;
+
+        static String lookup(int now) {
+            if (cachedIp != null && now < expiresAt) return "HIT";
+            cachedIp = "93.184.215.14";       // fetched from the DNS servers
+            expiresAt = now + 300;            // TTL = 300 seconds
+            return "MISS";
+        }
+
+        public static void main(String[] args) {
+            int[] times = {0, 100, 299, 300, 450};
+            StringBuilder out = new StringBuilder();
+            for (int t : times) out.append(lookup(t)).append(" ");
+            System.out.println(out.toString().trim());
+        }
+    }
+  expectedOutput: |
+    MISS HIT HIT MISS HIT
+  explanation: |
+    At t=0 the cache is empty: MISS, and the entry expires at 300. t=100 and t=299 are before 300: HIT, HIT. At t=300 the TTL is over (`300 < 300` is false): MISS, and the new expiry is 600. t=450 < 600: HIT.
+commonMistakes:
+  - "Saying the browser asks the root server directly. Your computer asks a recursive resolver, which does the iterative walk."
+  - "Forgetting caches. Browser, OS and resolver caches are checked before any server is asked."
+  - "Saying DNS uses only TCP. It mainly uses UDP port 53; TCP is used for large responses and zone transfers."
+  - "Skipping the TCP and TLS handshakes in the URL journey and jumping straight to HTTP."
+  - "Mixing up A and CNAME records. A maps a name to an IP; CNAME maps a name to another name."
+  - "Thinking a lower TTL makes browsing faster. It makes changes spread faster but causes more lookups."
+interviewBox:
+  why: "Why interviewers ask this: it's an open question that reveals how well you connect networking, security, servers and browsers into one story."
+  questions:
+    - q: "What is DNS and how does resolution work?"
+      a: "DNS converts domain names into IP addresses. The browser first checks its own cache, then the OS cache and hosts file. If not found, it asks a recursive resolver. The resolver asks a root server, which points to the TLD server like .com. The TLD server points to the domain's authoritative server, which returns the IP. The resolver caches it for the TTL and returns it."
+    - q: "What happens when you type a URL in the browser?"
+      a: "The browser parses the URL, then finds the IP through DNS. It opens a TCP connection with a three-way handshake and, for HTTPS, does a TLS handshake to verify the certificate and agree on keys. It sends an HTTP GET request. The server side, maybe through a CDN and load balancer, processes it and returns a response with HTML. The browser parses HTML and CSS, builds the DOM, downloads other resources, runs JavaScript, and renders the page."
+    - q: "What is TTL in DNS?"
+      a: "TTL, time to live, is how many seconds a DNS answer can be cached. A long TTL reduces lookups and speeds things up but slows down changes; a short TTL makes changes visible quickly but increases DNS traffic."
+    - q: "What is the difference between recursive and iterative DNS queries?"
+      a: "In a recursive query the client asks the resolver for the final answer, and the resolver does all the work. In iterative queries, each server replies with a referral to the next server to ask, and the resolver follows those referrals: root, then TLD, then authoritative."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "In what order does a recursive resolver query DNS servers when nothing is cached?"
+    code: null
+    options: ["Authoritative, TLD, root", "Root, TLD, authoritative", "TLD, root, authoritative", "Root, authoritative, TLD"]
+    answer: 1
+    explanation: "Root points to the TLD servers, the TLD server points to the domain's authoritative servers, and the authoritative server gives the final IP."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "A DNS answer is cached at t=0 with TTL 300 (valid while now < expiry). Lookups happen at t = 0, 100, 299, 300, 450. What is printed?"
+    code: |
+      if (cached && now < expiresAt) HIT
+      else { MISS; expiresAt = now + 300; }
+    options: ["MISS HIT HIT HIT HIT", "MISS HIT HIT MISS HIT", "MISS HIT HIT MISS MISS", "MISS MISS MISS MISS MISS"]
+    answer: 1
+    explanation: "Expiry is 300, so t=300 is a MISS (300 < 300 is false) and sets expiry to 600. Then t=450 is a HIT. Option 3 forgets that the cache was refreshed at t=300."
+  - id: q3
+    type: MATCH
+    prompt: "Match each DNS record type to its meaning"
+    pairs:
+      - left: "A"
+        right: "Name to IPv4 address"
+      - left: "AAAA"
+        right: "Name to IPv6 address"
+      - left: "CNAME"
+        right: "Alias to another domain name"
+      - left: "MX"
+        right: "Mail server for the domain"
+    explanation: "A and AAAA give IPs, CNAME gives another name to look up, and MX tells email where to go."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "DNS queries usually use UDP on port 53."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. A query and its answer are small, so UDP avoids handshake overhead. TCP on port 53 is used for large answers and zone transfers."
+  - id: q5
+    type: MCQ
+    prompt: "After DNS gives the IP for an https:// URL, what happens next?"
+    code: null
+    options: ["The browser renders the page", "TCP 3-way handshake, then TLS handshake", "The HTTP response is received", "The root server is contacted"]
+    answer: 1
+    explanation: "The browser needs a TCP connection first, then TLS to secure it, and only then sends the HTTP request. Rendering comes after the response."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Complete the default port the browser uses for an https:// URL with no port."
+    code: |
+      https://example.com/home  ->  connect to port ____
+    acceptedAnswers: ["443"]
+    explanation: "HTTPS defaults to 443 and HTTP to 80. java.net.URI returns -1 for 'no port given', and the browser fills in the default."
+  - id: q7
+    type: MCQ
+    prompt: "Which component does the full DNS search on behalf of your computer and caches the results?"
+    code: null
+    options: ["Root server", "Authoritative server", "Recursive resolver", "TLD server"]
+    answer: 2
+    explanation: "The recursive resolver (your ISP's, or a public one like 8.8.8.8) walks root, TLD and authoritative servers for you and caches answers for their TTL."
+explainBack:
+  prompt: "Answer 'What happens when you type a URL and press Enter?' as if in an interview, step by step."
+  rubric:
+    - "I covered URL parsing and DNS resolution with caches, root, TLD and authoritative servers"
+    - "I mentioned the TCP handshake and TLS handshake"
+    - "I described the HTTP request and response"
+    - "I mentioned the server side (load balancer, app server, database) or CDN"
+    - "I described browser rendering (DOM, CSS, JS, extra requests)"
+  modelAnswer: |
+    First the browser parses the URL to get the scheme, host and path. Then it needs the IP, so it checks its cache, the OS cache and hosts file, and then asks a recursive resolver, which asks the root server, the .com TLD server and finally the domain's authoritative server, and caches the answer for its TTL. With the IP, the browser does a TCP three-way handshake on port 443, then a TLS handshake to verify the certificate and agree on keys. It sends an HTTP GET request. On the server side, a load balancer forwards it to an app server, which may read from a database, and returns HTML. The browser builds the DOM, loads CSS, JavaScript and images, and paints the page.
+flashcards:
+  - front: "DNS lookup order"
+    back: "Browser cache -> OS cache/hosts -> recursive resolver -> root -> TLD -> authoritative -> cache for TTL."
+  - front: "Recursive vs iterative query"
+    back: "Recursive: 'give me the final answer' (client to resolver). Iterative: 'who should I ask next?' (resolver to root/TLD/authoritative)."
+  - front: "URL journey in 6 words"
+    back: "Parse, DNS, TCP, TLS, HTTP, render."
+  - front: "A vs CNAME"
+    back: "A: name -> IPv4. CNAME: name -> another name (alias)."
+  - front: "DNS transport and port"
+    back: "UDP port 53 mainly; TCP 53 for large responses/zone transfers."
+keyTakeaways:
+  - "DNS turns names into IP addresses using caches and a hierarchy: root, TLD, authoritative."
+  - "The recursive resolver does the work and caches answers for the TTL."
+  - "URL journey: parse, DNS, TCP handshake, TLS handshake, HTTP request, server work, response, render."
+  - "Know A, AAAA, CNAME, MX and NS records."
+  - "Answer the URL question in order, one line per step, then offer to go deeper."

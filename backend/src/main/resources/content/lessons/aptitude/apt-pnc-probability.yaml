@@ -1,0 +1,273 @@
+slug: apt-pnc-probability
+world: APTITUDE
+section: APT
+order: 5
+title: "Permutations, combinations and probability"
+version: 1
+estimatedMinutes: 45
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI, ALL]
+infosysRelevance: "Infosys-style basics practice: counting and probability are classic aptitude topics, and the same counting ideas (nCr, factorials, subsets) appear in DSA problems like combinations and backtracking."
+otherCompanies: "P&C and probability are common practice topics for TCS, Wipro, Cognizant, Accenture and Capgemini style tests, and the counting logic helps in product-company coding rounds."
+why: |
+  "In how many ways...?" and "What is the probability...?" questions scare many people, because it is easy to count something twice or miss a case.
+
+  The secret is to ask **two questions** every time:
+  1. **Does order matter?** (Arrangement = permutation; selection = combination.)
+  2. **Is it AND or OR?** (AND -> multiply; OR -> add.)
+
+  Probability is then just **counting twice**: count the good outcomes, count all outcomes, divide.
+
+  These ideas are also the base of DSA topics like **backtracking** (generate all subsets/permutations) and **combinatorics** in coding problems. You will check every answer with a Java program, sometimes by brute force (trying every case), which is a great way to trust a formula.
+analogy: |
+  Think of **choosing a cricket team vs. setting the batting order**.
+
+  - **Choosing 11 players from 15** is a **combination**: the team {Virat, Rohit, ...} is the same team in whatever order you write the names.
+  - **Setting the batting order** for the first 3 positions is a **permutation**: Rohit-Virat-Gill is different from Virat-Rohit-Gill.
+
+  Selection = combination (order does not matter). Arrangement = permutation (order matters).
+visual:
+  diagram: |
+    ORDER MATTERS?        yes -> PERMUTATION   nPr = n! / (n-r)!
+                          no  -> COMBINATION   nCr = n! / (r! (n-r)!)
+
+    Pick 2 from {A, B, C}
+    Permutations (6):  AB BA AC CA BC CB
+    Combinations (3):  {A,B} {A,C} {B,C}
+    each group appears 2! = 2 times as an arrangement
+    -> nCr = nPr / r!
+
+    TWO DICE: 36 outcomes, sum = 7 in 6 of them
+           1  2  3  4  5  6
+        1  .  .  .  .  .  7
+        2  .  .  .  .  7  .
+        3  .  .  .  7  .  .
+        4  .  .  7  .  .  .
+        5  .  7  .  .  .  .
+        6  7  .  .  .  .  .     P(sum 7) = 6/36 = 1/6
+  caption: "Permutations count arrangements; combinations count groups. Each group of r items can be arranged in r! ways, which is why nCr = nPr / r!."
+  visualizer: null
+explanation: |
+  ### 1. Counting principle: AND multiply, OR add
+  - 3 shirts **and** 4 trousers -> 3 x 4 = **12** outfits.
+  - Travel by one of 3 buses **or** one of 2 trains -> 3 + 2 = **5** ways.
+
+  ### 2. Factorial
+  `n! = n x (n-1) x ... x 1`, and `0! = 1`. It counts ways to arrange n different things in a row: n choices for the 1st place, n-1 for the 2nd, and so on. 5! = **120**.
+
+  ### 3. Permutations (order matters)
+  `nPr = n! / (n-r)!` = ways to arrange r things chosen from n.
+  **Worked**: President and secretary from 5 people: 5P2 = 5 x 4 = **20**.
+
+  ### 4. Combinations (order does not matter)
+  `nCr = n! / (r! (n-r)!)`.
+  **Why divide by r!**: every group of r people appears r! times among the permutations (in every order). Dividing removes the repeats.
+  **Worked**: Choose 2 people from 5 for a team: 5C2 = 20 / 2 = **10**.
+  **Useful fact**: `nCr = nC(n-r)`. Choosing 2 to include is the same as choosing 3 to leave out: 5C2 = 5C3 = 10.
+
+  **Worked (committee)**: 3 men and 2 women from 6 men and 5 women: 6C3 x 5C2 = 20 x 10 = **200** (AND -> multiply).
+
+  ### 5. Arrangements with repeated letters
+  Divide by the factorial of each repeat count. **Why**: swapping identical letters does not make a new word.
+  - LEVEL: 5 letters, L twice, E twice -> 5! / (2! x 2!) = **30**.
+  - BANANA: 6 letters, A three times, N twice -> 6! / (3! x 2!) = **60**.
+
+  ### 6. Things that must stay together
+  Glue them into **one block**, arrange the blocks, then arrange inside the block.
+  **Worked**: ORANGE with vowels (O, A, E) together: block + R, N, G = 4 items -> 4! = 24; inside the block 3! = 6. Total **144**.
+
+  ### 7. Circular arrangements
+  n people around a round table: `(n - 1)!`. **Why**: rotating everyone one seat gives the same arrangement, so fix one person and arrange the rest. 6 people -> 5! = **120**.
+
+  ### 8. Probability
+  `P(event) = favourable outcomes / total outcomes`, always between 0 and 1.
+  - **Complement**: P(not A) = 1 - P(A). Great for "at least one".
+  - **Independent events** (one does not affect the other): P(A and B) = P(A) x P(B).
+  - **OR with overlap**: P(A or B) = P(A) + P(B) - P(A and B).
+
+  **Worked (dice)**: two dice, sum 7: 6 of 36 outcomes -> **1/6**. Sum 8: (2,6), (3,5), (4,4), (5,3), (6,2) -> **5/36**.
+  **Worked (coins)**: 3 coins, at least one head: 1 - P(no heads) = 1 - 1/8 = **7/8**.
+  **Worked (cards)**: one card from 52; king or heart: 4 + 13 - 1 (king of hearts counted twice) = 16 -> 16/52 = **4/13**.
+  **Worked (bag)**: 4 red, 6 blue balls; draw 2 without putting back; both red: 4C2 / 10C2 = 6/45 = **2/15**.
+tinyCode:
+  code: |
+    public class Counting {
+        static long fact(int n) {
+            long f = 1;
+            for (int i = 2; i <= n; i++) f *= i;
+            return f;
+        }
+        static long nPr(int n, int r) { return fact(n) / fact(n - r); }
+        static long nCr(int n, int r) { return fact(n) / (fact(r) * fact(n - r)); }
+
+        public static void main(String[] args) {
+            System.out.println("5P2 = " + nPr(5, 2) + ", 5C2 = " + nCr(5, 2));
+            System.out.println("Committee = " + nCr(6, 3) * nCr(5, 2));
+            System.out.println("BANANA = " + fact(6) / (fact(3) * fact(2)));
+            System.out.println("Round table of 6 = " + fact(5));
+
+            int sevens = 0;
+            for (int a = 1; a <= 6; a++)
+                for (int b = 1; b <= 6; b++)
+                    if (a + b == 7) sevens++;
+            System.out.println("Sum 7: " + sevens + "/36");
+        }
+    }
+  walkthrough: |
+    - `fact` multiplies 2 x 3 x ... x n. We use `long` because factorials grow very fast (13! is already bigger than an `int` can hold).
+    - `nPr` and `nCr` are the formulas exactly as in the lesson.
+    - Committee: 6C3 x 5C2 = 20 x 10 = 200 (AND -> multiply).
+    - BANANA: 720 / (6 x 2) = 60.
+    - Round table: (6 - 1)! = 120.
+    - The two nested loops try **every** dice pair (36 of them) and count the ones that add to 7. Brute force like this is a great way to confirm a formula.
+    - Output:
+    ```
+    5P2 = 20, 5C2 = 10
+    Committee = 200
+    BANANA = 60
+    Round table of 6 = 120
+    Sum 7: 6/36
+    ```
+tryIt:
+  instructions: "Type this program (no pasting). It checks 'at least one head in 3 coins' by listing all 8 outcomes, and counts LEVEL arrangements by formula. Run it and compare with the lesson."
+  code: |
+    public class CoinsAndWords {
+        public static void main(String[] args) {
+            int total = 0, atLeastOneHead = 0;
+            for (int c1 = 0; c1 <= 1; c1++)
+                for (int c2 = 0; c2 <= 1; c2++)
+                    for (int c3 = 0; c3 <= 1; c3++) {
+                        total++;
+                        if (c1 + c2 + c3 >= 1) atLeastOneHead++;
+                    }
+            System.out.println("At least one head: " + atLeastOneHead + "/" + total);
+
+            int fact5 = 5 * 4 * 3 * 2 * 1;
+            System.out.println("LEVEL arrangements: " + fact5 / (2 * 2));
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int perm = 5 * 4;
+            int comb = perm / (2 * 1);
+            int eights = 0;
+            for (int a = 1; a <= 6; a++)
+                for (int b = 1; b <= 6; b++)
+                    if (a + b == 8) eights++;
+            System.out.println(comb + " " + perm);
+            System.out.println(eights);
+        }
+    }
+  expectedOutput: |
+    10 20
+    5
+  explanation: |
+    - 5P2 = 5 x 4 = **20**, and 5C2 = 20 / 2! = **10**. The program prints comb first, so the line is `10 20`.
+    - Pairs with sum 8: (2,6), (3,5), (4,4), (5,3), (6,2) -> **5**. (1 cannot be used: 1 + 7 is impossible.)
+commonMistakes:
+  - "Using permutations when order does not matter (choosing a team) or combinations when it does (ranks, positions)."
+  - "Adding when you should multiply. 'AND' (both choices together) multiplies; 'OR' adds."
+  - "Forgetting to divide by repeats in words like BANANA or LEVEL."
+  - "Using n! instead of (n-1)! for a round table."
+  - "Counting the king of hearts twice in 'king or heart'. Subtract the overlap."
+  - "Calculating 'at least one' case by case. Use 1 - P(none)."
+interviewBox:
+  why: "Why this is practised: counting and probability check careful, structured thinking, and the same ideas power backtracking and combinatorics in coding rounds."
+  questions:
+    - q: "What is the difference between a permutation and a combination? (practice question)"
+      a: "A permutation counts arrangements, where order matters, like first, second and third place. A combination counts selections, where order does not matter, like choosing three people for a team. Since each group of r items can be arranged in r factorial ways, nCr equals nPr divided by r factorial."
+    - q: "How many subsets does a set of n elements have? (practice question)"
+      a: "2 to the power n. For each element there are two choices, include it or not, and the choices multiply. That is also why generating all subsets in code takes O(2^n) time."
+    - q: "What is the probability of at least one head when tossing 3 coins? (practice question)"
+      a: "7/8. It is easier to use the opposite: the only case with no heads is tail-tail-tail, which is 1 of 8 outcomes. So the answer is 1 minus 1/8."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "In how many ways can the letters of the word LEVEL be arranged?"
+    code: null
+    options: ["120", "60", "30", "20"]
+    answer: 2
+    explanation: "5 letters with L twice and E twice: 5!/(2! x 2!) = 120/4 = 30. 120 ignores the repeats; 60 removes only one repeated letter."
+  - id: q2
+    type: MCQ
+    prompt: "A committee of 2 men and 2 women is chosen from 5 men and 4 women. How many ways?"
+    code: null
+    options: ["16", "60", "126", "240"]
+    answer: 1
+    explanation: "5C2 x 4C2 = 10 x 6 = 60 (AND -> multiply). 16 adds them; 126 is 9C4, which ignores the 2-men-2-women condition; 240 uses permutations (ordered picks) for both groups."
+  - id: q3
+    type: MCQ
+    prompt: "Two dice are thrown. What is the probability that the sum is 9?"
+    code: null
+    options: ["1/9", "1/6", "1/12", "5/36"]
+    answer: 0
+    explanation: "Sum 9: (3,6), (4,5), (5,4), (6,3) = 4 outcomes. 4/36 = 1/9. 1/6 is the probability for sum 7, and 5/36 is for sum 8."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "7C2 is equal to 7C5."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Choosing 2 to include is the same as choosing 5 to leave out: both equal 21. In general nCr = nC(n-r)."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "7 friends sit around a round table. Fill in the number of different arrangements."
+    code: |
+      (7 - 1)! = ____
+    acceptedAnswers: ["720"]
+    explanation: "Fix one person; arrange the other 6 in 6! = 720 ways. Using 7! = 5040 counts rotations of the same seating as different."
+  - id: q6
+    type: MCQ
+    prompt: "Two coins are tossed. What is the probability of getting at least one head?"
+    code: null
+    options: ["1/2", "1/4", "3/4", "2/3"]
+    answer: 2
+    explanation: "Outcomes: HH, HT, TH, TT. Only TT has no head, so 1 - 1/4 = 3/4. 2/3 comes from wrongly treating {0, 1, 2 heads} as equally likely."
+  - id: q7
+    type: MATCH
+    prompt: "Match each situation to the right counting tool"
+    pairs:
+      - left: "Choosing 3 people for a team"
+        right: "Combination (nCr)"
+      - left: "Giving gold, silver and bronze medals"
+        right: "Permutation (nPr)"
+      - left: "Seating people around a round table"
+        right: "(n - 1)!"
+      - left: "Arranging the letters of BANANA"
+        right: "n! divided by factorials of repeats"
+    explanation: "A team has no order (combination); medals have order (permutation); rotations are identical at a round table; identical letters must be divided out."
+  - id: q8
+    type: MCQ
+    prompt: "A bag has 5 red and 3 green balls. Two balls are drawn without replacement. What is the probability that both are green?"
+    code: null
+    options: ["9/64", "3/28", "3/8", "1/8"]
+    answer: 1
+    explanation: "3C2 / 8C2 = 3/28. (Or 3/8 x 2/7 = 6/56 = 3/28.) 9/64 assumes the first ball is put back, which the question does not allow."
+explainBack:
+  prompt: "Explain to a friend the difference between permutation and combination, and how to find the probability of at least one head in 3 coin tosses."
+  rubric:
+    - "I said permutation = order matters, combination = order does not"
+    - "I explained why nCr = nPr / r!"
+    - "I used the complement 1 - P(none) for 'at least one'"
+    - "I gave a real-life example (team vs batting order)"
+  modelAnswer: |
+    A permutation counts arrangements, where order matters, like a batting order. A combination counts selections, where order doesn't matter, like picking the team. Every group of r people can be arranged in r factorial ways, so the number of combinations is the permutations divided by r factorial. For probability, I divide good outcomes by all outcomes. Three coins have 8 outcomes. For "at least one head", it's easier to find the opposite: no heads happens only once, tail-tail-tail. So the answer is 1 minus 1/8, which is 7/8.
+flashcards:
+  - front: "nPr and nCr formulas"
+    back: "nPr = n!/(n-r)! (order matters). nCr = n!/(r!(n-r)!) (order doesn't)."
+  - front: "Why nCr = nPr / r!"
+    back: "Each group of r appears r! times as an ordered arrangement."
+  - front: "Round table with n people"
+    back: "(n - 1)! arrangements; rotations are the same."
+  - front: "At least one ..."
+    back: "1 - P(none)."
+  - front: "P(A or B) with overlap"
+    back: "P(A) + P(B) - P(A and B)."
+keyTakeaways:
+  - "Ask first: does order matter? Permutation if yes, combination if no."
+  - "AND multiplies, OR adds."
+  - "Divide by factorials of repeats; use (n-1)! for circles; glue 'together' items into a block."
+  - "Probability = favourable / total; use 1 - P(none) for 'at least one'."
+  - "Brute-force loops in Java are a great way to check a counting formula."

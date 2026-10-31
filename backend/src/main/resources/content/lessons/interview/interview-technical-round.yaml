@@ -1,0 +1,256 @@
+slug: interview-technical-round
+world: INTERVIEW
+section: INTERVIEW
+order: 3
+title: "The technical round"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+infosysRelevance: "Infosys-style practice: SP and DSE candidates are expected to explain Java, OOP, DSA and SQL clearly and write simple code by hand or on a shared screen. How you answer matters as much as what you know."
+otherCompanies: "Technical rounds at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies all reward structured explanations, thinking aloud and honest 'I don't know' answers."
+why: |
+  You have spent many hours learning Java. The technical round is where that work turns into an offer, **if you can show it**.
+
+  Many beginners know the answer but lose marks because:
+  - they give a one-word answer ("HashMap stores key-value") and stop,
+  - they go silent for 30 seconds while thinking,
+  - they bluff when they do not know, and the interviewer catches it with one follow-up.
+
+  This lesson gives you three habits that fix all of this: **Concept-Example-Use case**, **thinking aloud**, and **honest "I don't know"**. Plus how to write code on paper and survive follow-up questions.
+analogy: |
+  Think of a **good doctor explaining a report** to a patient.
+
+  - A bad doctor says "Hb low" and writes a prescription. The patient is confused.
+  - A good doctor says: "**Hemoglobin** carries oxygen in your blood (concept). Yours is 9; normal is about 12 or more (example). That is why you feel tired on the stairs (use case). We will fix it with iron tablets."
+  - If the good doctor is unsure, they say "Let me check with a specialist", not a made-up answer.
+
+  The interviewer is your patient. Explain like the good doctor.
+visual:
+  diagram: |
+    ANSWERING A TECHNICAL QUESTION
+
+    Question --> [2-sec pause] --> CONCEPT  --> EXAMPLE  --> USE CASE
+                  breathe,         1 simple     tiny,         where it is
+                  plan             sentence     concrete      used / why
+                                                              |
+                                  +---------------------------+
+                                  v
+                     Interviewer follow-up?
+                      |                 |
+                  I know it          I don't know
+                      |                 |
+               answer with CEU    "I'm not sure, but I think..."
+                                  + reason step by step
+  caption: "Pause, then Concept-Example-Use case. For follow-ups, answer with the same structure or reason honestly from what you know."
+  visualizer: null
+explanation: |
+  ### 1. Concept-Example-Use case (CEU)
+  For any "What is X?" or "Explain X" question:
+  - **Concept**: one simple sentence. No jargon unless you explain it.
+  - **Example**: a tiny, concrete example. Code or a real-life case.
+  - **Use case**: where it is used in real projects and **why**.
+
+  > **Q: What is a HashMap?**
+  > Concept: "A HashMap stores data as key-value pairs, so you can find a value quickly using its key."
+  > Example: "For example, I can store roll numbers as keys and student names as values. `map.get(101)` gives me the name."
+  > Use case: "It is used for caches and fast lookups, because get and put are O(1) on average."
+
+  That answer takes 20 seconds and shows real understanding. Stop there. Let the interviewer go deeper.
+
+  ### 2. Think aloud
+  **Thinking aloud** means saying your thoughts while you solve, so the interviewer can follow. Silence makes them guess; talking lets them help you.
+  - "Let me first make sure I understand. The input is an array of integers, and I return the index of the largest one, right?"
+  - "My first idea is a simple loop. That is O(n), which is fine here."
+  - "Let me check with a small example: [3, 9, 2]. The answer should be index 1."
+
+  Useful phrases:
+  | Situation | Phrase |
+  |---|---|
+  | Need time | "Can I take a moment to think?" |
+  | Unclear input | "Can I assume the array is not empty?" |
+  | Starting | "My first idea is... then I'll try to improve it." |
+  | Checking | "Let me test this with a small example." |
+
+  ### 3. Saying "I don't know" honestly
+  Bluffing is the fastest way to fail. Interviewers ask one follow-up and the bluff collapses. Use this pattern instead:
+  1. **Admit** it: "I'm not fully sure about this."
+  2. **Reason** from what you know: "But I know HashMap is not synchronized, so I would guess ConcurrentHashMap handles threads differently, maybe by locking smaller parts."
+  3. **Show you will learn**: "I will read about it after this interview."
+
+  A thoughtful guess with honest framing often earns more respect than a confident wrong answer.
+
+  ### 4. Coding on paper (or a plain editor)
+  Some rounds ask you to write code without an IDE (no autocomplete, no Run button). Steps:
+  1. **Clarify** the input and output. Ask about edge cases (empty input, negatives).
+  2. **Explain the idea in words** before writing code.
+  3. **Write neat code** with clear names. Leave space between lines for fixes.
+  4. **Dry-run** (trace by hand) with a small example, line by line, out loud.
+  5. **State the complexity**: "Time O(n), extra space O(1)."
+
+  ```java
+  // Reverse a string without built-in reverse()
+  static String reverse(String s) {
+      StringBuilder sb = new StringBuilder();
+      for (int i = s.length() - 1; i >= 0; i--) {
+          sb.append(s.charAt(i));
+      }
+      return sb.toString();
+  }
+  // Dry run: "abc" -> i=2 'c', i=1 'b', i=0 'a' -> "cba". Time O(n).
+  ```
+
+  ### 5. Handling follow-up questions
+  Follow-ups are **good news**: the interviewer is interested. Common shapes:
+  - **"Why?"** -> give the reason ("because lookup by key is O(1) on average").
+  - **"What if...?"** -> change one thing and re-think ("If keys are duplicate, put() replaces the old value").
+  - **"Can you do better?"** -> talk about time vs space ("I can use a HashSet to make it O(n) but it uses extra memory").
+  - **"What is the difference between X and Y?"** -> make a quick 2-3 point comparison.
+
+  If you get stuck: restate the question, then reason step by step. Never argue; if they correct you, say "Thank you, that makes sense."
+tinyCode:
+  code: |
+    TECHNICAL ANSWER TEMPLATE (Concept -> Example -> Use case)
+
+    Q: What is ____________?
+
+    CONCEPT:  ____________ is ____________,
+              in simple words, ____________.
+
+    EXAMPLE:  For example, ____________.
+
+    USE CASE: It is used for ____________,
+              because ____________.
+  walkthrough: |
+    - The template forces three short parts. Each part is one or two sentences.
+    - **CONCEPT** has two blanks for meaning: the formal line, then "in simple words". This shows you really understand it.
+    - **EXAMPLE** can be code (`list.add(5)`) or real life ("like a token number at a bank").
+    - **USE CASE** ends with "because". The *because* is what separates understanding from memorising.
+    - Try filling it for: ArrayList, interface, primary key, thread.
+tryIt:
+  instructions: "Type this 'I don't know' script. Typing it builds the habit so that in a real interview you reach for honesty, not bluffing."
+  code: |
+    WHEN I DON'T KNOW THE ANSWER
+
+    1. ADMIT:   "I'm not fully sure about this."
+
+    2. REASON:  "But I know that ____________,
+                 so I think ____________,
+                 because ____________."
+
+    3. LEARN:   "I will read more about it after this interview."
+
+    NEVER: make up facts, go silent, or argue.
+predict:
+  code: |
+    Q: What is method overloading?
+
+    "Method overloading means one class has many methods
+     with the same name but different parameters.
+     For example, add(int a, int b) and add(double a, double b)."
+
+    This answer uses Concept -> Example -> Use case.
+    Which part is missing? Type its name.
+  expectedOutput: |
+    Use case
+  explanation: |
+    The first sentence is the **Concept** and the `add(int, int)` / `add(double, double)` line is the **Example**. It never says where or why it is used. Add: "It is used to give one easy name for the same action on different inputs, like `println`, which works for int, String and double. It makes the code easier to read."
+commonMistakes:
+  - "Giving one-line answers and stopping. Use Concept-Example-Use case."
+  - "Going silent for a long time while thinking. Think aloud so the interviewer can follow and help."
+  - "Bluffing an answer you do not know. Admit it, then reason from what you know."
+  - "Starting to code on paper before clarifying the input and edge cases."
+  - "Forgetting to dry-run your code with a small example before saying 'done'."
+  - "Arguing when the interviewer corrects you. Thank them and adjust."
+interviewBox:
+  why: "Why interviewers care: the technical round checks both knowledge and how you think under pressure. Structure and honesty make average knowledge look strong; bluffing makes good knowledge look weak."
+  questions:
+    - q: "What is the difference between an ArrayList and a LinkedList? (practice question)"
+      a: "Both store a list of items. ArrayList uses a growing array, so reading by index is fast, O(1). LinkedList uses nodes connected by links, so adding or removing at the start is fast but reading by index is slow, O(n). In most projects I use ArrayList because we read more often than we insert in the middle."
+    - q: "Explain polymorphism. (practice question)"
+      a: "Polymorphism means one thing can take many forms. For example, a Shape reference can point to a Circle or a Square, and calling area() runs the right version at runtime. It is used to write flexible code: I can add a new shape without changing the code that calls area()."
+    - q: "You don't know the answer to my question. What will you do? (practice question)"
+      a: "I will tell you honestly that I'm not sure. Then I will think aloud using what I already know and give my best reasoning. After the interview, I will read about it properly."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which answer to 'What is an interface?' follows Concept-Example-Use case best?"
+    code: null
+    options:
+      - "An interface is an interface."
+      - "An interface is a contract of methods a class must implement. For example, Comparable has compareTo(). It is used so different classes can be treated the same way, like sorting any Comparable objects."
+      - "Interfaces were added in Java 1.0 and changed in Java 8."
+      - "I use interfaces a lot. They are very useful."
+    answer: 1
+    explanation: "Option 2 has a clear concept, a concrete example and a use case with a reason. The others are circular, only history, or vague claims without proof."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "If you do not know an answer, the best option is to stay silent until the interviewer moves on."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Silence gives no information. Admit you are unsure, reason aloud from what you know, and say you will learn it."
+  - id: q3
+    type: MATCH
+    prompt: "Match each coding-on-paper step to its purpose"
+    pairs:
+      - left: "Clarify"
+        right: "Confirm input, output and edge cases before writing"
+      - left: "Explain the idea"
+        right: "Get agreement on the approach in plain words"
+      - left: "Dry-run"
+        right: "Trace the code by hand with a small example"
+      - left: "State complexity"
+        right: "Say the time and space cost, like O(n)"
+    explanation: "Clarify first so you solve the right problem; explain so the interviewer can guide you; dry-run to catch bugs without a compiler; complexity shows you understand efficiency."
+  - id: q4
+    type: FILL_THE_CODE
+    prompt: "Complete the honest 'I don't know' opening."
+    code: |
+      "I'm not fully ____ about this, but I think..."
+    acceptedAnswers: ["sure", "certain"]
+    explanation: "'I'm not fully sure' is honest and still lets you show your reasoning. Bluffing with confidence is risky because one follow-up exposes it."
+  - id: q5
+    type: MCQ
+    prompt: "The interviewer asks 'Can you do better?' after your O(n^2) solution. What is the best first response?"
+    code: null
+    options: ["No, this is the best possible.", "Think aloud about trading memory for speed, for example using a HashSet to reach O(n).", "Rewrite the same code more neatly.", "Ask to skip the question."]
+    answer: 1
+    explanation: "'Can you do better?' usually invites a time-space trade-off. Thinking aloud about a HashSet shows you know the idea. Saying 'no' ends the discussion; neater code does not change complexity."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "Asking 'Can I assume the array is not empty?' before coding is a good habit."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Clarifying assumptions shows care and avoids solving the wrong problem. Interviewers often leave details unclear on purpose to see if you ask."
+  - id: q7
+    type: MCQ
+    prompt: "What is 'thinking aloud'?"
+    code: null
+    options: ["Speaking very loudly", "Saying your reasoning step by step while you solve", "Reading the question again and again", "Asking the interviewer for the answer"]
+    answer: 1
+    explanation: "Thinking aloud means sharing your reasoning as you go, so the interviewer can follow and give hints. It is not about volume or asking for answers."
+explainBack:
+  prompt: "Explain to a friend the three habits that make technical answers strong."
+  rubric:
+    - "I explained Concept-Example-Use case with an example"
+    - "I explained thinking aloud and why silence hurts"
+    - "I explained how to say 'I don't know' honestly"
+    - "I mentioned clarifying and dry-running when coding on paper"
+  modelAnswer: |
+    In a technical round, I use three habits. First, Concept, Example, Use case: I say what something is in one simple line, give a tiny example, and say where it is used and why. Second, I think aloud. When I solve a problem, I say my steps, so the interviewer can follow and even help me. Third, if I don't know, I say so honestly, then reason from what I know. When I code on paper, I first clarify the input, explain my idea, write the code, then dry-run it with a small example and say the time complexity.
+flashcards:
+  - front: "CEU stands for?"
+    back: "Concept (one simple line) -> Example (tiny, concrete) -> Use case (where used + because)."
+  - front: "3 steps to say 'I don't know'"
+    back: "Admit ('I'm not fully sure') -> Reason from what I know -> Say I will learn it."
+  - front: "5 steps for coding on paper"
+    back: "Clarify -> Explain idea -> Write neat code -> Dry-run small example -> State complexity."
+  - front: "Follow-up 'Can you do better?' usually means?"
+    back: "Discuss a time vs space trade-off, e.g. use a HashSet/HashMap to reduce time."
+keyTakeaways:
+  - "Answer 'What is X?' with Concept, Example, Use case, then stop and let them go deeper."
+  - "Think aloud: silence hides your skill, talking shows it."
+  - "Honest 'I'm not sure, but...' beats bluffing."
+  - "On paper: clarify, explain, write, dry-run, state complexity."
+  - "Follow-ups are a good sign; answer them with the same calm structure."

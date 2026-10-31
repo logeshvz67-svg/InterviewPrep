@@ -1,0 +1,349 @@
+slug: sql-group-by-having
+world: SQL
+section: SQL
+order: 3
+title: "GROUP BY and HAVING"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+infosysRelevance: "Department-wise counts, totals and 'groups with more than N rows' are standard SQL practice for DSE and SP rounds."
+otherCompanies: "WHERE vs HAVING and COUNT(*) vs COUNT(column) are very common basic SQL questions at TCS, Wipro, Cognizant, Accenture and Capgemini."
+why: |
+  Managers rarely ask "show me every row". They ask **summary** questions:
+  - How many employees are in each department?
+  - What is the total order value per customer?
+  - Which departments have more than 2 people?
+
+  `GROUP BY` and the **aggregate functions** (COUNT, SUM, AVG, MIN, MAX) answer these. `HAVING` filters the groups.
+
+  The classic interview question **"What is the difference between WHERE and HAVING?"** comes straight from this lesson, and so does the sneaky **COUNT(*) vs COUNT(column)** question.
+analogy: |
+  Imagine a teacher collecting **exam papers** from the whole school.
+
+  - **WHERE**: before sorting, she throws away papers that are not from this term (filtering *single papers*).
+  - **GROUP BY class**: she makes one pile per class (CSE pile, ECE pile, ...).
+  - **Aggregates**: for each pile she writes one summary card: number of papers (COUNT), total marks (SUM), average (AVG), lowest (MIN), highest (MAX).
+  - **HAVING**: she keeps only the summary cards she cares about, like "piles with more than 30 papers" (filtering *whole piles*).
+
+  You cannot ask "how many papers are in this pile?" before the piles exist. That is exactly why you can't use COUNT in WHERE.
+visual:
+  diagram: |
+    employees                    GROUP BY dept_id
+    name  dept_id salary         +---------+-------+--------+-------+
+    Asha     10   90000  --+     | dept_id | COUNT | SUM    | MAX   |
+    Ravi     10   75000  --+-->  |   10    |   3   | 245000 | 90000 |
+    Divya    10   80000  --+     |   20    |   2   | 120000 | 60000 |
+    Priya    20   60000  --+-->  |   30    |   1   |  50000 | 50000 |
+    Kiran    20   60000  --+     |  NULL   |   1   |  45000 | 45000 |
+    Meena    30   50000  ----->  +---------+-------+--------+-------+
+    Arjun  NULL   45000  ----->      |
+                                     v  HAVING COUNT(*) >= 2
+                                 dept 10 (3), dept 20 (2)
+
+    Pipeline: FROM -> WHERE (rows) -> GROUP BY -> HAVING (groups)
+              -> SELECT -> ORDER BY
+  caption: "Seven employee rows collapse into four groups, one per dept_id (NULLs form their own group). HAVING then keeps only groups with at least 2 rows."
+  visualizer: null
+explanation: |
+  ### Aggregate functions
+  An **aggregate function** takes many rows and returns **one** value.
+
+  | Function | Returns | Ignores NULLs? |
+  |---|---|---|
+  | `COUNT(*)` | number of rows | counts every row |
+  | `COUNT(col)` | number of non-NULL values in col | yes |
+  | `COUNT(DISTINCT col)` | number of different non-NULL values | yes |
+  | `SUM(col)` | total | yes |
+  | `AVG(col)` | average | yes |
+  | `MIN(col)`, `MAX(col)` | smallest, largest | yes |
+
+  Without GROUP BY, the whole table is one group:
+  ```sql
+  SELECT COUNT(*) AS all_rows, COUNT(dept_id) AS with_dept,
+         COUNT(DISTINCT dept_id) AS distinct_depts
+  FROM employees;
+  --  all_rows | with_dept | distinct_depts
+  --         7 |         6 |              3
+  ```
+  `COUNT(*)` is 7 (all rows). `COUNT(dept_id)` is 6 because Arjun's dept_id is NULL. `COUNT(DISTINCT dept_id)` is 3 (10, 20, 30).
+
+  ### GROUP BY: one result row per group
+  `GROUP BY dept_id` puts rows with the same dept_id into one **group**, then each aggregate is calculated **per group**.
+  ```sql
+  SELECT dept_id, COUNT(*) AS headcount, SUM(salary) AS total_salary,
+         ROUND(AVG(salary), 2) AS avg_salary, MAX(salary) AS max_salary
+  FROM employees
+  GROUP BY dept_id
+  ORDER BY dept_id;
+  ```
+  ```
+   dept_id | headcount | total_salary | avg_salary | max_salary
+  ---------+-----------+--------------+------------+------------
+        10 |         3 |       245000 |   81666.67 |      90000
+        20 |         2 |       120000 |   60000.00 |      60000
+        30 |         1 |        50000 |   50000.00 |      50000
+      NULL |         1 |        45000 |   45000.00 |      45000
+  ```
+  Notice: all NULL dept_ids form **one group** of their own.
+
+  `ROUND(x, 2)` keeps 2 decimal places. Without it PostgreSQL prints a long number like `81666.666666666667`.
+
+  ### The golden rule of GROUP BY
+  Every column in SELECT must either be **in the GROUP BY** or be **inside an aggregate**. Why? A group of 3 Engineering people has 3 different names; the database can't put 3 names in one cell.
+  ```sql
+  SELECT dept_id, name, COUNT(*) FROM employees GROUP BY dept_id;
+  -- ERROR: column "employees.name" must appear in the GROUP BY clause
+  --        or be used in an aggregate function
+  ```
+  > MySQL difference: older MySQL versions (and MySQL with the `ONLY_FULL_GROUP_BY` mode switched off) accept this and silently pick *some* name. MySQL 5.7+ has that mode on by default, so it errors like PostgreSQL. Never rely on the old behaviour.
+
+  You can group by several columns: `GROUP BY dept_id, salary` makes one group for each different (dept_id, salary) pair.
+
+  ### HAVING: filter groups
+  `HAVING` is like WHERE, but it runs **after** grouping, so it can use aggregates:
+  ```sql
+  SELECT dept_id, COUNT(*) AS headcount
+  FROM employees
+  GROUP BY dept_id
+  HAVING COUNT(*) >= 2;          -- dept 10 (3) and dept 20 (2)
+  ```
+
+  ### WHERE vs HAVING
+  | WHERE | HAVING |
+  |---|---|
+  | Filters **rows** | Filters **groups** |
+  | Runs **before** GROUP BY | Runs **after** GROUP BY |
+  | Cannot use aggregates (`WHERE COUNT(*) > 1` is an error) | Usually uses aggregates |
+  | Makes the query faster by throwing rows away early | Works on the already-grouped result |
+
+  Use both together. "Departments with at least 2 people earning more than 60,000":
+  ```sql
+  SELECT dept_id, COUNT(*) AS headcount
+  FROM employees
+  WHERE salary > 60000          -- first remove rows: only Asha, Ravi, Divya stay
+  GROUP BY dept_id
+  HAVING COUNT(*) >= 2;         -- then keep groups with 2+ rows: dept 10 (3)
+  ```
+  Without the WHERE, Sales (2 people at 60,000) would also qualify. The order matters!
+
+  > Alias in HAVING: PostgreSQL does not allow a SELECT alias in HAVING (`HAVING headcount >= 2` fails). Repeat the aggregate: `HAVING COUNT(*) >= 2`. MySQL does allow the alias. Both allow aliases in ORDER BY.
+
+  ### COUNT(*) vs COUNT(column) with LEFT JOIN
+  "Employees per department, including empty departments":
+  ```sql
+  SELECT d.dept_name, COUNT(*) AS cnt_star, COUNT(e.emp_id) AS cnt_emp
+  FROM departments d
+  LEFT JOIN employees e ON e.dept_id = d.dept_id
+  GROUP BY d.dept_name
+  ORDER BY d.dept_name;
+  ```
+  ```
+    dept_name  | cnt_star | cnt_emp
+  -------------+----------+---------
+   Engineering |        3 |       3
+   HR          |        1 |       1
+   Marketing   |        1 |       0
+   Sales       |        2 |       2
+  ```
+  Marketing has no employees, but the LEFT JOIN still makes **one row** for it (with NULL employee columns). `COUNT(*)` counts that row: 1 (wrong!). `COUNT(e.emp_id)` skips the NULL: 0 (right).
+
+  ### Empty input
+  On zero rows, `COUNT(*)` returns **0**, but `SUM`, `AVG`, `MIN`, `MAX` return **NULL**. Use `COALESCE(SUM(salary), 0)` if you need 0.
+tinyCode:
+  code: |
+    SELECT dept_id,
+           COUNT(*)    AS headcount,
+           SUM(salary) AS total_salary,
+           MAX(salary) AS max_salary
+    FROM employees
+    GROUP BY dept_id
+    HAVING COUNT(*) >= 2
+    ORDER BY dept_id;
+
+    -- Result:
+    --  dept_id | headcount | total_salary | max_salary
+    -- ---------+-----------+--------------+------------
+    --       10 |         3 |       245000 |      90000
+    --       20 |         2 |       120000 |      60000
+  walkthrough: |
+    - `FROM employees`: start with all 7 rows.
+    - `GROUP BY dept_id`: make piles: 10 (Asha, Ravi, Divya), 20 (Priya, Kiran), 30 (Meena), NULL (Arjun).
+    - `COUNT(*)`, `SUM(salary)`, `MAX(salary)`: one value per pile.
+    - `HAVING COUNT(*) >= 2`: drop piles with fewer than 2 rows. Department 30 and the NULL pile go.
+    - `SELECT dept_id, ...`: dept_id is allowed because it is in GROUP BY; the rest are aggregates.
+    - `ORDER BY dept_id`: sort the final summary rows.
+tryIt:
+  instructions: "Type and run each query. For number 3, first predict which customers qualify by adding their order amounts on paper (Anil 2500+800+1500, Sneha 1200+1200, Rahul 3000)."
+  code: |
+    -- 1. Rows vs non-NULL values
+    SELECT COUNT(*), COUNT(dept_id), COUNT(DISTINCT dept_id)
+    FROM employees;
+
+    -- 2. Average salary per department, rounded
+    SELECT dept_id, ROUND(AVG(salary)) AS avg_salary
+    FROM employees
+    GROUP BY dept_id
+    ORDER BY dept_id;
+
+    -- 3. Customers who spent more than 2500 in total
+    SELECT customer_id, SUM(amount) AS total
+    FROM orders
+    GROUP BY customer_id
+    HAVING SUM(amount) > 2500
+    ORDER BY customer_id;
+
+    -- 4. Headcount per department name, empty ones too
+    SELECT d.dept_name, COUNT(e.emp_id) AS headcount
+    FROM departments d
+    LEFT JOIN employees e ON e.dept_id = d.dept_id
+    GROUP BY d.dept_name;
+predict:
+  code: |
+    SELECT customer_id,
+           COUNT(*)    AS orders,
+           SUM(amount) AS total
+    FROM orders
+    GROUP BY customer_id
+    ORDER BY total DESC;
+  expectedOutput: |2
+     customer_id | orders | total
+    -------------+--------+-------
+               1 |      3 |  4800
+               3 |      1 |  3000
+               2 |      2 |  2400
+  explanation: |
+    The orders table has 6 rows. Grouping by customer_id gives 3 groups:
+    - Customer 1 (Anil): orders 2500 + 800 + 1500 = 4800, count 3.
+    - Customer 2 (Sneha): 1200 + 1200 = 2400, count 2.
+    - Customer 3 (Rahul): 3000, count 1.
+
+    Sorting by total DESC puts Rahul's single big order (3000) **above** Sneha's two orders (2400). Customer 4 (Fatima) has no orders, so she does not appear at all: GROUP BY only makes groups from rows that exist.
+commonMistakes:
+  - "Using an aggregate in WHERE (WHERE COUNT(*) > 1). Aggregates belong in HAVING."
+  - "Selecting a column that is neither grouped nor aggregated (SELECT dept_id, name ... GROUP BY dept_id)."
+  - "Using COUNT(*) after a LEFT JOIN to count children; empty parents get 1 instead of 0. Use COUNT(child_column)."
+  - "Forgetting that AVG, SUM, MIN, MAX skip NULLs and that COUNT(col) does too."
+  - "Using a SELECT alias in HAVING in PostgreSQL (it works in MySQL, but not in PostgreSQL)."
+  - "Expecting SUM over zero rows to be 0; it is NULL. Wrap it in COALESCE."
+interviewBox:
+  why: "Why interviewers ask this: grouping is how real reports are built, and WHERE vs HAVING tests whether you understand the order in which SQL runs."
+  questions:
+    - q: "What is the difference between WHERE and HAVING?"
+      a: "WHERE filters individual rows before grouping, so it can't use aggregate functions. HAVING filters groups after GROUP BY, so it can use aggregates like COUNT or SUM. For example, WHERE salary > 50000 removes rows, and HAVING COUNT(*) > 2 removes small departments."
+    - q: "What is the difference between COUNT(*), COUNT(column) and COUNT(DISTINCT column)?"
+      a: "COUNT(*) counts all rows. COUNT(column) counts only rows where that column is not NULL. COUNT(DISTINCT column) counts the different non-NULL values. In our table they give 7, 6 and 3 for dept_id."
+    - q: "Can you use HAVING without GROUP BY?"
+      a: "Yes. Then the whole table is treated as one group. For example, SELECT COUNT(*) FROM employees HAVING COUNT(*) > 5 returns one row only if the table has more than 5 rows."
+    - q: "Write a query to find departments with more than 2 employees."
+      a: "SELECT dept_id, COUNT(*) FROM employees GROUP BY dept_id HAVING COUNT(*) > 2. On our data only department 10 qualifies, with 3 employees."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this return on the sample employees table (Arjun has dept_id NULL, Asha has manager_id NULL)?"
+    code: |
+      SELECT COUNT(*), COUNT(dept_id), COUNT(manager_id)
+      FROM employees;
+    options: ["7, 7, 7", "7, 6, 6", "6, 6, 6", "7, 6, 7"]
+    answer: 1
+    explanation: "COUNT(*) counts all 7 rows. COUNT(dept_id) skips Arjun's NULL (6) and COUNT(manager_id) skips Asha's NULL (6). '7, 7, 7' assumes COUNT(col) counts NULLs, which it doesn't."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Which dept_id values does this return?"
+    code: |
+      SELECT dept_id, COUNT(*) AS headcount
+      FROM employees
+      WHERE salary > 60000
+      GROUP BY dept_id
+      HAVING COUNT(*) >= 2;
+    options: ["10 and 20", "10 only", "20 only", "No rows"]
+    answer: 1
+    explanation: "WHERE runs first and keeps only Asha, Ravi and Divya (all dept 10). Then the only group is dept 10 with 3 rows, which passes HAVING. Sales would qualify only without the WHERE, because Priya and Kiran earn exactly 60000, which is not > 60000."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "PostgreSQL rejects this. Why?"
+    code: |
+      SELECT dept_id, COUNT(*)
+      FROM employees
+      WHERE COUNT(*) > 1
+      GROUP BY dept_id;
+    options:
+      - "COUNT(*) needs a column name"
+      - "Aggregate functions are not allowed in WHERE; use HAVING COUNT(*) > 1 after GROUP BY"
+      - "GROUP BY must come before WHERE"
+      - "dept_id cannot be selected with COUNT"
+    answer: 1
+    explanation: "WHERE runs before groups exist, so COUNT has nothing to count yet. The real error is 'aggregate functions are not allowed in WHERE'. GROUP BY really does come after WHERE, so that option is wrong."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This query should show each department with its number of employees. Marketing shows 1, but it has nobody. What's wrong?"
+    code: |
+      SELECT d.dept_name, COUNT(*) AS headcount
+      FROM departments d
+      LEFT JOIN employees e ON e.dept_id = d.dept_id
+      GROUP BY d.dept_name;
+    options:
+      - "LEFT JOIN should be INNER JOIN"
+      - "COUNT(*) counts the NULL-filled row made by the LEFT JOIN; use COUNT(e.emp_id)"
+      - "GROUP BY should use dept_id"
+      - "Nothing is wrong, Marketing really has 1 employee"
+    answer: 1
+    explanation: "The LEFT JOIN keeps Marketing as one row with NULL employee columns; COUNT(*) counts that row. COUNT(e.emp_id) ignores NULLs and gives 0. Switching to INNER JOIN would remove Marketing completely instead of showing 0."
+  - id: q5
+    type: MCQ
+    prompt: "Which statement about GROUP BY in PostgreSQL is TRUE?"
+    code: null
+    options:
+      - "NULL values in the grouped column are thrown away"
+      - "All NULLs in the grouped column form one group together"
+      - "Each NULL forms its own separate group"
+      - "GROUP BY cannot be used on a column with NULLs"
+    answer: 1
+    explanation: "For grouping (and DISTINCT), NULLs are treated as equal and form one group, like Arjun's NULL group in the example."
+  - id: q6
+    type: MATCH
+    prompt: "Match each piece to when it runs or what it does"
+    pairs:
+      - left: "WHERE"
+        right: "Filters rows before grouping"
+      - left: "GROUP BY"
+        right: "Makes one group per distinct value"
+      - left: "HAVING"
+        right: "Filters groups after grouping"
+      - left: "COUNT(col)"
+        right: "Counts non-NULL values"
+    explanation: "Order: FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY. COUNT(col) skips NULLs; COUNT(*) does not."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "SELECT SUM(salary) FROM employees WHERE dept_id = 99; returns 0 when no employee is in department 99."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. SUM over zero rows returns NULL. Only COUNT returns 0 on empty input. Use COALESCE(SUM(salary), 0) to get 0."
+explainBack:
+  prompt: "Explain GROUP BY, WHERE and HAVING to a friend using the 'exam papers in piles' idea."
+  rubric:
+    - "I said GROUP BY makes one pile (group) per value"
+    - "I said aggregates give one number per group"
+    - "I said WHERE filters rows before grouping and HAVING filters groups after"
+    - "I explained why COUNT can't be used in WHERE"
+    - "I mentioned COUNT(*) vs COUNT(column)"
+  modelAnswer: |
+    GROUP BY is like sorting exam papers into piles, one pile per class. Then aggregate functions like COUNT, SUM or AVG give one number for each pile. WHERE works before the piles are made, so it throws away single papers, like papers from last term. HAVING works after, so it throws away whole piles, like piles with fewer than two papers. That's why COUNT can't go in WHERE: the piles don't exist yet. Also, COUNT star counts every row, but COUNT of a column skips NULL values.
+flashcards:
+  - front: "WHERE vs HAVING"
+    back: "WHERE filters rows before GROUP BY (no aggregates). HAVING filters groups after GROUP BY (aggregates allowed)."
+  - front: "COUNT(*) vs COUNT(col)"
+    back: "COUNT(*) counts all rows; COUNT(col) counts non-NULL values of col."
+  - front: "GROUP BY golden rule"
+    back: "Every SELECT column must be in GROUP BY or inside an aggregate."
+  - front: "SUM/AVG/MAX on zero rows"
+    back: "They return NULL; COUNT returns 0."
+  - front: "Counting children after LEFT JOIN"
+    back: "Use COUNT(child.id), not COUNT(*), so empty parents show 0."
+keyTakeaways:
+  - "Aggregates turn many rows into one value; GROUP BY makes them per group."
+  - "WHERE filters rows before grouping; HAVING filters groups after."
+  - "Non-aggregated SELECT columns must appear in GROUP BY."
+  - "COUNT(*) counts rows, COUNT(col) skips NULLs, and aggregates ignore NULLs."
+  - "NULLs form a single group in GROUP BY."

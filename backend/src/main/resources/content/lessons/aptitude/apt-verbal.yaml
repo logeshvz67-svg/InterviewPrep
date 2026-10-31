@@ -1,0 +1,271 @@
+slug: apt-verbal
+world: APTITUDE
+section: APT
+order: 8
+title: "Verbal ability"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI, ALL]
+infosysRelevance: "Infosys-style basics practice: grammar, vocabulary, reading comprehension and sentence ordering are common verbal-ability areas, and the same skills help you read problem statements and write clear emails at work."
+otherCompanies: "Verbal ability (error spotting, fill in the blanks, reading comprehension, para jumbles) is a common practice area for TCS, Wipro, Cognizant, Accenture and Capgemini style tests."
+why: |
+  If your spoken English is still growing, the verbal section may feel like the scariest part. Good news: **written** English questions follow **rules**, and rules can be learned like Java syntax.
+
+  - Most error-spotting questions test a **small set of grammar rules** (subject-verb agreement, articles, prepositions, tenses).
+  - Reading comprehension rewards a **method**, not fancy vocabulary.
+  - Para jumbles are **logic puzzles** with sentences.
+
+  And this is not only for tests. At work you will read requirements, write emails and comment code in English every day. Every rule you learn here makes you a clearer developer.
+analogy: |
+  Think of grammar rules as **traffic rules**.
+
+  - You do not need to be a car mechanic to drive safely. You need to know: stop at red, keep left, give way at the roundabout.
+  - Similarly, you do not need to be a poet to do well in verbal ability. You need about **15-20 common rules** and the habit of checking them.
+  - An error-spotting question is like a traffic police check: look for the **usual violations** first (no helmet, no seatbelt), and you will catch most of them.
+visual:
+  diagram: |
+    ERROR-SPOTTING CHECKLIST (check in this order)
+
+    1. Subject <-> verb   "One of the boys IS ..."
+    2. Tense              "Yesterday I GO" -> "went"
+    3. Article            a / an by SOUND: an hour, a university
+    4. Preposition        good AT, depend ON, interested IN
+    5. Extra word         "discuss ABOUT" -> "discuss"
+    6. Pronoun            "between you and I" -> "me"
+
+    PARA JUMBLE: find the chain
+    [Opener] -> [It/This...] -> [Also/Moreover...] -> [However/So...]
+     names the     points back      adds              turns or
+     topic         to the topic     more              concludes
+  caption: "Check sentences against a fixed list of common rules. In para jumbles, the opener names the topic and pronouns and connectors link the rest."
+  visualizer: null
+explanation: |
+  ### 1. Subject-verb agreement (the most tested rule)
+  The verb must match the **real subject** (singular or plural).
+  | Sentence | Correct verb | Why |
+  |---|---|---|
+  | One of my friends ___ gone to Pune. | **has** | subject is "one" |
+  | Each of the students ___ a laptop. | **has** | "each", "every", "everyone" are singular |
+  | Neither the manager nor the employees ___ present. | **were** | with neither/nor, either/or, match the **nearer** subject |
+  | The list of items ___ on the table. | **is** | subject is "list", not "items" |
+  | Bread and butter ___ my breakfast. | **is** | one idea treated as one thing |
+
+  ### 2. Articles: a / an / the
+  - **a / an** go by **sound**, not spelling: *an hour*, *an honest man*, *an MBA*; *a university*, *a European*, *a one-rupee coin*.
+  - **the** for something specific or unique: *the sun*, *the book I gave you*.
+
+  ### 3. Prepositions (learn as pairs)
+  good **at**, interested **in**, depend **on**, married **to**, afraid **of**, different **from**, capable **of**, comply **with**, prefer X **to** Y.
+
+  ### 4. Common Indian-English errors to unlearn
+  | Wrong | Right | Why |
+  |---|---|---|
+  | discuss **about** the issue | discuss the issue | "discuss" already means "talk about" |
+  | revert **back** / return **back** | revert / return | "back" is already inside the word |
+  | cope **up** with | cope with | no "up" |
+  | I am **having** a laptop | I **have** a laptop | "have" for owning is not used with -ing |
+  | He **passed out** in 2022 | He **graduated** in 2022 | "passed out" means fainted |
+  | **Myself** Ravi | **I am** Ravi / My name is Ravi | "myself" cannot be a subject |
+
+  ### 5. Tense consistency
+  Words like **yesterday, last year, ago** need past tense. "Since/for" with an ongoing action needs present perfect: "I **have been** learning Java **for** a year."
+
+  ### 6. Reading comprehension: a method
+  1. **Read the questions first** (not the options) so you know what to look for.
+  2. Read the passage once for the **main idea**: what is the author mainly saying?
+  3. For each question, find the **exact lines** that support your answer.
+  4. Learn the question types:
+     - **Stated**: the answer is written in the passage.
+     - **Inference**: not written directly but must be true from the passage.
+     - **Main idea / title**: covers the whole passage, not one detail.
+  5. **Traps**: options with extreme words (*always, never, all, only*), options that use **outside knowledge**, and options that are true in real life but **not supported** by the passage.
+
+  ### 7. Para jumbles: build the chain
+  1. Find the **opener**: it introduces the topic and does **not** start with a pronoun (it, this, they) or a connector (however, also).
+  2. Find **links**: a pronoun points back to a noun before it; "however" turns away from the previous idea; "also/moreover" adds to it.
+  3. Find **pairs** that must be together, then join the pairs.
+
+  **Worked**: P: However, like any skill, it needs regular practice. Q: Java is one of the most popular programming languages. R: It is used to build web apps, Android apps and banking systems. S: Learning it can also open many job opportunities.
+  Q names the topic (opener). R's "It" = Java. S "also" adds another benefit. P "However" turns at the end. Order: **QRSP**.
+
+  ### 8. Vocabulary: learn smart
+  - Learn words in **pairs** (synonym/antonym): *abundant - scarce*, *candid - frank*, *obsolete - outdated*.
+  - Use **roots**: *bene* = good (benefit), *mal* = bad (malware), *auto* = self (automatic).
+  - Use **context**: in "The instructions were so **ambiguous** that everyone understood them differently", the second half tells you ambiguous = unclear.
+tinyCode:
+  code: |
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class ParaJumble {
+        public static void main(String[] args) {
+            Map<Character, String> parts = new HashMap<>();
+            parts.put('P', "However, like any skill, it needs regular practice.");
+            parts.put('Q', "Java is one of the most popular programming languages.");
+            parts.put('R', "It is used to build web apps, Android apps and banking systems.");
+            parts.put('S', "Learning it can also open many job opportunities.");
+
+            String order = "QRSP";
+            for (char c : order.toCharArray()) {
+                System.out.println(parts.get(c));
+            }
+        }
+    }
+  walkthrough: |
+    - A `HashMap<Character, String>` stores each jumbled sentence under its label (P, Q, R, S).
+    - `order` is your answer. The loop prints the sentences in that order, so you can **read your answer as a paragraph** and check it flows.
+    - Try changing `order` to "PQRS": the paragraph starts with "However", which has nothing to turn away from. That is how you spot a wrong opener.
+    - Output:
+    ```
+    Java is one of the most popular programming languages.
+    It is used to build web apps, Android apps and banking systems.
+    Learning it can also open many job opportunities.
+    However, like any skill, it needs regular practice.
+    ```
+tryIt:
+  instructions: "Type this tiny vocabulary quiz (no pasting). It stores word pairs in a map and prints a synonym and an antonym. Add three new words you learn this week."
+  code: |
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class WordPairs {
+        public static void main(String[] args) {
+            Map<String, String> synonym = new HashMap<>();
+            synonym.put("candid", "frank");
+            synonym.put("obsolete", "outdated");
+            synonym.put("diligent", "hardworking");
+
+            Map<String, String> antonym = new HashMap<>();
+            antonym.put("abundant", "scarce");
+            antonym.put("ambiguous", "clear");
+
+            System.out.println("candid = " + synonym.get("candid"));
+            System.out.println("abundant <> " + antonym.get("abundant"));
+            System.out.println("Words learned: " + (synonym.size() + antonym.size()));
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            String[] subjects = {"One of my friends", "My friends"};
+            String[] verbs = {"has", "have"};
+            for (int i = 0; i < 2; i++) {
+                System.out.println(subjects[i] + " " + verbs[i] + " gone.");
+            }
+            String word = "hour";
+            String article = word.equals("hour") ? "an" : "a";
+            System.out.println(article + " " + word);
+        }
+    }
+  expectedOutput: |
+    One of my friends has gone.
+    My friends have gone.
+    an hour
+  explanation: |
+    - The loop pairs each subject with its verb: "One of my friends" is singular (the subject is **one**), so **has**; "My friends" is plural, so **have**.
+    - "hour" starts with a vowel **sound** (the h is silent), so the program picks **an**: "an hour".
+commonMistakes:
+  - "Matching the verb to the nearest noun instead of the real subject ('One of the boys are')."
+  - "Choosing a/an by spelling instead of sound ('a hour', 'an university')."
+  - "Adding extra words: 'discuss about', 'return back', 'cope up with'."
+  - "Answering reading comprehension from your own knowledge instead of the passage."
+  - "Picking options with extreme words (always, never, all) without strong support in the passage."
+  - "Starting a para jumble with a sentence that begins with 'It', 'This' or 'However'."
+interviewBox:
+  why: "Why this is practised: written English is part of daily developer work (emails, tickets, documentation). Clear, correct sentences make you look professional even if your spoken English is still improving."
+  questions:
+    - q: "How are you improving your English? (practice question)"
+      a: "I practise a little every day. I learn common grammar rules, like subject-verb agreement, and I learn new words in pairs with their opposites. I also read technical articles and speak my answers aloud in mock interviews. My written English is good, and my speaking is improving every week."
+    - q: "Write a short, professional email line asking a teammate to review your code. (practice question)"
+      a: "Hi Priya, could you please review my pull request for the login feature when you have time today? I have added tests for the main cases. Thank you!"
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Find the part with the error: 'One of my friends (A) / have (B) / gone to Pune (C) / for an interview. (D)'"
+    code: null
+    options: ["A", "B", "C", "D"]
+    answer: 1
+    explanation: "The subject is 'one', which is singular, so it should be 'has gone'. 'friends' is the tempting trap because it is the nearest noun, but it is not the subject."
+  - id: q2
+    type: MCQ
+    prompt: "Choose the correct sentence."
+    code: null
+    options: ["Let us discuss about the problem.", "Let us discuss the problem.", "Let us discuss on the problem.", "Let us discussing the problem."]
+    answer: 1
+    explanation: "'Discuss' already means 'talk about', so it takes no preposition. 'Discuss about' is a very common Indian-English error."
+  - id: q3
+    type: MCQ
+    prompt: "Fill in the article: 'He is ___ honest man.'"
+    code: null
+    options: ["a", "an", "the", "no article"]
+    answer: 1
+    explanation: "The h in 'honest' is silent, so the word starts with a vowel sound: 'an honest man'. Choosing 'a' follows the spelling (h is a consonant letter) instead of the sound."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "'Neither the manager nor the employees was present.' is grammatically correct."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. With neither/nor, the verb agrees with the nearer subject, 'the employees' (plural), so it should be 'were present'."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the correct preposition."
+    code: |
+      She is very good ____ coding.
+    acceptedAnswers: ["at"]
+    explanation: "'Good at' is the fixed pair for skills. 'Good in' is a common mistake; learn prepositions as pairs with their words."
+  - id: q6
+    type: MATCH
+    prompt: "Match each word to its synonym"
+    pairs:
+      - left: "Candid"
+        right: "Frank"
+      - left: "Diligent"
+        right: "Hardworking"
+      - left: "Obsolete"
+        right: "Outdated"
+      - left: "Abundant"
+        right: "Plentiful"
+    explanation: "Learning words in synonym pairs helps in fill-in-the-blank and reading questions. Also learn one opposite for each (abundant <> scarce)."
+  - id: q7
+    type: MCQ
+    prompt: "Arrange into a paragraph. P: However, the first few weeks can feel slow. Q: Many people today switch careers into software development. R: They often learn through online courses and practice projects. S: With steady practice, progress becomes faster."
+    code: null
+    options: ["QRPS", "PQRS", "QPSR", "RQPS"]
+    answer: 0
+    explanation: "Q introduces the topic (opener, no pronoun). R's 'They' refers to the people in Q. P's 'However' turns to a difficulty. S resolves it. PQRS starts with 'However', which needs something before it."
+  - id: q8
+    type: MCQ
+    prompt: "Passage: 'Riya practised coding for one hour every day for six months. In her first mock test she solved two of five problems; in her last mock test she solved all five.' Which statement can be inferred?"
+    code: null
+    options: ["Riya will surely get a job at a top company.", "Riya's performance improved over the six months.", "Riya found coding easy from the start.", "Everyone who practises one hour a day solves every problem."]
+    answer: 1
+    explanation: "Two of five, then five of five, shows improvement; that must be true from the passage. The job claim is not supported, 'easy from the start' contradicts the first test, and 'everyone' is an extreme over-generalisation."
+explainBack:
+  prompt: "Explain to a friend your checklist for spotting grammar errors and your method for reading comprehension."
+  rubric:
+    - "I listed checks: subject-verb, tense, articles, prepositions, extra words"
+    - "I explained a/an goes by sound"
+    - "I said to read the questions first and find supporting lines"
+    - "I warned about extreme words and outside knowledge"
+  modelAnswer: |
+    For error spotting, I check a short list in order. First, does the verb match the real subject? For example, "one of my friends has", not "have". Then the tense, then a or an, which goes by sound, like "an hour". Then prepositions, like "good at", and extra words like "discuss about". For reading comprehension, I read the questions first, then the passage for the main idea. For every answer, I find the line in the passage that supports it. I avoid options with words like "always" or "never", and I don't use outside knowledge.
+flashcards:
+  - front: "Neither/nor or either/or: which subject does the verb follow?"
+    back: "The nearer subject. 'Neither the manager nor the employees were...'"
+  - front: "a or an?"
+    back: "By sound: an hour, an honest man, an MBA; a university, a European."
+  - front: "Five extra-word errors to unlearn"
+    back: "discuss about, return back, revert back, cope up with, 'myself Ravi'."
+  - front: "Para jumble opener"
+    back: "Introduces the topic; does not start with it/this/they or however/also."
+  - front: "RC traps"
+    back: "Extreme words (always, never, all), outside knowledge, true-in-life but not in the passage."
+keyTakeaways:
+  - "Written English follows learnable rules; check a fixed list like a traffic checklist."
+  - "Match the verb to the real subject; a/an goes by sound."
+  - "Unlearn common extra-word errors: discuss about, return back, cope up with."
+  - "Reading comprehension: questions first, main idea, support every answer with lines from the passage."
+  - "Para jumbles: find the opener, then follow pronouns and connectors."

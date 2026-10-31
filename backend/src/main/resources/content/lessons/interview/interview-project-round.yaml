@@ -1,0 +1,253 @@
+slug: interview-project-round
+world: INTERVIEW
+section: INTERVIEW
+order: 4
+title: "The project round"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+infosysRelevance: "Infosys-style practice: for SP and DSE profiles, a project you can explain end to end (problem, architecture, your role, challenges) is one of the strongest proofs of real skill, especially for a career switcher."
+otherCompanies: "'Explain your project' is a very common interview question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies. Product companies often go deeper into design decisions."
+why: |
+  You do not have IT job experience yet. So what proves you can build software? **Your project.**
+
+  "Explain your project" is where a career switcher can shine. A fresher with a degree may have a copied college project they cannot explain. You can have a project you **really understand**: this Code Quest app, or your Spring Boot projects.
+
+  But a project only helps if you can explain it **clearly in 2 minutes** and survive questions like:
+  - "Why did you choose PostgreSQL?"
+  - "What was the hardest bug?"
+  - "What would you improve?"
+
+  This lesson gives you a 5-part structure and walks through Code Quest as your example.
+analogy: |
+  Explaining a project is like **showing a guest around the house you built**.
+
+  - First, **why** you built it: "We needed space for the whole family" (the **problem**).
+  - Then the **floor plan**: kitchen here, rooms upstairs, water tank on top (the **architecture**).
+  - Then **what you did yourself**: "I designed the kitchen and did the wiring" (your **role**).
+  - Then a **story**: "The roof leaked in the first monsoon; we found the crack and sealed it" (a **challenge**).
+  - Finally, **plans**: "Next year we will add solar panels" (**improvements**).
+
+  Nobody starts a house tour with the brand of cement. Start with the big picture.
+visual:
+  diagram: |
+    CODE QUEST: ARCHITECTURE (say this while drawing boxes)
+
+    +-----------------+   HTTPS + JSON   +-----------------------+
+    |  Browser        | ---------------> |  Spring Boot backend  |
+    |  React + Vite   |  JWT in header   |  Controller           |
+    |  TypeScript     | <--------------- |    -> Service         |
+    +-----------------+                  |    -> Repository(JPA) |
+                                         +-----------+-----------+
+                                                     |  SQL
+                                         +-----------v-----------+
+                                         |  PostgreSQL (Supabase)|
+                                         |  tables via Flyway    |
+                                         +-----------------------+
+
+    5-PART ANSWER:  Problem -> Architecture -> My role
+                    -> Challenge (STAR) -> Improvements
+  caption: "Draw three boxes (frontend, backend, database) and the arrows between them. Then explain the project in five parts."
+  visualizer: null
+explanation: |
+  ### The 5-part project answer
+  | Part | Question it answers | Time |
+  |---|---|---|
+  | **1. Problem** | What problem does it solve, and for whom? | 15 sec |
+  | **2. Architecture** | What are the main parts and how do they talk? | 30-40 sec |
+  | **3. My role** | What did **I** build? Which features? | 20 sec |
+  | **4. Challenge** | One hard problem and how I solved it | 30 sec |
+  | **5. Improvements** | What would I do better or add next? | 15 sec |
+
+  About **2 minutes** in total. Then stop and let them ask.
+
+  ### 1. Problem
+  > "I built Code Quest, a web app that helps me prepare for Java developer interviews. The problem I had was that I studied a lot but forgot things and lost motivation. So the app turns learning into a game with lessons, quizzes, spaced revision and mock interviews."
+
+  The problem should be **real** and **simple**. "I had this problem myself" is a strong, honest start.
+
+  ### 2. Architecture
+  **Architecture** means the big parts of the system and how they connect. Use the three-box picture:
+  - **Frontend**: React with TypeScript, built with Vite. It runs in the browser and shows the pages.
+  - **Backend**: Spring Boot 3 with Java 21. It has the usual layers: **controller** (receives HTTP requests), **service** (business logic, like calculating XP), **repository** (talks to the database using Spring Data JPA).
+  - **Database**: PostgreSQL. Tables are created with **Flyway migrations** (versioned SQL scripts, so every environment has the same schema).
+  - **Security**: login with **JWT** (a signed token the browser sends with each request) and passwords stored with **BCrypt** hashing.
+  - **Hosting**: free tiers (Render for the app, Supabase for the database).
+
+  Know **why** for each choice. Example: "I chose PostgreSQL because my data is relational: users have lessons, quiz attempts and flashcards, all linked by ids."
+
+  ### 3. My role
+  Use **"I"**, not "we", for what you did. Be precise and **honest**.
+  > "I designed the database tables, built the REST APIs for lessons and quizzes, and wrote the XP logic on the server."
+
+  If you used tutorials or AI tools to help, that is normal today. But you must be able to **explain every part you claim**. If they point at any file, you should know what it does and why.
+
+  ### 4. One challenge (use STAR)
+  **STAR** = Situation, Task, Action, Result. Prepare **two** challenge stories. Code Quest examples:
+  - **Cheating on XP**: Situation: XP (game points) was first calculated in the browser. Task: make scores trustworthy. Action: I moved all XP calculation to the server and removed any "add XP" endpoint. Result: users cannot fake XP by editing browser requests.
+  - **Sleeping server**: Situation: the free backend host sleeps after inactivity, so the first request took 30-60 seconds and looked broken. Action: I added a "Waking the server" screen with automatic retries, and a health-check endpoint that an uptime monitor can ping. Result: users understand the wait instead of thinking the app crashed.
+
+  ### 5. Improvements
+  Interviewers love honest self-review. It shows maturity.
+  > "If I continue, I would add more automated tests for the frontend, add caching for lesson content, and improve accessibility for screen readers."
+
+  ### Prepare for these follow-ups
+  | Follow-up | What to prepare |
+  |---|---|
+  | "Why Spring Boot?" | Auto-configuration, embedded server, easy REST and JPA, very common in industry |
+  | "How does login work?" | User sends email + password, server checks the BCrypt hash, returns a JWT; the browser sends it in the `Authorization` header |
+  | "How do you stop users seeing others' data?" | Every query filters by the logged-in user's id on the server |
+  | "Show me one table" | Draw `users` and `quiz_attempts` with columns and the foreign key |
+  | "How did you test it?" | Backend tests with JUnit; manual checklist for the UI |
+tinyCode:
+  code: |
+    MY PROJECT IN 2 MINUTES
+
+    1. PROBLEM:      I built ________ to solve ________
+                     for ________.
+    2. ARCHITECTURE: The frontend is ________.
+                     The backend is ________ with
+                     controller, service and repository layers.
+                     Data is stored in ________.
+    3. MY ROLE:      I built ________ and ________.
+    4. CHALLENGE:    The hardest problem was ________.
+                     I solved it by ________. Result: ________.
+    5. IMPROVE:      Next, I would add ________.
+  walkthrough: |
+    - The five numbered parts follow the table in the lesson. Fill each blank with **true, specific** words.
+    - In **ARCHITECTURE**, name the layers. Saying "controller, service, repository" shows you understand how a Spring app is organised.
+    - In **MY ROLE**, list 2-3 concrete features ("the quiz API", "the XP logic"), not "everything".
+    - **CHALLENGE** is a mini STAR story. Always end with a result.
+    - **IMPROVE** shows you can judge your own work honestly.
+    - Practise saying it while drawing the three boxes on paper.
+tryIt:
+  instructions: "Type this Code Quest version of the answer, then say it aloud with a timer. Aim for about 2 minutes. Change any part that is not true for you."
+  code: |
+    PROBLEM: I built Code Quest, a web app to prepare for Java
+    interviews. I studied a lot but forgot things, so the app
+    adds lessons, quizzes, spaced revision and mock interviews.
+
+    ARCHITECTURE: The frontend is React with TypeScript. The
+    backend is Spring Boot with controller, service and
+    repository layers. Data is in PostgreSQL, with Flyway
+    migrations. Login uses JWT and BCrypt.
+
+    MY ROLE: I built the lesson and quiz APIs and the XP logic.
+
+    CHALLENGE: XP was first calculated in the browser, so it
+    could be faked. I moved it to the server. Now it is safe.
+
+    IMPROVE: Next, I would add more automated tests.
+predict:
+  code: |
+    "I built a library management system. The frontend is HTML
+     and the backend is Spring Boot with MySQL. The hardest part
+     was book search: it was slow, so I added a database index on
+     the title column and it became fast. Next I would add email
+     reminders for due dates."
+
+    The 5 parts are: Problem, Architecture, My role, Challenge,
+    Improvements. Which part is missing? Type its name.
+  expectedOutput: |
+    My role
+  explanation: |
+    The answer has a problem (library management), architecture (HTML, Spring Boot, MySQL), a challenge (slow search fixed with an index) and an improvement (email reminders). It never says **what the speaker personally built**. Add: "I built the book search and issue/return APIs and designed the tables."
+commonMistakes:
+  - "Starting with technology names instead of the problem. Begin with why the project exists."
+  - "Saying 'we did everything'. Use 'I' and name 2-3 things you personally built."
+  - "Claiming parts you cannot explain. Any file you mention, be ready to explain."
+  - "Having no challenge story. Prepare two real STAR stories in advance."
+  - "Saying the project is perfect. Honest improvements show maturity."
+  - "Talking for 10 minutes. Keep the first answer around 2 minutes, then let them ask."
+interviewBox:
+  why: "Why interviewers ask this: a project shows whether you can build something real and whether you understand it. For a career switcher, it is often the strongest evidence you have."
+  questions:
+    - q: "Explain your project. (practice question)"
+      a: "I built Code Quest, a web app to prepare for Java interviews, because I kept forgetting what I studied. The frontend is React with TypeScript; the backend is Spring Boot with controller, service and repository layers; data is stored in PostgreSQL. I built the lesson and quiz APIs and the server-side XP logic. One challenge was that XP could be faked when it was calculated in the browser, so I moved it to the server. Next, I would add more automated tests."
+    - q: "Why did you use JWT for login? (practice question)"
+      a: "JWT is a signed token. After login, the server gives the browser a token, and the browser sends it with every request. The server checks the signature, so it doesn't need to store sessions. That keeps the backend simple and works well for a REST API with a separate frontend."
+    - q: "What would you improve in your project? (practice question)"
+      a: "I would add more automated tests, especially for the frontend, because now I test some screens manually. I would also add caching for lesson content so pages load faster."
+    - q: "How do you make sure one user cannot see another user's data? (practice question)"
+      a: "On the server, every database query is filtered by the logged-in user's id, which comes from the verified JWT, not from the request body. So even if someone changes an id in the URL, they only get their own data."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What should the FIRST part of a project explanation be?"
+    code: null
+    options: ["The list of technologies", "The problem it solves and for whom", "The hardest bug", "The number of lines of code"]
+    answer: 1
+    explanation: "Start with the problem so the listener understands why the project exists. Technology names first sound like a list without meaning; the bug story comes later."
+  - id: q2
+    type: MATCH
+    prompt: "Match each Spring Boot layer to its job"
+    pairs:
+      - left: "Controller"
+        right: "Receives HTTP requests and returns responses"
+      - left: "Service"
+        right: "Holds business logic, like calculating XP"
+      - left: "Repository"
+        right: "Reads and writes the database using JPA"
+      - left: "Flyway migration"
+        right: "Versioned SQL script that creates or changes tables"
+    explanation: "Controller = entry door, service = brain, repository = database helper. Flyway keeps the database schema the same in every environment."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "In the 'My role' part you should say 'we' so you sound like a team player."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The interviewer wants to know what YOU did. Say 'I built...' for your work. You can mention the team elsewhere, but your role must be clear."
+  - id: q4
+    type: MCQ
+    prompt: "In Code Quest, why was XP calculation moved from the browser to the server?"
+    code: null
+    options: ["To make the page look nicer", "Because anything in the browser can be changed by the user, so XP could be faked", "Because Java is faster than JavaScript", "Because the database requires it"]
+    answer: 1
+    explanation: "The browser is under the user's control: requests can be edited. Calculating XP only on the server makes it trustworthy. Speed and looks were not the reason."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the STAR order used for the challenge story."
+    code: |
+      Situation -> Task -> ____ -> Result
+    acceptedAnswers: ["Action"]
+    explanation: "STAR = Situation, Task, Action, Result. Action is what YOU did; it is the most important part of the story."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "Saying what you would improve in your project makes you look weak."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Honest improvements show you can judge your own work, a key skill for developers. Claiming a perfect project sounds unrealistic."
+  - id: q7
+    type: MCQ
+    prompt: "How long should your first 'Explain your project' answer be?"
+    code: null
+    options: ["About 20 seconds", "About 2 minutes, then let them ask", "About 10 minutes", "Until they interrupt"]
+    answer: 1
+    explanation: "About 2 minutes covers all five parts. Too short hides your work; too long tires the interviewer and leaves no time for the follow-ups where you can shine."
+explainBack:
+  prompt: "Explain your project (Code Quest or your own) to a friend in about 2 minutes, using the 5 parts."
+  rubric:
+    - "I started with the problem"
+    - "I explained the architecture: frontend, backend layers, database"
+    - "I said clearly what I built myself using 'I'"
+    - "I told one challenge with a result"
+    - "I ended with one improvement"
+  modelAnswer: |
+    I built Code Quest, a web app to prepare for Java interviews, because I studied a lot but kept forgetting. It has lessons, quizzes, flashcards and mock interviews. The frontend is React with TypeScript. The backend is Spring Boot with three layers: controllers get the requests, services hold the logic, and repositories save data in PostgreSQL. Login uses JWT tokens. I built the lesson and quiz APIs and the XP logic. One challenge: XP was first calculated in the browser, so someone could fake it. I moved it to the server, and now it is safe. Next, I would add more automated tests.
+flashcards:
+  - front: "5 parts of a project answer"
+    back: "Problem -> Architecture -> My role -> Challenge (STAR) -> Improvements. About 2 minutes."
+  - front: "Spring Boot layers in one line each"
+    back: "Controller: HTTP in/out. Service: business logic. Repository: database via JPA."
+  - front: "Code Quest challenge story (XP)"
+    back: "XP was computed in the browser and could be faked; I moved all XP logic to the server, so scores are trustworthy."
+  - front: "How does JWT login work (short)?"
+    back: "Server checks password hash, returns a signed token; browser sends it in the Authorization header; server verifies the signature each request."
+keyTakeaways:
+  - "Your project is your strongest proof as a career switcher."
+  - "Use Problem, Architecture, My role, Challenge, Improvements, in about 2 minutes."
+  - "Draw three boxes: frontend, backend (controller-service-repository), database."
+  - "Say 'I' for your work, and only claim what you can explain."
+  - "Prepare two STAR challenge stories and honest improvements."

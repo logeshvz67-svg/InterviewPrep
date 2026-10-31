@@ -1,0 +1,320 @@
+slug: cs-memory-paging
+world: CS_CORE
+section: CS
+order: 4
+title: "OS: memory, paging and virtual memory"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Paging, page faults and page replacement numericals (FIFO, LRU, Optimal) are important OS practice for SP and DSE technical rounds."
+otherCompanies: "Virtual memory and thrashing are common basic questions for TCS, Wipro, Cognizant, Accenture and Capgemini; product companies also ask about TLB and LRU (which links to the LRU cache DSA problem)."
+why: |
+  Every program believes it has a huge, private, continuous memory. In reality RAM is small, shared and chopped into pieces. **Virtual memory and paging** are the magic tricks that make this work.
+
+  Interviewers ask about it because:
+  - "What is paging / virtual memory / a page fault?" are classic definitions,
+  - **page replacement numericals** (count the page faults for FIFO, LRU, Optimal) are very common practice problems,
+  - **Belady's anomaly** and **thrashing** are favourite "do you really understand?" questions,
+  - LRU appears again in DSA as the **LRU cache** design problem.
+analogy: |
+  Think of a **student's study table and a big bookshelf**.
+
+  - The **bookshelf** is the hard disk: huge but far away.
+  - The **table** is RAM: small, fast, holds only a few books (frames).
+  - Each **book** is a page of your program.
+  - When you need a book that's not on the table, you must walk to the shelf: that is a **page fault** (slow!).
+  - If the table is full, you must put one book back: **which one?** The one that came first (FIFO), the one you haven't touched for the longest time (LRU), or the one you won't need for the longest time in future (Optimal, only possible if you can see the future).
+  - If your table is so small that you keep swapping books and never actually study, that is **thrashing**.
+visual:
+  diagram: |
+    Logical address (page size 1 KB = 1024 bytes)
+    +-------------+-------------+
+    | page number |   offset    |      3000 = page 2, offset 952
+    +-------------+-------------+
+           |
+           v        PAGE TABLE              PHYSICAL MEMORY
+      +--------+   page | frame | valid     frame 0 [        ]
+      |  TLB   |    0   |   5   |  1        frame 1 [ page 2 ]
+      | cache  |    1   |   -   |  0  <-- page fault if used
+      +--------+    2   |   1   |  1  ----> frame 1
+                    3   |   7   |  1        ...
+
+    Physical address = frame 1 * 1024 + 952 = 1976
+  caption: "The CPU splits a logical address into page number and offset; the TLB or page table gives the frame; the offset stays the same. An invalid entry causes a page fault."
+  visualizer: null
+explanation: |
+  ### Logical vs physical address
+  - A **logical (virtual) address** is the address your program uses.
+  - A **physical address** is the real location in RAM.
+  - The **MMU (Memory Management Unit)**, a hardware part of the CPU, converts logical to physical on every memory access.
+
+  ### Why not give each process one continuous block?
+  That is **contiguous allocation**. Over time free memory breaks into small holes: **external fragmentation** (enough total free memory, but no single hole big enough). Paging solves this.
+
+  ### Paging
+  - Split logical memory into fixed-size blocks called **pages**.
+  - Split physical memory into blocks of the same size called **frames**.
+  - Any page can go into any free frame, so no external fragmentation.
+  - Each process has a **page table**: page number -> frame number (plus a valid bit).
+  - Small cost: **internal fragmentation**, unused space inside the last page.
+
+  **Address translation**: with page size P, page number = address / P and offset = address % P.
+  Example: page size 1024, logical address 3000 -> page 2, offset 952. If page 2 is in frame 1, physical address = 1 x 1024 + 952 = **1976**.
+
+  ### TLB (Translation Lookaside Buffer)
+  The page table lives in RAM, so every access would need **two** memory reads (page table + data). The **TLB** is a small, very fast cache of recent page -> frame translations.
+  - **TLB hit**: translation found quickly.
+  - **TLB miss**: read the page table in memory, then store it in the TLB.
+
+  Effective access time example: TLB 20 ns, memory 100 ns, hit ratio 80%.
+  EAT = 0.8 x (20 + 100) + 0.2 x (20 + 100 + 100) = 96 + 44 = **140 ns**.
+
+  ### Virtual memory and page faults
+  **Virtual memory** lets a process run even if only part of it is in RAM; the rest stays on disk. **Demand paging** loads a page only when it is first used.
+  A **page fault** happens when the program touches a page whose valid bit is 0:
+  1. The MMU traps to the OS.
+  2. The OS finds the page on disk.
+  3. It picks a free frame, or **evicts** a page using a replacement algorithm.
+  4. It loads the page, updates the page table, and restarts the instruction.
+
+  ### Page replacement: worked example (3 frames)
+  Reference string: **7 0 1 2 0 3 0 4 2 3 0 3 2** (13 references).
+
+  **FIFO** (evict the page that came in first):
+  | Ref | 7 | 0 | 1 | 2 | 0 | 3 | 0 | 4 | 2 | 3 | 0 | 3 | 2 |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | Result | F | F | F | F | H | F | F | F | F | F | F | H | H |
+  Faults = **10**. (At ref 2, 7 leaves; at ref 3, 0 leaves even though it was just used: FIFO ignores usage.)
+
+  **LRU** (Least Recently Used: evict the page unused for the longest time):
+  | Ref | 7 | 0 | 1 | 2 | 0 | 3 | 0 | 4 | 2 | 3 | 0 | 3 | 2 |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | Result | F | F | F | F | H | F | H | F | F | F | F | H | H |
+  Faults = **9**.
+
+  **Optimal** (evict the page that will not be used for the longest time in the future):
+  | Ref | 7 | 0 | 1 | 2 | 0 | 3 | 0 | 4 | 2 | 3 | 0 | 3 | 2 |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | Result | F | F | F | F | H | F | H | F | H | H | F | H | H |
+  Faults = **7**. Optimal gives the minimum possible faults, but needs the future, so it is used only as a benchmark.
+
+  For the longer classic string 7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1 with 3 frames: FIFO 15, LRU 12, Optimal 9.
+
+  ### Belady's anomaly
+  Normally more frames means fewer faults. **Belady's anomaly** is when FIFO gets **more** faults with **more** frames.
+  Reference string 1 2 3 4 1 2 5 1 2 3 4 5: FIFO with 3 frames = **9** faults, with 4 frames = **10** faults.
+  LRU and Optimal are **stack algorithms** and never show this anomaly.
+
+  ### Thrashing
+  If a process does not have enough frames for the pages it is actively using (its **working set**), it page-faults constantly. The CPU spends more time swapping pages than running code; CPU utilisation drops, the OS thinks the CPU is free and admits more processes, making it worse. Fixes: give processes enough frames (working-set model), control the page-fault rate, reduce the number of running processes, add RAM.
+
+  ### Segmentation
+  **Segmentation** divides a program into **variable-sized logical parts** called segments: code, stack, heap, a function, an array. Each segment has a **base** (start address) and **limit** (length) in a segment table. Address = (segment number, offset); if offset >= limit, it is an error.
+  | | Paging | Segmentation |
+  |---|---|---|
+  | Block size | Fixed (pages) | Variable (segments) |
+  | View | Physical, invisible to programmer | Logical, matches program structure |
+  | Fragmentation | Internal | External |
+  | Table | Page table (frame number) | Segment table (base, limit) |
+  Many systems combine both: **segmented paging**.
+tinyCode:
+  code: |
+    import java.util.ArrayDeque;
+    import java.util.Deque;
+
+    public class FifoPaging {
+        public static void main(String[] args) {
+            int[] refs = {7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2};
+            int frames = 3;
+            Deque<Integer> memory = new ArrayDeque<>();   // oldest page at the front
+            int faults = 0;
+
+            for (int page : refs) {
+                if (memory.contains(page)) {
+                    System.out.println(page + " hit   " + memory);
+                } else {
+                    faults++;
+                    if (memory.size() == frames) memory.pollFirst();  // evict oldest
+                    memory.addLast(page);
+                    System.out.println(page + " FAULT " + memory);
+                }
+            }
+            System.out.println("Total page faults = " + faults);
+        }
+    }
+  walkthrough: |
+    - `refs` is the reference string: the order in which the program touches pages.
+    - `memory` is a queue of pages currently in the 3 frames. The **front** is the page that arrived first.
+    - If the page is already there: **hit**, nothing changes (FIFO does not care that it was used again).
+    - Otherwise it is a **page fault**: if all frames are full, `pollFirst()` throws out the oldest page, then the new page joins at the back.
+    - The last line prints `Total page faults = 10`, matching the hand-worked FIFO table.
+    - Try changing `frames` to 4: fewer faults for this string. Then try the Belady string 1 2 3 4 1 2 5 1 2 3 4 5 with 3 and 4 frames (9 vs 10).
+tryIt:
+  instructions: "Type this address translator. It splits a logical address into page number and offset, looks up the frame in a tiny page table, and builds the physical address. Address 1500 is on page 1, which is not in RAM, so it shows a page fault. Then add your own addresses (keep them below 4096, because the table has only 4 pages)."
+  code: |
+    public class Translate {
+        public static void main(String[] args) {
+            int pageSize = 1024;
+            int[] pageTable = {5, -1, 1, 7};      // page -> frame, -1 = not in RAM
+            int[] addresses = {3000, 100, 1500};
+
+            for (int logical : addresses) {
+                int page = logical / pageSize;
+                int offset = logical % pageSize;
+                int frame = pageTable[page];
+                if (frame == -1) {
+                    System.out.println(logical + " -> page " + page + " PAGE FAULT");
+                } else {
+                    int physical = frame * pageSize + offset;
+                    System.out.println(logical + " -> page " + page + ", offset " + offset
+                            + " -> physical " + physical);
+                }
+            }
+        }
+    }
+predict:
+  code: |
+    import java.util.LinkedList;
+
+    public class LruPredict {
+        public static void main(String[] args) {
+            int[] refs = {1, 2, 3, 1, 4, 1, 5};
+            LinkedList<Integer> mem = new LinkedList<>();   // front = least recently used
+            int faults = 0;
+            for (int p : refs) {
+                boolean hit = mem.remove(Integer.valueOf(p));
+                if (!hit) {
+                    faults++;
+                    if (mem.size() == 3) mem.removeFirst();
+                }
+                mem.addLast(p);                               // now most recently used
+            }
+            System.out.println("faults=" + faults + " frames=" + mem);
+        }
+    }
+  expectedOutput: |
+    faults=5 frames=[4, 1, 5]
+  explanation: |
+    1, 2, 3 are faults (3). Then 1 is a hit and moves to the back: [2, 3, 1]. 4 faults and evicts 2 (least recently used): [3, 1, 4]. 1 hits: [3, 4, 1]. 5 faults and evicts 3: [4, 1, 5]. Total 5 faults. Note FIFO would also evict 1 at some point, but LRU keeps 1 because it is used often.
+commonMistakes:
+  - "Counting the first loads into empty frames as hits. They are page faults (compulsory misses)."
+  - "In FIFO, moving a page to the back on a hit. Only LRU updates order on a hit; FIFO uses arrival order only."
+  - "Saying Belady's anomaly happens with LRU. It happens with FIFO; LRU and Optimal are stack algorithms and are immune."
+  - "Mixing up internal fragmentation (paging, wasted space inside a page) and external fragmentation (segmentation/contiguous, scattered holes)."
+  - "Thinking more processes always means more CPU use. Past a point you get thrashing and CPU use falls."
+  - "Changing the offset during translation. Only the page number is replaced by the frame number."
+interviewBox:
+  why: "Why interviewers ask this: it checks if you understand how memory really works behind your programs, and numericals show careful step-by-step thinking."
+  questions:
+    - q: "What is virtual memory?"
+      a: "Virtual memory is a technique where each process gets its own large logical address space, and only the parts it currently needs are kept in RAM; the rest stays on disk. The MMU translates virtual addresses to physical ones using page tables. It lets programs bigger than RAM run and keeps processes isolated."
+    - q: "What is a page fault and what does the OS do?"
+      a: "A page fault happens when a program accesses a page that is not in RAM. The hardware traps to the OS, the OS finds the page on disk, chooses a free frame or evicts a page using an algorithm like LRU, loads the page, updates the page table and restarts the instruction."
+    - q: "What is Belady's anomaly?"
+      a: "It is when increasing the number of frames increases the number of page faults. It can happen with FIFO, for example the string 1 2 3 4 1 2 5 1 2 3 4 5 gives 9 faults with 3 frames and 10 with 4. LRU and Optimal never show it."
+    - q: "What is thrashing?"
+      a: "Thrashing is when a system spends most of its time swapping pages in and out instead of executing, because processes do not have enough frames for their working sets. CPU utilisation drops badly. We fix it by giving enough frames, using the working-set model, or reducing the number of processes."
+    - q: "Paging vs segmentation?"
+      a: "Paging uses fixed-size pages and causes internal fragmentation; it is invisible to the programmer. Segmentation uses variable-size logical segments like code, stack and heap, with a base and limit each, and causes external fragmentation."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Page size is 1024 bytes. Logical address 3000 is on page 2, and page 2 is in frame 1. What is the physical address?"
+    code: |
+      page   = 3000 / 1024
+      offset = 3000 % 1024
+      physical = frame * 1024 + offset
+    options: ["3000", "1976", "2048", "952"]
+    answer: 1
+    explanation: "Page = 2, offset = 3000 - 2048 = 952. Physical = 1 x 1024 + 952 = 1976. 952 is only the offset, and 3000 would mean no translation happened."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Using FIFO with 3 frames, how many page faults occur for 7 0 1 2 0 3 0 4 2 3 0 3 2?"
+    code: |
+      frames = 3, all empty at the start
+      FIFO: evict the page that arrived first
+    options: ["7", "9", "10", "13"]
+    answer: 2
+    explanation: "FIFO gives 10 faults (only the 5th, 12th and 13th references hit). 9 is the LRU answer and 7 is Optimal. 13 would mean no hits at all."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "Belady's anomaly can occur with the LRU page replacement algorithm."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. LRU and Optimal are stack algorithms: the pages kept with n frames are always a subset of those kept with n+1 frames, so faults never increase. Belady's anomaly is a FIFO problem."
+  - id: q4
+    type: MATCH
+    prompt: "Match each term to its meaning"
+    pairs:
+      - left: "TLB"
+        right: "Small fast cache of page-to-frame translations"
+      - left: "Page fault"
+        right: "Accessed page is not in RAM"
+      - left: "Thrashing"
+        right: "Too much time spent swapping pages"
+      - left: "Frame"
+        right: "Fixed-size block of physical memory"
+    explanation: "Pages are logical blocks and frames are physical blocks of the same size. The TLB speeds up translation; thrashing is the result of too few frames."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "FIFO page replacement on the string 1 2 3 4 1 2 5 1 2 3 4 5. How many faults with 3 frames and with 4 frames?"
+    code: |
+      refs = 1 2 3 4 1 2 5 1 2 3 4 5
+      FIFO, 3 frames -> ?
+      FIFO, 4 frames -> ?
+    options: ["9 and 8", "9 and 10", "10 and 9", "12 and 12"]
+    answer: 1
+    explanation: "This is the classic Belady string: 9 faults with 3 frames but 10 with 4 frames. More frames, more faults: that's Belady's anomaly. '9 and 8' is what most people expect, which is why it's a trap."
+  - id: q6
+    type: MCQ
+    prompt: "Which page replacement algorithm gives the minimum number of page faults but cannot be implemented exactly in practice?"
+    code: null
+    options: ["FIFO", "LRU", "Optimal", "Random"]
+    answer: 2
+    explanation: "Optimal evicts the page used farthest in the future, which needs knowledge of the future. It is used as a benchmark. LRU is the practical approximation."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the offset calculation for a logical address."
+    code: |
+      int page = address / pageSize;
+      int offset = address ____ pageSize;
+    acceptedAnswers: ["%"]
+    explanation: "The page number is the quotient and the offset is the remainder, so we use the modulus operator %."
+  - id: q8
+    type: MCQ
+    prompt: "Paging removes external fragmentation but causes which problem?"
+    code: null
+    options: ["Internal fragmentation", "Deadlock", "Starvation", "Convoy effect"]
+    answer: 0
+    explanation: "The last page of a process is often not full, so some space inside it is wasted: internal fragmentation. Segmentation has the opposite problem (external fragmentation)."
+explainBack:
+  prompt: "Explain to a friend how virtual memory and paging work, what a page fault is, and why LRU usually beats FIFO."
+  rubric:
+    - "I explained pages, frames and the page table"
+    - "I explained how an address is split into page number and offset"
+    - "I described what happens on a page fault"
+    - "I compared FIFO, LRU and Optimal and mentioned Belady's anomaly"
+    - "I mentioned thrashing or the TLB"
+  modelAnswer: |
+    Every program thinks it has a big private memory, but RAM is small. So the OS cuts the program into equal pieces called pages and RAM into frames of the same size. A page table says which page sits in which frame, and the TLB caches recent lookups so it is fast. An address is split into a page number and an offset; we swap the page number for the frame number and keep the offset. If the page is not in RAM, that's a page fault: the OS brings it from disk, maybe throwing another page out. FIFO throws out the oldest page even if it's busy, LRU throws out the one unused longest, which usually works better. FIFO can even get more faults with more frames, called Belady's anomaly.
+flashcards:
+  - front: "Page number and offset formula"
+    back: "page = address / pageSize, offset = address % pageSize. Physical = frame x pageSize + offset."
+  - front: "What does the TLB do?"
+    back: "Caches recent page -> frame translations so most accesses avoid reading the page table in RAM."
+  - front: "FIFO/LRU/Optimal faults for 7 0 1 2 0 3 0 4 2 3 0 3 2 (3 frames)"
+    back: "FIFO 10, LRU 9, Optimal 7."
+  - front: "Belady's anomaly"
+    back: "FIFO can give MORE faults with MORE frames. 1 2 3 4 1 2 5 1 2 3 4 5: 9 faults (3 frames), 10 faults (4 frames)."
+  - front: "Thrashing"
+    back: "Constant page faults because processes lack frames for their working sets; CPU utilisation collapses."
+  - front: "Paging vs segmentation fragmentation"
+    back: "Paging: internal fragmentation. Segmentation: external fragmentation."
+keyTakeaways:
+  - "Paging splits memory into fixed pages and frames; the page table maps one to the other."
+  - "Address = page number + offset; only the page number changes during translation."
+  - "The TLB caches translations; a page fault loads a missing page from disk."
+  - "Optimal is the minimum, LRU is the practical best, FIFO is simplest and can show Belady's anomaly."
+  - "Thrashing happens when processes don't have enough frames; segmentation uses variable-size logical segments."

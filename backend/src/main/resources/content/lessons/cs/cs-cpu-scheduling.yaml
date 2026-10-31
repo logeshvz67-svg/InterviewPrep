@@ -1,0 +1,299 @@
+slug: cs-cpu-scheduling
+world: CS_CORE
+section: CS
+order: 2
+title: "OS: CPU scheduling"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Scheduling numericals (Gantt chart, waiting time, turnaround time) are a classic OS practice topic for SP and DSE technical and written rounds."
+otherCompanies: "Common OS question for TCS, Wipro, Cognizant, Accenture and Capgemini; product companies expect you to explain trade-offs like starvation and response time."
+why: |
+  The CPU can run only one process per core at a time, but your computer has hundreds of processes ready. **CPU scheduling** is how the OS decides **who runs next and for how long**.
+
+  Interviewers love this topic because:
+  - it has **numericals**: draw a Gantt chart, compute waiting time and turnaround time,
+  - it tests trade-offs: fairness vs speed, **starvation**, **convoy effect**,
+  - it is pure logic, so a calm, step-by-step answer impresses.
+
+  Learn the five algorithms on ONE example below, and the formulas will stick for life.
+analogy: |
+  Think of a **single billing counter at a supermarket**.
+
+  - **FCFS**: whoever comes first is billed first. Fair, but if the first person has a full trolley, everyone with one item waits (convoy effect).
+  - **SJF**: the cashier bills the person with the **fewest items** first. Average waiting drops, but a full-trolley person may wait forever if small baskets keep coming (starvation).
+  - **SRTF**: same as SJF, but if someone with fewer items arrives, the cashier **pauses** the current customer and bills the new one.
+  - **Round Robin**: each customer gets **3 items billed**, then goes to the back of the line. Everyone gets a turn quickly.
+  - **Priority**: senior citizens and pregnant women go first.
+visual:
+  diagram: |
+    Example: P1(arr 0, burst 8) P2(1,4) P3(2,9) P4(3,5)
+
+    FCFS   |  P1    |  P2 |   P3     |  P4  |
+           0        8    12         21     26
+    SJF    |  P1    |  P2 |  P4  |   P3     |
+           0        8    12     17         26
+    SRTF   |P1|  P2 |  P4  |  P1   |   P3     |
+           0  1     5     10      17         26
+    RR q=3 |P1|P2|P3|P4|P1|P2|P3|P4|P1|P3|
+           0  3  6  9 12 15 16 19 21 23 26
+
+    Avg waiting time: FCFS 8.75  SJF 7.75  SRTF 6.5  RR 13.5
+  caption: "The same four processes under four algorithms. SRTF gives the lowest average waiting time; Round Robin gives everyone an early turn but more waiting on average here."
+  visualizer: null
+explanation: |
+  ### Key words (learn these first)
+  - **Arrival time (AT)**: when the process enters the ready queue.
+  - **Burst time (BT)**: how much CPU time it needs.
+  - **Completion time (CT)**: when it finishes.
+  - **Turnaround time (TAT)** = CT - AT: total time from arrival to finish.
+  - **Waiting time (WT)** = TAT - BT: time spent waiting in the ready queue.
+  - **Response time** = time of first run - AT: how long before it *first* gets the CPU.
+  - **Preemptive**: the OS can take the CPU away in the middle. **Non-preemptive**: once a process starts, it runs till it finishes (or waits for I/O).
+  - **Gantt chart**: a timeline bar showing which process runs when.
+
+  ### Our example (used for every algorithm)
+  | Process | AT | BT | Priority (lower = higher) |
+  |---|---|---|---|
+  | P1 | 0 | 8 | 2 |
+  | P2 | 1 | 4 | 3 |
+  | P3 | 2 | 9 | 1 |
+  | P4 | 3 | 5 | 4 |
+
+  ### 1. FCFS (First Come First Serve), non-preemptive
+  Run in order of arrival: P1 0-8, P2 8-12, P3 12-21, P4 21-26.
+  | | CT | TAT = CT-AT | WT = TAT-BT |
+  |---|---|---|---|
+  | P1 | 8 | 8 | 0 |
+  | P2 | 12 | 11 | 7 |
+  | P3 | 21 | 19 | 10 |
+  | P4 | 26 | 23 | 18 |
+  Average TAT = 61/4 = **15.25**, average WT = 35/4 = **8.75**.
+  Problem: **convoy effect**, short jobs stuck behind a long one.
+
+  ### 2. SJF (Shortest Job First), non-preemptive
+  At each decision point, pick the **arrived** process with the smallest burst.
+  At t=0 only P1 has arrived, so P1 runs 0-8. At t=8, P2(4), P3(9), P4(5) are waiting: pick P2 (8-12), then P4 (12-17), then P3 (17-26).
+  WT: P1 0, P2 7, P3 15, P4 9. Average WT = 31/4 = **7.75**, average TAT = 57/4 = **14.25**.
+  SJF gives the minimum average waiting time among non-preemptive algorithms, but it needs to **know burst times in advance** (in practice they are predicted) and long jobs can **starve**.
+
+  ### 3. SRTF (Shortest Remaining Time First), preemptive SJF
+  Whenever a new process arrives, compare its burst with the **remaining** time of the running one.
+  - t=0: P1 starts (remaining 8).
+  - t=1: P2 arrives with 4 < P1's remaining 7, so **P1 is preempted**, P2 runs 1-5.
+  - t=5: remaining: P1 7, P3 9, P4 5. P4 runs 5-10.
+  - t=10: P1 (7) runs 10-17, then P3 17-26.
+
+  CT: P1 17, P2 5, P3 26, P4 10. WT: P1 9, P2 0, P3 15, P4 2. Average WT = 26/4 = **6.5**, average TAT = 52/4 = **13.0**. Best average here.
+
+  ### 4. Round Robin (RR), preemptive, time quantum q = 3
+  Each process gets at most **q** units, then goes to the back of the queue. Rule used here: processes that arrive during a slice join the queue **before** the preempted process returns.
+  Gantt: P1 0-3, P2 3-6, P3 6-9, P4 9-12, P1 12-15, P2 15-16 (done), P3 16-19, P4 19-21 (done), P1 21-23 (done), P3 23-26 (done).
+  CT: P1 23, P2 16, P3 26, P4 21. WT: 15, 11, 15, 13. Average WT = 54/4 = **13.5**, average TAT = 80/4 = **20.0**.
+  RR has the best **response time** (everyone starts by t=9) and is fair, which is why time-sharing systems use it. If q is very large, RR becomes FCFS; if q is very small, context-switch overhead explodes.
+
+  ### 5. Priority scheduling (non-preemptive)
+  Pick the arrived process with the highest priority (here, lower number = higher priority). t=0: only P1, so P1 0-8. At t=8: P3 (1) 8-17, then P2 (3) 17-21, then P4 (4) 21-26.
+  WT: P1 0, P2 16, P3 6, P4 18. Average WT = 40/4 = **10.0**, average TAT = 66/4 = **16.5**.
+  Problem: **starvation** of low-priority processes. Fix: **aging**, slowly increasing the priority of processes that wait long.
+
+  ### Summary table
+  | Algorithm | Preemptive? | Avg WT (our example) | Main issue |
+  |---|---|---|---|
+  | FCFS | No | 8.75 | Convoy effect |
+  | SJF | No | 7.75 | Starvation, needs burst time |
+  | SRTF | Yes | 6.5 | Starvation, more switches |
+  | Round Robin (q=3) | Yes | 13.5 | Depends on quantum |
+  | Priority | No (can be yes) | 10.0 | Starvation, fix with aging |
+
+  ### Exam tips
+  - Always draw the Gantt chart first, then fill a CT/TAT/WT table.
+  - Check: sum of bursts = total busy time (8+4+9+5 = 26 here).
+  - Write the formulas: TAT = CT - AT, WT = TAT - BT.
+tinyCode:
+  code: |
+    public class Fcfs {
+        public static void main(String[] args) {
+            String[] name = {"P1", "P2", "P3", "P4"};
+            int[] at = {0, 1, 2, 3};          // arrival times (sorted)
+            int[] bt = {8, 4, 9, 5};          // burst times
+            int time = 0, totalTat = 0, totalWt = 0;
+
+            for (int i = 0; i < name.length; i++) {
+                time = Math.max(time, at[i]); // CPU may be idle until arrival
+                time += bt[i];                // run to completion
+                int tat = time - at[i];       // turnaround = CT - AT
+                int wt = tat - bt[i];         // waiting = TAT - BT
+                totalTat += tat;
+                totalWt += wt;
+                System.out.println(name[i] + " CT=" + time + " TAT=" + tat + " WT=" + wt);
+            }
+            System.out.println("Avg TAT = " + totalTat / 4.0);
+            System.out.println("Avg WT  = " + totalWt / 4.0);
+        }
+    }
+  walkthrough: |
+    - The arrays hold our example: arrival times and burst times, already sorted by arrival (that is what FCFS needs).
+    - `time = Math.max(time, at[i])`: if the CPU becomes free before the next process arrives, it sits idle until that arrival.
+    - `time += bt[i]`: FCFS is non-preemptive, so the process runs its full burst. Now `time` is its completion time (CT).
+    - `tat = time - at[i]` and `wt = tat - bt[i]` are the two formulas you must remember.
+    - We divide by `4.0` (a double) so the average is not cut by integer division.
+    - Output:
+    ```
+    P1 CT=8 TAT=8 WT=0
+    P2 CT=12 TAT=11 WT=7
+    P3 CT=21 TAT=19 WT=10
+    P4 CT=26 TAT=23 WT=18
+    Avg TAT = 15.25
+    Avg WT  = 8.75
+    ```
+    These match the hand-calculated table in the lesson.
+tryIt:
+  instructions: "Type this SJF calculator for processes that all arrive at time 0. Sorting by burst time IS the SJF rule when everyone arrives together. Compare its average with FCFS on the same bursts (5, 3, 2 gives FCFS 4.33)."
+  code: |
+    import java.util.Arrays;
+
+    public class SjfAllAtZero {
+        public static void main(String[] args) {
+            int[] bt = {5, 3, 2};
+            Arrays.sort(bt);                 // shortest job first
+            int time = 0, totalWt = 0;
+            for (int b : bt) {
+                totalWt += time;             // waits until all shorter jobs finish
+                System.out.println("Run burst " + b + " from " + time + " to " + (time + b));
+                time += b;
+            }
+            System.out.printf("Avg WT = %.2f%n", totalWt / (double) bt.length);
+        }
+    }
+predict:
+  code: |
+    public class Convoy {
+        static double avgWait(int[] bursts) {   // all arrive at time 0, FCFS
+            int time = 0, total = 0;
+            for (int b : bursts) {
+                total += time;
+                time += b;
+            }
+            return total / (double) bursts.length;
+        }
+
+        public static void main(String[] args) {
+            System.out.println(avgWait(new int[]{24, 3, 3}));
+            System.out.println(avgWait(new int[]{3, 3, 24}));
+        }
+    }
+  expectedOutput: |
+    17.0
+    3.0
+  explanation: |
+    With FCFS and all processes at time 0, a process waits for the sum of the bursts before it. Order 24, 3, 3: waits are 0, 24, 27, total 51, average 17.0. Order 3, 3, 24: waits are 0, 3, 6, total 9, average 3.0. Same work, very different waiting: this is the **convoy effect**, and it is exactly why SJF exists.
+commonMistakes:
+  - "Mixing up the formulas. TAT = CT - AT and WT = TAT - BT (not CT - BT when arrival is not zero)."
+  - "In SJF, choosing a process that has not arrived yet. Only processes with arrival time <= current time can be picked."
+  - "Forgetting that SRTF compares the new process with the REMAINING time of the running one, not its original burst."
+  - "In Round Robin, not stating the tie rule. Say whether a newly arrived process enters the queue before the preempted one (the usual convention)."
+  - "Forgetting CPU idle time when no process has arrived yet."
+  - "Saying SJF is always best. It minimises average waiting time but can starve long jobs and needs burst times in advance."
+interviewBox:
+  why: "Why interviewers ask this: it tests careful step-by-step thinking and whether you understand fairness vs efficiency trade-offs in an OS."
+  questions:
+    - q: "What is the difference between preemptive and non-preemptive scheduling?"
+      a: "In non-preemptive scheduling, once a process gets the CPU it keeps it until it finishes or waits for I/O, like FCFS and SJF. In preemptive scheduling, the OS can take the CPU away, for example when a time slice ends in Round Robin or a shorter job arrives in SRTF."
+    - q: "Which algorithm gives the minimum average waiting time?"
+      a: "SJF among non-preemptive algorithms, and its preemptive version SRTF overall. But they need the burst time in advance, which is usually predicted, and long processes can starve."
+    - q: "What is starvation and how do we fix it?"
+      a: "Starvation is when a process waits forever because others keep getting chosen first, for example a low-priority process in priority scheduling. The fix is aging: we slowly increase the priority of a process the longer it waits."
+    - q: "How does the time quantum affect Round Robin?"
+      a: "If the quantum is very large, Round Robin behaves like FCFS. If it is very small, the CPU spends too much time on context switches. A good quantum is a bit larger than a typical short burst."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each term to its formula or meaning"
+    pairs:
+      - left: "Turnaround time"
+        right: "Completion time - arrival time"
+      - left: "Waiting time"
+        right: "Turnaround time - burst time"
+      - left: "Response time"
+        right: "First time on CPU - arrival time"
+      - left: "Burst time"
+        right: "CPU time the process needs"
+    explanation: "Turnaround is the whole stay in the system; waiting is the part of that stay not spent running; response is how long until the first run."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Three processes arrive at time 0 with bursts P1=5, P2=3, P3=2 and run in FCFS order. What is the average waiting time?"
+    code: |
+      P1 waits 0, runs 0-5
+      P2 waits ?, runs 5-8
+      P3 waits ?, runs 8-10
+      Average WT = ?
+    options: ["3.33", "4.33", "5.0", "6.67"]
+    answer: 1
+    explanation: "P2 waits 5 and P3 waits 8. Total = 0 + 5 + 8 = 13, and 13/3 = 4.33. 6.67 is the average TURNAROUND time ((5+8+10)/3), a common mix-up."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "Round Robin with quantum 2. Bursts: P1=4, P2=3, P3=2, all arrive at 0 in order P1, P2, P3. What is the average waiting time?"
+    code: |
+      Gantt: | P1 | P2 | P3 | P1 | P2 |
+             0    2    4    6    8    9
+    options: ["4.00", "4.67", "5.33", "3.00"]
+    answer: 1
+    explanation: "Completion times: P1 8, P2 9, P3 6. Waiting = CT - BT (arrival is 0): P1 4, P2 6, P3 4. Total 14, average 14/3 = 4.67."
+  - id: q4
+    type: MCQ
+    prompt: "Which algorithm suffers from the convoy effect?"
+    code: null
+    options: ["Round Robin", "FCFS", "SRTF", "Priority with aging"]
+    answer: 1
+    explanation: "In FCFS a long process at the front makes all short ones wait behind it, like a truck on a single-lane road. Round Robin and SRTF interrupt long jobs, so they avoid it."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "If the Round Robin time quantum is made very large, Round Robin behaves like FCFS."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. If the quantum is bigger than every burst, each process finishes in its first turn, in arrival order, which is exactly FCFS."
+  - id: q6
+    type: MCQ
+    prompt: "In SRTF, P1 (burst 8) starts at time 0. P2 (burst 4) arrives at time 1. What happens at time 1?"
+    code: null
+    options: ["P1 continues because it started first", "P1 is preempted because P2's 4 is less than P1's remaining 7", "Both run together on one core", "P2 waits until P1 finishes"]
+    answer: 1
+    explanation: "SRTF compares the new burst with the RUNNING process's remaining time: 4 < 7, so P1 is preempted. Options 1 and 4 describe non-preemptive SJF/FCFS behaviour."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the waiting-time formula."
+    code: |
+      int tat = completion - arrival;
+      int wt = tat - ____;
+    acceptedAnswers: ["burst", "bt", "burstTime"]
+    explanation: "Waiting time is turnaround time minus the time actually spent running, which is the burst time."
+explainBack:
+  prompt: "Explain to a friend what CPU scheduling is and compare FCFS, SJF and Round Robin using a shop counter example."
+  rubric:
+    - "I explained that the OS chooses which ready process gets the CPU next"
+    - "I defined waiting time and turnaround time with formulas"
+    - "I described FCFS, SJF and Round Robin and one problem of each"
+    - "I mentioned preemptive vs non-preemptive"
+    - "I used an everyday analogy"
+  modelAnswer: |
+    The CPU can serve one process at a time, so the OS must decide who goes next. That is CPU scheduling. Imagine a single billing counter. FCFS bills people in arrival order: fair, but one big trolley makes everyone wait, the convoy effect. SJF bills the smallest basket first, which gives the lowest average waiting time, but a big trolley may starve. Round Robin bills a few items per person and sends them to the back, so everyone gets an early turn. Turnaround time is completion minus arrival, and waiting time is turnaround minus burst. Preemptive algorithms like Round Robin can interrupt; non-preemptive ones like FCFS cannot.
+flashcards:
+  - front: "TAT and WT formulas"
+    back: "TAT = CT - AT. WT = TAT - BT."
+  - front: "Which algorithm minimises average waiting time?"
+    back: "SJF (non-preemptive) / SRTF (preemptive). Needs burst times; may starve long jobs."
+  - front: "Convoy effect"
+    back: "In FCFS, short processes wait behind one long process."
+  - front: "Starvation fix in priority scheduling"
+    back: "Aging: gradually raise the priority of processes that wait a long time."
+  - front: "RR with huge quantum? Tiny quantum?"
+    back: "Huge quantum = FCFS. Tiny quantum = too many context switches."
+keyTakeaways:
+  - "Scheduling decides which ready process runs next; measure it with waiting, turnaround and response time."
+  - "TAT = CT - AT and WT = TAT - BT. Draw the Gantt chart first."
+  - "FCFS is simple but has the convoy effect; SJF/SRTF minimise average waiting but can starve long jobs."
+  - "Round Robin is fair with good response time; the quantum size matters."
+  - "Priority scheduling can starve low-priority work; aging fixes it."

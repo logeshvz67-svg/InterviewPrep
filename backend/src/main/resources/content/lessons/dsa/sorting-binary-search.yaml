@@ -1,0 +1,428 @@
+slug: sorting-binary-search
+world: DSA
+section: DSA
+order: 9
+title: "Sorting and binary search"
+version: 1
+estimatedMinutes: 45
+rebuild: false
+patternCode: BINARY_SEARCH
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE preparation: sorting complexities and stability are common theory questions, and binary search (including 'binary search on the answer') unlocks many optimisation-style coding problems."
+otherCompanies: "Bubble/insertion sort and plain binary search are common basic questions in TCS-style rounds; product companies expect lower bound, rotated array search and binary search on the answer."
+why: |
+  **Sorting** means arranging items in order (smallest to largest, A to Z). Many problems become easy once the data is sorted: duplicates sit next to each other, two pointers work, and you can binary search.
+
+  **Binary search** finds an item in a **sorted** array by cutting the search area in half again and again. For 1 million items, a normal scan may need 1,000,000 checks; binary search needs about **20**. That is the difference between **O(n)** and **O(log n)**.
+
+  Interviewers ask about this in two ways:
+  - **Theory**: "Which sort is stable? What is quick sort's worst case? What does `Arrays.sort` use?"
+  - **Coding**: binary search variations: first occurrence, search in a rotated array, and "binary search on the answer" (find the smallest speed, capacity or value that works).
+
+  The binary search **template** in this lesson is something you will reuse for years.
+analogy: |
+  Think of finding the word "mango" in a **paper dictionary**.
+
+  You don't read from page 1. You open somewhere in the **middle**, see "lion", and know "mango" comes **after** it, so the whole first half is thrown away. You open the middle of the remaining half, and so on. Each look **halves** the pages left. A 1000-page dictionary needs only about 10 looks.
+
+  This only works because the dictionary is **sorted**. A shuffled pile of pages gives you no clue which half to throw away. That is why sorting and binary search are taught together.
+visual:
+  diagram: |
+    BINARY SEARCH for 23
+    index:  0  1  2   3   4   5   6   7   8   9
+    a:     [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]
+    step 1  lo=0            mid=4            hi=9   16 < 23 -> lo=5
+    step 2                    lo=5   mid=7   hi=9   56 > 23 -> hi=6
+    step 3                    lo=5,mid=5 hi=6      23 == 23 FOUND
+
+    MERGE SORT: split in halves, then merge sorted halves
+          [38 27 43 3]
+           /        \
+       [38 27]    [43 3]
+        /   \      /   \
+      [38] [27]  [43]  [3]
+        \   /      \   /
+       [27 38]    [3 43]
+           \        /
+          [3 27 38 43]
+  caption: "Binary search throws away half of the remaining range at every step. Merge sort splits the array down to single items and merges sorted halves back together."
+  visualizer: null
+explanation: |
+  ### Key words
+  - **Stable sort**: equal items keep their original relative order. (Sort students by marks; two students with 90 stay in their original roll-number order.)
+  - **In-place**: uses only O(1) or O(log n) extra memory, no big extra array.
+  - **Comparison sort**: decides order only by comparing pairs. No comparison sort can beat **O(n log n)** in the worst case.
+
+  ### The three simple sorts (know the idea, not for big inputs)
+  - **Bubble sort**: compare neighbours and swap if out of order. After pass 1 the largest item has "bubbled" to the end. Stop early if a pass makes no swap.
+  - **Selection sort**: find the minimum of the unsorted part and swap it to the front. Always O(n^2), even on sorted input.
+  - **Insertion sort**: take the next item and slide it left into its correct place, like arranging playing cards in your hand. Very fast on **nearly sorted** data (O(n)).
+
+  ### Merge sort (divide and conquer)
+  Split the array into two halves, sort each half recursively, then **merge** the two sorted halves with two pointers.
+  ```java
+  static void mergeSort(int[] a, int lo, int hi) {
+      if (lo >= hi) return;                 // 0 or 1 item: already sorted
+      int mid = lo + (hi - lo) / 2;
+      mergeSort(a, lo, mid);
+      mergeSort(a, mid + 1, hi);
+      merge(a, lo, mid, hi);                // two-pointer merge into a temp array
+  }
+  ```
+  There are log n levels of splitting and each level does O(n) merge work: **O(n log n) always**. It needs an O(n) temp array. Using `<=` while merging keeps it **stable**.
+
+  ### Quick sort
+  Pick a **pivot**, then **partition**: move smaller items to its left and bigger ones to its right. The pivot is now in its final place; sort both sides recursively.
+  ```java
+  static int partition(int[] a, int lo, int hi) {
+      int pivot = a[hi], i = lo;            // Lomuto: last element is the pivot
+      for (int j = lo; j < hi; j++) {
+          if (a[j] < pivot) { int t = a[i]; a[i] = a[j]; a[j] = t; i++; }
+      }
+      int t = a[i]; a[i] = a[hi]; a[hi] = t;  // put pivot in its final place
+      return i;
+  }
+  ```
+  Average **O(n log n)**, in-place, usually the fastest in practice. But if the pivot is always the smallest or largest (for example, an already sorted array with "last element" pivot), it degrades to **O(n^2)**. Random pivots make that very unlikely. Not stable.
+
+  ### Comparison table
+  | Sort | Best | Average | Worst | Extra space | Stable? |
+  |---|---|---|---|---|---|
+  | Bubble | O(n) | O(n^2) | O(n^2) | O(1) | Yes |
+  | Selection | O(n^2) | O(n^2) | O(n^2) | O(1) | No |
+  | Insertion | O(n) | O(n^2) | O(n^2) | O(1) | Yes |
+  | Merge | O(n log n) | O(n log n) | O(n log n) | O(n) | Yes |
+  | Quick | O(n log n) | O(n log n) | O(n^2) | O(log n) stack | No |
+  | Heap | O(n log n) | O(n log n) | O(n log n) | O(1) | No |
+
+  ### What does Java use?
+  - `Arrays.sort(int[])` and other **primitive** arrays: **Dual-Pivot Quicksort** (quick sort with two pivots). Stability does not matter for plain numbers.
+  - `Arrays.sort(Object[])` and `Collections.sort(list)`: **TimSort**, a mix of merge sort and insertion sort. It is **stable** and very fast on partly sorted data. That's why sorting objects by one field keeps the earlier order for ties.
+
+  ### The binary search template
+  ```java
+  int lo = 0, hi = a.length - 1;
+  while (lo <= hi) {                        // <= : one item left is still checked
+      int mid = lo + (hi - lo) / 2;         // avoids int overflow of (lo + hi)
+      if (a[mid] == target) return mid;
+      if (a[mid] < target) lo = mid + 1;    // target is on the right
+      else hi = mid - 1;                    // target is on the left
+  }
+  return -1;
+  ```
+  **Why `lo + (hi - lo) / 2`?** If `lo` and `hi` are both near 2 billion, `lo + hi` overflows `int` and becomes negative.
+
+  ### Lower bound (first index with value >= target)
+  Useful for "first occurrence", "count of x", "insert position".
+  ```java
+  int lo = 0, hi = a.length;                // hi = n: answer can be "after the end"
+  while (lo < hi) {
+      int mid = lo + (hi - lo) / 2;
+      if (a[mid] < target) lo = mid + 1;
+      else hi = mid;                        // mid might be the answer: keep it
+  }
+  return lo;
+  ```
+  Change `<` to `<=` and you get the **upper bound** (first index with value > target). Count of x = upperBound - lowerBound.
+
+  ### Search in a rotated sorted array
+  `[4, 5, 6, 7, 0, 1, 2]` is a sorted array rotated at some point. At any `mid`, **at least one half is still sorted**. Check if the target lies inside that sorted half; if yes, go there, otherwise go to the other half.
+  ```java
+  if (a[lo] <= a[mid]) {                    // left half sorted
+      if (a[lo] <= target && target < a[mid]) hi = mid - 1; else lo = mid + 1;
+  } else {                                  // right half sorted
+      if (a[mid] < target && target <= a[hi]) lo = mid + 1; else hi = mid - 1;
+  }
+  ```
+
+  ### Binary search on the answer
+  Sometimes there is no sorted array, but the **answers** are ordered: "if speed 5 works, every speed above 5 also works". Then binary search over the possible answers and test each `mid` with a helper `canDo(mid)`.
+  - Examples: integer square root, minimum eating speed, minimum ship capacity in D days, allocate minimum pages.
+  - Template: `lo` = smallest possible answer, `hi` = largest; if `canDo(mid)`, record it and search the better side.
+  - Time: O(log(range) x cost of canDo).
+
+  ### Complexity summary
+  | Task | Time | Space |
+  |---|---|---|
+  | Linear search | O(n) | O(1) |
+  | Binary search / lower bound / rotated | O(log n) | O(1) |
+  | Sort then binary search q times | O(n log n + q log n) | depends on sort |
+tinyCode:
+  code: |
+    import java.util.Arrays;
+
+    public class SortSearch {
+        static void mergeSort(int[] a, int lo, int hi) {
+            if (lo >= hi) return;
+            int mid = lo + (hi - lo) / 2;
+            mergeSort(a, lo, mid);
+            mergeSort(a, mid + 1, hi);
+            int[] tmp = new int[hi - lo + 1];
+            int i = lo, j = mid + 1, k = 0;
+            while (i <= mid && j <= hi) tmp[k++] = (a[i] <= a[j]) ? a[i++] : a[j++];
+            while (i <= mid) tmp[k++] = a[i++];
+            while (j <= hi) tmp[k++] = a[j++];
+            System.arraycopy(tmp, 0, a, lo, tmp.length);
+        }
+
+        static int binarySearch(int[] a, int target) {
+            int lo = 0, hi = a.length - 1;
+            while (lo <= hi) {
+                int mid = lo + (hi - lo) / 2;
+                if (a[mid] == target) return mid;
+                if (a[mid] < target) lo = mid + 1;
+                else hi = mid - 1;
+            }
+            return -1;
+        }
+
+        // first index with a[i] >= target (a.length if none)
+        static int lowerBound(int[] a, int target) {
+            int lo = 0, hi = a.length;
+            while (lo < hi) {
+                int mid = lo + (hi - lo) / 2;
+                if (a[mid] < target) lo = mid + 1;
+                else hi = mid;
+            }
+            return lo;
+        }
+
+        static int searchRotated(int[] a, int target) {
+            int lo = 0, hi = a.length - 1;
+            while (lo <= hi) {
+                int mid = lo + (hi - lo) / 2;
+                if (a[mid] == target) return mid;
+                if (a[lo] <= a[mid]) {                       // left half sorted
+                    if (a[lo] <= target && target < a[mid]) hi = mid - 1;
+                    else lo = mid + 1;
+                } else {                                     // right half sorted
+                    if (a[mid] < target && target <= a[hi]) lo = mid + 1;
+                    else hi = mid - 1;
+                }
+            }
+            return -1;
+        }
+
+        public static void main(String[] args) {
+            int[] a = {38, 27, 43, 3, 9, 82, 10};
+            mergeSort(a, 0, a.length - 1);
+            System.out.println(Arrays.toString(a));
+            System.out.println(binarySearch(a, 43) + " " + binarySearch(a, 5));
+
+            int[] d = {1, 2, 2, 2, 5, 8};
+            System.out.println(lowerBound(d, 2) + " " + lowerBound(d, 3) + " " + lowerBound(d, 9));
+
+            int[] r = {4, 5, 6, 7, 0, 1, 2};
+            System.out.println(searchRotated(r, 0) + " " + searchRotated(r, 3));
+        }
+    }
+  walkthrough: |
+    - **mergeSort** splits until one element is left, then merges two sorted halves into `tmp` with two pointers `i` and `j`. `a[i] <= a[j]` takes from the left half on ties, which keeps it stable. `System.arraycopy` copies the merged part back.
+    - **binarySearch**: 43 is at index 5 in the sorted array. 5 is not present, so `lo` passes `hi` and we return -1.
+    - **lowerBound** on `[1, 2, 2, 2, 5, 8]`:
+      - target 2: first index holding a value >= 2 is **1** (the first 2).
+      - target 3: no 3, the first value >= 3 is 5 at index **4** (where 3 would be inserted).
+      - target 9: nothing is >= 9, so the answer is the length, **6**.
+    - **searchRotated**: in `[4, 5, 6, 7, 0, 1, 2]`, 0 is at index 4; 3 is missing, so -1.
+
+    Output:
+    ```
+    [3, 9, 10, 27, 38, 43, 82]
+    5 -1
+    1 4 6
+    4 -1
+    ```
+tryIt:
+  instructions: "Type this 'binary search on the answer' program: it finds the integer square root without Math.sqrt. Notice the (long) cast that stops mid * mid from overflowing. Then try sqrtFloor(99)."
+  code: |
+    public class SqrtFloor {
+        // largest x such that x * x <= n
+        static int sqrtFloor(int n) {
+            int lo = 0, hi = n, ans = 0;
+            while (lo <= hi) {
+                int mid = lo + (hi - lo) / 2;
+                if ((long) mid * mid <= n) {
+                    ans = mid;          // mid works, try bigger
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;       // too big, go smaller
+                }
+            }
+            return ans;
+        }
+
+        public static void main(String[] args) {
+            System.out.println(sqrtFloor(16));
+            System.out.println(sqrtFloor(27));
+            System.out.println(sqrtFloor(1));
+            System.out.println(sqrtFloor(2147395600));
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int[] a = {2, 5, 8, 12, 16, 23, 38, 56, 72, 91};
+            int target = 23, lo = 0, hi = a.length - 1;
+            while (lo <= hi) {
+                int mid = lo + (hi - lo) / 2;
+                System.out.print("[" + mid + "]");
+                if (a[mid] == target) break;
+                if (a[mid] < target) lo = mid + 1;
+                else hi = mid - 1;
+            }
+            System.out.println();
+        }
+    }
+  expectedOutput: |
+    [4][7][5]
+  explanation: |
+    Round 1: lo=0, hi=9, mid=4, a[4]=16 < 23, so lo=5. Round 2: lo=5, hi=9, mid=7, a[7]=56 > 23, so hi=6. Round 3: lo=5, hi=6, mid=5 (integer division rounds down), a[5]=23: found, break. Only 3 checks for 10 items.
+commonMistakes:
+  - "Using binary search on an unsorted array; it silently gives wrong answers."
+  - "Writing mid = (lo + hi) / 2, which can overflow for large indexes; use lo + (hi - lo) / 2."
+  - "Mixing templates: while (lo < hi) with hi = mid - 1 skips the last candidate; while (lo <= hi) with hi = mid can loop forever."
+  - "Saying quick sort is always O(n log n); its worst case is O(n^2)."
+  - "Forgetting that Arrays.sort on objects is stable (TimSort) but on primitives uses Dual-Pivot Quicksort."
+  - "In binary search on the answer, computing mid * mid in int and overflowing; cast to long."
+interviewBox:
+  why: "Why interviewers ask this: sorting tests your understanding of complexity and trade-offs; binary search tests precise boundary handling, where small off-by-one errors break the code."
+  questions:
+    - q: "What is the difference between merge sort and quick sort?"
+      a: "Both are divide and conquer and O(n log n) on average. Merge sort splits in the middle and does the work while merging; it is always O(n log n) and stable, but needs O(n) extra space. Quick sort does the work while partitioning around a pivot; it is in-place and usually faster in practice, but its worst case is O(n squared) with bad pivots, and it is not stable."
+    - q: "What is a stable sort and why does it matter?"
+      a: "A stable sort keeps equal elements in their original order. It matters when you sort by one key after another, for example sort employees by name and then by department; with a stable sort, people inside each department stay in name order. Merge sort, insertion sort and Java's TimSort are stable."
+    - q: "How do you find the first occurrence of a number in a sorted array with duplicates?"
+      a: "I use lower bound binary search. lo is zero and hi is n. If a[mid] is less than the target, I move lo to mid plus one; otherwise I set hi to mid, because mid could be the answer. When lo equals hi, that's the first index with value at least the target. Then I check that the value there really equals the target. It's O(log n)."
+    - q: "What is binary search on the answer?"
+      a: "When the answers have a yes/no pattern, like 'if capacity 10 works then 11 also works', I binary search over the range of possible answers instead of over an array. For each mid I run a check function. If it works I record it and try a smaller value, otherwise I try bigger. The time is log of the range times the cost of the check."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "One pass of bubble sort. What is printed?"
+    code: |
+      int[] a = {5, 1, 4, 2, 8};
+      for (int j = 0; j < a.length - 1; j++) {
+          if (a[j] > a[j + 1]) {
+              int t = a[j]; a[j] = a[j + 1]; a[j + 1] = t;
+          }
+      }
+      System.out.println(Arrays.toString(a));
+    options: ["[1, 4, 2, 5, 8]", "[1, 2, 4, 5, 8]", "[1, 5, 4, 2, 8]", "[5, 1, 4, 2, 8]"]
+    answer: 0
+    explanation: "Swaps: (5,1) -> [1,5,4,2,8], (5,4) -> [1,4,5,2,8], (5,2) -> [1,4,2,5,8], (5,8) no swap. One pass only guarantees the LARGEST element reaches the end; the rest is not fully sorted yet, so [1, 2, 4, 5, 8] needs another pass."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Insertion sort, but the outer loop runs only for i = 1 and i = 2. What is printed?"
+    code: |
+      int[] b = {7, 3, 5, 1};
+      for (int i = 1; i <= 2; i++) {
+          int key = b[i], j = i - 1;
+          while (j >= 0 && b[j] > key) { b[j + 1] = b[j]; j--; }
+          b[j + 1] = key;
+      }
+      System.out.println(Arrays.toString(b));
+    options: ["[3, 5, 7, 1]", "[1, 3, 5, 7]", "[3, 7, 5, 1]", "[3, 5, 1, 7]"]
+    answer: 0
+    explanation: "i=1: 3 slides before 7 -> [3, 7, 5, 1]. i=2: 5 slides before 7 but stops after 3 -> [3, 5, 7, 1]. Insertion sort keeps the LEFT part sorted; the 1 hasn't been processed yet, so it is still last."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This binary search returns -1 for a = {1, 3} and target = 3. What is the bug?"
+    code: |
+      int lo = 0, hi = a.length - 1;
+      while (lo < hi) {
+          int mid = lo + (hi - lo) / 2;
+          if (a[mid] == target) return mid;
+          if (a[mid] < target) lo = mid + 1;
+          else hi = mid - 1;
+      }
+      return -1;
+    options:
+      - "mid should be (lo + hi) / 2"
+      - "With hi = a.length - 1 and hi = mid - 1, the loop must be while (lo <= hi); otherwise the last remaining element is never checked"
+      - "lo should start at 1"
+      - "It should be lo = mid instead of lo = mid + 1"
+    answer: 1
+    explanation: "After the first step lo = hi = 1, but lo < hi is false, so index 1 (value 3) is never compared. With an inclusive hi, use lo <= hi. Changing to lo = mid would cause an infinite loop, and (lo + hi) / 2 only adds an overflow risk."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "Lower bound and upper bound on a = {1, 3, 3, 3, 3, 7, 9} for the value 3. What is printed?"
+    code: |
+      int lo = 0, hi = d.length;
+      while (lo < hi) { int mid = lo + (hi - lo) / 2; if (d[mid] < 3) lo = mid + 1; else hi = mid; }
+      int first = lo;
+      lo = 0; hi = d.length;
+      while (lo < hi) { int mid = lo + (hi - lo) / 2; if (d[mid] <= 3) lo = mid + 1; else hi = mid; }
+      System.out.println(first + " " + lo + " " + (lo - first));
+    options: ["1 5 4", "1 4 3", "0 5 5", "1 5 5"]
+    answer: 0
+    explanation: "Lower bound is the first index with value >= 3: index 1. Upper bound (with <=) is the first index with value > 3: index 5 (value 7). The count of 3s is 5 - 1 = 4. \"1 4 3\" confuses upper bound with the last index of 3."
+  - id: q5
+    type: MCQ
+    prompt: "Which sort is guaranteed O(n log n) in the worst case AND stable?"
+    code: null
+    options: ["Quick sort", "Merge sort", "Selection sort", "Heap sort"]
+    answer: 1
+    explanation: "Merge sort is O(n log n) in every case and stable when merging with <=. Quick sort's worst case is O(n^2); heap sort is O(n log n) but not stable; selection sort is O(n^2) and not stable."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "Arrays.sort on an array of objects (e.g. String[]) is stable in Java."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Object arrays and Collections.sort use TimSort, which is stable. Primitive arrays use Dual-Pivot Quicksort, which is not stable, but for plain numbers you cannot tell equal values apart anyway."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill the overflow-safe middle index calculation."
+    code: |
+      int lo = 0, hi = a.length - 1;
+      while (lo <= hi) {
+          int mid = ____;
+          if (a[mid] == target) return mid;
+          if (a[mid] < target) lo = mid + 1;
+          else hi = mid - 1;
+      }
+    acceptedAnswers: ["lo + (hi - lo) / 2", "lo+(hi-lo)/2", "(lo + hi) >>> 1", "(lo+hi)>>>1"]
+    explanation: "lo + (hi - lo) / 2 never exceeds hi, so it can't overflow. (lo + hi) / 2 overflows when both are near Integer.MAX_VALUE (e.g. 2,000,000,000 + 2,100,000,000 wraps to a negative number). (lo + hi) >>> 1 also works because the unsigned shift treats the overflowed bits correctly."
+  - id: q8
+    type: MATCH
+    prompt: "Match each algorithm to its worst-case time"
+    pairs:
+      - left: "Binary search"
+        right: "O(log n)"
+      - left: "Merge sort"
+        right: "O(n log n)"
+      - left: "Quick sort (bad pivots)"
+        right: "O(n^2)"
+      - left: "Linear search"
+        right: "O(n)"
+    explanation: "Binary search halves the range each step. Merge sort always does log n levels of O(n) work. Quick sort degrades when partitions are always lopsided. Linear search may check every element."
+explainBack:
+  prompt: "Explain binary search to a friend using the dictionary example, and say when it can and cannot be used."
+  rubric:
+    - "I explained checking the middle and throwing away half each time"
+    - "I said the data must be sorted (or the answers must be ordered)"
+    - "I stated O(log n) and gave an example like 20 steps for a million items"
+    - "I mentioned the overflow-safe mid formula"
+    - "I described one variation: lower bound, rotated array or binary search on the answer"
+  modelAnswer: |
+    Binary search is how we find a word in a dictionary. I open the middle; if my word comes later, I throw away the first half, otherwise the second half. Each check halves what is left, so even a million items need only about 20 checks: O(log n). It only works when the data is sorted, because otherwise the middle gives no clue. In code I keep lo and hi, compute mid as lo plus (hi minus lo) by 2 to avoid overflow, and move lo or hi past mid. Variations include lower bound for the first occurrence, searching a rotated array, and binary search on the answer, like finding the minimum speed that works.
+flashcards:
+  - front: "Stable sorts"
+    back: "Merge, insertion, bubble, TimSort. Not stable: quick, selection, heap."
+  - front: "Quick sort worst case and when"
+    back: "O(n^2) when pivots are always smallest/largest (e.g. sorted input, last-element pivot)."
+  - front: "What does Arrays.sort use?"
+    back: "Primitives: Dual-Pivot Quicksort. Objects: TimSort (stable)."
+  - front: "Lower bound template"
+    back: "lo=0, hi=n; while (lo<hi) { mid; if (a[mid] < t) lo=mid+1; else hi=mid; } return lo;"
+  - front: "Safe mid"
+    back: "mid = lo + (hi - lo) / 2"
+  - front: "Binary search on the answer: when?"
+    back: "When 'if x works, every bigger (or smaller) x works': search the answer range with a canDo(mid) check."
+keyTakeaways:
+  - "Simple sorts are O(n^2); merge sort is always O(n log n) and stable; quick sort is fast on average but O(n^2) worst case."
+  - "Java: primitives use Dual-Pivot Quicksort, objects use stable TimSort."
+  - "Binary search needs sorted data and runs in O(log n); use mid = lo + (hi - lo) / 2."
+  - "Pick one template and keep it consistent: inclusive hi with lo <= hi, or exclusive hi with lo < hi and hi = mid."
+  - "Lower bound gives first occurrence and insert position; rotated arrays always have one sorted half."
+  - "Binary search on the answer works whenever the yes/no answer flips only once."

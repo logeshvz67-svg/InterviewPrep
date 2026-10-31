@@ -1,0 +1,438 @@
+slug: linked-list-problems
+world: DSA
+section: DSA
+order: 7
+title: "Linked list problems"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: LINKED_LIST
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE preparation: reverse a list, find the middle, detect a cycle and merge two sorted lists are classic pointer-manipulation questions in coding and technical rounds."
+otherCompanies: "A standard topic for TCS technical interviews (reverse a linked list is a very common basic question) and for product-company interviews (cycle detection, remove nth from end, merge k lists)."
+why: |
+  A **linked list** is a chain of small boxes called **nodes**. Each node holds a value and an **arrow** (a reference) to the next node. Unlike an array, the nodes are not side by side in memory, so you cannot jump to "index 5". You must walk from the start.
+
+  Interviewers love linked lists because they test one skill very directly: **can you change references without losing anything?** One wrong line and half the list is gone, or the program loops forever.
+
+  The good news: almost every linked list question uses only **four tricks**:
+  - the **prev / cur / next** walk (reverse),
+  - **slow and fast pointers** (middle, cycle, nth from end),
+  - a **dummy node** (so the head is not a special case),
+  - a **tail pointer** (to build a new list, like in merge).
+
+  Learn these four and the whole topic becomes calm and predictable.
+analogy: |
+  Think of a **treasure hunt** at a college fest. Each clue card has a prize (the value) and tells you where the **next** card is hidden (the reference). The organiser only gives you the **first** card (the head).
+
+  - To reach the 5th card, you must follow cards 1, 2, 3, 4. No shortcuts. That is why access by position is **O(n)**.
+  - To **reverse** the hunt, you rewrite each card to point to the **previous** location. But before you rub out the old "next" location, you must **write it down somewhere**, or you will never find the rest of the cards. That "write it down" step is the `next` variable in the code.
+  - If someone hides a card that points back to an earlier card, the hunt goes in circles forever. That is a **cycle**.
+visual:
+  diagram: |
+    A LINKED LIST          head
+                            |
+                            v
+                          +---+--+   +---+--+   +---+--+
+                          | 1 | -+-->| 2 | -+-->| 3 | -+--> null
+                          +---+--+   +---+--+   +---+--+
+                           val next
+
+    REVERSE: one step (flip one arrow at a time)
+       prev      cur       next
+        |         |         |
+        v         v         v
+      [ 1 ] <-- [ 2 ]     [ 3 ] --> null
+                 save next, then cur.next = prev,
+                 then prev = cur, cur = next
+
+    MIDDLE with slow (S) and fast (F), list 1..5
+    start:  S,F at 1
+    step 1: S at 2, F at 3
+    step 2: S at 3, F at 5   F.next == null -> stop, middle = 3
+  caption: "Each node points to the next. Reversing flips one arrow at a time while 'next' remembers the rest. Fast moves 2 steps for every 1 step of slow, so slow ends in the middle."
+  visualizer: linked-list
+explanation: |
+  ### Key words
+  - **Node**: one box with `val` (the data) and `next` (a reference to the next node, or `null` at the end).
+  - **Head**: the first node. If you lose the head, you lose the list.
+  - **null**: "nothing here". The last node's `next` is `null`.
+  - **Singly linked**: each node knows only the next one. **Doubly linked** nodes also know the previous one (Java's `LinkedList` class is doubly linked).
+
+  ```java
+  class Node {
+      int val;
+      Node next;
+      Node(int val) { this.val = val; }
+  }
+  ```
+
+  ### Array vs linked list
+  | Operation | Array | Singly linked list |
+  |---|---|---|
+  | Access by index | O(1) | O(n) (walk from head) |
+  | Insert/delete at front | O(n) (shift) | O(1) |
+  | Insert/delete in middle (node known) | O(n) | O(1) |
+  | Search a value | O(n) | O(n) |
+  | Memory | compact | extra reference per node |
+
+  ### Trick 1: reverse a list (prev / cur / next)
+  ```java
+  Node prev = null, cur = head;
+  while (cur != null) {
+      Node next = cur.next;   // 1. save the rest of the list
+      cur.next = prev;        // 2. flip the arrow backwards
+      prev = cur;             // 3. move prev one step
+      cur = next;             // 4. move cur one step
+  }
+  return prev;                // prev is the new head
+  ```
+  **Why save `next` first?** Step 2 overwrites `cur.next`. Without the saved copy, the rest of the list is lost. Time O(n), space O(1).
+
+  ### Trick 2: slow and fast pointers
+  Both start at `head`. `slow` moves 1 step, `fast` moves 2 steps.
+
+  **Middle of the list**
+  ```java
+  Node slow = head, fast = head;
+  while (fast != null && fast.next != null) {
+      slow = slow.next;
+      fast = fast.next.next;
+  }
+  return slow;   // for an even length, this is the SECOND middle
+  ```
+  When fast reaches the end, slow has covered half the distance. For `1 2 3 4 5 6` it returns 4.
+
+  **Cycle detection (Floyd's algorithm, "tortoise and hare")**
+  ```java
+  Node slow = head, fast = head;
+  while (fast != null && fast.next != null) {
+      slow = slow.next;
+      fast = fast.next.next;
+      if (slow == fast) return true;   // same NODE (==), not same value
+  }
+  return false;                        // fast fell off the end: no cycle
+  ```
+  If there is a loop, fast enters it and gains 1 step on slow each round, so it must eventually land on slow, like a faster runner lapping a slower one on a circular track. O(n) time, **O(1) space** (a HashSet of visited nodes also works but costs O(n) space).
+
+  ### Trick 3: dummy node
+  A **dummy** (or sentinel) node is a fake node placed **before** the head. It means "the node before the first node" always exists, so deleting the head or building a new list needs no special `if`. At the end you return `dummy.next`.
+
+  **Remove the nth node from the end** (one pass, gap of n)
+  ```java
+  Node dummy = new Node(0);
+  dummy.next = head;
+  Node first = dummy, second = dummy;
+  for (int i = 0; i <= n; i++) first = first.next;   // gap of n+1
+  while (first != null) {
+      first = first.next;
+      second = second.next;
+  }
+  second.next = second.next.next;   // skip the target node
+  return dummy.next;
+  ```
+  `second` stops **just before** the node to remove. If the target is the head, `second` is still the dummy, so it works without a special case.
+
+  ### Trick 4: tail pointer (merge two sorted lists)
+  ```java
+  Node dummy = new Node(0), tail = dummy;
+  while (a != null && b != null) {
+      if (a.val <= b.val) { tail.next = a; a = a.next; }
+      else                { tail.next = b; b = b.next; }
+      tail = tail.next;
+  }
+  tail.next = (a != null) ? a : b;   // attach the leftover part
+  return dummy.next;
+  ```
+  We re-use the existing nodes, so the extra space is O(1). Time O(n + m).
+
+  ### Complexity summary
+  | Problem | Technique | Time | Extra space |
+  |---|---|---|---|
+  | Reverse | prev/cur/next | O(n) | O(1) |
+  | Middle | slow/fast | O(n) | O(1) |
+  | Detect cycle | Floyd (slow/fast) | O(n) | O(1) |
+  | Remove nth from end | dummy + gap of n | O(n) | O(1) |
+  | Merge two sorted | dummy + tail | O(n + m) | O(1) |
+
+  ### Safety checklist before you run
+  1. Does the loop condition stop before `null.next`? (`fast != null && fast.next != null`)
+  2. Did you save `next` before changing an arrow?
+  3. Does it work for an **empty** list and a **one-node** list?
+  4. Are you returning the right head (`prev` after reverse, `dummy.next` after dummy tricks)?
+tinyCode:
+  code: |
+    public class LinkedListBasics {
+        static class Node {
+            int val;
+            Node next;
+            Node(int val) { this.val = val; }
+        }
+
+        static Node build(int... values) {
+            Node dummy = new Node(0), tail = dummy;
+            for (int v : values) { tail.next = new Node(v); tail = tail.next; }
+            return dummy.next;
+        }
+
+        static void print(Node head) {
+            StringBuilder sb = new StringBuilder();
+            for (Node cur = head; cur != null; cur = cur.next) sb.append(cur.val).append(" -> ");
+            System.out.println(sb.append("null"));
+        }
+
+        static Node reverse(Node head) {
+            Node prev = null, cur = head;
+            while (cur != null) {
+                Node next = cur.next;   // 1. save the rest
+                cur.next = prev;        // 2. flip the arrow
+                prev = cur;             // 3. move prev forward
+                cur = next;             // 4. move cur forward
+            }
+            return prev;
+        }
+
+        static Node middle(Node head) {
+            Node slow = head, fast = head;
+            while (fast != null && fast.next != null) {
+                slow = slow.next;
+                fast = fast.next.next;
+            }
+            return slow;
+        }
+
+        static boolean hasCycle(Node head) {
+            Node slow = head, fast = head;
+            while (fast != null && fast.next != null) {
+                slow = slow.next;
+                fast = fast.next.next;
+                if (slow == fast) return true;
+            }
+            return false;
+        }
+
+        public static void main(String[] args) {
+            Node head = build(1, 2, 3, 4, 5);
+            print(head);
+            System.out.println("middle = " + middle(head).val);
+            head = reverse(head);
+            print(head);
+            System.out.println("cycle? " + hasCycle(head));
+            head.next.next.next.next.next = head.next;   // last node points back to 2nd
+            System.out.println("cycle? " + hasCycle(head));
+        }
+    }
+  walkthrough: |
+    - **Node** is a tiny class: a value and a reference to the next node.
+    - **build** uses a dummy node and a `tail` pointer: each new node is attached at `tail.next`, then `tail` moves forward. We return `dummy.next`, the real head.
+    - **print** walks from head until `null`, adding `val -> ` each time.
+    - **reverse** uses the four-step dance: save next, flip the arrow, move prev, move cur. When `cur` becomes `null`, `prev` is the old last node, the new head.
+    - **middle**: fast jumps 2, slow jumps 1. For 5 nodes, fast stops on node 5 and slow is on node 3.
+    - **hasCycle**: compares nodes with `==` (same object). On the normal list, fast reaches `null`, so `false`.
+    - The last line makes the last node (value 1 after reversing) point back to the second node (value 4), creating a loop. Now fast and slow meet inside the loop: `true`.
+
+    Output:
+    ```
+    1 -> 2 -> 3 -> 4 -> 5 -> null
+    middle = 3
+    5 -> 4 -> 3 -> 2 -> 1 -> null
+    cycle? false
+    cycle? true
+    ```
+tryIt:
+  instructions: "Type this merge of two sorted lists using a dummy node and a tail pointer. Run it, then change list b to 0 -> 8 and predict the output before running again."
+  code: |
+    public class MergeSorted {
+        static class Node {
+            int val; Node next;
+            Node(int val, Node next) { this.val = val; this.next = next; }
+        }
+
+        static Node merge(Node a, Node b) {
+            Node dummy = new Node(0, null);
+            Node tail = dummy;
+            while (a != null && b != null) {
+                if (a.val <= b.val) { tail.next = a; a = a.next; }
+                else { tail.next = b; b = b.next; }
+                tail = tail.next;
+            }
+            tail.next = (a != null) ? a : b;
+            return dummy.next;
+        }
+
+        public static void main(String[] args) {
+            Node a = new Node(1, new Node(4, new Node(7, null)));
+            Node b = new Node(2, new Node(3, new Node(9, null)));
+            for (Node cur = merge(a, b); cur != null; cur = cur.next) {
+                System.out.print(cur.val + " ");
+            }
+            System.out.println();
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static class Node {
+            int val; Node next;
+            Node(int val, Node next) { this.val = val; this.next = next; }
+        }
+
+        public static void main(String[] args) {
+            Node head = new Node(10, new Node(20, new Node(30, null)));
+            Node prev = null, cur = head;
+            while (cur != null) {
+                Node next = cur.next;
+                cur.next = prev;
+                prev = cur;
+                cur = next;
+                System.out.print("[" + prev.val + "]");
+            }
+            System.out.println();
+            System.out.println(prev.val + " " + prev.next.val + " " + head.next);
+        }
+    }
+  expectedOutput: |
+    [10][20][30]
+    30 20 null
+  explanation: |
+    Each loop round flips one arrow and moves `prev` onto the node just processed, so the first line prints [10][20][30]. After the loop, `prev` is node 30, the new head, and its next is 20. The variable `head` still refers to node 10, which is now the LAST node, so `head.next` is `null`. This is why after reversing you must use the returned `prev`, not the old `head`.
+commonMistakes:
+  - "Changing cur.next before saving it in a next variable: the rest of the list is lost."
+  - "Returning head instead of prev after reversing; the old head is now the tail."
+  - "Loop condition fast.next != null alone: crashes with NullPointerException when fast itself becomes null. Use fast != null && fast.next != null."
+  - "Comparing slow.val == fast.val for cycle detection; different nodes can hold the same value. Compare the nodes: slow == fast."
+  - "Deleting the head in remove-nth without a dummy node, leading to special cases and bugs."
+  - "Forgetting to attach the leftover part (tail.next = a or b) after the merge loop."
+interviewBox:
+  why: "Why interviewers ask this: linked lists test careful reference handling, edge cases (empty, one node, head removal) and the slow/fast pointer idea, all in a few lines of code."
+  questions:
+    - q: "How do you reverse a singly linked list?"
+      a: "I keep three references: prev, cur and next. Starting with prev as null and cur as head, in each step I save cur.next in next, point cur.next back to prev, then move prev to cur and cur to next. When cur becomes null, prev is the new head. It's O(n) time and O(1) extra space."
+    - q: "How do you detect a cycle in a linked list?"
+      a: "I use Floyd's slow and fast pointers. Slow moves one step and fast moves two. If fast reaches null, there is no cycle. If there is a loop, fast keeps gaining one step on slow inside it, so they eventually point to the same node. It's O(n) time and O(1) space, better than storing visited nodes in a HashSet."
+    - q: "How do you find the middle of a linked list in one pass?"
+      a: "Slow and fast pointers again. Fast moves two steps and slow moves one. When fast reaches the end, slow is in the middle. For an even number of nodes, this version gives the second of the two middle nodes."
+    - q: "Why do we use a dummy node?"
+      a: "A dummy node sits before the real head, so every real node, even the head, has a node before it. That removes special cases when deleting the head or building a new list. At the end I return dummy.next."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "The list is 1 -> 2 -> 3 -> 4 -> 5 -> 6. What does this print?"
+    code: |
+      Node slow = head, fast = head;
+      while (fast != null && fast.next != null) {
+          slow = slow.next;
+          fast = fast.next.next;
+      }
+      System.out.println(slow.val);
+    options: ["3", "4", "5", "6"]
+    answer: 1
+    explanation: "Trace: (S,F) start at (1,1), then (2,3), (3,5), (4,null). fast is null, so the loop stops with slow on 4. For an even length, this loop gives the SECOND middle. 3 is the first middle; you would get it with the condition fast.next != null && fast.next.next != null."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This 'reverse' on 1 -> 2 -> 3 returns a list with only the node 1. What is the bug?"
+    code: |
+      Node prev = null, cur = head;
+      while (cur != null) {
+          cur.next = prev;
+          prev = cur;
+          cur = cur.next;
+      }
+      return prev;
+    options:
+      - "prev should start as head, not null"
+      - "cur.next is overwritten before it is saved, so cur = cur.next becomes null and the rest of the list is lost"
+      - "The loop should be while (cur.next != null)"
+      - "It should return head instead of prev"
+    answer: 1
+    explanation: "After cur.next = prev (null), the line cur = cur.next moves cur to null, so the loop ends after one round and nodes 2 and 3 are lost. Fix: save Node next = cur.next first, and finish with cur = next. Returning head would also be wrong: head is the tail after a correct reverse."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "Remove the nth node from the end with n = 2 on the list 1 -> 2 -> 3 -> 4 -> 5. What is printed (the values of the resulting list)?"
+    code: |
+      Node dummy = new Node(0);
+      dummy.next = head;
+      Node first = dummy, second = dummy;
+      for (int i = 0; i <= n; i++) first = first.next;
+      while (first != null) {
+          first = first.next;
+          second = second.next;
+      }
+      second.next = second.next.next;
+      print(dummy.next);
+    options: ["1 2 3 5", "1 2 4 5", "1 3 4 5", "1 2 3 4"]
+    answer: 0
+    explanation: "first moves 3 steps (to node 3), making a gap of 3. Both then move until first is null: second stops on node 3. second.next = node 5 skips node 4, which is 2nd from the end. \"1 2 4 5\" removes the 3rd from the end, a classic off-by-one."
+  - id: q4
+    type: MCQ
+    prompt: "What is the time and extra space complexity of Floyd's cycle detection?"
+    code: null
+    options: ["O(n) time, O(n) space", "O(n) time, O(1) space", "O(n^2) time, O(1) space", "O(log n) time, O(1) space"]
+    answer: 1
+    explanation: "Fast meets slow within a number of steps proportional to n, and only two references are stored: O(1) space. O(n) space is the HashSet-of-visited-nodes approach, which also works but uses more memory."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "Accessing the k-th element of a singly linked list takes O(1) time, just like an array."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Nodes are scattered in memory, so you must walk k steps from the head: O(k), which is O(n) in the worst case. Arrays are O(1) because elements sit side by side and the address can be calculated."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Cycle detection: fill the loop condition so the code never throws a NullPointerException."
+    code: |
+      Node slow = head, fast = head;
+      while (____) {
+          slow = slow.next;
+          fast = fast.next.next;
+          if (slow == fast) return true;
+      }
+      return false;
+    acceptedAnswers: ["fast != null && fast.next != null", "fast!=null&&fast.next!=null", "fast != null && null != fast.next"]
+    explanation: "fast.next.next needs both fast and fast.next to be non-null. Checking fast first matters: && stops early, so fast.next is never read when fast is null. Only fast.next != null crashes when fast is null."
+  - id: q7
+    type: MATCH
+    prompt: "Match each linked list problem to its main trick"
+    pairs:
+      - left: "Reverse a list"
+        right: "prev / cur / next references"
+      - left: "Find the middle in one pass"
+        right: "Slow moves 1, fast moves 2"
+      - left: "Remove the head safely"
+        right: "Dummy node before the head"
+      - left: "Merge two sorted lists"
+        right: "Dummy node plus a tail pointer"
+    explanation: "Reversing flips arrows one at a time; middle and cycle use speed difference; a dummy node removes head special cases; merging builds a new chain behind a tail pointer."
+  - id: q8
+    type: MCQ
+    prompt: "Merging two sorted linked lists of lengths n and m by re-linking existing nodes takes:"
+    code: null
+    options: ["O(n * m) time, O(1) extra space", "O(n + m) time, O(1) extra space", "O(n + m) time, O(n + m) extra space", "O((n + m) log(n + m)) time, O(1) extra space"]
+    answer: 1
+    explanation: "Each step attaches one node, so n + m steps. We only move references and create one dummy node, so O(1) extra space. O(n + m) space would be needed only if we copied every node into new nodes; the log factor would come from sorting everything again."
+explainBack:
+  prompt: "Explain to a friend how to reverse a linked list and how slow/fast pointers find the middle, using the treasure hunt cards."
+  rubric:
+    - "I explained a node as value plus a reference to the next node"
+    - "I explained why next must be saved before flipping an arrow"
+    - "I said the new head is prev after the loop"
+    - "I explained slow moving 1 step and fast moving 2 steps"
+    - "I gave the complexity O(n) time and O(1) space"
+  modelAnswer: |
+    A linked list is like a treasure hunt: each card has a prize and tells you where the next card is. To reverse it, I walk with three references: prev, cur and next. At each card I first note down where the next card is, then rewrite the current card to point back to the previous one, and then move both prev and cur one step forward. When cur becomes null, prev is the new first card. To find the middle, I send two people: slow takes one step, fast takes two. When fast reaches the end, slow is halfway. Both are O(n) time and O(1) extra space.
+flashcards:
+  - front: "Reverse linked list: the 4 steps"
+    back: "next = cur.next; cur.next = prev; prev = cur; cur = next. Return prev."
+  - front: "Slow/fast loop condition"
+    back: "while (fast != null && fast.next != null)"
+  - front: "Floyd's cycle detection complexity"
+    back: "O(n) time, O(1) space. Compare nodes with ==, not values."
+  - front: "Why use a dummy node?"
+    back: "So the head has a node before it: no special case for deleting the head or building a list. Return dummy.next."
+  - front: "Remove nth from end: gap?"
+    back: "Move first n+1 steps from dummy, then move both until first is null; second.next is the node to remove."
+keyTakeaways:
+  - "A linked list is nodes joined by next references; access by position is O(n), insert/delete at a known node is O(1)."
+  - "Reverse with prev/cur/next: always save next before flipping an arrow, and return prev."
+  - "Slow (1 step) and fast (2 steps) pointers find the middle and detect cycles in O(1) space."
+  - "A dummy node removes special cases for the head; return dummy.next."
+  - "Always test empty, one-node and two-node lists."

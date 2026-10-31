@@ -1,0 +1,266 @@
+slug: apt-percent-profit
+world: APTITUDE
+section: APT
+order: 2
+title: "Percentages, profit and loss"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI, ALL]
+infosysRelevance: "Infosys-style basics practice: percentages are used inside profit and loss, interest, data interpretation and mixtures, so speed here helps across the whole quantitative section."
+otherCompanies: "Percentages and profit/loss are standard practice topics for TCS, Wipro, Cognizant, Accenture and Capgemini style aptitude tests."
+why: |
+  Percentages are everywhere: salary hikes, discounts, exam cut-offs, GST, EMI. In aptitude tests they also hide inside other topics (profit and loss, interest, data tables).
+
+  The slow way is to calculate everything from scratch. The fast way uses three ideas:
+  1. **Fractions you know by heart** (1/8 = 12.5%).
+  2. **Multiplying factors** (a 20% increase means x 1.2).
+  3. **Successive change formula** (+20% then -10% is +8%, not +10%).
+
+  Each idea is explained with **why it works**, plus many worked examples and Java programs that check the answers.
+analogy: |
+  Think of a **mobile phone sale in a shop on Diwali**.
+
+  - The shopkeeper bought the phone for Rs 10,000 (**cost price**).
+  - The price tag says Rs 12,500 (**marked price**).
+  - He gives a 10% Diwali discount, so you pay Rs 11,250 (**selling price**).
+  - He still makes Rs 1,250 (**profit**), which is 12.5% of what he paid.
+
+  Every profit and loss question is just this story with different numbers. Always ask: **percentage of what?** Profit percent is of the **cost price**; discount percent is of the **marked price**.
+visual:
+  diagram: |
+    PROFIT & LOSS LADDER
+
+       Marked Price (MP)  Rs 12,500
+             |  discount % is ON MP
+             v
+       Selling Price (SP) Rs 11,250
+             |  profit % is ON CP
+             v
+       Cost Price (CP)    Rs 10,000
+
+    MULTIPLYING FACTORS
+    +20%  -> x 1.20        -20%  -> x 0.80
+    +5%   -> x 1.05        -12%  -> x 0.88
+
+    SUCCESSIVE CHANGE  a% then b%:
+    net % = a + b + (a x b)/100
+    +20 then -10: 20 - 10 - 2 = +8%
+  caption: "Discount is calculated on the marked price, profit on the cost price. Percentage changes multiply, which is why successive changes are not simply added."
+  visualizer: null
+explanation: |
+  ### 1. Percent means "per hundred"
+  `x% of N = x / 100 x N`. **Fractions to know by heart**:
+  | Fraction | % | Fraction | % |
+  |---|---|---|---|
+  | 1/2 | 50 | 1/8 | 12.5 |
+  | 1/3 | 33.33 | 1/9 | 11.11 |
+  | 1/4 | 25 | 1/10 | 10 |
+  | 1/5 | 20 | 1/11 | 9.09 |
+  | 1/6 | 16.67 | 1/12 | 8.33 |
+
+  **Worked**: 37.5% of 640 = 3/8 x 640 = **240** (because 37.5% = 3 x 12.5% = 3/8).
+
+  ### 2. Multiplying factors
+  Increasing by r% means multiplying by (1 + r/100); decreasing means (1 - r/100). **Why**: new = old + r% of old = old x (1 + r/100).
+  **Worked**: A town has 10,000 people and grows 10% a year. After 2 years: 10000 x 1.1 x 1.1 = **12,100**.
+
+  ### 3. Successive changes: a + b + ab/100
+  **Why**: (1 + a/100)(1 + b/100) = 1 + a/100 + b/100 + ab/10000. Turn back into percent and you get a + b + ab/100. Use minus signs for decreases.
+  - +20% then -10%: 20 - 10 + (20 x -10)/100 = **+8%**.
+  - Discounts 20% and 10%: -20 - 10 + 200/100 = **-28%**, so a single discount of 28% (not 30%).
+  - +10% then -10%: 10 - 10 - 1 = **-1%**. You end up below the start!
+
+  ### 4. "More than" vs "less than" (the base changes)
+  If A's salary is 25% more than B's, then B's is less than A's by `25/125 x 100 = 20%`. **Why**: take B = 100, A = 125. The difference 25 is compared with **A's** 125 now.
+  General rule: `r / (100 + r) x 100`.
+  **Worked (expenditure)**: Price of oil rises 25%. To keep spending the same, reduce consumption by 25/125 = **20%**.
+
+  ### 5. Profit and loss
+  - **CP** = cost price, **SP** = selling price, **MP** = marked (tag) price.
+  - Profit = SP - CP; **Profit% = Profit / CP x 100**.
+  - SP = CP x (100 + profit%) / 100; with loss, use (100 - loss%).
+  - Discount% = Discount / **MP** x 100.
+
+  **Worked**: CP Rs 850, MP Rs 1200, discount 15%. SP = 1200 x 0.85 = **1020**. Profit = 170, profit% = 170/850 x 100 = **20%**.
+
+  ### 6. Classic trap: same SP, x% profit and x% loss
+  Two phones are sold at **Rs 9,900 each**, one at 10% profit and one at 10% loss. Overall?
+  - CP1 = 9900 / 1.1 = 9000. CP2 = 9900 / 0.9 = 11000. Total CP = 20000, total SP = 19800.
+  - **Loss of Rs 200 = 1%**. Shortcut: always a loss of x^2/100 % = 100/100 = 1%. **Why**: it is the +x then -x successive-change case.
+
+  ### 7. False weights
+  A shopkeeper sells at cost price but uses a 900 g weight for 1 kg. He pays for 900 g and charges for 1000 g. Gain = 100 / **900** x 100 = **11.11%**. The base is what he actually gives (900), not 1000.
+
+  ### 8. Exam marks
+  To pass, a student needs 40%. He scores 178 and fails by 22. So the pass mark is 200 = 40% of maximum -> maximum = 200 / 0.4 = **500**.
+tinyCode:
+  code: |
+    public class PercentProfit {
+        public static void main(String[] args) {
+            double a = 20, b = -10;
+            double net = a + b + a * b / 100;
+            System.out.printf("Net change: %.2f%%%n", net);
+
+            double mp = 1200, cp = 850;
+            double sp = mp * (1 - 15 / 100.0);
+            double profitPct = (sp - cp) / cp * 100;
+            System.out.printf("SP = %.2f, profit = %.2f%%%n", sp, profitPct);
+
+            double cp1 = 9900 / 1.10, cp2 = 9900 / 0.90;
+            double totalCp = cp1 + cp2, totalSp = 2 * 9900;
+            double lossPct = (totalCp - totalSp) / totalCp * 100;
+            System.out.printf("Two phones: loss = %.2f%%%n", lossPct);
+        }
+    }
+  walkthrough: |
+    - `net = a + b + a*b/100` is the successive-change formula. With +20 and -10 it gives 8.
+    - `printf("%.2f%%%n", ...)`: `%.2f` prints 2 decimals, `%%` prints a real `%` sign, `%n` is a new line.
+    - `15 / 100.0` uses `100.0` so Java does **decimal** division. `15 / 100` would be integer division and give 0.
+    - SP = 1200 x 0.85 = 1020; profit% = 170 / 850 x 100 = 20.
+    - The two-phones part finds each cost price by **dividing** by the factor (1.10 and 0.90), then compares totals: 20000 vs 19800, a 1% loss.
+    - Output:
+    ```
+    Net change: 8.00%
+    SP = 1020.00, profit = 20.00%
+    Two phones: loss = 1.00%
+    ```
+tryIt:
+  instructions: "Type this program (no pasting). It checks the population-growth and 'more than / less than' examples. Run it and compare with the lesson."
+  code: |
+    public class GrowthAndBase {
+        public static void main(String[] args) {
+            double people = 10000;
+            for (int year = 1; year <= 2; year++) {
+                people = people * 1.10;
+            }
+            System.out.printf("After 2 years: %.0f%n", people);
+
+            double r = 25;
+            double lessBy = r / (100 + r) * 100;
+            System.out.printf("B is less than A by %.2f%%%n", lessBy);
+
+            double passMark = 178 + 22;
+            System.out.printf("Maximum marks: %.0f%n", passMark / 0.40);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            double price = 500;
+            price = price * 1.20;
+            price = price * 0.90;
+            System.out.printf("%.2f%n", price);
+            System.out.printf("%.2f%n", 10 + (-10) + 10 * (-10) / 100.0);
+        }
+    }
+  expectedOutput: |
+    540.00
+    -1.00
+  explanation: |
+    - 500 x 1.20 = 600, then 600 x 0.90 = **540.00**. That is +8% overall (20 - 10 - 2), not +10%.
+    - +10% then -10%: 10 - 10 + (-100)/100 = **-1.00**. Going up and down by the same percent always ends lower, because the decrease is taken on a bigger number.
+commonMistakes:
+  - "Adding successive percentages directly (20% + 10% discount = 30%). Use a + b + ab/100: it is 28%."
+  - "Calculating profit percent on the selling price. Profit% is always on the cost price unless the question says otherwise."
+  - "Calculating discount on the cost price. Discount is on the marked price."
+  - "Thinking +10% then -10% brings you back to the start. It ends 1% lower."
+  - "In 'A is 25% more than B', saying B is 25% less than A. The base changes: it is 20%."
+  - "In Java, writing 15 / 100 (integer division = 0) instead of 15 / 100.0."
+interviewBox:
+  why: "Why this is practised: percentage reasoning appears in aptitude tests and in real work (reports, growth numbers). Explaining the base of a percentage clearly is a good sign of careful thinking."
+  questions:
+    - q: "A price goes up 10% and then down 10%. Is it back to the original? (practice question)"
+      a: "No, it is 1% lower. Say the price is 100. After a 10% increase it is 110. Then 10% of 110 is 11, so it drops to 99. The decrease was calculated on a bigger number, so we end below 100."
+    - q: "Two successive discounts of 20% and 10%. What is the single equivalent discount? (practice question)"
+      a: "28%. On a price of 100, 20% off gives 80, then 10% off 80 is 8, giving 72. So the total discount is 28, not 30, because the second discount is on the already reduced price."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "The price of sugar rises by 25%. By what percent must a family reduce its consumption to keep its spending the same?"
+    code: null
+    options: ["25%", "20%", "15%", "33.33%"]
+    answer: 1
+    explanation: "Use r/(100 + r) x 100 = 25/125 x 100 = 20%. Check: price 100 -> 125; buying 0.8 of the old quantity costs 0.8 x 125 = 100. 25% is the tempting wrong answer because it ignores that the base changed."
+  - id: q2
+    type: MCQ
+    prompt: "Two successive discounts of 20% and 10% are equal to a single discount of:"
+    code: null
+    options: ["30%", "28%", "27%", "32%"]
+    answer: 1
+    explanation: "-20 - 10 + (20 x 10)/100 = -28, so 28%. On Rs 100: 80 after the first, 72 after the second. 30% is wrong because the second discount applies to Rs 80, not Rs 100."
+  - id: q3
+    type: MCQ
+    prompt: "An article bought for Rs 800 is sold for Rs 920. What is the profit percent?"
+    code: null
+    options: ["12%", "13.04%", "15%", "20%"]
+    answer: 2
+    explanation: "Profit = 120. Profit% = 120/800 x 100 = 15%. 13.04% is what you get by wrongly dividing by the selling price (120/920)."
+  - id: q4
+    type: MCQ
+    prompt: "A shopkeeper marks an item at Rs 1500, gives a 12% discount and still makes a 10% profit. What is the cost price?"
+    code: null
+    options: ["Rs 1188", "Rs 1200", "Rs 1320", "Rs 1350"]
+    answer: 1
+    explanation: "SP = 1500 x 0.88 = 1320. SP = CP x 1.10, so CP = 1320 / 1.10 = 1200. Rs 1188 comes from wrongly taking 10% off the SP (1320 x 0.9); Rs 1320 is the SP itself."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "If a salary increases by 10% and then decreases by 10%, it returns to the original amount."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. 100 -> 110 -> 99. The net change is 10 - 10 - 1 = -1%. The decrease is on the larger amount."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "A town of 8000 people grows by 5% every year. Fill in its population after 2 years."
+    code: |
+      8000 x 1.05 x 1.05 = ____
+    acceptedAnswers: ["8820"]
+    explanation: "8000 x 1.05 = 8400; 8400 x 1.05 = 8820. Adding 5% of 8000 twice (8800) is wrong, because the second year's growth is on 8400."
+  - id: q7
+    type: MATCH
+    prompt: "Match each fraction to its percentage"
+    pairs:
+      - left: "1/8"
+        right: "12.5%"
+      - left: "1/6"
+        right: "16.67%"
+      - left: "1/3"
+        right: "33.33%"
+      - left: "3/4"
+        right: "75%"
+    explanation: "Knowing these by heart turns many percentage questions into easy fraction questions, e.g. 12.5% of 640 = 640/8 = 80."
+  - id: q8
+    type: MCQ
+    prompt: "A dishonest shopkeeper sells at cost price but uses an 800 g weight instead of 1 kg. What is his gain percent?"
+    code: null
+    options: ["20%", "25%", "15%", "80%"]
+    answer: 1
+    explanation: "He gives 800 g but charges for 1000 g. Gain = 200 on a cost of 800 -> 200/800 x 100 = 25%. 20% comes from wrongly dividing by 1000."
+explainBack:
+  prompt: "Explain to a friend why two discounts of 20% and 10% are not the same as 30%, and how profit percent is calculated."
+  rubric:
+    - "I used an example starting from 100"
+    - "I said the second discount is on the reduced price"
+    - "I mentioned the formula a + b + ab/100"
+    - "I said profit percent is on the cost price, discount on the marked price"
+  modelAnswer: |
+    Start with a price of 100. A 20% discount makes it 80. The next 10% is on 80, not on 100, so it is only 8, and the final price is 72. So the total discount is 28%, not 30%. The quick formula is a plus b plus a times b over 100, using minus for decreases. For profit and loss, profit percent is always calculated on the cost price, what the seller paid. Discount percent is calculated on the marked price, the price on the tag.
+flashcards:
+  - front: "Successive change formula"
+    back: "net% = a + b + ab/100 (use negative numbers for decreases)."
+  - front: "A is r% more than B. B is less than A by?"
+    back: "r/(100 + r) x 100. E.g. 25% more -> 20% less."
+  - front: "Profit% base? Discount% base?"
+    back: "Profit% is on cost price (CP). Discount% is on marked price (MP)."
+  - front: "Same SP, x% profit on one, x% loss on other"
+    back: "Always an overall loss of x^2/100 percent."
+  - front: "False weight gain (gives w grams for 1000)"
+    back: "(1000 - w)/w x 100. Base is what he actually gives."
+keyTakeaways:
+  - "Learn fraction-percent pairs; they turn percentages into simple division."
+  - "An r% change is multiplying by (1 +/- r/100)."
+  - "Successive changes multiply: net = a + b + ab/100."
+  - "Always ask 'percent of what?': profit on CP, discount on MP."
+  - "Same percent up and down always ends lower."

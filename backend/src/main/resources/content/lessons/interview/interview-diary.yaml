@@ -1,0 +1,245 @@
+slug: interview-diary
+world: INTERVIEW
+section: INTERVIEW
+order: 6
+title: "Your interview diary"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+infosysRelevance: "Infosys-style practice: whichever company you face first, every interview (real or mock) teaches you something. A diary turns those lessons into better answers for your SP and DSE attempts."
+otherCompanies: "Useful for every company. Many candidates attend several interviews (TCS, Wipro, Cognizant, Accenture, Capgemini...). A diary makes each one better than the last."
+why: |
+  After an interview, most people say "it went okay" and forget the details within two days. Then in the next interview, they get a similar question and **give the same weak answer again**.
+
+  An **interview diary** stops this. It is a simple record of:
+  - the questions you faced,
+  - what you actually said,
+  - a better answer you wrote calmly afterwards.
+
+  Then you **review weak answers again and again with gaps** (spaced review), until the better answer comes out naturally.
+
+  Real interviews are expensive: you may get only a few chances. The diary makes sure **no interview is wasted**, even one that did not go well. A "failed" interview with a good diary entry is valuable practice.
+analogy: |
+  Think of a **cricket team's video analysis room**.
+
+  - After a match, the analyst replays every ball where a batter got out.
+  - They note: "Out to a short ball outside off stump. Twice this series."
+  - In the next nets session, the batter practises exactly that ball, again and again.
+  - In the next match, the bowler tries the same trick, and the batter is ready.
+
+  Your diary is the replay room. The "short ball" is the question you answered weakly. Spaced review is the nets practice.
+visual:
+  diagram: |
+    ONE DIARY ENTRY  (Colosseum -> Interview diary)
+
+    +---------------------------------------------------------+
+    | Company: Mock (Technical boss fight)  Round: Technical  |
+    | Date: 2026-10-30                                        |
+    | Question: Difference between HashMap and Hashtable?     |
+    | My answer: "Both store keys... umm... Hashtable is old" |
+    | Better answer: (written calmly, CEU + signposts)        |
+    | Tags: collections, weak                                 |
+    +---------------------------------------------------------+
+
+    SPACED REVIEW OF A WEAK ANSWER
+    Day 0     Day 1     Day 3     Day 7     Day 14
+    write --> say it --> say it --> say it --> say it --> solid!
+              aloud     aloud     aloud     aloud
+  caption: "Write each question with your real answer and a better one, then say the better answer aloud with growing gaps."
+  visualizer: null
+explanation: |
+  ### Where the diary lives
+  In Code Quest, open **Interview Colosseum -> Interview diary**. Each entry has:
+  | Field | What to write |
+  |---|---|
+  | **Company** | The company, or "Mock" for a boss fight or practice with a friend |
+  | **Round** | HR, Technical, Project, Managerial... |
+  | **Date** | The interview date |
+  | **Question** | The question in the interviewer's words, as close as you remember |
+  | **My answer** | What you **actually** said, honestly, even if it was bad |
+  | **Better answer** | A calm, improved answer written afterwards |
+  | **Tags** | Comma-separated labels, e.g. `oop, project, weak` |
+
+  You can search by company, round, question or tag with the filter box.
+
+  ### Rule 1: Write it the same day
+  Memory fades fast. Within a few hours of an interview (real or mock), spend 15 minutes:
+  1. List **every question** you remember. Even "small" ones like "Where are you from?"
+  2. Write **your real answer** for each. Honesty here is for you only; nobody else sees it.
+  3. Tag the weak ones with `weak`.
+
+  ### Rule 2: Write the better answer properly
+  A better answer is not just "I should have said more". Rebuild it with the structures from this world:
+  - HR question -> **Present-Past-Future** or **STAR**.
+  - Technical question -> **Concept-Example-Use case**.
+  - Project question -> **Problem, Architecture, My role, Challenge, Improvements**.
+
+  Keep it in **simple English**, short sentences, something you can actually say in 30-90 seconds. If you did not know the facts, **look them up** in the lessons first, then write.
+
+  > **Question**: What is the difference between HashMap and Hashtable?
+  > **My answer**: "Both store keys and values... umm... Hashtable is old."
+  > **Better answer**: "There are two main differences. First, Hashtable is synchronized, so it is thread-safe but slower; HashMap is not synchronized. Second, HashMap allows one null key and null values; Hashtable allows no nulls. So, in short, I use HashMap normally, and ConcurrentHashMap when many threads share the map."
+
+  ### Rule 3: Spaced review of weak answers
+  **Spaced review** means revising something again just before you forget it, with the gap growing each time: for example **day 1, day 3, day 7, day 14**. Each successful recall makes the memory stronger and longer-lasting. It is the same idea as the app's flashcards (1/3/7/14/30 days).
+
+  How to do it:
+  - Filter the diary by the tag `weak`.
+  - Read the **question only**. Cover the better answer.
+  - **Say your answer aloud** (or record it in the Communication Gym).
+  - Compare with the better answer. Good enough three times in a row? Remove the `weak` tag and add `solid`.
+  - For the most important ones, add a card in **Recall -> flashcards** (front: the question, back: the key points). The app then schedules the review for you automatically.
+
+  ### Rule 4: Look for patterns
+  Once you have 15-20 entries, read them together. You might notice:
+  - "I always struggle with **collections** questions" -> go back to those Java lessons.
+  - "My HR answers are always **too long**" -> practise the 90-second limit.
+  - "I panic on **coding on paper**" -> do more dry-runs.
+  Tags make this easy: count how many `weak` entries each topic tag has.
+
+  ### Honesty note
+  The diary is for **your own** learning. Never share or post real interview questions as "the exact questions of company X"; questions vary, and companies ask candidates to keep processes confidential. Use what you learn to **improve your understanding**, not to memorise a question list.
+tinyCode:
+  code: |
+    DIARY ENTRY TEMPLATE
+
+    Company:  ____________     Round: ____________
+    Date:     ____________
+    Question: ____________________________________
+
+    My answer (what I really said):
+      ____________________________________________
+
+    Better answer (structure: PPF / STAR / CEU / 5-part):
+      ____________________________________________
+
+    Tags: ____________, weak
+  walkthrough: |
+    - **Company / Round / Date** let you filter later ("show me all my Technical rounds").
+    - **Question** in the interviewer's words helps you remember the situation.
+    - **My answer** must be the honest version. You cannot fix a mistake you hide from yourself.
+    - **Better answer** names the structure you will use. Choosing the structure first makes writing easy.
+    - **Tags**: one topic tag (like `collections`) plus `weak` if it needs review. The topic tag finds patterns; `weak` drives spaced review.
+tryIt:
+  instructions: "Type this spaced-review checklist. Put a copy near your study place and follow it for every 'weak' diary entry."
+  code: |
+    SPACED REVIEW CHECKLIST (for every "weak" entry)
+
+    [ ] Day 1:  read question, cover answer, SAY it aloud
+    [ ] Day 3:  say it aloud again, compare
+    [ ] Day 7:  record it in the Communication Gym
+    [ ] Day 14: say it without looking, under 90 seconds
+
+    Good 3 times in a row?  -> change tag "weak" to "solid"
+    Very important?         -> add it as a flashcard in Recall
+predict:
+  code: |
+    Priya's diary entry:
+
+    Company:  Mock (HR boss fight)    Round: HR
+    Date:     2026-10-28
+    Question: Why do you want to switch to IT?
+    Better answer: My current job taught me accuracy. I got
+      curious about automating repetitive work, so I learned
+      Java and built a project. Now I want a developer career.
+    Tags: career-switch, weak
+
+    Which field from the template is missing? Type its name
+    exactly as in the template.
+  expectedOutput: |
+    My answer
+  explanation: |
+    Priya wrote the company, round, date, question, better answer and tags, but not **what she actually said**. Without "My answer", she cannot compare her real habits with the better version or notice patterns like "I always start with my school details". Always record the honest original.
+commonMistakes:
+  - "Waiting days to write the entry. Write it the same day, while you remember."
+  - "Writing a 'nicer' version of what you said in 'My answer'. Record the honest version."
+  - "Writing a better answer that is too long to speak. Keep it 30-90 seconds of simple English."
+  - "Writing entries but never reviewing them. Use day 1, 3, 7, 14 spaced review on weak ones."
+  - "Treating the diary as a list of 'exact company questions' to memorise or share. Use it to build understanding."
+interviewBox:
+  why: "Why this matters: interviewers often ask similar core questions in different words. A diary with reviewed better answers means you improve with every interview instead of repeating mistakes."
+  questions:
+    - q: "Have you attended interviews before? What did you learn? (practice question)"
+      a: "Yes, I have attended a few, and I do practice interviews regularly. After each one, I write down the questions and how I answered. For example, I noticed my answers were too long, so now I use a clear structure and keep them short. Each interview has made me better."
+    - q: "How do you learn from your mistakes? (practice question)"
+      a: "I write them down honestly and then fix them on purpose. For interviews, I keep a diary: the question, what I said, and a better answer. Then I practise the better answer a few times over the next two weeks until it becomes natural."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "When should you write your diary entry after an interview?"
+    code: null
+    options: ["The same day", "After a week, when you are calm", "Only if you got the job", "Only if the interview went badly"]
+    answer: 0
+    explanation: "Memory fades within hours. Same-day entries capture the real questions and your real answers. Waiting a week loses details; good and bad interviews both teach you something."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "In the 'My answer' field, you should write a polished version of what you said."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Write what you really said. The improved version goes in 'Better answer'. Comparing the two is how you see your habits."
+  - id: q3
+    type: MATCH
+    prompt: "Match the question type to the structure for the better answer"
+    pairs:
+      - left: "Tell me about yourself"
+        right: "Present-Past-Future"
+      - left: "What is a HashMap?"
+        right: "Concept-Example-Use case"
+      - left: "Tell me about a time you faced a problem"
+        right: "STAR"
+      - left: "Explain your project"
+        right: "Problem, Architecture, My role, Challenge, Improvements"
+    explanation: "Each question type has a structure from this world. Picking the structure first makes the better answer quick to write and easy to say."
+  - id: q4
+    type: MCQ
+    prompt: "Which review schedule is an example of spaced review?"
+    code: null
+    options: ["10 times on day 1, then never", "Day 1, day 3, day 7, day 14", "Every day forever", "Only the night before the next interview"]
+    answer: 1
+    explanation: "Spaced review uses growing gaps, revising just before you would forget. Cramming many times on one day fades fast; every day forever wastes time; the night before is too late."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the tag that marks an answer needing spaced review."
+    code: |
+      Tags: collections, ____
+    acceptedAnswers: ["weak"]
+    explanation: "The 'weak' tag lets you filter the diary for entries to review. Change it to 'solid' after three good recalls in a row."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "It is a good idea to post your real interview questions online as 'the exact questions of company X'."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Questions vary and companies ask candidates to keep processes confidential. Use your diary privately to build understanding, not to create question lists."
+  - id: q7
+    type: MCQ
+    prompt: "After 20 entries, you see 'weak' on 7 collections questions. What should you do?"
+    code: null
+    options: ["Ignore it; it is random", "Go back to the collections lessons and practise those concepts", "Stop doing interviews", "Delete those entries"]
+    answer: 1
+    explanation: "A pattern of weak tags points to a topic gap. Re-learning that topic fixes many future answers at once. Deleting or ignoring the pattern hides the problem."
+explainBack:
+  prompt: "Explain to a friend how an interview diary works and why it helps."
+  rubric:
+    - "I named the fields: question, my answer, better answer, tags"
+    - "I said to write it the same day, honestly"
+    - "I explained spaced review with growing gaps"
+    - "I mentioned looking for patterns with tags"
+  modelAnswer: |
+    After every interview, real or practice, I write a diary entry the same day. For each question, I write what I really said, and then a better answer using a structure, like Concept-Example-Use case for technical questions. I tag weak answers. Then I review them with growing gaps: day one, day three, day seven, day fourteen. I cover the answer and say it aloud. When it's good three times, I mark it solid. After many entries, I look at the tags to find my weak topics and study them again. That way, no interview is wasted.
+flashcards:
+  - front: "Diary entry fields"
+    back: "Company, round, date, question, my answer (honest), better answer, tags."
+  - front: "Spaced review schedule for weak answers"
+    back: "Day 1, 3, 7, 14: cover the answer, say it aloud, compare. 3 good in a row -> 'solid'."
+  - front: "Why record your real answer?"
+    back: "To compare with the better answer and see your habits; you cannot fix what you hide."
+  - front: "What do tags help you find?"
+    back: "Patterns: topics where many answers are weak, so you can re-learn them."
+keyTakeaways:
+  - "Write every interview (real or mock) in the diary the same day."
+  - "Record your honest answer, then a better one using PPF, STAR, CEU or the 5-part project structure."
+  - "Review weak answers aloud with growing gaps: day 1, 3, 7, 14."
+  - "Use tags to find weak topics and re-learn them."
+  - "Keep the diary private; use it to understand, not to collect 'exact' questions."

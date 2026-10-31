@@ -1,0 +1,384 @@
+slug: intro-dynamic-programming
+world: DSA
+section: DSA
+order: 14
+title: "Introduction to dynamic programming"
+version: 1
+estimatedMinutes: 50
+rebuild: false
+patternCode: DP
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Important for SP preparation: the harder coding problems in SP-level practice sets are very often dynamic programming (stairs/paths counting, robber-style choices, knapsack, subsequences)."
+otherCompanies: "Product-company interviews treat DP as a core topic (coin change, LIS, knapsack, edit distance, grid paths). Service-company rounds mostly stop at Fibonacci-style and simple counting DP."
+why: |
+  Some problems ask for the **best** (max/min) or the **number of ways** across a huge number of choices: "how many ways to climb n stairs", "maximum money without robbing two neighbouring houses", "fewest coins for an amount". Trying every combination with plain recursion is **exponential**: O(2^n) can mean years of computing for n = 60.
+
+  **Dynamic programming (DP)** fixes this with one idea: **solve each small subproblem once, write the answer down, and reuse it**. That often turns O(2^n) into **O(n)** or O(n x W).
+
+  DP has a scary reputation, but it follows a **fixed recipe**: define the state, write the recurrence (the choice at each step), set base cases, choose an order. This lesson gives you that recipe and five classic problems to practise it on. In the previous lesson you saw greedy fail for coin change; here you'll see DP get it right.
+analogy: |
+  Imagine your maths teacher asks: "What is 1+1+1+1+1+1+1+1?" You count: **8**. Then she writes "+1" at the end and asks again. You don't recount from the start, you say **9** immediately, because you **remembered** the previous answer.
+
+  That is DP: **remember answers to smaller questions so bigger questions become one quick step**.
+
+  - **Memoization** (top-down) is like a student who solves a question only when it's asked, and writes each answer in a notebook to look up later.
+  - **Tabulation** (bottom-up) is like a student who fills the whole multiplication table from 1x1 upwards before the exam, so every lookup is ready.
+visual:
+  diagram: |
+    PLAIN RECURSION fib(5): the same work is repeated
+                     fib(5)
+                   /        \
+              fib(4)         fib(3)      <- fib(3) computed twice
+             /     \         /    \
+         fib(3)  fib(2)   fib(2) fib(1)  <- fib(2) three times
+         /   \
+     fib(2) fib(1)        15 calls in total; grows like 2^n
+
+    TABULATION: fill each cell once, left to right
+    i    :  0   1   2   3   4   5   6
+    dp[i]:  1   1   2   3   5   8  13     dp[i] = dp[i-1] + dp[i-2]
+                    ^---^---^ each cell uses the two before it
+    (climbing stairs: dp[i] = ways to reach step i taking 1 or 2)
+  caption: "Plain recursion recomputes the same subproblems again and again. DP stores each answer once (memo or table), so every subproblem costs O(1) after the first time."
+  visualizer: recursion
+explanation: |
+  ### When is a problem DP?
+  Two signs (you'll see these words in textbooks):
+  1. **Overlapping subproblems**: the same smaller question is asked many times (fib(3) above).
+  2. **Optimal substructure**: the best answer for the big problem is built from best answers of smaller problems.
+
+  Question words that hint at DP: **"number of ways"**, **"minimum / maximum"**, **"can you reach / make"**, **"longest / shortest subsequence"**, together with **choices** at each step (take or skip, 1 step or 2 steps, which coin).
+
+  ### The 4-step recipe
+  1. **State**: what does `dp[i]` (or `dp[i][j]`) mean, in one plain sentence? *"dp[i] = number of ways to reach step i."* This is the most important step.
+  2. **Recurrence (transition)**: how is `dp[i]` built from smaller states? Think about the **last choice**. *"The last move was 1 step (from i-1) or 2 steps (from i-2): dp[i] = dp[i-1] + dp[i-2]."*
+  3. **Base cases**: the smallest states you know directly. *"dp[0] = 1 (one way: do nothing), dp[1] = 1."*
+  4. **Order and answer**: fill in an order where needed states are ready; the answer is usually `dp[n]`.
+
+  ### Memoization vs tabulation
+  | | Memoization (top-down) | Tabulation (bottom-up) |
+  |---|---|---|
+  | Style | recursion + cache (array/HashMap) | loops filling a table |
+  | Computes | only states actually needed | every state in the table |
+  | Risk | deep recursion: StackOverflowError for big n | none from recursion |
+  | Ease | very close to the recurrence | needs a correct fill order |
+  | Space trick | hard | often reduce to a few variables |
+
+  ```java
+  // memoization
+  long fibMemo(int n) {
+      if (n <= 1) return n;
+      if (memo[n] != 0) return memo[n];
+      return memo[n] = fibMemo(n - 1) + fibMemo(n - 2);
+  }
+  // tabulation
+  long[] dp = new long[n + 1];
+  dp[1] = 1;
+  for (int i = 2; i <= n; i++) dp[i] = dp[i - 1] + dp[i - 2];
+  ```
+  Plain recursion fib is **O(2^n)**; both DP versions are **O(n)**.
+
+  ### Problem 1: climbing stairs
+  You can climb 1 or 2 steps at a time. How many ways to reach step n?
+  - State: `dp[i]` = ways to reach step i.
+  - Recurrence: `dp[i] = dp[i-1] + dp[i-2]`. Base: `dp[0] = dp[1] = 1`.
+  - It's Fibonacci in disguise. O(n) time; O(1) space if you keep only two variables.
+
+  ### Problem 2: house robber
+  Houses in a row hold money; you can't rob two **adjacent** houses. Maximum money?
+  - State: `dp[i]` = best money from the first i houses.
+  - Choice at house i: **skip** it (`dp[i-1]`) or **rob** it (`dp[i-2] + money[i]`).
+  - Recurrence: `dp[i] = max(dp[i-1], dp[i-2] + money[i])`.
+  ```java
+  int prev2 = 0, prev1 = 0;
+  for (int m : money) {
+      int cur = Math.max(prev1, prev2 + m);
+      prev2 = prev1;
+      prev1 = cur;
+  }
+  return prev1;
+  ```
+  Greedy ("rob the richest house first") fails here; DP tries both choices at every house.
+
+  ### Problem 3: coin change (fewest coins, any coin set)
+  - State: `dp[a]` = fewest coins to make amount a.
+  - Recurrence: for each coin c <= a, `dp[a] = min(dp[a], dp[a - c] + 1)` (the last coin was c).
+  - Base: `dp[0] = 0`; unreachable amounts stay "infinity".
+  - For coins {4, 3, 1} and amount 6, DP correctly gives **2** (3 + 3), where greedy gave 3. Time O(amount x coins).
+
+  ### Problem 4: 0/1 knapsack (intro)
+  n items, each with a weight and a value; a bag with capacity W. Each item is taken **whole or not at all**. Maximise value.
+  - State: `dp[i][w]` = best value using the **first i items** with capacity **w**.
+  - Choice for item i: skip it (`dp[i-1][w]`) or take it if it fits (`dp[i-1][w - weight] + value`).
+  - Time and space O(n x W). The table can be squeezed to one row of size W+1 if you loop **w from high to low** (so each item is used at most once).
+
+  ### Problem 5: Longest Increasing Subsequence (intro)
+  A **subsequence** keeps the original order but may skip elements. For `[10, 9, 2, 5, 3, 7, 101, 18]` one LIS is `2, 3, 7, 18` (length 4).
+  - State: `dp[i]` = length of the longest increasing subsequence **ending at index i**.
+  - Recurrence: `dp[i] = 1 + max(dp[j])` over all `j < i` with `a[j] < a[i]` (or 1 if none).
+  - Answer: the **maximum** of all `dp[i]` (not `dp[n-1]`!). Time O(n^2). (An O(n log n) version uses binary search; learn it later.)
+
+  ### How to define the state (practical tips)
+  - Ask: "If someone gave me the answers for all smaller inputs, what one extra decision would finish the job?" That decision becomes the recurrence.
+  - Typical shapes: `dp[i]` = answer for the first i items / ending at i; `dp[i][j]` = answer for a sub-array i..j, or two strings' prefixes, or items with capacity j.
+  - If the recurrence needs extra information (like "was the previous house robbed?"), add it to the state.
+  - Check the state meaning against a tiny example by hand before coding.
+
+  ### Complexity summary
+  | Problem | Time | Space (simple / optimised) |
+  |---|---|---|
+  | Fibonacci / climbing stairs | O(n) | O(n) / O(1) |
+  | House robber | O(n) | O(n) / O(1) |
+  | Coin change (min coins) | O(amount x k) | O(amount) |
+  | 0/1 knapsack | O(n x W) | O(n x W) / O(W) |
+  | LIS (simple DP) | O(n^2) | O(n) |
+  Rule of thumb: **time = number of states x work per state**.
+tinyCode:
+  code: |
+    import java.util.Arrays;
+
+    public class DpBasics {
+        static long[] memo = new long[91];
+
+        // top-down: recursion + memo
+        static long fibMemo(int n) {
+            if (n <= 1) return n;
+            if (memo[n] != 0) return memo[n];          // already solved
+            return memo[n] = fibMemo(n - 1) + fibMemo(n - 2);
+        }
+
+        // bottom-up: fill a table from small to big
+        static long fibTab(int n) {
+            if (n <= 1) return n;
+            long[] dp = new long[n + 1];
+            dp[1] = 1;
+            for (int i = 2; i <= n; i++) dp[i] = dp[i - 1] + dp[i - 2];
+            return dp[n];
+        }
+
+        // house robber: no two adjacent houses
+        static int rob(int[] money) {
+            int prev2 = 0, prev1 = 0;                  // best up to i-2, i-1
+            for (int m : money) {
+                int cur = Math.max(prev1, prev2 + m);  // skip this house, or rob it
+                prev2 = prev1;
+                prev1 = cur;
+            }
+            return prev1;
+        }
+
+        // fewest coins for amount (works for ANY coins)
+        static int coinChange(int[] coins, int amount) {
+            int[] dp = new int[amount + 1];
+            Arrays.fill(dp, Integer.MAX_VALUE);
+            dp[0] = 0;
+            for (int a = 1; a <= amount; a++) {
+                for (int c : coins) {
+                    if (c <= a && dp[a - c] != Integer.MAX_VALUE) {
+                        dp[a] = Math.min(dp[a], dp[a - c] + 1);
+                    }
+                }
+            }
+            return dp[amount] == Integer.MAX_VALUE ? -1 : dp[amount];
+        }
+
+        public static void main(String[] args) {
+            System.out.println(fibMemo(50) + " " + fibTab(50));
+            System.out.println(rob(new int[]{2, 7, 9, 3, 1}));
+            System.out.println(coinChange(new int[]{4, 3, 1}, 6) + " " + coinChange(new int[]{2}, 3));
+        }
+    }
+  walkthrough: |
+    - **fibMemo**: before recursing, it checks the notebook `memo[n]`. Each value from 2 to 50 is computed once, so fib(50) is instant. Plain recursion would make billions of calls. We use `long` because fib(50) = 12,586,269,025 does not fit in an `int`.
+    - **fibTab** fills `dp` from left to right; same answer, no recursion.
+    - **rob** on `[2, 7, 9, 3, 1]`: the best plan robs houses with 2, 9 and 1 = **12**. `prev1` is "best so far", `prev2` is "best up to the house before"; each step chooses skip (`prev1`) or rob (`prev2 + m`).
+    - **coinChange**: for coins {4, 3, 1} and 6, `dp[6] = dp[3] + 1 = 2` (3 + 3), beating greedy's 3 coins. For coins {2} and amount 3, no combination works, so it returns -1. The `!= Integer.MAX_VALUE` check stops `MAX_VALUE + 1` from overflowing to a negative number.
+
+    Output:
+    ```
+    12586269025 12586269025
+    12
+    2 -1
+    ```
+tryIt:
+  instructions: "Type this 0/1 knapsack table. Before running, guess which items give the best value for capacity 7. Then print dp[n] (the last row) with Arrays.toString to see the best value for every capacity."
+  code: |
+    public class Knapsack {
+        public static void main(String[] args) {
+            int[] weight = {1, 3, 4, 5};
+            int[] value  = {1, 4, 5, 7};
+            int W = 7, n = weight.length;
+
+            // dp[i][w] = best value using first i items with capacity w
+            int[][] dp = new int[n + 1][W + 1];
+            for (int i = 1; i <= n; i++) {
+                for (int w = 0; w <= W; w++) {
+                    dp[i][w] = dp[i - 1][w];                         // skip item i
+                    if (weight[i - 1] <= w) {                        // or take it
+                        dp[i][w] = Math.max(dp[i][w],
+                                dp[i - 1][w - weight[i - 1]] + value[i - 1]);
+                    }
+                }
+            }
+            System.out.println("best value = " + dp[n][W]);
+        }
+    }
+predict:
+  code: |
+    import java.util.Arrays;
+
+    public class Predict {
+        public static void main(String[] args) {
+            int n = 6;
+            int[] dp = new int[n + 1];
+            dp[0] = 1;
+            dp[1] = 1;
+            for (int i = 2; i <= n; i++) {
+                dp[i] = dp[i - 1] + dp[i - 2];
+            }
+            System.out.println(Arrays.toString(dp));
+        }
+    }
+  expectedOutput: |
+    [1, 1, 2, 3, 5, 8, 13]
+  explanation: |
+    This is climbing stairs: `dp[i]` = number of ways to reach step i using 1-step or 2-step moves. Each cell is the sum of the two before it: 1+1=2, 1+2=3, 2+3=5, 3+5=8, 5+8=13. So there are 13 ways to climb 6 stairs. The array has n + 1 = 7 cells because index 0 is "standing at the bottom".
+commonMistakes:
+  - "Starting to code before writing the state in one plain sentence; most DP bugs are a fuzzy state."
+  - "Wrong or missing base cases (e.g. dp[0] = 0 instead of 1 for counting ways)."
+  - "Filling the table in an order where dp[i] needs a value not computed yet."
+  - "For LIS, returning dp[n-1] instead of the maximum of all dp[i]."
+  - "In 1D 0/1 knapsack, looping capacity from low to high, which lets the same item be used many times."
+  - "Using int for fast-growing counts (Fibonacci, number of ways) and overflowing; use long or the modulo the problem gives."
+interviewBox:
+  why: "Why interviewers ask this: DP shows whether you can break a problem into subproblems, define a clear state and turn exponential brute force into polynomial time."
+  questions:
+    - q: "What is dynamic programming?"
+      a: "Dynamic programming is a way to solve problems that have overlapping subproblems and optimal substructure. Instead of solving the same small problem again and again like plain recursion, I solve each subproblem once and store the answer, either in a memo with recursion, which is top-down, or in a table with loops, which is bottom-up. For example, Fibonacci goes from O(2 to the n) to O(n)."
+    - q: "What is the difference between memoization and tabulation?"
+      a: "Memoization is top-down: I write the recursive solution and cache each result the first time I compute it. It only computes the states it needs, but deep recursion can overflow the stack. Tabulation is bottom-up: I fill a table from the base cases upward with loops. It has no recursion overhead and often lets me reduce space to a few variables."
+    - q: "How do you solve the house robber problem?"
+      a: "Let dp of i be the most money from the first i houses. At each house I have two choices: skip it, which gives dp of i minus 1, or rob it, which gives dp of i minus 2 plus its money, because I can't rob the neighbour. I take the maximum. Since I only need the last two values, it's O(n) time and O(1) space."
+    - q: "How do you decide the DP state for a new problem?"
+      a: "I ask what smaller answers would let me finish the problem with one more decision. Usually it's something like the answer for the first i items, or the answer ending at index i, or with capacity j. I write the meaning in one sentence, then write the recurrence based on the last choice, then the base cases, and I check it on a tiny example by hand."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "House robber on money = {5, 1, 1, 5}. What is printed?"
+    code: |
+      int prev2 = 0, prev1 = 0;
+      for (int m : money) {
+          int cur = Math.max(prev1, prev2 + m);
+          prev2 = prev1;
+          prev1 = cur;
+      }
+      System.out.println(prev1);
+    options: ["10", "6", "7", "12"]
+    answer: 0
+    explanation: "Steps: 5 -> best 5; 1 -> max(5, 0+1) = 5; 1 -> max(5, 5+1) = 6; 5 -> max(6, 5+5) = 10. Rob the first and last houses. 6 is the 'alternate houses' guess (5 + 1); 12 robs neighbours, which is not allowed."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "O(n^2) LIS where dp[i] = length of the longest increasing subsequence ending at i. What is printed?"
+    code: |
+      int[] a = {10, 9, 2, 5, 3, 7, 101, 18};
+      int[] dp = new int[a.length];
+      int best = 0;
+      for (int i = 0; i < a.length; i++) {
+          dp[i] = 1;
+          for (int j = 0; j < i; j++) {
+              if (a[j] < a[i]) dp[i] = Math.max(dp[i], dp[j] + 1);
+          }
+          best = Math.max(best, dp[i]);
+      }
+      System.out.println(best + " " + Arrays.toString(dp));
+    options: ["4 [1, 1, 1, 2, 2, 3, 4, 4]", "4 [1, 2, 3, 4, 5, 6, 7, 8]", "3 [1, 1, 1, 2, 2, 3, 4, 4]", "5 [1, 1, 1, 2, 2, 3, 4, 5]"]
+    answer: 0
+    explanation: "10, 9, 2 each start fresh (1). 5 extends 2 (2). 3 extends 2 (2). 7 extends 5 or 3 (3). 101 extends 7 (4). 18 also extends 7 (4), not 101. The best is 4, e.g. 2, 5, 7, 101. 18 can't be 5 because 18 < 101."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "1D 0/1 knapsack with one item (weight 2, value 3) and capacity 6. It prints 9, but the item can be taken only once (answer 3). What is wrong?"
+    code: |
+      int[] k = new int[W + 1];
+      for (int i = 0; i < wt.length; i++)
+          for (int w = wt[i]; w <= W; w++)
+              k[w] = Math.max(k[w], k[w - wt[i]] + val[i]);
+      System.out.println(k[W]);
+    options:
+      - "k should be size W instead of W + 1"
+      - "The capacity loop runs low to high, so k[w - wt[i]] may already include this same item; loop w from W down to wt[i]"
+      - "Math.max should be Math.min"
+      - "The outer and inner loops must be swapped"
+    answer: 1
+    explanation: "Going upward, k[2] = 3, then k[4] = k[2] + 3 = 6 reuses the item, and k[6] = 9 uses it three times. That's the unbounded knapsack. Looping w downward reads only values from before this item was considered, so each item is used at most once and k[6] = 3."
+  - id: q4
+    type: MCQ
+    prompt: "What is the time complexity of the plain recursive fib(n) (no memo), and with memoization?"
+    code: null
+    options: ["O(n) and O(n)", "O(2^n) and O(n)", "O(n^2) and O(n)", "O(2^n) and O(log n)"]
+    answer: 1
+    explanation: "Without memo, each call spawns two more, so calls grow roughly like 2^n (fib(5) already makes 15 calls). With memo each n from 0 to n is computed once: O(n). O(log n) is possible only with matrix exponentiation, not plain memoization."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "Memoization (top-down) and tabulation (bottom-up) usually have the same time complexity for a problem."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Both solve each state once, so time = number of states x work per state. They differ in practical details: recursion overhead and stack depth for memo, and the ability to compress space for tabulation."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Climbing stairs (1 or 2 steps at a time): fill the recurrence."
+    code: |
+      dp[0] = 1; dp[1] = 1;
+      for (int i = 2; i <= n; i++) {
+          dp[i] = ____;
+      }
+    acceptedAnswers: ["dp[i - 1] + dp[i - 2]", "dp[i-1]+dp[i-2]", "dp[i - 2] + dp[i - 1]", "dp[i-2]+dp[i-1]"]
+    explanation: "The last move into step i was either 1 step (from i-1) or 2 steps (from i-2). The ways add up because those are different paths. Using max instead of + would answer a different question."
+  - id: q7
+    type: MATCH
+    prompt: "Match each problem to its DP state"
+    pairs:
+      - left: "Climbing stairs"
+        right: "dp[i] = ways to reach step i"
+      - left: "House robber"
+        right: "dp[i] = max money from the first i houses"
+      - left: "Coin change (min coins)"
+        right: "dp[a] = fewest coins to make amount a"
+      - left: "Longest increasing subsequence"
+        right: "dp[i] = LIS length ending exactly at index i"
+    explanation: "A clear one-line state is the heart of every DP. Note LIS uses 'ending at i', which is why its answer is the max over all i."
+  - id: q8
+    type: MCQ
+    prompt: "For 0/1 knapsack with n items and capacity W, what is the time complexity of the table solution?"
+    code: null
+    options: ["O(n + W)", "O(n x W)", "O(2^n)", "O(n log n)"]
+    answer: 1
+    explanation: "There are (n+1) x (W+1) states and each is filled in O(1). O(2^n) is brute force over all subsets; O(n log n) would be the greedy ratio sort, which is wrong for 0/1 knapsack."
+explainBack:
+  prompt: "Explain dynamic programming to a friend using the '1+1+1...+1' example, then explain how you'd solve climbing stairs."
+  rubric:
+    - "I explained DP as remembering answers to subproblems instead of recomputing them"
+    - "I named overlapping subproblems and optimal substructure in simple words"
+    - "I described memoization vs tabulation"
+    - "I defined the state and recurrence for climbing stairs"
+    - "I compared exponential recursion with O(n) DP"
+  modelAnswer: |
+    Dynamic programming means: remember the answers to small questions so you never solve them twice. If you know 1+1+...+1 eight times is 8, then adding one more is just 9, no recounting. It works when the same subproblems repeat and the big answer is built from small answers. You can do it top-down, recursion with a notebook called memoization, or bottom-up, filling a table with loops. For climbing stairs with 1 or 2 steps, dp of i is the number of ways to reach step i. The last move came from i minus 1 or i minus 2, so dp of i equals dp of i minus 1 plus dp of i minus 2, with dp of 0 and dp of 1 equal to 1. That's O(n) instead of exponential.
+flashcards:
+  - front: "Two signs a problem needs DP"
+    back: "Overlapping subproblems + optimal substructure (often 'number of ways' or 'min/max' with choices)."
+  - front: "DP recipe"
+    back: "1) State in one sentence 2) Recurrence from the last choice 3) Base cases 4) Fill order + answer."
+  - front: "House robber recurrence"
+    back: "dp[i] = max(dp[i-1], dp[i-2] + money[i])"
+  - front: "Coin change (min coins) recurrence"
+    back: "dp[a] = min over coins c <= a of dp[a - c] + 1; dp[0] = 0."
+  - front: "0/1 knapsack 1D loop direction"
+    back: "Capacity from HIGH to LOW, so each item is used at most once."
+  - front: "LIS O(n^2) answer"
+    back: "max of dp[i], where dp[i] = LIS ending at i."
+keyTakeaways:
+  - "DP = solve each subproblem once and store it; it turns exponential recursion into polynomial time."
+  - "Memoization is top-down recursion with a cache; tabulation is bottom-up loops."
+  - "Always write the state in one sentence, then the recurrence from the last choice, then base cases."
+  - "Classics: stairs (sum of two before), robber (skip or rob), coin change (min over coins), knapsack (skip or take), LIS (ending at i)."
+  - "Time = number of states x work per state."

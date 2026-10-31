@@ -1,0 +1,290 @@
+slug: apt-logical-2
+world: APTITUDE
+section: APT
+order: 7
+title: "Logical reasoning: arrangements, syllogisms and puzzles"
+version: 1
+estimatedMinutes: 45
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI, ALL]
+infosysRelevance: "Infosys-style basics practice: seating arrangements, syllogisms and grid puzzles train careful, rule-by-rule reasoning, which is also how you handle constraints in coding problems."
+otherCompanies: "Arrangements, syllogisms and puzzles are common practice topics in reasoning sections for TCS, Wipro, Cognizant, Accenture and Capgemini style tests."
+why: |
+  These questions give you many small clues and ask you to build the full picture. People lose time because they **read clues in the given order** and try to keep everything in their head.
+
+  The winning method is the same for all three types:
+  1. **Draw** (a row, a circle, a Venn diagram, or a grid).
+  2. **Place the fixed clues first** ("R sits in the middle"), then the relative ones ("T is to the left of R"), then the negative ones ("S is not next to R").
+  3. **Check every clue** at the end.
+
+  This is also how a computer solves puzzles: try possibilities and reject those that break a rule. You will write a small Java **brute-force** solver, which is great practice for backtracking in DSA.
+analogy: |
+  Think of **arranging guests at a wedding dinner table**.
+
+  - Some instructions are fixed: "Grandmother sits at the head of the table." Place her first.
+  - Some are relative: "Her son sits on her right."
+  - Some are negative: "The two uncles who fought last Diwali must not sit together." Use these last, to choose between the remaining options.
+
+  If you start with "the uncles must not sit together", you have too many possibilities. Start with the fixed seat, and the rest falls into place.
+visual:
+  diagram: |
+    LINEAR ROW (facing north: your left = left of page)
+     1    2    3    4    5
+    [P]  [T]  [R]  [Q]  [S]
+    left end      middle      right end
+
+    CIRCLE (facing the centre): left = clockwise
+
+    SYLLOGISM VENN DIAGRAMS
+    All A are B        Some A are B        No A is B
+    ( B   (A)   )      (A   (A+B)   B)     (A)     (B)
+     A inside B         circles overlap     separate
+
+    GRID PUZZLE
+             tea  coffee  juice | Delhi Pune Chennai
+    Amit      x     OK      x   |   x    OK    x
+    Bina      x     x       OK  |   x    x     OK
+    Chetan    OK    x       x   |   OK   x     x
+  caption: "Draw first: a numbered row, a circle, Venn circles or a grid. Place fixed clues first, then relative clues, then negative clues."
+  visualizer: null
+explanation: |
+  ### Part 1: Linear arrangements
+  People sit in a row. Number the seats 1 to n from the **left**.
+  - "Facing north" means their left is your left (left of the page). "Facing south" flips it: their left is the right of the page.
+  - "Immediate left" = the very next seat; "to the left" = anywhere on that side.
+  - Middle of 5 seats = seat 3. Extreme ends = seats 1 and n.
+
+  **Worked**: Five friends P, Q, R, S, T sit in a row facing north.
+  1. R sits in the middle. -> R = 3 (fixed)
+  2. P sits at the extreme left. -> P = 1 (fixed)
+  3. T sits immediately to the left of R. -> T = 2 (relative)
+  4. S is not next to R. -> Q and S fill seats 4 and 5; seat 4 is next to R, so S = 5, Q = 4 (negative clue decides).
+  Final row: **P T R Q S**. Extreme right: **S**. Between R and S: **Q**.
+
+  ### Part 2: Circular arrangements
+  - When people **face the centre**, their **left is clockwise** and their right is anticlockwise. (Stand at 6 o'clock facing the centre: your left hand points towards 9 o'clock, which is clockwise.)
+  - When they face **outward**, it flips.
+  - Fix one person anywhere first; in a circle only relative positions matter.
+
+  ### Part 3: Syllogisms
+  A **syllogism** gives statements (assume they are true, even if they sound silly) and asks which conclusions **must** follow. Draw Venn circles.
+  | Statement | Picture |
+  |---|---|
+  | All A are B | A circle inside B |
+  | Some A are B | A and B overlap |
+  | No A is B | A and B separate |
+  | Some A are not B | part of A outside B |
+
+  **Quick rules** (for two statements joined by a common middle term):
+  - All + All -> **All**. All cats are animals; all animals are living -> all cats are living.
+  - All + No -> **No**. All roses are flowers; no flower is a tree -> no rose is a tree.
+  - Some + All -> **Some**. Some boys are students; all students are smart -> some boys are smart.
+  - Some + Some -> **no definite conclusion**. Some pens are books; some books are bags -> we cannot say some pens are bags (the pens part may not touch the bags part).
+  - "All A are B" also gives "**Some B are A**" (the A part of B).
+
+  **Why draw?** A conclusion follows only if it is true in **every** possible drawing. If you can draw one picture where it fails, it does not follow.
+
+  ### Part 4: Grid puzzles
+  When each person has several attributes (drink, city, colour...), make a **grid**: people as rows, options as columns. Mark OK and x.
+  **Worked**: Amit, Bina and Chetan each like one drink (tea, coffee, juice) and live in one city (Delhi, Pune, Chennai).
+  1. Chetan likes tea. -> Chetan = tea.
+  2. Bina is from Chennai. -> Bina = Chennai.
+  3. Amit is not from Delhi. -> Amit = Pune (Chennai is taken), so Chetan = Delhi.
+  4. The person from Pune likes coffee. -> Amit = coffee.
+  5. Amit does not like tea. (Check: true.)
+  So Bina = **juice**. Every row and column has exactly one OK.
+
+  ### Exam tips
+  - Read all clues once, then start with the **fixed** ones.
+  - If two cases are possible, draw **both** and continue; a later clue usually kills one.
+  - Always re-check all clues on your final answer.
+tinyCode:
+  code: |
+    public class RowSolver {
+        static String[] names = {"P", "Q", "R", "S", "T"};
+
+        static boolean valid(String[] row) {
+            int r = -1, t = -1, s = -1;
+            for (int i = 0; i < 5; i++) {
+                if (row[i].equals("R")) r = i;
+                if (row[i].equals("T")) t = i;
+                if (row[i].equals("S")) s = i;
+            }
+            return r == 2 && row[0].equals("P") && t == r - 1 && Math.abs(s - r) != 1;
+        }
+
+        static void place(String[] row, boolean[] used, int seat) {
+            if (seat == 5) {
+                if (valid(row)) System.out.println(String.join(" ", row));
+                return;
+            }
+            for (int i = 0; i < 5; i++) {
+                if (!used[i]) {
+                    used[i] = true;
+                    row[seat] = names[i];
+                    place(row, used, seat + 1);
+                    used[i] = false;
+                }
+            }
+        }
+
+        public static void main(String[] args) {
+            place(new String[5], new boolean[5], 0);
+        }
+    }
+  walkthrough: |
+    - This program **brute-forces** the seating puzzle: it tries every order of the 5 friends (5! = 120 orders) and prints only the ones that satisfy all clues.
+    - `place` is **backtracking**: fill seat 0, then seat 1, and so on. `used[]` stops a person from sitting twice. After trying a person, `used[i] = false` frees them for the next try.
+    - `valid` checks the four clues: R in the middle (index 2), P at the left end (index 0), T immediately left of R (`t == r - 1`), and S not next to R (`Math.abs(s - r) != 1`).
+    - It prints exactly one row, which proves the puzzle has a **unique** answer:
+    ```
+    P T R Q S
+    ```
+    - In the exam you solve it by hand, but this is the same idea a computer uses, and the same backtracking pattern you will meet in DSA.
+tryIt:
+  instructions: "Type this grid-puzzle solver (no pasting). It tries every way to give the 3 drinks and 3 cities to Amit, Bina and Chetan, and prints only the answer that fits all clues."
+  code: |
+    public class GridSolver {
+        public static void main(String[] args) {
+            String[] drinks = {"tea", "coffee", "juice"};
+            String[] cities = {"Delhi", "Pune", "Chennai"};
+            int[][] perms = {{0,1,2},{0,2,1},{1,0,2},{1,2,0},{2,0,1},{2,1,0}};
+            for (int[] d : perms) {
+                for (int[] c : perms) {
+                    // index 0 = Amit, 1 = Bina, 2 = Chetan
+                    boolean ok = d[0] != 0
+                            && d[2] == 0
+                            && cities[c[1]].equals("Chennai")
+                            && !cities[c[0]].equals("Delhi");
+                    for (int p = 0; p < 3; p++) {
+                        if (cities[c[p]].equals("Pune") && d[p] != 1) ok = false;
+                    }
+                    if (ok) {
+                        System.out.println("Amit " + drinks[d[0]] + " " + cities[c[0]]);
+                        System.out.println("Bina " + drinks[d[1]] + " " + cities[c[1]]);
+                        System.out.println("Chetan " + drinks[d[2]] + " " + cities[c[2]]);
+                    }
+                }
+            }
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            String[] row = {"P", "T", "R", "Q", "S"};
+            System.out.println(row[row.length - 1]);
+            System.out.println(row[row.length / 2]);
+            int q = 3;
+            System.out.println(row[q - 1] + " " + row[q + 1]);
+        }
+    }
+  expectedOutput: |
+    S
+    R
+    R S
+  explanation: |
+    - `row[4]` is the extreme right: **S**.
+    - `row.length / 2` = 5 / 2 = 2 (integer division), the middle seat: **R**.
+    - Q is at index 3; its immediate neighbours are index 2 (**R**) and index 4 (**S**).
+commonMistakes:
+  - "Reading clues in the given order. Place fixed clues first, then relative, then negative."
+  - "Mixing 'immediate left' with 'somewhere to the left'."
+  - "Forgetting that facing south (or facing outward in a circle) flips left and right."
+  - "Using real-world knowledge in syllogisms. Treat the statements as true, even if they sound silly."
+  - "Accepting 'Some + Some' conclusions. Two 'some' statements give no definite conclusion."
+  - "Stopping before re-checking every clue against the final answer."
+interviewBox:
+  why: "Why this is practised: these puzzles show whether you can handle many constraints calmly and systematically, a key skill for debugging and for backtracking problems."
+  questions:
+    - q: "How would you write a program to solve a seating puzzle? (practice question)"
+      a: "I would use backtracking. I fill seats one by one, trying each unused person, and when all seats are filled I check every clue. If a partial arrangement already breaks a clue, I can stop early and go back. For 5 people there are only 120 orders, so even trying all of them is fast."
+    - q: "Statements: some pens are books, some books are bags. Does 'some pens are bags' follow? (practice question)"
+      a: "No. I can draw the pens circle touching only one part of the books circle, and the bags circle touching a different part. In that drawing no pen is a bag. Since the conclusion is not true in every possible drawing, it does not follow."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Statements: All pens are books. Some books are red. Conclusions: I. Some books are pens. II. Some pens are red. Which follow?"
+    code: null
+    options: ["Only I", "Only II", "Both I and II", "Neither"]
+    answer: 0
+    explanation: "'All pens are books' gives 'some books are pens', so I follows. The red part of books may not include any pen, so II does not necessarily follow. Choosing 'both' uses real-world guessing instead of the diagram."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "From 'Some A are B' and 'Some B are C', we can conclude 'Some A are C'."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Some + Some gives no definite conclusion: the A-part of B and the C-part of B may be completely different."
+  - id: q3
+    type: MCQ
+    prompt: "A, B, C, D and E sit in a row facing north. D is at the extreme right. B is immediately to the left of D. A sits in the middle. E is not at either end. Who sits at the extreme left?"
+    code: null
+    options: ["E", "C", "A", "B"]
+    answer: 1
+    explanation: "D = 5, B = 4, A = 3. C and E fill seats 1 and 2. E is not at an end, so E = 2 and C = 1. E is tempting because it is unplaced, but the negative clue rules it out."
+  - id: q4
+    type: MCQ
+    prompt: "People sit around a circular table facing the centre. Moving to a person's LEFT means moving in which direction?"
+    code: null
+    options: ["Clockwise", "Anticlockwise", "Towards the centre", "It depends on the number of people"]
+    answer: 0
+    explanation: "Stand at 6 o'clock facing the centre: your left hand points to 9 o'clock, which is the clockwise direction. If people face outward, it flips to anticlockwise."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "All roses are flowers. No flower is a tree. Complete the conclusion that follows."
+    code: |
+      No rose is a ____
+    acceptedAnswers: ["tree"]
+    explanation: "All + No -> No. Roses are inside flowers, and flowers are completely separate from trees, so roses are separate from trees too."
+  - id: q6
+    type: MATCH
+    prompt: "Match each statement to its Venn picture"
+    pairs:
+      - left: "All A are B"
+        right: "A circle completely inside B"
+      - left: "Some A are B"
+        right: "A and B circles overlap"
+      - left: "No A is B"
+        right: "A and B circles are separate"
+      - left: "Some A are not B"
+        right: "Part of A lies outside B"
+    explanation: "Drawing these pictures correctly is the whole trick of syllogisms: a conclusion follows only if it holds in every valid drawing."
+  - id: q7
+    type: MCQ
+    prompt: "Amit, Bina and Chetan each like one of tea, coffee, juice and live in one of Delhi, Pune, Chennai. Chetan likes tea. Bina is from Chennai. Amit is not from Delhi. The person from Pune likes coffee. Who likes juice?"
+    code: null
+    options: ["Amit", "Bina", "Chetan", "Cannot be determined"]
+    answer: 1
+    explanation: "Bina = Chennai, so Amit (not Delhi) = Pune and Chetan = Delhi. Pune person likes coffee, so Amit = coffee. Chetan = tea, so Bina = juice. 'Cannot be determined' is wrong because the grid gives a unique answer."
+  - id: q8
+    type: MCQ
+    prompt: "Statements: All doctors are graduates. No graduate is lazy. Which conclusion definitely follows?"
+    code: null
+    options: ["Some lazy people are doctors", "No doctor is lazy", "All graduates are doctors", "Some graduates are lazy"]
+    answer: 1
+    explanation: "All + No -> No: doctors sit inside graduates, and graduates are separate from lazy people. 'All graduates are doctors' reverses the first statement, which is not allowed."
+explainBack:
+  prompt: "Explain to a friend your method for seating arrangements and for syllogisms."
+  rubric:
+    - "I said to draw first (row, circle or Venn)"
+    - "I explained the order: fixed clues, then relative, then negative"
+    - "I explained that a syllogism conclusion must be true in every drawing"
+    - "I mentioned Some + Some gives no definite conclusion"
+  modelAnswer: |
+    For seating, I first draw the seats and number them from the left. I place the fixed clues first, like "R is in the middle". Then I use relative clues, like "T is to the immediate left of R". Last, I use the "not" clues to choose between the remaining options, and I check all clues at the end. For syllogisms, I believe the statements even if they sound silly, and I draw Venn circles. A conclusion follows only if it is true in every possible drawing. For example, two "some" statements never give a sure conclusion.
+flashcards:
+  - front: "Order to use clues in arrangements"
+    back: "Fixed positions -> relative positions -> negative ('not') clues -> re-check all."
+  - front: "Facing the centre of a circle, left is..."
+    back: "Clockwise. (Facing outward: anticlockwise.)"
+  - front: "Syllogism quick rules"
+    back: "All+All=All, All+No=No, Some+All=Some, Some+Some=no conclusion. 'All A are B' gives 'Some B are A'."
+  - front: "When does a syllogism conclusion follow?"
+    back: "Only if it is true in EVERY possible Venn drawing of the statements."
+keyTakeaways:
+  - "Always draw: numbered row, circle, Venn diagram or grid."
+  - "Use fixed clues first, then relative, then negative, then re-check."
+  - "Facing the centre, left is clockwise."
+  - "In syllogisms, trust the statements and test conclusions in every possible drawing."
+  - "A brute-force/backtracking program solves the same puzzles, a good DSA warm-up."

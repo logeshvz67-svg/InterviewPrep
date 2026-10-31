@@ -1,0 +1,325 @@
+slug: sd-url-shortener
+world: SYSTEM_DESIGN
+section: SD
+order: 8
+title: "Design a URL shortener"
+version: 1
+estimatedMinutes: 50
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT]
+infosysRelevance: "A great first full case study for SP-level design practice: it uses every step of the template and a small, codeable core (base62)."
+otherCompanies: "One of the most popular beginner HLD practice questions at product companies, because it is small enough to finish in 45 minutes."
+why: |
+  "Design a URL shortener like bit.ly or tinyurl" is the **classic first system design question**. It's small enough to finish in one interview, yet it touches almost everything from Lessons 1-7:
+  - requirements and **estimates** (it's extremely **read-heavy**),
+  - an **API** and a **data model**,
+  - a clever **ID-to-short-code** algorithm (**base62**), which you'll code in Java,
+  - **caching**, **database scaling**, **rate limiting** and trade-offs.
+
+  If you can walk through this one calmly, you have a template for every other case study. We will do it exactly the way you should in an interview: step by step, out loud.
+analogy: |
+  Think of **PNR numbers on Indian Railways**.
+
+  Your full booking details are long: train number, date, coach, berth, names, ages. Nobody wants to type all that. So the railway gives a **short PNR** like `4521873960`. Anyone can enter the PNR and get the full details from the railway's database.
+
+  A URL shortener does the same: it takes a long URL like `https://www.example.com/offers/diwali-sale?utm_source=whatsapp&ref=12345` and gives a short code like `https://sho.rt/aZ3x9Q`. When someone opens the short link, the service looks up the code and **redirects** them to the long URL. Just as each PNR must be **unique**, each short code must point to exactly one long URL.
+visual:
+  diagram: |
+    WRITE: create a short link
+     Client --POST /api/v1/urls {longUrl}--> App server
+                                               | 1. id = next unique id
+                                               | 2. code = base62(id)
+                                               v
+                                       +---------------+
+                                       | DB: urls      |
+                                       | code -> long  |
+                                       +---------------+
+    READ: open a short link (100x more often)
+     Browser --GET /aZ3x9Q--> LB --> App --> Cache (Redis) --hit--+
+                                       |  miss                    |
+                                       +--> DB, then fill cache   |
+     Browser <--- 302 Found, Location: https://long.url/... <-----+
+  caption: "Creating a link generates a unique ID and turns it into a base62 code. Opening a link is a fast lookup (cache first, then database) followed by an HTTP redirect."
+  visualizer: null
+explanation: |
+  ### Step 1: Requirements
+  **Functional:**
+  - Given a long URL, return a short URL.
+  - Opening the short URL redirects to the long URL.
+  - Optional (ask!): custom alias (`sho.rt/diwali-sale`), expiry date, click analytics.
+
+  **Non-functional:**
+  - **Very low latency redirects** (users click and expect instant pages).
+  - **Highly available**: a broken short link in a viral WhatsApp forward is bad.
+  - Short codes must be **unique** and **not easily guessable** in sequence (nice to have).
+  - Read-heavy: assume **100 reads per write**.
+
+  ### Step 2: Estimates
+  Assume **100 million new URLs per month**.
+  | Quantity | Calculation | Result |
+  |---|---|---|
+  | Write QPS | 100,000,000 / (30 x 86,400 = 2,592,000 s) | **~38/s** |
+  | Read QPS | 38 x 100 | **~3,800/s** (peak maybe 3-5x) |
+  | URLs in 5 years | 100M x 12 x 5 | **6 billion** |
+  | Storage | 6 billion x 500 bytes | **~3 TB** |
+
+  **How long must the code be?** Base62 uses `0-9`, `a-z`, `A-Z` = 62 characters.
+  - 62^6 = about **56.8 billion** codes.
+  - 62^7 = about **3.52 trillion** codes.
+  Six characters already cover 6 billion URLs; **7 characters** give huge headroom. That's the answer to say.
+
+  ### Step 3: API
+  ```
+  POST /api/v1/urls       body: {"longUrl": "...", "customAlias": null, "expiresAt": null}
+                          -> 201 Created {"shortUrl": "https://sho.rt/aZ3x9Q"}
+  GET  /{code}            -> 302 Found, Location: <longUrl>   (or 404 if unknown/expired)
+  ```
+  **301 vs 302:** `301 Moved Permanently` lets browsers cache the redirect, which reduces load but means later clicks never reach you (no analytics, can't change the target). `302 Found` (temporary) sends every click through your service, so you can count clicks. Mention this trade-off: interviewers like it.
+
+  ### Step 4: Data model
+  ```sql
+  CREATE TABLE urls (
+    id          BIGINT PRIMARY KEY,
+    code        VARCHAR(10) UNIQUE NOT NULL,
+    long_url    TEXT NOT NULL,
+    user_id     BIGINT,
+    created_at  TIMESTAMP NOT NULL,
+    expires_at  TIMESTAMP
+  );
+  ```
+  Access pattern is simple: look up by `code`. A key-value or wide-column NoSQL store (DynamoDB, Cassandra) scales easily; a SQL database with an index on `code` also works fine at this size. Either answer is OK **if you justify it**.
+
+  ### Step 5: Generating the short code (the core deep dive)
+  **Option A: Hash the long URL** (MD5/SHA-256) and take the first 7 characters.
+  - Problem: **collisions** (two URLs give the same 7 characters). You must check the DB and retry with a salt. Extra reads on every write.
+
+  **Option B: Unique ID + base62 encoding** (most common answer).
+  - Get a unique number (1, 2, 3...), then convert it to base62, like converting decimal to binary but with 62 digits.
+  - No collisions by design, since every id is unique.
+  - Where do ids come from with many servers? A **range allocator**: a coordinator (e.g. a DB sequence or ZooKeeper) hands each app server a block of ids (server 1 gets 1-1,000,000, server 2 gets 1,000,001-2,000,000). Servers then assign ids from memory with no coordination per request. Or use a **Snowflake-style** id (timestamp + machine id + counter).
+  - Sequential codes are guessable (`aZ3x9Q`, `aZ3x9R`...). If that matters, shuffle the id with a reversible mix before encoding, or add random characters.
+
+  **Option C: Pre-generated keys.** A key-generation service creates random unused 7-character codes in advance and hands them out. No collision checks at write time, but you must manage used/unused keys carefully.
+
+  ### Step 6: Scaling the read path
+  - **Cache** hot codes in Redis (cache-aside, LRU). A small fraction of links (viral ones) get most clicks, so the hit ratio is high.
+  - **Stateless app servers** behind a **load balancer**.
+  - **Database:** read replicas, then **shard by code** (hash-based or consistent hashing) when data grows.
+  - **CDN/edge** can even serve the most popular redirects.
+
+  ### Step 7: Extras and trade-offs
+  - **Analytics:** don't slow the redirect. Publish a "clicked" event to a **queue** (Kafka) and count asynchronously.
+  - **Rate limiting** on `POST /urls` to stop spammers creating millions of links.
+  - **Expiry:** a background job deletes expired rows; the read path also checks `expires_at`.
+  - **Same long URL twice?** Either return the existing code (needs an index on long_url) or always create a new one (simpler, allows per-user analytics). State your choice.
+  - **Security:** check long URLs against malware/phishing lists.
+tinyCode:
+  code: |
+    public class Base62 {
+        private static final String ALPHABET =
+            "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        static String encode(long id) {
+            if (id == 0) return "0";
+            StringBuilder sb = new StringBuilder();
+            while (id > 0) {
+                sb.append(ALPHABET.charAt((int) (id % 62)));   // last digit first
+                id /= 62;
+            }
+            return sb.reverse().toString();
+        }
+
+        static long decode(String code) {
+            long id = 0;
+            for (char c : code.toCharArray()) {
+                id = id * 62 + ALPHABET.indexOf(c);
+            }
+            return id;
+        }
+
+        public static void main(String[] args) {
+            long[] ids = {0, 61, 62, 125, 3844, 1_000_000_000L};
+            for (long id : ids) {
+                String code = encode(id);
+                System.out.println(id + " -> " + code + " -> " + decode(code));
+            }
+            System.out.println("7 chars give " + (long) Math.pow(62, 7) + " codes");
+        }
+    }
+  walkthrough: |
+    Base62 works exactly like converting a number to binary, but with **62 "digits"**: `0-9` are values 0-9, `a-z` are 10-35, `A-Z` are 36-61.
+
+    - `encode`: repeatedly take `id % 62` (the last base62 digit) and divide by 62. Digits come out **last-first**, so we `reverse()` at the end.
+      - 125: 125 % 62 = **1** -> '1', 125 / 62 = 2; 2 % 62 = **2** -> '2'. Reversed: **"21"** (because 2 x 62 + 1 = 125).
+    - `decode`: read left to right, `id = id * 62 + value(c)`. For "21": 0 x 62 + 2 = 2, then 2 x 62 + 1 = 125.
+    - 61 is the last single digit, **'Z'**. 62 becomes **"10"** (like 10 in decimal means "one ten"). 3844 = 62^2 becomes **"100"**.
+
+    Output:
+    ```
+    0 -> 0 -> 0
+    61 -> Z -> 61
+    62 -> 10 -> 62
+    125 -> 21 -> 125
+    3844 -> 100 -> 3844
+    1000000000 -> 15FTGg -> 1000000000
+    7 chars give 3521614606208 codes
+    ```
+    Even the billionth URL needs only **6 characters**, and 7 characters give about 3.5 trillion codes.
+tryIt:
+  instructions: "Type this estimate for the URL shortener (Step 2 of the template). Then change the assumptions (for example 500 million URLs per month, 1 KB per row) and rerun to see how the numbers move."
+  code: |
+    public class Estimate {
+        public static void main(String[] args) {
+            long newUrlsPerMonth = 100_000_000L;
+            long secondsPerMonth = 30L * 24 * 3600;           // 2,592,000
+            long writeQps = newUrlsPerMonth / secondsPerMonth;
+            long readQps = writeQps * 100;                    // 100 reads per write
+            long totalUrls = newUrlsPerMonth * 12 * 5;        // keep 5 years
+            long bytesPerUrl = 500;
+            long totalTB = totalUrls * bytesPerUrl / 1_000_000_000_000L;
+            System.out.println("Write QPS: " + writeQps);
+            System.out.println("Read QPS : " + readQps);
+            System.out.println("URLs in 5 years: " + totalUrls);
+            System.out.println("Storage: " + totalTB + " TB");
+        }
+    }
+predict:
+  code: |
+    public class Short {
+        static final String A = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        static String encode(long id) {
+            StringBuilder sb = new StringBuilder();
+            do {
+                sb.append(A.charAt((int) (id % 62)));
+                id /= 62;
+            } while (id > 0);
+            return sb.reverse().toString();
+        }
+
+        public static void main(String[] args) {
+            System.out.println(encode(10));
+            System.out.println(encode(36));
+            System.out.println(encode(124));
+            System.out.println(encode(3843));
+        }
+    }
+  expectedOutput: |
+    a
+    A
+    20
+    ZZ
+  explanation: |
+    Remember the value of each character: `0-9` = 0-9, `a-z` = 10-35, `A-Z` = 36-61.
+    - 10 is one digit: value 10 = **a**.
+    - 36 is one digit: value 36 = **A** (the first uppercase letter).
+    - 124 = 2 x 62 + 0 -> digits 2 and 0 -> **20**.
+    - 3843 = 61 x 62 + 61 -> both digits are 61 = 'Z' -> **ZZ**. It's the largest 2-character code, just like 99 is the largest 2-digit decimal number (the next number, 3844, is "100").
+
+    The `do...while` also handles 0 correctly (it runs once and returns "0"), so no special case is needed.
+commonMistakes:
+  - "Skipping requirements and estimates and jumping straight to base62 code."
+  - "Taking the first 7 characters of a hash without handling collisions."
+  - "Using one global auto-increment counter as a single point of failure; use range allocation or Snowflake-style ids."
+  - "Forgetting that redirects are read-heavy: no cache, no replicas, no plan for viral links."
+  - "Using 301 without realising browsers cache it, so you lose click analytics and can't change the target."
+  - "Doing analytics synchronously inside the redirect, making every click slower."
+interviewBox:
+  why: "Why interviewers ask this: it's a small, complete design that tests the whole template: requirements, estimates, a clever core algorithm, caching and scaling."
+  questions:
+    - q: "Practice: Walk me through designing a URL shortener."
+      a: "First requirements: shorten a URL, redirect on click, maybe custom aliases and expiry; it must be fast and highly available, and it's read-heavy, about 100 reads per write. Estimates: with 100 million new links a month, that's about 40 writes a second and 4,000 reads a second, and around 6 billion links or 3 TB over five years, so 7 base62 characters are plenty. APIs: POST to create, and GET on the code that returns a 302 redirect. The table maps code to long URL. For codes, I'd generate unique IDs using ranges given to each server and base62-encode them, so there are no collisions. For reads I'd use a Redis cache, stateless servers behind a load balancer, read replicas, and later shard by code. Click analytics go through a queue so redirects stay fast."
+    - q: "Practice: How long should the short code be, and why?"
+      a: "With base62, 6 characters give about 56.8 billion codes and 7 give about 3.5 trillion. We need about 6 billion over five years, so 6 would technically fit, but I'd choose 7 for comfortable headroom."
+    - q: "Practice: Hashing the URL vs using a counter with base62: which do you prefer?"
+      a: "Hashing and taking the first few characters can collide, so every write needs a database check and maybe a retry. A unique counter with base62 never collides. Its weaknesses are a central counter and guessable codes, so I'd hand out ID ranges to each server and, if needed, shuffle the IDs before encoding."
+    - q: "Practice: 301 or 302 redirect?"
+      a: "A 301 is permanent, so browsers cache it and later clicks may not reach our servers. That saves load but we lose analytics and can't change the destination. A 302 is temporary, so every click comes to us. If analytics matter, I'd use 302."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Using the same alphabet (0-9, a-z, A-Z), what does decoding \"1a\" print?"
+    code: |
+      String A = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      long id = 0;
+      for (char c : "1a".toCharArray()) id = id * 62 + A.indexOf(c);
+      System.out.println(id);
+    options: ["11", "72", "620", "36"]
+    answer: 1
+    explanation: "'1' has value 1 and 'a' has value 10. id = 1, then 1 x 62 + 10 = 72. 11 is what you get by reading the characters like decimal digits; in base62 'a' is worth 10 and each step multiplies by 62."
+  - id: q2
+    type: MCQ
+    prompt: "About how many unique codes do 7 base62 characters give?"
+    options: ["About 62 x 7 = 434", "About 3.5 million", "About 56.8 billion", "About 3.5 trillion"]
+    answer: 3
+    explanation: "62^7 = 3,521,614,606,208, about 3.5 trillion. 56.8 billion is 62^6. Each extra character multiplies the count by 62."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "Using a unique ID per URL and base62-encoding it cannot produce two identical short codes."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Base62 encoding is a one-to-one conversion (like decimal to binary), so different IDs always give different codes. Collisions are a problem of the hash-and-truncate approach."
+  - id: q4
+    type: MCQ
+    prompt: "With 100 million new URLs per month, roughly what is the write QPS?"
+    options: ["About 4", "About 40", "About 400", "About 4,000"]
+    answer: 1
+    explanation: "100,000,000 / 2,592,000 seconds in 30 days is about 38.6, so roughly 40 writes per second. About 4,000 is the read QPS with a 100:1 read ratio."
+  - id: q5
+    type: MATCH
+    prompt: "Match each design choice to its reason"
+    pairs:
+      - left: "Redis cache for codes"
+        right: "Redirects are read-heavy and viral links are hot"
+      - left: "302 redirect"
+        right: "Every click reaches us, so analytics work"
+      - left: "Queue for click events"
+        right: "Counting clicks must not slow the redirect"
+      - left: "Rate limit POST /urls"
+        right: "Stop spammers creating millions of links"
+      - left: "ID ranges per server"
+        right: "Unique IDs without a call to a central counter each time"
+    explanation: "Every component in a design answer should come with a reason like these."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the operator that extracts the last base62 digit inside encode()."
+    code: |
+      sb.append(ALPHABET.charAt((int) (id ____ 62)));
+      id /= 62;
+    acceptedAnswers: ["%"]
+    explanation: "id % 62 is the remainder, which is the last digit in base 62, exactly like n % 10 gives the last decimal digit. Then id /= 62 removes that digit."
+  - id: q7
+    type: MCQ
+    prompt: "Which part of the URL shortener should get the most scaling effort?"
+    options: ["Creating short links (writes)", "Redirecting short links (reads)", "Deleting expired links", "The admin dashboard"]
+    answer: 1
+    explanation: "Reads are about 100x writes and must be very fast, so the redirect path gets caching, replicas and load balancing. About 40 writes a second is light."
+explainBack:
+  prompt: "Explain how a URL shortener works, end to end, using the PNR analogy."
+  rubric:
+    - "I said a short code maps to the long URL, like a PNR maps to full booking details"
+    - "I gave the estimates (writes/s, reads/s, storage) and the code length"
+    - "I explained unique ID + base62 and why it avoids collisions"
+    - "I explained the read path: cache, then DB, then a 302 redirect"
+    - "I mentioned at least one extra: analytics via queue, rate limiting, expiry, 301 vs 302"
+  modelAnswer: |
+    A URL shortener is like the railway PNR system: a short code stands for long details stored in a database. When you create a link, the server takes a unique ID, converts it to base62 using digits and both cases of letters, and saves code to long URL. Because every ID is unique, codes never collide, and 7 characters give about 3.5 trillion codes. When someone opens the link, which happens about 100 times more often, the server checks Redis first, then the database, and replies with a 302 redirect. Click counting goes through a queue so redirects stay fast, and link creation is rate limited to stop spam.
+flashcards:
+  - front: "Base62 alphabet values"
+    back: "0-9 = 0-9, a-z = 10-35, A-Z = 36-61."
+  - front: "62^6 and 62^7"
+    back: "62^6 is about 56.8 billion; 62^7 is about 3.5 trillion."
+  - front: "URL shortener estimates (100M new/month, 100:1 reads)"
+    back: "About 40 writes/s, about 4,000 reads/s, 6 billion URLs in 5 years, about 3 TB."
+  - front: "Hash-truncate vs counter + base62"
+    back: "Hash: collisions need checks and retries. Counter + base62: no collisions; use ID ranges per server; codes are guessable unless shuffled."
+  - front: "301 vs 302 for short links"
+    back: "301 permanent, cached by browsers (less load, no analytics). 302 temporary, every click comes to you (analytics)."
+keyTakeaways:
+  - "Use the full template: requirements, estimates, API, data model, diagram, deep dive, trade-offs."
+  - "The system is very read-heavy, so cache and scale the redirect path."
+  - "Unique ID + base62 gives collision-free short codes; 7 characters cover about 3.5 trillion links."
+  - "Generate IDs without a single bottleneck: ID ranges per server or Snowflake-style IDs."
+  - "Choose 302 if you need click analytics; send analytics through a queue."
+  - "Rate limit link creation and handle expiry with a background job."

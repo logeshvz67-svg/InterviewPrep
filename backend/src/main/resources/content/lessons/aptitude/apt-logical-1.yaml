@@ -1,0 +1,275 @@
+slug: apt-logical-1
+world: APTITUDE
+section: APT
+order: 6
+title: "Logical reasoning: series, coding-decoding, blood relations"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI, ALL]
+infosysRelevance: "Infosys-style basics practice: pattern-finding (series, codes, relationships) is a core reasoning skill and is closely related to how you spot patterns in coding problems."
+otherCompanies: "Series, coding-decoding and blood relations are common practice topics in reasoning sections for TCS, Wipro, Cognizant, Accenture and Capgemini style tests."
+why: |
+  Logical reasoning questions check one skill: **can you find the hidden rule?** That is exactly what programmers do every day: see examples, find the pattern, write the rule as code.
+
+  This lesson covers three classic question types:
+  - **Series**: find the next number or letter.
+  - **Coding-decoding**: a word is written in a secret code; find the rule and apply it.
+  - **Blood relations**: find how two people are related from a chain of statements.
+
+  For each type you get a **checklist of rules to try in order**, so you never stare at a question without a plan. And since these are patterns, we write tiny Java programs that apply them, which is good coding practice too.
+analogy: |
+  Think of being a **detective in a CID episode**.
+
+  - You see clues: 2, 5, 10, 17, 26...
+  - You test suspects one by one: "Is it adding the same number? No. Is it the gaps? +3, +5, +7, +9... Yes! The gaps are odd numbers."
+  - A good detective has a **fixed list of suspects** to check, instead of guessing randomly.
+
+  For blood relations, the detective draws a **family tree on the board** instead of keeping it all in the head.
+visual:
+  diagram: |
+    SERIES: LOOK AT THE GAPS
+    2    5    10    17    26    ?
+      +3   +5    +7    +9   +11   -> 37
+
+    LETTER POSITIONS (A=1 ... Z=26), reverse = 27 - n
+    A B C D E F G H I  J  K  L  M
+    1 2 3 4 5 6 7 8 9 10 11 12 13
+    Z Y X W V U T S R  Q  P  O  N   (reverse partner)
+
+    FAMILY TREE  (+ male, - female, = married,
+                  | parent -> child, ~ siblings)
+      E(-)          generation 1
+       |
+      D(+)          generation 2
+       |
+      C(-)          generation 3
+       |
+     B ~ A(-)       generation 4: A is D's granddaughter
+  caption: "For series, write the gaps between terms. For letters, use positions 1 to 26 and the 27-minus rule. For relations, draw a tree with generations as levels."
+  visualizer: null
+explanation: |
+  ### Part 1: Number series
+  Try these rules **in order** until one fits:
+  | # | Rule | Example | Next |
+  |---|---|---|---|
+  | 1 | Same difference | 4, 9, 14, 19 (+5) | 24 |
+  | 2 | Differences grow in a pattern | 2, 5, 10, 17, 26 (+3, +5, +7, +9) | 37 |
+  | 3 | Same multiplier | 3, 6, 12, 24 (x2) | 48 |
+  | 4 | Squares / cubes | 1, 8, 27, 64, 125 (n^3) | 216 |
+  | 5 | Mixed (x2 + 1) | 1, 3, 7, 15, 31 | 63 |
+  | 6 | Two series alternating | 1, 10, 2, 20, 3, 30 | 4 |
+
+  **Why the difference trick works**: many series come from simple formulas. If the gaps grow by the same amount (+2 each time), the series comes from a square formula: 2, 5, 10, 17, 26 is n^2 + 1.
+
+  **Tip**: if numbers grow **slowly**, think addition. If they grow **fast** (doubling), think multiplication or powers.
+
+  ### Part 2: Letter series
+  Turn letters into numbers (A = 1 ... Z = 26), solve as a number series, turn back.
+  **Worked**: A, C, F, J, O, ? -> 1, 3, 6, 10, 15 (gaps +2, +3, +4, +5) -> next 21 = **U**.
+  **Memory trick**: E = 5, J = 10, O = 15, T = 20, Y = 25 ("EJOTY").
+
+  ### Part 3: Coding-decoding
+  Check these rules in order:
+  1. **Shift**: each letter moves forward/back by a fixed number. MANGO -> NBOHP (+1), so APPLE -> **BQQMF**.
+  2. **Reverse alphabet**: each letter becomes its "mirror" (A <-> Z, B <-> Y). **Why 27**: positions of mirror letters always add to 27 (1 + 26, 2 + 25...). TIGER -> GRTVI, so LION -> **ORLM** (L = 12 -> 15 = O, I = 9 -> 18 = R, O = 15 -> 12 = L, N = 14 -> 13 = M).
+  3. **Letters to numbers**: e.g. CAT = 3 + 1 + 20 = 24 (sum of positions).
+  4. **Substitution table**: compare words that share letters.
+     **Worked**: ROSE = 6821, CHAIR = 73456, PREACH = 961473. Matching letters: R = 6, O = 8, S = 2, E = 1, C = 7, H = 3, A = 4, I = 5, P = 9. So SEARCH = **214673**.
+
+  Always **check your rule on every letter** of the given example before applying it.
+
+  ### Part 4: Blood relations
+  **Always draw**. Use: `+` male, `-` female, `=` married couple, a vertical line for parent -> child, and keep each **generation on one level**.
+
+  **Worked**: "Pointing to a man, Riya said, 'He is the son of my grandfather's only son.'" Grandfather's only son = Riya's **father**. His son = Riya's **brother**.
+
+  **Worked (chain)**: "A is B's sister. C is B's mother. D is C's father. E is D's mother. How is A related to D?" Tree: E -> D -> C -> (A, B). A is female, two levels below D -> A is D's **granddaughter**.
+
+  **Coded relations**: sometimes symbols stand for relations, e.g. P x Q = P is the father of Q; P + Q = P is the mother of Q; P - Q = P is the brother of Q; P / Q = P is the sister of Q.
+  **Worked**: A x B - C means A is the father of B, and B is the brother of C. So A is the **father of C**.
+
+  **Common traps**: a name does not always tell gender (Kiran can be male or female); "only son" means there is no other son; "my father's wife" may simply be "my mother".
+tinyCode:
+  code: |
+    public class Patterns {
+        static String shift(String word, int k) {
+            StringBuilder sb = new StringBuilder();
+            for (char c : word.toCharArray()) {
+                sb.append((char) ('A' + (c - 'A' + k + 26) % 26));
+            }
+            return sb.toString();
+        }
+
+        static String mirror(String word) {
+            StringBuilder sb = new StringBuilder();
+            for (char c : word.toCharArray()) {
+                int pos = c - 'A' + 1;
+                sb.append((char) ('A' + (27 - pos) - 1));
+            }
+            return sb.toString();
+        }
+
+        public static void main(String[] args) {
+            System.out.println("APPLE +1 -> " + shift("APPLE", 1));
+            System.out.println("LION mirror -> " + mirror("LION"));
+            int[] s = {2, 5, 10, 17, 26};
+            int lastGap = s[4] - s[3];
+            System.out.println("Next term: " + (s[4] + lastGap + 2));
+        }
+    }
+  walkthrough: |
+    - `c - 'A'` turns a letter into 0..25 (A = 0). Adding `k` shifts it; `% 26` wraps Z back to A; `+ 26` keeps it positive for negative shifts.
+    - `(char) ('A' + ...)` turns the number back into a letter. APPLE + 1 = BQQMF.
+    - `mirror` uses 1-based positions: partner position = 27 - pos. L(12) -> 15 = O, I(9) -> 18 = R, O(15) -> 12 = L, N(14) -> 13 = M, so LION -> ORLM.
+    - For the series, the gaps grow by 2 (+3, +5, +7, +9), so the next gap is 9 + 2 = 11, and 26 + 11 = 37.
+    - Output:
+    ```
+    APPLE +1 -> BQQMF
+    LION mirror -> ORLM
+    Next term: 37
+    ```
+tryIt:
+  instructions: "Type this program (no pasting). It generates three series from the lesson so you can see each rule produce the numbers. Run it and check the last term of each line."
+  code: |
+    public class SeriesMaker {
+        public static void main(String[] args) {
+            for (int n = 1; n <= 6; n++) {
+                System.out.print((n * n + 1) + " ");
+            }
+            System.out.println("<- n*n + 1");
+
+            int t = 1;
+            for (int i = 1; i <= 6; i++) {
+                System.out.print(t + " ");
+                t = t * 2 + 1;
+            }
+            System.out.println("<- x2 + 1");
+
+            for (int n = 1; n <= 6; n++) {
+                System.out.print(n * n * n + " ");
+            }
+            System.out.println("<- cubes");
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            String word = "CAT";
+            int sum = 0;
+            for (char c : word.toCharArray()) {
+                sum += c - 'A' + 1;
+            }
+            System.out.println(sum);
+            char next = (char) ('A' + 21 - 1);
+            System.out.println(next);
+        }
+    }
+  expectedOutput: |
+    24
+    U
+  explanation: |
+    - C = 3, A = 1, T = 20, so the position sum is **24**.
+    - `'A' + 21 - 1` is the 21st letter: **U** (remember T = 20). That is the answer to the series A, C, F, J, O, ?
+commonMistakes:
+  - "Guessing the series rule instead of writing the gaps between terms first."
+  - "Checking a coding rule on only one letter. Test it on every letter of the example."
+  - "Forgetting the reverse-alphabet rule: positions of mirror letters add to 27."
+  - "Solving blood relations in your head. Draw the tree with generations on levels."
+  - "Assuming gender from a name. Only use what the statements say."
+  - "Missing that a series alternates between two patterns (odd and even positions)."
+interviewBox:
+  why: "Why this is practised: reasoning questions test pattern-finding, the same skill used to understand a coding problem from its examples."
+  questions:
+    - q: "How do you approach a number series you have never seen? (practice question)"
+      a: "I follow a checklist. First I write the differences between terms. If they are equal, it's an arithmetic series. If the differences follow a pattern, I continue it. If numbers grow fast, I check multiplication, squares or cubes, or something like times 2 plus 1. Finally I check if two series are alternating."
+    - q: "Write the logic to encode a word by shifting each letter forward by k. (practice question)"
+      a: "For each character, I subtract 'A' to get 0 to 25, add k, take modulo 26 so Z wraps to A, then add 'A' back and convert to a char. I append each result to a StringBuilder. It's O(n) for a word of length n."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Find the next number: 2, 6, 12, 20, 30, ?"
+    code: null
+    options: ["40", "42", "36", "44"]
+    answer: 1
+    explanation: "Gaps are +4, +6, +8, +10, so the next gap is +12: 30 + 12 = 42. (It is n x (n + 1).) 40 assumes the gap stays +10."
+  - id: q2
+    type: MCQ
+    prompt: "Find the next letter: B, E, H, K, ?"
+    code: null
+    options: ["M", "N", "O", "L"]
+    answer: 1
+    explanation: "Positions 2, 5, 8, 11 go up by 3, so next is 14 = N. M (13) is the common off-by-one slip."
+  - id: q3
+    type: MCQ
+    prompt: "If PEN is coded as QFO, how is BOOK coded?"
+    code: null
+    options: ["CPPL", "ANNJ", "CPPK", "COOL"]
+    answer: 0
+    explanation: "Each letter moves forward by 1 (P->Q, E->F, N->O). B->C, O->P, O->P, K->L gives CPPL. ANNJ shifts backwards; CPPK forgets the last letter."
+  - id: q4
+    type: MCQ
+    prompt: "Pointing to a photo, Arjun says, 'She is the daughter of my grandfather's only son.' How is the girl related to Arjun?"
+    code: null
+    options: ["Cousin", "Sister", "Aunt", "Niece"]
+    answer: 1
+    explanation: "Grandfather's only son = Arjun's father. Father's daughter = Arjun's sister. 'Cousin' would need a different son, but the grandfather has only one."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "In reverse-alphabet coding (A<->Z, B<->Y ...), the positions of a letter and its code always add up to 27."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. A(1) + Z(26) = 27, B(2) + Y(25) = 27, and so on. So the code of a letter at position n is at position 27 - n."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Complete the series."
+    code: |
+      3, 9, 27, 81, ____
+    acceptedAnswers: ["243"]
+    explanation: "Each term is multiplied by 3: 81 x 3 = 243. Looking at the gaps (6, 18, 54) also works, but the multiplier is quicker to see because the numbers grow fast."
+  - id: q7
+    type: MATCH
+    prompt: "Match each series to its rule"
+    pairs:
+      - left: "4, 9, 14, 19"
+        right: "Add 5 each time"
+      - left: "1, 8, 27, 64"
+        right: "Cubes of 1, 2, 3, 4"
+      - left: "1, 3, 7, 15"
+        right: "Multiply by 2, then add 1"
+      - left: "1, 10, 2, 20, 3"
+        right: "Two series alternating"
+    explanation: "Each series matches one rule from the checklist: same difference, powers, mixed operation, and alternating series."
+  - id: q8
+    type: MCQ
+    prompt: "If P x Q means P is the father of Q, P + Q means P is the mother of Q, and P - Q means P is the brother of Q, what does M + N - O mean?"
+    code: null
+    options: ["M is the mother of O", "M is the sister of O", "O is the mother of M", "M is the grandmother of O"]
+    answer: 0
+    explanation: "M + N: M is the mother of N. N - O: N is the brother of O. Siblings share a mother, so M is the mother of O. 'Grandmother' wrongly adds a generation."
+explainBack:
+  prompt: "Explain to a friend your step-by-step plan for a number series and for a coding-decoding question."
+  rubric:
+    - "I described writing the differences first"
+    - "I listed other rules to try (multiply, squares/cubes, alternating)"
+    - "I explained letter positions and the 27 rule"
+    - "I said to check the coding rule on every letter"
+  modelAnswer: |
+    For a number series, I first write the gaps between the terms. If the gaps are the same, I just add. If the gaps follow their own pattern, like 3, 5, 7, I continue that. If the numbers grow very fast, I check multiplying, squares and cubes, or times two plus one. Last, I check if two series are mixed together. For coding questions, I turn letters into positions from 1 to 26. Then I test simple rules: a fixed shift, or the mirror letter, where the positions add to 27. I check the rule on every letter before I use it.
+flashcards:
+  - front: "Series checklist (in order)"
+    back: "Gaps -> gaps of gaps -> multiplier -> squares/cubes -> mixed (x2+1) -> alternating."
+  - front: "Reverse-alphabet coding rule"
+    back: "Code position = 27 - letter position (A<->Z, B<->Y)."
+  - front: "EJOTY trick"
+    back: "E=5, J=10, O=15, T=20, Y=25."
+  - front: "Blood relations method"
+    back: "Draw a tree: + male, - female, = couple, one level per generation."
+keyTakeaways:
+  - "Series: write the gaps first, then follow a fixed checklist of rules."
+  - "Letters become numbers 1 to 26; the reverse partner is 27 - n."
+  - "Coding: test the rule on every letter before applying it."
+  - "Blood relations: always draw a family tree with generations as levels."
+  - "Pattern-finding in reasoning is the same skill as reading coding-problem examples."

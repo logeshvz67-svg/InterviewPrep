@@ -1,0 +1,393 @@
+slug: spring-layers-rest
+world: SPRING
+section: SPRING
+order: 4
+title: "Layered architecture and REST design"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+infosysRelevance: "Core for SP and DSE project discussions: you will be asked to explain your project's layers, and REST basics (verbs, status codes, PUT vs PATCH, idempotency) are common practice questions."
+otherCompanies: "REST verbs and status codes are standard questions at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies also look at URL design, pagination and why entities should not be returned directly."
+why: |
+  Every Spring Boot project in interviews is described the same way: **"controller, service, repository"**. If you can explain *why* code is split like this, and design clean REST URLs with the right **HTTP methods** and **status codes**, you instantly sound like someone who has built a real backend.
+
+  This lesson gives you:
+  - the job of each layer and what must **not** go in it,
+  - **DTOs vs entities** (and why returning entities is risky),
+  - REST rules: resources, verbs, **idempotency**, status codes, **pagination**.
+
+  Your `backend` project follows these rules, so in interviews you can say "in my project..." and point to real files.
+analogy: |
+  Think of a **restaurant**.
+
+  - The **waiter** (Controller) takes your order, checks it is readable, and brings back the plate. The waiter does not cook.
+  - The **chef** (Service) decides *how* to make the dish: the business rules ("no extra cheese on Mondays", "free dessert above Rs 500").
+  - The **storeroom keeper** (Repository) only fetches and stores ingredients (data). No cooking decisions.
+  - The **menu card** (DTO) shows what customers may order and what they get, not the storeroom's inventory sheet (Entity) with costs and supplier notes.
+  - The **menu items** are like REST **resources** (`/dishes/12`), and "order", "change order", "cancel order" are the **HTTP verbs**.
+visual:
+  diagram: |
+    HTTP request  POST /api/books  {"title":"Java","price":450}
+          |
+          v
+    +-------------+   BookRequest (DTO)    validates input, maps URL
+    | Controller  |   ------------------>  calls ONE service method
+    +-------------+   <------------------  returns BookResponse (DTO)
+          |                                + status code (201)
+          v
+    +-------------+   business rules, @Transactional,
+    |  Service    |   converts DTO <-> Entity
+    +-------------+
+          |
+          v
+    +-------------+   save / find / delete (Spring Data JPA)
+    | Repository  |
+    +-------------+
+          |
+          v
+       Database  (table books: id, title, price, cost_price ...)
+  caption: "Each layer has one job and only talks to the layer below it; DTOs travel over HTTP, entities stay inside."
+  visualizer: null
+explanation: |
+  ### The layers and their jobs
+  | Layer | Annotation | Job | Must NOT do |
+  |---|---|---|---|
+  | **Controller** | `@RestController` | Map URLs, read input, validate, call a service, choose the status code | Business rules, SQL |
+  | **Service** | `@Service` | Business logic, transactions, combining repositories | Know about HTTP (requests, status codes) |
+  | **Repository** | `@Repository` / Spring Data interface | Read and write the database | Business decisions |
+  | **DTO** | usually a `record` | The shape of JSON in and out | Hold database annotations |
+  | **Entity** | `@Entity` | The shape of a database table row | Be sent directly to clients |
+
+  Why split? **Separation of concerns** (each part has one reason to change), **testability** (test a service with mock repositories, no web server needed) and **reuse** (the same service can be called by a controller, a scheduled job or another service).
+
+  In your project:
+  - `backend/src/main/java/com/codequest/controller/AuthController.java` says it in its comment: *"Controllers are thin: read the request, call ONE service method, return a DTO."*
+  - `backend/src/main/java/com/codequest/service/XpService.java` holds the XP rules (award once, daily caps).
+  - `backend/src/main/java/com/codequest/repository/XpEventRepository.java` only queries data.
+  - `backend/src/main/java/com/codequest/mapper/Mappers.java` converts entities to DTOs in one place.
+
+  ### DTO vs Entity
+  A **DTO (Data Transfer Object)** is a simple object whose only job is to carry data across a boundary (here: HTTP JSON). An **entity** maps to a database table.
+
+  Never return entities from controllers:
+  - **Security**: an entity may contain secrets. Your `User` entity has a `passwordHash`; `UserView` in `backend/src/main/java/com/codequest/dto/AuthDtos.java` does not.
+  - **Lazy loading**: turning an entity into JSON can touch lazy fields after the transaction has ended and crash (lesson 8).
+  - **Stability**: renaming a DB column should not break the mobile app using your API.
+
+  Java **records** are perfect DTOs: short, immutable, and Jackson reads and writes them out of the box.
+
+  ### REST basics
+  **REST** (REpresentational State Transfer) is a style for HTTP APIs where URLs name **resources** (things) and HTTP **methods** say what to do with them.
+
+  URL rules:
+  - Use **nouns, plural**: `/api/books`, `/api/books/12`. Not `/api/getBooks` or `/api/deleteBook?id=12`.
+  - Nest only for clear ownership: `/api/users/7/orders`.
+  - Use **query parameters** for filtering, sorting and paging: `/api/mistakes?resolved=false&page=0&size=20`.
+
+  | Method | Meaning | Example | Safe? | Idempotent? |
+  |---|---|---|---|---|
+  | GET | Read | `GET /api/books/12` | Yes | Yes |
+  | POST | Create (server picks the id) | `POST /api/books` | No | No |
+  | PUT | Replace the whole resource | `PUT /api/books/12` | No | Yes |
+  | PATCH | Change some fields | `PATCH /api/mistakes/5/resolved` | No | Usually not guaranteed |
+  | DELETE | Remove | `DELETE /api/books/12` | No | Yes |
+
+  - **Safe** = does not change data. GET must never delete or update anything.
+  - **Idempotent** = doing it once or ten times leaves the server in the same state. Deleting book 12 twice still means "book 12 is gone". Posting the same order twice creates **two** orders.
+
+  ### Status codes you must know
+  | Code | Name | When |
+  |---|---|---|
+  | 200 | OK | Successful GET / PUT / PATCH with a body |
+  | 201 | Created | POST created something (`@ResponseStatus(HttpStatus.CREATED)`) |
+  | 204 | No Content | Success with no body, typical for DELETE |
+  | 400 | Bad Request | Invalid input: failed validation, wrong type (`/books/abc`) |
+  | 401 | Unauthorized | Not logged in / bad token |
+  | 403 | Forbidden | Logged in but not allowed |
+  | 404 | Not Found | Resource or URL does not exist |
+  | 405 | Method Not Allowed | URL exists but not for this method |
+  | 409 | Conflict | Clashes with current state (email already registered) |
+  | 415 | Unsupported Media Type | Wrong `Content-Type` (sent text, expected JSON) |
+  | 500 | Internal Server Error | A bug on the server |
+
+  Rule of thumb: **4xx = the client's mistake, 5xx = the server's mistake.**
+
+  ### Pagination
+  Never return 10,000 rows at once. Accept `page` and `size`, and return the items **plus** page info. Spring Data uses `PageRequest.of(page, size)` with **page numbers starting at 0**. The **offset** (rows skipped) is `page * size`.
+
+  Your app returns its own stable shape, `PageResponse` (`backend/src/main/java/com/codequest/dto/PageResponse.java`): `items, page, size, totalItems, totalPages`. And `MistakeController` limits `size` with `@Min(1) @Max(100)` so nobody can ask for a million rows.
+
+  ### ResponseEntity vs @ResponseStatus
+  - `@ResponseStatus(HttpStatus.CREATED)` on a method: always that status.
+  - `ResponseEntity<T>`: choose the status **at runtime**, e.g. `ResponseEntity.ok(body)` or `ResponseEntity.notFound().build()`. In larger apps, you usually throw an exception and let a global handler choose the status (lesson 6).
+tinyCode:
+  code: |
+    package demo.rest;
+
+    import org.springframework.http.HttpStatus;
+    import org.springframework.http.MediaType;
+    import org.springframework.http.ResponseEntity;
+    import org.springframework.test.web.servlet.MockMvc;
+    import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+    import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+    import org.springframework.web.bind.annotation.*;
+
+    import java.util.*;
+    import java.util.concurrent.atomic.AtomicLong;
+
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+
+    record BookRequest(String title, int price) {}
+    record BookResponse(Long id, String title, int price) {}
+
+    class BookService {
+        private final Map<Long, BookResponse> store = new LinkedHashMap<>();
+        private final AtomicLong ids = new AtomicLong();
+
+        BookResponse create(BookRequest req) {
+            long id = ids.incrementAndGet();
+            BookResponse b = new BookResponse(id, req.title(), req.price());
+            store.put(id, b);
+            return b;
+        }
+        Optional<BookResponse> find(Long id) { return Optional.ofNullable(store.get(id)); }
+        boolean delete(Long id) { return store.remove(id) != null; }
+    }
+
+    @RestController
+    @RequestMapping("/api/books")
+    class BookController {
+        private final BookService service;
+        BookController(BookService service) { this.service = service; }
+
+        @PostMapping
+        @ResponseStatus(HttpStatus.CREATED)
+        BookResponse create(@RequestBody BookRequest req) { return service.create(req); }
+
+        @GetMapping("/{id}")
+        ResponseEntity<BookResponse> get(@PathVariable Long id) {
+            return service.find(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        }
+
+        @DeleteMapping("/{id}")
+        ResponseEntity<Void> delete(@PathVariable Long id) {
+            return service.delete(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        }
+    }
+
+    public class RestDemo {
+        static MockMvc mvc = MockMvcBuilders.standaloneSetup(new BookController(new BookService())).build();
+
+        static void show(String label, MockHttpServletRequestBuilder req) throws Exception {
+            var res = mvc.perform(req).andReturn().getResponse();
+            String body = res.getContentAsString();
+            System.out.println(label + " -> " + res.getStatus() + (body.isEmpty() ? "" : " " + body));
+        }
+
+        public static void main(String[] args) throws Exception {
+            show("POST   /api/books", post("/api/books").contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Java\",\"price\":450}"));
+            show("GET    /api/books/1", get("/api/books/1"));
+            show("DELETE /api/books/1", delete("/api/books/1"));
+            show("GET    /api/books/1", get("/api/books/1"));
+        }
+    }
+    // Output (plus a few log lines):
+    // POST   /api/books -> 201 {"id":1,"title":"Java","price":450}
+    // GET    /api/books/1 -> 200 {"id":1,"title":"Java","price":450}
+    // DELETE /api/books/1 -> 204
+    // GET    /api/books/1 -> 404
+  walkthrough: |
+    - `BookRequest` and `BookResponse` are **DTO records**: the JSON going in and coming out. The client never chooses the `id`; the server does.
+    - `BookService` is the **service layer**. Here it stores books in a `Map` to keep the demo small; in a real app it would call a `BookRepository`.
+    - `@RestController @RequestMapping("/api/books")`: every method's URL starts with `/api/books`. One plural noun = one resource.
+    - `@PostMapping` + `@ResponseStatus(HttpStatus.CREATED)`: creating returns **201** and the new book.
+    - `@GetMapping("/{id}")` returns `ResponseEntity`: **200** with the book if found, otherwise **404** with an empty body.
+    - `@DeleteMapping("/{id}")`: **204 No Content** when deleted (nothing to send back), **404** if the id is unknown.
+    - Notice the controller has **no business logic**: it only translates between HTTP and the service.
+    - `MockMvc` is a fake HTTP client from Spring's test library: it sends requests to the controller without starting a real server. You will use it properly in the testing lesson. (It needs `spring-boot-starter-test`.)
+    - Output: create (201), read (200), delete (204), read again (404 because it was deleted).
+tryIt:
+  instructions: "Type this pagination demo. Before running, work out on paper: with 45 items and size 20, what is the offset of page 2, how many items does it have, and how many pages exist?"
+  code: |
+    package demo.page;
+
+    import org.springframework.data.domain.*;
+    import java.util.*;
+    import java.util.stream.*;
+
+    public class PageDemo {
+        public static void main(String[] args) {
+            List<Integer> all = IntStream.rangeClosed(1, 45).boxed().toList();
+            Pageable pageable = PageRequest.of(2, 20);
+            List<Integer> slice = all.subList((int) pageable.getOffset(), Math.min(all.size(), (int) pageable.getOffset() + 20));
+            Page<Integer> page = new PageImpl<>(slice, pageable, all.size());
+            System.out.println("offset=" + pageable.getOffset() + " items=" + page.getNumberOfElements() + " totalPages=" + page.getTotalPages() + " first=" + slice.get(0) + " last=" + page.isLast());
+        }
+    }
+predict:
+  code: |
+    // Same BookController and BookService as in Tiny code (fresh, empty store).
+    // There is NO @PutMapping in BookController.
+    show("A", post("/api/books").contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Java\",\"price\":450}"));
+    show("B", post("/api/books").contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"DSA\",\"price\":399}"));
+    show("C", get("/api/books/2"));
+    show("D", delete("/api/books/5"));
+    show("E", delete("/api/books/2"));
+    show("F", put("/api/books/1"));
+  expectedOutput: |
+    A -> 201 {"id":1,"title":"Java","price":450}
+    B -> 201 {"id":2,"title":"DSA","price":399}
+    C -> 200 {"id":2,"title":"DSA","price":399}
+    D -> 404
+    E -> 204
+    F -> 405
+  explanation: |
+    A and B create books with ids 1 and 2 (201 each). C reads book 2 (200). D deletes id 5, which never existed, so the controller returns 404. E deletes book 2 (204, no body). F is the interesting one: `/api/books/1` **is** a known URL, but no method handles PUT on it, so Spring answers **405 Method Not Allowed**, not 404. (Spring also logs a warning line for F; ignore log lines.)
+commonMistakes:
+  - "Putting business rules (discounts, limits, permissions) in the controller. Controllers should be thin; logic belongs in services."
+  - "Returning JPA entities from controllers. You may leak fields like passwordHash and hit LazyInitializationException while JSON is written."
+  - "Verbs in URLs like /getBooks or /deleteBook?id=3. Use nouns and let the HTTP method say the action."
+  - "Changing data in a GET request. GET must be safe: browsers, proxies and crawlers repeat GETs freely."
+  - "Returning 200 for everything, even errors. Use 201, 204, 400, 404, 409 and so on so clients can react correctly."
+  - "Thinking page numbers start at 1 in Spring Data. PageRequest.of(0, 20) is the FIRST page."
+interviewBox:
+  why: "Why interviewers ask this: it checks whether you can structure a real backend and design an API other developers can use without reading your code."
+  questions:
+    - q: "Explain the layered architecture of your Spring Boot project."
+      a: "Requests come into controllers, which only map URLs, validate input and call one service method. Services hold the business rules and transactions; for example XpService decides how much XP to give and stops double rewards. Repositories, which are Spring Data interfaces, read and write the database. Data goes out as DTO records, not entities. This keeps each part simple and lets me unit test services with mock repositories."
+    - q: "What is the difference between PUT and PATCH?"
+      a: "PUT replaces the whole resource with what I send, and it is idempotent: sending it twice gives the same result. PATCH changes only some fields, like marking a mistake as resolved. POST creates a new resource and is not idempotent: sending it twice creates two."
+    - q: "Why use DTOs instead of returning entities?"
+      a: "Entities match database tables and can contain sensitive fields like a password hash, plus lazy relationships that can crash during JSON writing after the transaction ends. DTOs define exactly what the API exposes, so the database can change without breaking clients."
+    - q: "Which status codes would you return for create, delete, validation error and duplicate email?"
+      a: "201 Created for create, 204 No Content for delete, 400 Bad Request for validation errors, and 409 Conflict for a duplicate email. 404 if the resource doesn't exist, 401 if not logged in and 403 if logged in but not allowed."
+    - q: "How do you implement pagination?"
+      a: "The endpoint accepts page and size query parameters, with a maximum size. The service calls the repository with PageRequest.of(page, size), which starts from page 0, and gets a Page back. I return the items plus page, size, total items and total pages, like the PageResponse record in my project."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Where should the rule 'a user can earn XP for the same problem only once' live?"
+    code: null
+    options:
+      - "In the controller, before calling the repository"
+      - "In the service layer"
+      - "In the DTO record"
+      - "In the JavaScript frontend"
+    answer: 1
+    explanation: "Business rules belong in services, which is exactly where your XpService checks existsByUserIdAndActionAndSourceKey. A controller rule would be skipped by any other caller of the service, and a frontend rule can be bypassed by anyone with curl."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "BookController has @GetMapping(\"/{id}\") with a Long id. What status does GET /api/books/abc return?"
+    code: |
+      @GetMapping("/{id}")
+      ResponseEntity<BookResponse> get(@PathVariable Long id) {
+          return service.find(id).map(ResponseEntity::ok)
+                  .orElse(ResponseEntity.notFound().build());
+      }
+    options: ["200", "400", "404", "500"]
+    answer: 1
+    explanation: "Spring cannot convert 'abc' to Long, so it throws MethodArgumentTypeMismatchException before the method runs, and the default handling answers 400 Bad Request. It is not 404, because the URL pattern matched; the input was just invalid."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "What is wrong with this REST design?"
+    code: |
+      @RestController
+      @RequestMapping("/api")
+      class BookController {
+          @GetMapping("/deleteBook")
+          String deleteBook(@RequestParam Long id) {
+              service.delete(id);
+              return "deleted";
+          }
+      }
+    options:
+      - "@RequestParam cannot be a Long"
+      - "It deletes data with GET and puts a verb in the URL; it should be DELETE /api/books/{id} returning 204"
+      - "The class needs @Service as well"
+      - "Nothing; it works, so it is fine"
+    answer: 1
+    explanation: "GET must be safe: crawlers, browser prefetching or a retry could delete books by accident. REST URLs name resources (nouns) and the method says the action. It does 'work', which is why option D is tempting, but it breaks HTTP's rules."
+  - id: q4
+    type: MATCH
+    prompt: "Match each situation to the best status code"
+    pairs:
+      - left: "POST created a new account"
+        right: "201 Created"
+      - left: "DELETE succeeded, nothing to return"
+        right: "204 No Content"
+      - left: "Email is already registered"
+        right: "409 Conflict"
+      - left: "Logged in, but not an admin"
+        right: "403 Forbidden"
+      - left: "POST sent to a GET-only URL"
+        right: "405 Method Not Allowed"
+    explanation: "201 and 204 are success codes with specific meanings; 409 means the request clashes with existing data; 403 is 'known user, not allowed' (401 would be 'not logged in'); 405 means the URL exists but not for that method."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "PUT and DELETE are idempotent, but POST is not."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Repeating a PUT or DELETE leaves the server in the same state as doing it once. Repeating a POST to /api/orders creates another order each time."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Make this endpoint return 201 when a book is created."
+    code: |
+      @PostMapping
+      @ResponseStatus(HttpStatus.____)
+      BookResponse create(@RequestBody BookRequest req) {
+          return service.create(req);
+      }
+    acceptedAnswers: ["CREATED"]
+    explanation: "HttpStatus.CREATED is 201. Your AuthController.register uses exactly this. HttpStatus.OK (200) would also 'work', but 201 tells the client a new resource exists."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "There are 45 mistakes. The client calls GET /api/mistakes?page=2&size=20. How many items come back, and what is totalPages?"
+    code: |
+      Pageable pageable = PageRequest.of(2, 20);
+      Page<Mistake> page = repo.findAll(pageable); // 45 rows in total
+      System.out.println(page.getNumberOfElements() + " " + page.getTotalPages());
+    options: ["20 3", "5 3", "0 2", "25 2"]
+    answer: 1
+    explanation: "Pages start at 0: page 0 = rows 1-20, page 1 = rows 21-40, page 2 = rows 41-45. So page 2 has 5 items, and 45 rows need 3 pages. Option C assumes pages start at 1."
+  - id: q8
+    type: MCQ
+    prompt: "Why does the backend return UserView instead of the User entity from /api/auth/me?"
+    code: null
+    options:
+      - "Records are faster to serialize than classes"
+      - "The entity has a password hash and DB details that must not leave the server, and its shape is tied to the table"
+      - "Entities cannot be converted to JSON at all"
+      - "Spring Security forbids returning entities"
+    answer: 1
+    explanation: "DTOs control exactly what is exposed. Entities CAN be turned into JSON (that's the danger: you'd leak passwordHash), and Spring Security has no such rule. Speed is not the reason."
+explainBack:
+  prompt: "Explain to a friend how a Spring Boot backend is organised and how a good REST API looks."
+  rubric:
+    - "I named controller, service and repository and the job of each"
+    - "I explained DTO vs entity and why entities are not returned"
+    - "I gave REST URL rules: plural nouns, HTTP method as the action"
+    - "I named at least five status codes correctly"
+    - "I mentioned pagination with page starting at 0"
+  modelAnswer: |
+    A Spring Boot backend is like a restaurant. The controller is the waiter: it takes the HTTP request, validates it and calls one service method. The service is the chef with all the business rules and transactions. The repository is the storeroom that reads and writes the database. Data goes in and out as DTO records, never as entities, so secrets like password hashes stay inside. URLs are plural nouns like /api/books/12, and the method is the action: GET reads, POST creates, PUT replaces, PATCH updates part, DELETE removes. I return 201 for create, 204 for delete, 400 for bad input, 404 when not found, 409 for conflicts. Lists are paginated, starting from page 0.
+flashcards:
+  - front: "Controller / Service / Repository: one job each"
+    back: "Controller: HTTP in/out, validation. Service: business rules + transactions. Repository: database access."
+  - front: "Safe vs idempotent"
+    back: "Safe: does not change data (GET). Idempotent: repeating gives the same server state (GET, PUT, DELETE). POST is neither."
+  - front: "401 vs 403"
+    back: "401: not logged in / invalid token. 403: logged in but not allowed."
+  - front: "404 vs 405"
+    back: "404: no such URL/resource. 405: the URL exists but not for this HTTP method."
+  - front: "Why DTOs?"
+    back: "Control what is exposed (no password hash), avoid lazy-loading crashes during JSON, keep API stable when the DB changes."
+  - front: "PageRequest.of(2, 20) means"
+    back: "Third page (pages start at 0), offset 40, up to 20 rows."
+keyTakeaways:
+  - "Controller (HTTP), Service (business logic, transactions), Repository (data): each layer has one job."
+  - "Send DTO records over HTTP; keep entities inside the server."
+  - "REST: plural noun URLs, method = action; GET is safe; PUT and DELETE are idempotent, POST is not."
+  - "Use precise status codes: 200, 201, 204, 400, 401, 403, 404, 405, 409, 500."
+  - "Paginate lists with page (from 0) and a capped size, and return total counts."

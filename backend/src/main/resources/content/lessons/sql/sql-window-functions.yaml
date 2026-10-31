@@ -1,0 +1,346 @@
+slug: sql-window-functions
+world: SQL
+section: SQL
+order: 5
+title: "Window functions"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+infosysRelevance: "RANK/DENSE_RANK and 'top N per group' are strong SP-level SQL practice; they also give elegant answers to Nth-highest-salary questions."
+otherCompanies: "Product companies and data-heavy roles expect window functions; service companies increasingly ask RANK vs DENSE_RANK as a practice question."
+why: |
+  GROUP BY squashes many rows into one. But often you want to **keep every row** and still see a group calculation next to it:
+  - each employee's **rank** inside their department,
+  - a **running total** of sales day by day,
+  - the **previous** order's amount next to the current one.
+
+  **Window functions** do exactly this. They are the cleanest way to solve "Nth highest salary", "top 2 per department" and "running total" questions.
+
+  The interview favourite is **ROW_NUMBER vs RANK vs DENSE_RANK**, which you will be able to explain with one small table after this lesson.
+analogy: |
+  Think of a **cricket points table**.
+
+  - Every team stays in the list (rows are **not** squashed).
+  - Next to each team you write its **position** (a rank) based on points.
+  - If two teams have the same points, should they share 4th place? Should the next team be 5th or 6th? That's exactly RANK vs DENSE_RANK.
+  - If you make separate tables for Group A and Group B, positions restart in each group. That is **PARTITION BY**.
+
+  The "window" is the set of rows each team is compared against: the whole league, or just its group.
+visual:
+  diagram: |
+    ORDER BY salary DESC   ROW_NUMBER  RANK  DENSE_RANK
+    Asha   90000               1         1        1
+    Divya  80000               2         2        2
+    Ravi   75000               3         3        3
+    Kiran  60000               4         4        4    <- tie
+    Priya  60000               5         4        4    <- tie
+    Meena  50000               6         6        5    RANK skips 5
+    Arjun  45000               7         7        6    DENSE doesn't
+
+    PARTITION BY dept_id = restart numbering per department
+    +-- dept 10 --+   +-- dept 20 --+   +-- dept 30 --+
+    | Asha   1    |   | Kiran  1    |   | Meena  1    |
+    | Divya  2    |   | Priya  1    |   +-------------+
+    | Ravi   3    |   +-------------+
+    +-------------+
+  caption: "Same 7 rows, three numbering styles. ROW_NUMBER never repeats; RANK repeats on ties and then jumps; DENSE_RANK repeats on ties and does not jump. PARTITION BY restarts the count in each group."
+  visualizer: null
+explanation: |
+  ### What is a window function?
+  A **window function** calculates a value for each row using a set of related rows (the **window**), **without** collapsing the rows. You recognise it by the word **OVER**:
+  ```sql
+  function_name(...) OVER (PARTITION BY ... ORDER BY ...)
+  ```
+  - `PARTITION BY` splits rows into groups (like GROUP BY, but rows are kept). Optional.
+  - `ORDER BY` inside OVER sets the order *within* each partition (for ranking, running totals, LAG/LEAD).
+  - `OVER ()` with nothing inside means "the whole result is one window".
+
+  > Supported in PostgreSQL, Oracle, SQL Server, and **MySQL 8.0+**. MySQL 5.7 and older have no window functions.
+
+  ### GROUP BY vs window: rows are kept
+  ```sql
+  SELECT name, dept_id, salary,
+         ROUND(AVG(salary) OVER (PARTITION BY dept_id)) AS dept_avg
+  FROM employees;
+  ```
+  Every employee row stays, and each row shows its department's average (Engineering rows show 81667). With GROUP BY you would get only one row per department and lose the names.
+
+  ### ROW_NUMBER, RANK, DENSE_RANK
+  ```sql
+  SELECT name, salary,
+         ROW_NUMBER() OVER (ORDER BY salary DESC, name) AS row_num,
+         RANK()       OVER (ORDER BY salary DESC)       AS rnk,
+         DENSE_RANK() OVER (ORDER BY salary DESC)       AS dense_rnk
+  FROM employees
+  ORDER BY salary DESC, name;
+  ```
+  ```
+   name  | salary | row_num | rnk | dense_rnk
+  -------+--------+---------+-----+-----------
+   Asha  |  90000 |       1 |   1 |         1
+   Divya |  80000 |       2 |   2 |         2
+   Ravi  |  75000 |       3 |   3 |         3
+   Kiran |  60000 |       4 |   4 |         4
+   Priya |  60000 |       5 |   4 |         4
+   Meena |  50000 |       6 |   6 |         5
+   Arjun |  45000 |       7 |   7 |         6
+  ```
+  | Function | On a tie | After a tie | Use it for |
+  |---|---|---|---|
+  | `ROW_NUMBER()` | different numbers (1, 2, 3...) | continues | exactly one row per position, removing duplicates |
+  | `RANK()` | same number | **skips** (4, 4, 6) | sports-style ranking |
+  | `DENSE_RANK()` | same number | **no gap** (4, 4, 5) | "Nth highest distinct salary" |
+
+  For ROW_NUMBER, add a tie-breaker (`, name`) inside OVER, otherwise which of Kiran/Priya gets 4 is not guaranteed.
+
+  ### PARTITION BY: rank inside each group
+  ```sql
+  SELECT name, dept_id, salary,
+         RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rank_in_dept
+  FROM employees;
+  ```
+  Numbering restarts in each department: Asha 1, Divya 2, Ravi 3 in dept 10; Kiran 1 and Priya 1 in dept 20; Meena 1 in dept 30; Arjun 1 in the NULL partition.
+
+  ### Top N per group
+  You **cannot** use a window function in WHERE (WHERE runs before window functions are calculated). Wrap the query in a subquery (or a CTE: `WITH t AS (...)`) and filter outside:
+  ```sql
+  SELECT name, dept_id, salary
+  FROM (SELECT name, dept_id, salary,
+               ROW_NUMBER() OVER (PARTITION BY dept_id
+                                  ORDER BY salary DESC, name) AS rn
+        FROM employees) t
+  WHERE rn = 1;          -- top earner per department
+  ```
+  Use `DENSE_RANK() ... WHERE dr = 1` instead if you want **all** tied top earners (Kiran and Priya).
+
+  ### Running totals with SUM() OVER
+  An aggregate with `OVER (ORDER BY ...)` becomes a running (cumulative) value:
+  ```sql
+  SELECT order_id, order_date, amount,
+         SUM(amount) OVER (ORDER BY order_date) AS running_total
+  FROM orders;
+  ```
+  ```
+   order_id | order_date | amount | running_total
+  ----------+------------+--------+---------------
+        101 | 2024-01-05 |   2500 |          2500
+        102 | 2024-01-07 |   1200 |          3700
+        103 | 2024-02-11 |    800 |          4500
+        104 | 2024-02-15 |   3000 |          7500
+        105 | 2024-03-01 |   1200 |          8700
+        106 | 2024-03-09 |   1500 |         10200
+  ```
+  Add `PARTITION BY customer_id` to get a separate running total per customer.
+
+  ### The frame trap: ties in a running total
+  When ORDER BY is given, the default **frame** (the rows that are summed) is `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`. RANGE treats rows with the **same ORDER BY value** (called **peers**) as one block. So if two orders both have amount 1200 and you order by amount, both rows show the total **including both**. Fix it by making the order unique (`ORDER BY amount, order_id`) or by writing `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` (ROWS counts physical rows one by one).
+
+  ### LAG and LEAD: look at neighbours
+  - `LAG(col)` = value from the **previous** row in the window order.
+  - `LEAD(col)` = value from the **next** row.
+  - Missing neighbours give NULL, or a default: `LAG(amount, 1, 0)` means "1 row back, use 0 if none".
+  ```sql
+  SELECT order_id, amount,
+         LAG(amount)  OVER (ORDER BY order_date) AS prev_amount,
+         amount - LAG(amount) OVER (ORDER BY order_date) AS change
+  FROM orders;
+  -- 101: prev NULL, change NULL; 102: prev 2500, change -1300; ...
+  ```
+  Great for "change from the previous day" and "compare with last month" questions.
+
+  ### Where window functions run
+  Logical order: FROM, WHERE, GROUP BY, HAVING, **window functions**, SELECT, DISTINCT, ORDER BY, LIMIT. So you can use them in SELECT and ORDER BY, but not in WHERE, GROUP BY or HAVING.
+tinyCode:
+  code: |
+    SELECT name, dept_id, salary,
+           RANK() OVER (PARTITION BY dept_id
+                        ORDER BY salary DESC) AS rank_in_dept
+    FROM employees
+    ORDER BY dept_id, rank_in_dept, name;
+
+    -- Result:
+    --  name  | dept_id | salary | rank_in_dept
+    -- -------+---------+--------+--------------
+    --  Asha  |      10 |  90000 |            1
+    --  Divya |      10 |  80000 |            2
+    --  Ravi  |      10 |  75000 |            3
+    --  Kiran |      20 |  60000 |            1
+    --  Priya |      20 |  60000 |            1
+    --  Meena |      30 |  50000 |            1
+    --  Arjun |    NULL |  45000 |            1
+  walkthrough: |
+    - `RANK() OVER (...)` says: give each row a rank, using the window described in the brackets.
+    - `PARTITION BY dept_id` makes separate windows: dept 10, dept 20, dept 30 and the NULL dept.
+    - `ORDER BY salary DESC` inside OVER: within each department, the highest salary gets rank 1.
+    - Kiran and Priya tie at 60000, so both get rank 1 in dept 20.
+    - All 7 rows are still there. Nothing was collapsed, unlike GROUP BY.
+    - The final `ORDER BY dept_id, rank_in_dept, name` only arranges the output; it is separate from the ORDER BY inside OVER.
+tryIt:
+  instructions: "Type these and compare the numbers with the visual. In query 3, check the running total by adding the amounts yourself."
+  code: |
+    -- 1. Three ranking styles side by side
+    SELECT name, salary,
+           ROW_NUMBER() OVER (ORDER BY salary DESC, name) AS row_num,
+           RANK()       OVER (ORDER BY salary DESC) AS rnk,
+           DENSE_RANK() OVER (ORDER BY salary DESC) AS dense_rnk
+    FROM employees;
+
+    -- 2. Top earner per department
+    SELECT name, dept_id, salary
+    FROM (SELECT name, dept_id, salary,
+                 ROW_NUMBER() OVER (PARTITION BY dept_id
+                                    ORDER BY salary DESC, name) AS rn
+          FROM employees) t
+    WHERE rn = 1;
+
+    -- 3. Running total per customer
+    SELECT order_id, customer_id, amount,
+           SUM(amount) OVER (PARTITION BY customer_id
+                             ORDER BY order_date) AS cust_running
+    FROM orders;
+
+    -- 4. Previous order amount
+    SELECT order_id, amount,
+           LAG(amount) OVER (ORDER BY order_date) AS prev_amount
+    FROM orders;
+predict:
+  code: |
+    SELECT order_id, amount,
+           SUM(amount) OVER (ORDER BY amount) AS running
+    FROM orders
+    ORDER BY amount, order_id;
+  expectedOutput: |2
+     order_id | amount | running
+    ----------+--------+---------
+          103 |    800 |     800
+          102 |   1200 |    3200
+          105 |   1200 |    3200
+          106 |   1500 |    4700
+          101 |   2500 |    7200
+          104 |   3000 |   10200
+  explanation: |
+    Most people expect 800, 2000, 3200, ... but orders 102 and 105 both show **3200**.
+
+    With `ORDER BY amount` and no frame written, the default frame is **RANGE ... CURRENT ROW**, which includes all **peers** (rows with the same amount). So at either 1200 row, the sum covers 800 + 1200 + 1200 = 3200.
+
+    Fix: `ORDER BY amount, order_id` (unique order) gives 800, 2000, 3200, 4700, 7200, 10200. Writing `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` also adds one row at a time.
+commonMistakes:
+  - "Using a window function in WHERE. Wrap the query in a subquery or CTE and filter on the alias outside."
+  - "Mixing up RANK (gaps after ties) and DENSE_RANK (no gaps)."
+  - "Using ROW_NUMBER without a tie-breaker and getting a random winner among tied rows."
+  - "Forgetting that the default frame with ORDER BY is RANGE, so tied values share the same running total."
+  - "Confusing ORDER BY inside OVER (controls the calculation) with the final ORDER BY (controls display)."
+  - "Expecting window functions on MySQL 5.7; they need MySQL 8.0 or newer."
+interviewBox:
+  why: "Why interviewers ask this: window functions show modern SQL skill and give clean answers to ranking, top-N-per-group and running-total problems."
+  questions:
+    - q: "What is the difference between ROW_NUMBER, RANK and DENSE_RANK?"
+      a: "All three number rows in a given order. ROW_NUMBER gives unique numbers even for ties. RANK gives tied rows the same number and then skips, like 4, 4, 6. DENSE_RANK gives tied rows the same number without skipping, like 4, 4, 5. For the Nth highest distinct salary I use DENSE_RANK."
+    - q: "What is the difference between GROUP BY and a window function with PARTITION BY?"
+      a: "GROUP BY collapses each group into one row. PARTITION BY in a window function also splits rows into groups, but keeps every row and just adds the calculated value to each row, like each employee's department average next to their salary."
+    - q: "How do you find the top 2 earners in each department?"
+      a: "Use DENSE_RANK or ROW_NUMBER over PARTITION BY dept_id ORDER BY salary DESC in a subquery, then filter WHERE rank <= 2 in the outer query. I can't filter on the window function directly in WHERE because WHERE runs before it."
+    - q: "How do you calculate a running total?"
+      a: "SUM(amount) OVER (ORDER BY order_date). If I need it per customer, I add PARTITION BY customer_id. If the order column has ties, I add a unique tie-breaker or use a ROWS frame so each row adds one at a time."
+    - q: "What do LAG and LEAD do?"
+      a: "LAG returns a value from the previous row and LEAD from the next row, in the window's order. They're useful for comparing today with yesterday, for example amount minus LAG(amount)."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Salaries ordered ascending: Arjun 45000, Meena 50000, Kiran 60000, Priya 60000, Ravi 75000, Divya 80000, Asha 90000. What RANK does Ravi get?"
+    code: |
+      SELECT name, salary,
+             RANK() OVER (ORDER BY salary) AS r
+      FROM employees;
+    options: ["3", "4", "5", "6"]
+    answer: 2
+    explanation: "Arjun 1, Meena 2, Kiran and Priya tie at 3, and RANK then skips 4, so Ravi is 5. DENSE_RANK would give Ravi 4."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What value does prev show for each of customer 1's orders (2500, then 800, then 1500 by date)?"
+    code: |
+      SELECT customer_id, order_date, amount,
+             LAG(amount, 1, 0) OVER (PARTITION BY customer_id
+                                     ORDER BY order_date) AS prev
+      FROM orders;
+    options: ["NULL, 2500, 800", "0, 2500, 800", "2500, 800, 1500", "0, 0, 0"]
+    answer: 1
+    explanation: "LAG looks one row back inside the same customer's partition. The first order has no previous row, so the default 0 is used (not NULL, because we passed 0 as the third argument)."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "PostgreSQL says: window functions are not allowed in WHERE. How do you fix it?"
+    code: |
+      SELECT name, salary
+      FROM employees
+      WHERE ROW_NUMBER() OVER (ORDER BY salary DESC) = 1;
+    options:
+      - "Use HAVING instead of WHERE"
+      - "Compute ROW_NUMBER in a subquery (or CTE) with an alias, then filter WHERE rn = 1 outside"
+      - "Remove OVER"
+      - "Add GROUP BY salary"
+    answer: 1
+    explanation: "Window functions are calculated after WHERE, GROUP BY and HAVING, so none of those can use them. The standard fix is an outer query filtering the alias. HAVING doesn't work either."
+  - id: q4
+    type: MCQ
+    prompt: "You need the 3rd highest DISTINCT salary, even when salaries tie. Which function fits best?"
+    code: null
+    options: ["ROW_NUMBER()", "RANK()", "DENSE_RANK()", "COUNT() OVER ()"]
+    answer: 2
+    explanation: "DENSE_RANK numbers distinct salary values without gaps, so dense rank 3 is always the 3rd highest distinct salary. ROW_NUMBER breaks ties arbitrarily, and RANK can skip numbers so rank 3 may not exist."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "A window function with PARTITION BY dept_id returns one row per department, just like GROUP BY dept_id."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Window functions keep every input row; PARTITION BY only decides which rows each calculation looks at."
+  - id: q6
+    type: MATCH
+    prompt: "Match each function to what it gives"
+    pairs:
+      - left: "ROW_NUMBER()"
+        right: "Unique 1, 2, 3... even for ties"
+      - left: "RANK()"
+        right: "Ties share a number, then a gap"
+      - left: "DENSE_RANK()"
+        right: "Ties share a number, no gap"
+      - left: "LAG(col)"
+        right: "Value from the previous row"
+    explanation: "LEAD(col) is the mirror of LAG and gives the next row's value."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the clause so the rank restarts for every department."
+    code: |
+      SELECT name,
+             DENSE_RANK() OVER (____ dept_id ORDER BY salary DESC) AS dr
+      FROM employees;
+    acceptedAnswers: ["PARTITION BY", "partition by"]
+    explanation: "PARTITION BY dept_id splits the rows into one window per department, so ranking starts again at 1 in each."
+explainBack:
+  prompt: "Explain RANK vs DENSE_RANK and PARTITION BY to a friend using a cricket points table."
+  rubric:
+    - "I said window functions keep every row and add a calculated column"
+    - "I explained RANK skips after ties and DENSE_RANK doesn't"
+    - "I explained PARTITION BY restarts numbering per group"
+    - "I mentioned that window functions can't be used in WHERE"
+    - "I gave a use like top-N per group or running total"
+  modelAnswer: |
+    A window function is like writing positions in a cricket points table. All teams stay in the list; we just add a position column. If two teams have the same points, RANK gives both the same position and then skips the next one, so 4, 4, 6. DENSE_RANK also gives them the same position but doesn't skip, so 4, 4, 5. PARTITION BY is like having separate tables for Group A and Group B, where positions start from 1 in each group. To get the top team in each group, I compute the rank in a subquery and filter outside, because WHERE runs before window functions.
+flashcards:
+  - front: "ROW_NUMBER vs RANK vs DENSE_RANK on salaries 90,80,60,60,50"
+    back: "ROW_NUMBER 1,2,3,4,5; RANK 1,2,3,3,5; DENSE_RANK 1,2,3,3,4."
+  - front: "Running total syntax"
+    back: "SUM(amount) OVER (ORDER BY order_date) - add PARTITION BY for per-group totals."
+  - front: "Why can't you filter a window function in WHERE?"
+    back: "Window functions run after WHERE/GROUP BY/HAVING. Wrap in a subquery or CTE and filter outside."
+  - front: "LAG vs LEAD"
+    back: "LAG = previous row's value; LEAD = next row's value (NULL or a default if none)."
+  - front: "Default frame with ORDER BY in OVER"
+    back: "RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW: tied ORDER BY values (peers) are summed together."
+keyTakeaways:
+  - "Window functions use OVER and keep every row, unlike GROUP BY."
+  - "PARTITION BY = groups; ORDER BY inside OVER = order for ranking and running values."
+  - "ROW_NUMBER is unique, RANK has gaps after ties, DENSE_RANK has no gaps."
+  - "Filter window results in an outer query; they are not allowed in WHERE."
+  - "SUM() OVER (ORDER BY ...) gives running totals; LAG/LEAD compare neighbours."

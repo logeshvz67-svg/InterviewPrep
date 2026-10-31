@@ -1,0 +1,374 @@
+slug: heaps-priority-queues
+world: DSA
+section: DSA
+order: 11
+title: "Heaps and priority queues"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: HEAPS
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Important for SP preparation: top-k, kth largest and merge-k-sorted problems are classic medium-level questions where a heap turns a full sort into O(n log k)."
+otherCompanies: "Product-company interviews use heaps heavily (top k frequent, k closest points, median of a stream, task scheduling, Dijkstra). Less common in basic service-company rounds, but PriorityQueue usage is a useful Java skill everywhere."
+why: |
+  Many problems ask for **"the smallest / largest so far"** again and again while items keep arriving:
+  - the **k largest** scores out of a million,
+  - the **next task** with the highest priority,
+  - merging **k sorted lists** by always taking the smallest head.
+
+  Sorting everything costs **O(n log n)** and you would have to re-sort after every new item. A **heap** gives you the minimum (or maximum) in **O(1)** and lets you add or remove an item in **O(log n)**. In Java, the heap is ready-made: `PriorityQueue`.
+
+  The key interview idea is the **"heap of size k"** trick: to find the k largest items, keep only k items in a **min-heap** and throw away the smallest whenever it grows beyond k. That is **O(n log k)**, much better than sorting when k is small.
+analogy: |
+  Think of a **hospital emergency ward**. Patients don't get treated in arrival order (that would be a queue). The most serious case is always treated next, even if they arrived last. That is a **priority queue**.
+
+  Now think of how the ward keeps track: a **sports tournament bracket** in reverse. Every "match" (parent) is won by the more urgent patient, so the most urgent one always sits at the top. When the top patient leaves, the remaining contenders replay only a few matches along one path to find the new winner, not the whole tournament. That's why removing is just **O(log n)**.
+visual:
+  diagram: |
+    MIN-HEAP stored in an ARRAY (after adding 5, 3, 8, 1, 9, 2)
+
+                 1            index:  0  1  2  3  4  5
+               /   \          array: [1, 3, 2, 5, 9, 8]
+              3     2
+             / \   /          parent of i : (i - 1) / 2
+            5   9 8           children of i: 2i + 1, 2i + 2
+
+    SIFT UP (add 2): put at the end, swap with parent while smaller
+      [1,3,8,5,9,2] -> 2 < parent 8 -> swap -> [1,3,2,5,9,8]
+                    -> 2 > parent 1 -> stop
+
+    SIFT DOWN (poll): take root, move LAST to root, push it down
+      [8,3,2,5,9] -> smaller child is 2 -> swap -> [2,3,8,5,9] stop
+  caption: "A heap is a complete binary tree stored in an array. Every parent is smaller than its children (min-heap), so the minimum is always at index 0. Add = sift up, remove = sift down, each O(log n)."
+  visualizer: null
+explanation: |
+  ### Key words
+  - **Priority queue**: a collection where you always remove the item with the **highest priority** (smallest or largest), not the oldest.
+  - **Heap**: the usual way to build a priority queue. It is a **complete binary tree** (every level full except possibly the last, which fills from the left) with the **heap property**:
+    - **Min-heap**: every parent <= its children, so the root is the minimum.
+    - **Max-heap**: every parent >= its children, so the root is the maximum.
+  - A heap is **not sorted**. Only the root is guaranteed; siblings can be in any order.
+
+  ### Array layout (no Node objects needed)
+  Because the tree is complete, we can store it level by level in an array:
+  | Want | Formula (0-based index i) |
+  |---|---|
+  | Parent | `(i - 1) / 2` |
+  | Left child | `2 * i + 1` |
+  | Right child | `2 * i + 2` |
+  The root is at index 0. This is why heaps are compact and fast.
+
+  ### Sift up (insert): O(log n)
+  Put the new item at the **end** of the array, then while it is smaller than its parent, swap them.
+  ```java
+  a[size] = x;
+  int i = size++;
+  while (i > 0 && a[(i - 1) / 2] > a[i]) {
+      swap(i, (i - 1) / 2);
+      i = (i - 1) / 2;
+  }
+  ```
+
+  ### Sift down (remove the root): O(log n)
+  Save the root. Move the **last** item to the root, then while it is bigger than its smaller child, swap with that child.
+  ```java
+  int top = a[0];
+  a[0] = a[--size];
+  int i = 0;
+  while (true) {
+      int l = 2 * i + 1, r = 2 * i + 2, smallest = i;
+      if (l < size && a[l] < a[smallest]) smallest = l;
+      if (r < size && a[r] < a[smallest]) smallest = r;
+      if (smallest == i) break;
+      swap(i, smallest);
+      i = smallest;
+  }
+  return top;
+  ```
+  The tree height is log n, and each sift walks one path: O(log n).
+
+  ### Java's PriorityQueue
+  ```java
+  PriorityQueue<Integer> minHeap = new PriorityQueue<>();                        // smallest first
+  PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder()); // largest first
+  PriorityQueue<int[]> byDist = new PriorityQueue<>((x, y) -> Integer.compare(x[0], y[0]));
+  ```
+  | Method | Does | Time |
+  |---|---|---|
+  | `offer(x)` / `add(x)` | insert | O(log n) |
+  | `poll()` | remove and return the top | O(log n) |
+  | `peek()` | look at the top | O(1) |
+  | `size()`, `isEmpty()` | | O(1) |
+  | `remove(obj)`, `contains(obj)` | linear search | O(n) |
+  **Warning**: printing a PriorityQueue or looping over it with for-each shows the **internal array order**, not sorted order. To get sorted output, `poll()` repeatedly.
+
+  ### Pattern 1: kth largest / top k (heap of size k)
+  ```java
+  PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+  for (int x : nums) {
+      minHeap.offer(x);
+      if (minHeap.size() > k) minHeap.poll();   // drop the smallest
+  }
+  return minHeap.peek();                        // kth largest
+  ```
+  **Why a MIN-heap for the LARGEST?** The heap keeps the k biggest seen so far. The smallest of them (the root) is the "weakest member", the one to kick out when a better candidate arrives. At the end, the root is exactly the kth largest. Time **O(n log k)**, space **O(k)**.
+  - Top k **smallest**: same idea with a **max-heap** of size k.
+  - Top k **frequent**: count with a HashMap, then keep a min-heap of size k ordered by frequency.
+
+  ### Pattern 2: merge k sorted lists
+  Put the **head** of each list in a min-heap. Repeatedly poll the smallest node, attach it to the result, and push that node's `next` into the heap.
+  ```java
+  PriorityQueue<Node> pq = new PriorityQueue<>((x, y) -> Integer.compare(x.val, y.val));
+  for (Node head : lists) if (head != null) pq.offer(head);
+  Node dummy = new Node(0, null), tail = dummy;
+  while (!pq.isEmpty()) {
+      Node smallest = pq.poll();
+      tail.next = smallest;
+      tail = smallest;
+      if (smallest.next != null) pq.offer(smallest.next);
+  }
+  return dummy.next;
+  ```
+  The heap never holds more than k nodes, so each of the N total nodes costs O(log k): **O(N log k)**.
+
+  ### Building a heap from an array
+  Adding n items one by one costs O(n log n). The **heapify** method (sift down every non-leaf node from the last parent back to the root) builds a heap in **O(n)**. Heap sort = heapify, then poll n times: O(n log n), in-place, not stable.
+
+  ### Complexity summary
+  | Task | With a heap | Full sort |
+  |---|---|---|
+  | Find min/max | O(1) peek | O(n log n) |
+  | Insert / remove top | O(log n) | re-sort |
+  | kth largest / top k | O(n log k) | O(n log n) |
+  | Merge k sorted lists (N nodes) | O(N log k) | O(N log N) |
+  | Build heap | O(n) | |
+tinyCode:
+  code: |
+    import java.util.Arrays;
+
+    public class MinHeap {
+        private int[] a = new int[16];
+        private int size = 0;
+
+        void add(int x) {
+            a[size] = x;                     // put at the end
+            int i = size++;
+            while (i > 0 && a[(i - 1) / 2] > a[i]) {   // sift up
+                swap(i, (i - 1) / 2);
+                i = (i - 1) / 2;
+            }
+        }
+
+        int poll() {
+            int top = a[0];
+            a[0] = a[--size];                // move last element to the root
+            int i = 0;
+            while (true) {                   // sift down
+                int l = 2 * i + 1, r = 2 * i + 2, smallest = i;
+                if (l < size && a[l] < a[smallest]) smallest = l;
+                if (r < size && a[r] < a[smallest]) smallest = r;
+                if (smallest == i) break;
+                swap(i, smallest);
+                i = smallest;
+            }
+            return top;
+        }
+
+        private void swap(int i, int j) { int t = a[i]; a[i] = a[j]; a[j] = t; }
+
+        public static void main(String[] args) {
+            MinHeap h = new MinHeap();
+            for (int x : new int[]{5, 3, 8, 1, 9, 2}) h.add(x);
+            System.out.println(Arrays.toString(Arrays.copyOf(h.a, h.size)));
+            System.out.print(h.poll() + " " + h.poll() + " " + h.poll());
+            System.out.println(" | left: " + Arrays.toString(Arrays.copyOf(h.a, h.size)));
+        }
+    }
+  walkthrough: |
+    - The heap lives in a plain `int[]`; `size` says how many slots are used.
+    - **add** places the value at the end and sifts it up. Trace: 5 -> [5]; 3 swaps above 5 -> [3, 5]; 8 stays -> [3, 5, 8]; 1 climbs twice -> [1, 3, 8, 5]; 9 stays; 2 swaps with 8 -> **[1, 3, 2, 5, 9, 8]**. Notice it is not sorted, but every parent is smaller than its children.
+    - **poll** returns the root, moves the last value to the root and sifts it down by swapping with the smaller child.
+      - poll 1: 8 goes to the root, swaps with 2 -> [2, 3, 8, 5, 9].
+      - poll 2: 9 goes to the root, swaps with 3, then with 5 -> [3, 5, 8, 9].
+      - poll 3: 9 goes to the root, swaps with 5 -> [5, 9, 8].
+    - The polled values come out in sorted order: 1, 2, 3.
+
+    Output:
+    ```
+    [1, 3, 2, 5, 9, 8]
+    1 2 3 | left: [5, 9, 8]
+    ```
+tryIt:
+  instructions: "Type this kth-largest solution that keeps a min-heap of size k. Before running, predict the three answers. Then add a print of minHeap inside the loop to watch the heap never grow beyond k."
+  code: |
+    import java.util.PriorityQueue;
+
+    public class KthLargest {
+        static int kthLargest(int[] nums, int k) {
+            PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+            for (int x : nums) {
+                minHeap.offer(x);
+                if (minHeap.size() > k) {
+                    minHeap.poll();          // throw away the smallest
+                }
+            }
+            return minHeap.peek();           // smallest of the k largest
+        }
+
+        public static void main(String[] args) {
+            int[] nums = {3, 2, 1, 5, 6, 4};
+            System.out.println(kthLargest(nums, 1));
+            System.out.println(kthLargest(nums, 2));
+            System.out.println(kthLargest(nums, 4));
+        }
+    }
+predict:
+  code: |
+    import java.util.Collections;
+    import java.util.PriorityQueue;
+
+    public class Predict {
+        public static void main(String[] args) {
+            PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+            maxHeap.addAll(java.util.List.of(4, 1, 7, 3));
+            maxHeap.poll();
+            maxHeap.offer(5);
+            StringBuilder sb = new StringBuilder();
+            while (!maxHeap.isEmpty()) sb.append(maxHeap.poll()).append(" ");
+            System.out.println(sb.toString().trim());
+        }
+    }
+  expectedOutput: |
+    5 4 3 1
+  explanation: |
+    `Collections.reverseOrder()` makes it a max-heap. The first `poll()` removes the largest, 7. Then 5 is added. Polling repeatedly always removes the current largest, so the values come out in descending order: 5, 4, 3, 1. (Printing the heap directly would show internal array order instead; polling is the way to get sorted output.)
+commonMistakes:
+  - "Printing a PriorityQueue (or iterating it) and expecting sorted order; only poll() gives sorted order."
+  - "Using a max-heap of size k for the kth LARGEST; that keeps the k smallest. Use a min-heap for 'largest' problems."
+  - "Writing the comparator as (a, b) -> a - b with very large or negative values, which can overflow; use Integer.compare(a, b)."
+  - "Thinking a heap is a sorted array; only the root is guaranteed to be the min/max."
+  - "Calling contains() or remove(obj) in a loop on a PriorityQueue: each call is O(n)."
+  - "Getting index formulas wrong: with 0-based arrays, children are 2i+1 and 2i+2, and the parent is (i-1)/2."
+interviewBox:
+  why: "Why interviewers ask this: heap questions check whether you can pick the right structure for repeated min/max queries and improve O(n log n) to O(n log k)."
+  questions:
+    - q: "How do you find the kth largest element in an array?"
+      a: "I keep a min-heap of size k. I add each number, and if the heap grows bigger than k, I remove the smallest. So the heap always holds the k largest numbers seen so far, and its root, the smallest of them, is the kth largest. Time is O(n log k) and space is O(k). Sorting would be O(n log n)."
+    - q: "How is a heap stored in memory?"
+      a: "As an array, because a heap is a complete binary tree. The root is at index zero, the children of index i are at 2i plus 1 and 2i plus 2, and the parent is at i minus 1 divided by 2. So no node objects or pointers are needed."
+    - q: "What are the time complexities of heap operations?"
+      a: "Peek is O(1), because the min or max is at the root. Insert and remove-top are O(log n), because sift up or sift down walks one path of a tree with height log n. Building a heap from n items with heapify is O(n)."
+    - q: "How do you merge k sorted linked lists?"
+      a: "I put the head of every list into a min-heap ordered by value. Then I repeatedly poll the smallest node, attach it to the result, and push its next node into the heap if it exists. The heap has at most k nodes, so with N total nodes it's O(N log k)."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "6, 4, 9, 2 are inserted one by one into an empty array-based MIN-heap using sift up. What is the array afterwards?"
+    code: |
+      int[] arr = new int[4]; int size = 0;
+      for (int x : new int[]{6, 4, 9, 2}) {
+          arr[size] = x;
+          int i = size++;
+          while (i > 0 && arr[(i - 1) / 2] > arr[i]) {
+              int t = arr[i]; arr[i] = arr[(i - 1) / 2]; arr[(i - 1) / 2] = t;
+              i = (i - 1) / 2;
+          }
+      }
+      System.out.println(Arrays.toString(arr));
+    options: ["[2, 4, 9, 6]", "[2, 4, 6, 9]", "[2, 6, 9, 4]", "[4, 2, 9, 6]"]
+    answer: 0
+    explanation: "6 -> [6]. 4 swaps with 6 -> [4, 6]. 9 stays -> [4, 6, 9]. 2 lands at index 3, swaps with its parent 6 (index 1) -> [4, 2, 9, 6], then with 4 (index 0) -> [2, 4, 9, 6]. It's a valid heap but not sorted, so [2, 4, 6, 9] is wrong."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      PriorityQueue<Integer> pq = new PriorityQueue<>();
+      for (int x : new int[]{5, 3, 8, 1}) pq.offer(x);
+      System.out.println(pq + " " + pq.peek());
+    options: ["[1, 3, 5, 8] 1", "[1, 3, 8, 5] 1", "[5, 3, 8, 1] 5", "[8, 5, 3, 1] 8"]
+    answer: 1
+    explanation: "toString shows the internal heap array: 5; 3 goes above 5 -> [3, 5]; 8 -> [3, 5, 8]; 1 climbs to the root -> [1, 3, 8, 5]. peek() is the minimum, 1. Expecting [1, 3, 5, 8] is the classic mistake: a heap is not sorted."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This should return the 2nd LARGEST of {3, 2, 1, 5, 6, 4} (answer 5), but it returns 2. What is wrong?"
+    code: |
+      PriorityQueue<Integer> heap = new PriorityQueue<>(Collections.reverseOrder());
+      for (int x : nums) {
+          heap.offer(x);
+          if (heap.size() > k) heap.poll();
+      }
+      return heap.peek();
+    options:
+      - "k should be k - 1"
+      - "It uses a max-heap, so poll() throws away the LARGEST each time and keeps the k smallest; a min-heap is needed"
+      - "offer should be add"
+      - "peek() should be poll()"
+    answer: 1
+    explanation: "With reverseOrder, poll removes the biggest value, so only the 2 smallest (1 and 2) survive and peek returns 2, the 2nd smallest. A default PriorityQueue (min-heap) removes the smallest instead and leaves the 2 largest, with 5 at the root. offer vs add and peek vs poll make no difference here."
+  - id: q4
+    type: MCQ
+    prompt: "What is the time complexity of finding the k largest elements of an array of size n using a min-heap of size k?"
+    code: null
+    options: ["O(n log n)", "O(n log k)", "O(k log n)", "O(n * k)"]
+    answer: 1
+    explanation: "Each of the n elements is offered (and possibly polled) on a heap that never exceeds k items, so each operation costs O(log k). O(n log n) is sorting everything, which is worse when k is small."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "In a min-heap, the array is always sorted in ascending order."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The heap property only says each parent <= its children. [1, 3, 2, 5, 9, 8] is a valid min-heap but not sorted (3 comes before 2). Only the root is guaranteed to be the minimum."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Array-based heap: fill in the index of the parent of index i (0-based)."
+    code: |
+      int parent = ____;
+    acceptedAnswers: ["(i - 1) / 2", "(i-1)/2", "(i - 1) >> 1", "(i-1)>>1"]
+    explanation: "Children of p are 2p+1 and 2p+2, so for either child i, (i - 1) / 2 gives p (integer division). i / 2 is the formula for 1-based arrays; here it gives the wrong parent for right children (index 2 would map to 1 instead of 0)."
+  - id: q7
+    type: MATCH
+    prompt: "Match each problem to the right heap choice"
+    pairs:
+      - left: "kth largest element"
+        right: "Min-heap of size k"
+      - left: "k smallest elements"
+        right: "Max-heap of size k"
+      - left: "Merge k sorted lists"
+        right: "Min-heap of the current list heads"
+      - left: "Always serve the most urgent task"
+        right: "Priority queue ordered by urgency"
+    explanation: "To keep the BIGGEST k, evict the smallest (min-heap); to keep the SMALLEST k, evict the biggest (max-heap). Merging needs the smallest current head each time. A task scheduler is the textbook priority queue."
+  - id: q8
+    type: MCQ
+    prompt: "Which PriorityQueue operation is O(1)?"
+    code: null
+    options: ["offer(x)", "poll()", "peek()", "contains(x)"]
+    answer: 2
+    explanation: "peek just reads index 0. offer and poll sift up/down: O(log n). contains scans the array: O(n)."
+explainBack:
+  prompt: "Explain to a friend what a heap is and how you would find the 3rd highest score in a big list, using the emergency ward idea."
+  rubric:
+    - "I explained a priority queue serves the most important item first, not the oldest"
+    - "I said the min or max sits at the root and a heap is not fully sorted"
+    - "I explained insert/remove are O(log n) and peek is O(1)"
+    - "I explained the min-heap of size k trick and why it is a MIN-heap"
+    - "I compared O(n log k) with sorting at O(n log n)"
+  modelAnswer: |
+    A heap is like an emergency ward: the most urgent patient is always at the top, not the one who came first. Inside, it's a tree stored in an array where every parent is smaller than its children for a min-heap, so the smallest is always at index zero. Looking at the top is O(1); adding or removing is O(log n) because we only fix one path. To find the 3rd highest score, I keep a min-heap of size 3. For each score I add it, and if the heap has more than 3, I remove the smallest. The heap ends up holding the top 3, and its root is the 3rd highest. That's O(n log k) instead of sorting at O(n log n).
+flashcards:
+  - front: "Heap index formulas (0-based)"
+    back: "Parent (i-1)/2, left 2i+1, right 2i+2."
+  - front: "Heap operation costs"
+    back: "peek O(1); offer/poll O(log n); build heap O(n); contains O(n)."
+  - front: "Max-heap in Java"
+    back: "new PriorityQueue<>(Collections.reverseOrder())"
+  - front: "kth largest: which heap?"
+    back: "Min-heap of size k; poll when size > k; answer = peek(). O(n log k)."
+  - front: "Merge k sorted lists"
+    back: "Min-heap of heads; poll smallest, attach, push its next. O(N log k)."
+keyTakeaways:
+  - "A heap is a complete binary tree in an array; the min (or max) is always at index 0."
+  - "Insert sifts up, remove sifts down: O(log n). Peek is O(1)."
+  - "Java's PriorityQueue is a min-heap; use Collections.reverseOrder() for a max-heap."
+  - "Top k / kth largest: min-heap of size k gives O(n log k)."
+  - "A heap is not sorted; poll repeatedly to get sorted order."

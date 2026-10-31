@@ -1,0 +1,334 @@
+slug: sql-normalization
+world: SQL
+section: SQL
+order: 8
+title: "Normalization: 1NF, 2NF, 3NF"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+infosysRelevance: "Normal forms are classic DBMS theory for DSE and SP technical interviews; be ready to normalize a small table step by step."
+otherCompanies: "A very common DBMS practice topic at TCS, Wipro, Cognizant, Accenture and Capgemini ('explain 1NF, 2NF, 3NF with an example')."
+why: |
+  When people first design a database, they often make one big spreadsheet-style table. It works... until someone changes a customer's city in one row but not the others, or deletes the only order that remembered a product's price.
+
+  **Normalization** is a step-by-step method to split a messy table into clean tables, so each fact is stored **once**.
+
+  Interviewers love it because it tests clear thinking: "Here is a table. What's wrong with it? Normalize it to 3NF." This lesson walks through **one running example** from a raw order sheet all the way to 3NF and BCNF, so you can repeat the same steps in any interview.
+analogy: |
+  Think of a **family WhatsApp group** where every message repeats everyone's full address.
+
+  If Uncle moves house, someone must edit **every** old message with his address. Miss one, and now the group has two different addresses for him. That's an **update anomaly**.
+
+  The sensible solution: keep **one contact card** per person with their address, and messages only mention the person's name. Change the address once, and it's correct everywhere. Normalization is exactly this: **one fact, one place**, and other tables just point to it.
+visual:
+  diagram: |
+    UNF  order_sheet (one row per order, list in a cell)
+    order | date  | cust | name  | city      | items
+    101   | 01-05 | 1    | Anil  | Bengaluru | Pen x2, Notebook x1
+    102   | 01-07 | 2    | Sneha | Mumbai    | Pen x5
+          |  1NF: one item per row, key (order_id, product_id)
+          v
+    (order_id, product_id, date, cust_id, name, city,
+     product_name, unit_price, qty)
+          |  2NF: remove PARTIAL dependencies
+          v
+    orders(order_id, date, cust_id, name, city)
+    products(product_id, product_name, unit_price)
+    order_lines(order_id, product_id, qty)
+          |  3NF: remove TRANSITIVE dependency
+          v     order_id -> cust_id -> name, city
+    customers(cust_id, name, city)
+    orders(order_id, date, cust_id)
+    products(product_id, product_name, unit_price)
+    order_lines(order_id, product_id, qty)
+  caption: "One shop order sheet normalized step by step. Each step removes one kind of repetition until every fact (a customer's city, a product's price) is stored exactly once."
+  visualizer: null
+explanation: |
+  ### The problem: anomalies
+  Here is a shop's order sheet already split into one row per item (we'll see why in 1NF):
+  ```
+   order_id | product_id | order_date | cust_id | cust_name | cust_city | product_name | unit_price | qty
+  ----------+------------+------------+---------+-----------+-----------+--------------+------------+-----
+        101 | P1         | 2024-01-05 |       1 | Anil      | Bengaluru | Pen          |         10 |   2
+        101 | P2         | 2024-01-05 |       1 | Anil      | Bengaluru | Notebook     |         50 |   1
+        102 | P1         | 2024-01-07 |       2 | Sneha     | Mumbai    | Pen          |         10 |   5
+        103 | P1         | 2024-02-11 |       1 | Anil      | Bengaluru | Pen          |         10 |   1
+        103 | P3         | 2024-02-11 |       1 | Anil      | Bengaluru | Bag          |        700 |   1
+  ```
+  Anil's city is stored 4 times, Pen's price 3 times. This **redundancy** (repeated data) causes three **anomalies** (problems when changing data):
+  - **Update anomaly**: change Anil's city in one row but not the others, and the data contradicts itself.
+  - **Insert anomaly**: you can't add a new product (say, an Eraser) until someone orders it, because every row needs an order_id.
+  - **Delete anomaly**: delete order 102, and Sneha's whole record (her city!) disappears, because that was her only row.
+
+  ### Functional dependency (FD)
+  A **functional dependency** `X -> Y` means: if you know X, you know exactly one Y. "X determines Y."
+
+  In our sheet:
+  - `order_id -> order_date, cust_id`
+  - `cust_id -> cust_name, cust_city`
+  - `product_id -> product_name, unit_price`
+  - `(order_id, product_id) -> qty`
+
+  The **key** of the sheet is `(order_id, product_id)`: together they identify a row. Columns that are part of any candidate key are called **prime attributes**; the rest are **non-prime**.
+
+  ### UNF to 1NF: atomic values
+  **First Normal Form (1NF)** rules:
+  - every cell holds **one atomic value** (no lists like "Pen x2, Notebook x1"),
+  - no repeating groups of columns (no item1, item2, item3),
+  - each row is unique (there is a key).
+
+  The original sheet had an `items` cell with a list. We gave each item its own row and made `(order_id, product_id)` the key. That's the table above: it's in 1NF, but still full of repetition.
+
+  ### 1NF to 2NF: no partial dependency
+  **Second Normal Form (2NF)** = 1NF + **no partial dependency**: no non-prime column may depend on only **part** of a composite key.
+
+  Problem: `order_date` and customer details depend on `order_id` alone, and `product_name`, `unit_price` depend on `product_id` alone. Only `qty` needs the whole key. Split by "what does each column really depend on?":
+  ```
+  orders(order_id PK, order_date, cust_id, cust_name, cust_city)
+  products(product_id PK, product_name, unit_price)
+  order_lines(order_id, product_id, qty)    PK = (order_id, product_id)
+  ```
+  Shortcut to remember: a table whose key is a **single column** is automatically in 2NF (there's no "part" of the key).
+
+  ### 2NF to 3NF: no transitive dependency
+  **Third Normal Form (3NF)** = 2NF + **no transitive dependency**: a non-prime column must not depend on another non-prime column.
+
+  In `orders`, we have `order_id -> cust_id -> cust_name, cust_city`. The customer's city depends on the order only **through** cust_id. That's transitive. Split it out:
+  ```
+  customers(cust_id PK, cust_name, cust_city)
+  orders(order_id PK, order_date, cust_id FK)
+  products(product_id PK, product_name, unit_price)
+  order_lines(order_id FK, product_id FK, qty)   PK = (order_id, product_id)
+  ```
+  Now Anil's city is stored **once**. Change it with one UPDATE and every order "sees" the new city through a join. A new product can be added without an order, and deleting order 102 no longer deletes Sneha.
+
+  A popular one-line summary of 3NF: every non-key column must depend on **"the key, the whole key, and nothing but the key"** (1NF gives a key, 2NF the whole key, 3NF nothing but the key).
+
+  ### BCNF (Boyce-Codd Normal Form)
+  **BCNF** is a slightly stricter 3NF: for **every** functional dependency `X -> Y`, X must be a **super key** (it must identify the whole row).
+
+  3NF allows one exception: Y may be a prime attribute. BCNF doesn't. Example in the same shop: a `deliveries(city, product_id, warehouse)` table where:
+  - for each (city, product) one warehouse delivers: key = `(city, product_id)`,
+  - each warehouse is located in one city: `warehouse -> city`.
+
+  `warehouse -> city` breaks BCNF because warehouse is not a super key (it's still 3NF, since city is a prime attribute). Fix: `warehouses(warehouse PK, city)` and `warehouse_products(warehouse, product_id)`.
+
+  ### Quick reference
+  | Normal form | Rule (in addition to the previous one) | Removes |
+  |---|---|---|
+  | 1NF | atomic values, no repeating groups, has a key | lists in cells |
+  | 2NF | no partial dependency on part of a composite key | facts about only part of the key |
+  | 3NF | no transitive dependency (non-key -> non-key) | facts about non-key columns |
+  | BCNF | every determinant is a super key | remaining odd dependencies |
+
+  (4NF and 5NF deal with multi-valued and join dependencies; interviews rarely go there.)
+
+  ### Denormalization: the trade-off
+  Normalized data needs **joins** to answer questions (the order total needs 4 tables). For read-heavy systems like reports and dashboards, teams sometimes **denormalize** on purpose: store `customer_city` or a precomputed `order_total` inside the orders table to avoid joins.
+
+  | Normalized | Denormalized |
+  |---|---|
+  | No redundancy, no anomalies | Some redundancy, must be kept in sync |
+  | Smaller storage, simple writes | Faster reads, fewer joins |
+  | Good for OLTP (day-to-day transactions) | Good for reporting / analytics (OLAP) |
+
+  Good answer in interviews: *"Normalize first to 3NF, then denormalize specific parts only when you have a measured performance need."*
+tinyCode:
+  code: |
+    -- The 3NF design of the order sheet
+    CREATE TABLE shop_customers (
+      cust_id   INT PRIMARY KEY,
+      cust_name VARCHAR(20) NOT NULL,
+      cust_city VARCHAR(20)
+    );
+    CREATE TABLE products (
+      product_id   VARCHAR(5) PRIMARY KEY,
+      product_name VARCHAR(20) NOT NULL,
+      unit_price   INT NOT NULL
+    );
+    CREATE TABLE shop_orders (
+      order_id   INT PRIMARY KEY,
+      order_date DATE NOT NULL,
+      cust_id    INT NOT NULL REFERENCES shop_customers(cust_id)
+    );
+    CREATE TABLE order_lines (
+      order_id   INT REFERENCES shop_orders(order_id),
+      product_id VARCHAR(5) REFERENCES products(product_id),
+      qty        INT NOT NULL,
+      PRIMARY KEY (order_id, product_id)
+    );
+  walkthrough: |
+    - Each table stores facts about **one thing**: a customer, a product, an order, or one line of an order.
+    - `shop_customers`: city depends only on the customer, so it lives here, once.
+    - `products`: name and price depend only on the product.
+    - `shop_orders`: date and customer depend only on the order. `cust_id` is a **foreign key**, not a copy of the name and city.
+    - `order_lines`: quantity is the only fact that needs **both** order and product, so the key is composite `(order_id, product_id)`.
+    - We named them `shop_customers` and `shop_orders` so they don't clash with the sample `customers` and `orders` tables.
+tryIt:
+  instructions: "Create the four tables from the tiny code, insert the data below, then rebuild each order's total with joins. Check the totals by hand: 101 = 2x10 + 1x50."
+  code: |
+    INSERT INTO shop_customers VALUES
+      (1, 'Anil', 'Bengaluru'), (2, 'Sneha', 'Mumbai');
+    INSERT INTO products VALUES
+      ('P1', 'Pen', 10), ('P2', 'Notebook', 50), ('P3', 'Bag', 700);
+    INSERT INTO shop_orders VALUES
+      (101, '2024-01-05', 1), (102, '2024-01-07', 2), (103, '2024-02-11', 1);
+    INSERT INTO order_lines VALUES
+      (101, 'P1', 2), (101, 'P2', 1), (102, 'P1', 5),
+      (103, 'P3', 1), (103, 'P1', 1);
+
+    SELECT o.order_id, c.cust_name,
+           SUM(p.unit_price * l.qty) AS order_total
+    FROM shop_orders o
+    JOIN shop_customers c ON c.cust_id = o.cust_id
+    JOIN order_lines l    ON l.order_id = o.order_id
+    JOIN products p       ON p.product_id = l.product_id
+    GROUP BY o.order_id, c.cust_name
+    ORDER BY o.order_id;
+    -- 101 Anil 70 | 102 Sneha 50 | 103 Anil 710
+predict:
+  code: |
+    -- order_sheet is the 1NF table shown in the explanation
+    -- (Anil appears in 4 rows, all with cust_city 'Bengaluru')
+
+    UPDATE order_sheet
+    SET cust_city = 'Mysuru'
+    WHERE order_id = 101;
+
+    SELECT DISTINCT cust_city
+    FROM order_sheet
+    WHERE cust_name = 'Anil'
+    ORDER BY cust_city;
+  expectedOutput: |2
+     cust_city
+    -----------
+     Bengaluru
+     Mysuru
+  explanation: |
+    This is an **update anomaly** you can see. The UPDATE changed only the 2 rows of order 101. Anil's 2 rows for order 103 still say Bengaluru. Now the database holds **two different cities for the same customer**, and nobody knows which is true.
+
+    In the 3NF design, the city lives in exactly one row of `shop_customers`, so `UPDATE shop_customers SET cust_city = 'Mysuru' WHERE cust_id = 1` fixes it everywhere at once.
+commonMistakes:
+  - "Defining 2NF as 'no transitive dependency'. 2NF removes PARTIAL dependencies (on part of a composite key); 3NF removes TRANSITIVE ones."
+  - "Thinking a table with a single-column primary key can violate 2NF. It can't; partial dependency needs a composite key."
+  - "Storing comma-separated lists in a column (like 'Pen, Notebook'), which breaks 1NF."
+  - "Copying names and cities into child tables instead of storing the foreign key."
+  - "Believing more normalization is always better. Heavy reporting systems often denormalize on purpose."
+  - "Forgetting the three anomaly names: update, insert and delete."
+interviewBox:
+  why: "Why interviewers ask this: normalization shows you can design tables that stay correct as data changes, and explaining it clearly shows structured thinking."
+  questions:
+    - q: "What is normalization and why do we need it?"
+      a: "Normalization is organizing data into tables so each fact is stored only once. It removes redundancy and prevents update, insert and delete anomalies. For example, if a customer's city is repeated in every order row, changing it in one place leaves the others wrong."
+    - q: "Explain 1NF, 2NF and 3NF."
+      a: "1NF means every column holds a single atomic value and rows are uniquely identified. 2NF means 1NF plus no partial dependency: no non-key column depends on only part of a composite key. 3NF means 2NF plus no transitive dependency: non-key columns depend only on the key, not on other non-key columns."
+    - q: "What is a functional dependency?"
+      a: "X determines Y, written X -> Y, means that for each value of X there is exactly one value of Y. For example, cust_id determines cust_name and cust_city."
+    - q: "What is the difference between 3NF and BCNF?"
+      a: "BCNF is stricter. In BCNF, for every dependency X -> Y, X must be a super key. 3NF allows an exception when Y is part of a candidate key. Most 3NF tables are already in BCNF."
+    - q: "What is denormalization and when would you use it?"
+      a: "Denormalization means adding some redundancy on purpose, like storing an order total or customer city in the orders table, to avoid expensive joins. It's used in read-heavy systems like reports, but you must keep the copies in sync."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Using the 3NF tables and data from Try it (Pen 10, Notebook 50, Bag 700), what total does order 103 (1 Bag, 1 Pen) show?"
+    code: |
+      SELECT o.order_id, SUM(p.unit_price * l.qty) AS order_total
+      FROM shop_orders o
+      JOIN order_lines l ON l.order_id = o.order_id
+      JOIN products p    ON p.product_id = l.product_id
+      WHERE o.order_id = 103
+      GROUP BY o.order_id;
+    options: ["700", "710", "720", "2"]
+    answer: 1
+    explanation: "Order 103 has two lines: Bag 700 x 1 and Pen 10 x 1, so 710. 2 would be COUNT of lines, not the total."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Which normal form does this table break, and why? Key = (student_id, course_id)."
+    code: |
+      enrollments(student_id, course_id, student_name, grade)
+      -- student_id -> student_name
+      -- (student_id, course_id) -> grade
+    options:
+      - "1NF: grade is not atomic"
+      - "2NF: student_name depends on only part of the key (student_id)"
+      - "3NF only: there is a transitive dependency"
+      - "It is already in BCNF"
+    answer: 1
+    explanation: "student_name needs only student_id, which is part of the composite key: a partial dependency, so 2NF is broken. Fix: students(student_id, student_name) and enrollments(student_id, course_id, grade)."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This table has a single-column key emp_id. Which normal form does it break?"
+    code: |
+      employees(emp_id, name, dept_id, dept_name, dept_location)
+      -- emp_id -> name, dept_id
+      -- dept_id -> dept_name, dept_location
+    options:
+      - "1NF"
+      - "2NF"
+      - "3NF: dept_name and dept_location depend on dept_id, a non-key column (transitive dependency)"
+      - "None, it is fully normalized"
+    answer: 2
+    explanation: "With a single-column key there can't be a partial dependency, so 2NF holds. But emp_id -> dept_id -> dept_name is transitive, breaking 3NF. That's why our sample schema has a separate departments table."
+  - id: q4
+    type: MATCH
+    prompt: "Match each anomaly to its example"
+    pairs:
+      - left: "Update anomaly"
+        right: "Anil's city changed in some rows but not others"
+      - left: "Insert anomaly"
+        right: "Can't add a new product until someone orders it"
+      - left: "Delete anomaly"
+        right: "Deleting Sneha's only order loses her city too"
+    explanation: "All three come from storing the same fact in many rows, or mixing different facts in one table."
+  - id: q5
+    type: MCQ
+    prompt: "A column 'phones' stores values like '98450, 99000'. Which normal form is violated?"
+    code: null
+    options: ["1NF", "2NF", "3NF", "BCNF only"]
+    answer: 0
+    explanation: "1NF needs atomic values: one value per cell. Store each phone in its own row (for example a customer_phones table)."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "Every table in BCNF is also in 3NF."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. BCNF is stricter than 3NF, so BCNF implies 3NF. The reverse is not always true (the warehouse -> city example)."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the one-line summary of 3NF: every non-key column depends on the key, the whole key, and nothing but the ____."
+    code: |
+      "the key, the whole key, and nothing but the ____"
+    acceptedAnswers: ["key", "the key"]
+    explanation: "Key = 1NF (there is a key), whole key = 2NF (no partial dependency), nothing but the key = 3NF (no transitive dependency)."
+explainBack:
+  prompt: "Using the shop order sheet, explain 1NF, 2NF and 3NF to a friend in under two minutes."
+  rubric:
+    - "I named the anomalies (update, insert, delete)"
+    - "I explained 1NF as one value per cell with a key"
+    - "I explained 2NF as removing dependency on part of a composite key"
+    - "I explained 3NF as removing non-key -> non-key dependencies"
+    - "I mentioned the denormalization trade-off"
+  modelAnswer: |
+    The order sheet first had all items in one cell, so 1NF means splitting it into one item per row with a key of order id and product id. But then customer details depend only on the order id and product price only on the product id, which is part of the key, so for 2NF I move them into orders and products tables. Then in orders, the city depends on the customer id, not on the order, so for 3NF I move it to a customers table. Now each fact lives in one place, so updating a city can't leave old copies, and deleting an order doesn't delete the customer. For heavy reporting, we might denormalize later for speed.
+flashcards:
+  - front: "1NF"
+    back: "Atomic values (no lists in a cell), no repeating groups, rows identified by a key."
+  - front: "2NF"
+    back: "1NF + no partial dependency (no non-key column depends on only part of a composite key)."
+  - front: "3NF"
+    back: "2NF + no transitive dependency (no non-key column depends on another non-key column)."
+  - front: "BCNF"
+    back: "For every FD X -> Y, X is a super key. Stricter than 3NF."
+  - front: "Three anomalies"
+    back: "Update (inconsistent copies), insert (can't add without unrelated data), delete (lose unrelated data)."
+  - front: "Denormalization"
+    back: "Adding controlled redundancy for faster reads (fewer joins); used in reporting systems."
+keyTakeaways:
+  - "Normalization stores each fact once to avoid update, insert and delete anomalies."
+  - "A functional dependency X -> Y means X determines exactly one Y."
+  - "1NF: atomic values. 2NF: no partial dependency. 3NF: no transitive dependency."
+  - "BCNF: every determinant is a super key."
+  - "Denormalize only on purpose, for read performance, and keep copies in sync."

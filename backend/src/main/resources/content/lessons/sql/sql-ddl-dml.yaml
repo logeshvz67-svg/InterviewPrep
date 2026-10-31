@@ -1,0 +1,301 @@
+slug: sql-ddl-dml
+world: SQL
+section: SQL
+order: 10
+title: "DDL vs DML, DELETE vs TRUNCATE vs DROP"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_DSE]
+infosysRelevance: "DDL/DML categories and DELETE vs TRUNCATE vs DROP are standard quick-fire DBMS questions, useful for DSE and SP technical rounds."
+otherCompanies: "'Difference between DELETE, TRUNCATE and DROP' is one of the most common SQL practice questions at TCS, Wipro, Cognizant, Accenture and Capgemini."
+why: |
+  SQL commands come in families. Knowing which family a command belongs to tells you how it behaves: can it be rolled back? Does it change the table's structure or only its data?
+
+  The most famous question here is **"What is the difference between DELETE, TRUNCATE and DROP?"**. Most candidates give a memorised answer, and many get one detail wrong: whether TRUNCATE can be rolled back depends on the **database**. This lesson gives you the full, correct answer, tested on PostgreSQL, with the MySQL differences noted.
+analogy: |
+  Think of a **school notebook**.
+
+  - **DELETE**: you erase **some lines** with an eraser (or all lines, one by one). Slow, but you choose exactly what to erase, and the page numbers keep counting from where they were.
+  - **TRUNCATE**: you tear out **all the written pages** at once and keep the empty notebook with its cover and label. Fast, but no choosing.
+  - **DROP**: you throw away the **whole notebook**, cover and label included. There's nothing left to write in.
+  - **DDL** is about the notebook itself (buy, relabel, throw away). **DML** is about what you write inside it.
+visual:
+  diagram: |
+                  DELETE FROM t       TRUNCATE t        DROP TABLE t
+                  WHERE ...;
+    rows          some or all gone    all gone          all gone
+    structure     kept                kept              GONE
+    WHERE?        yes                 no                no
+    family        DML                 DDL               DDL
+    speed         row by row (slow)   whole pages(fast) fast
+    triggers      DELETE triggers     no DELETE trig.   no
+    identity      keeps counting      PG: keeps count   gone
+                                      MySQL: resets
+    rollback      yes (in a txn)      PG: yes in a txn  PG: yes in a txn
+                                      MySQL/Oracle: no  MySQL/Oracle: no
+
+    SQL families:  DDL  CREATE ALTER DROP TRUNCATE RENAME
+                   DML  INSERT UPDATE DELETE (MERGE)
+                   DQL  SELECT
+                   DCL  GRANT REVOKE
+                   TCL  COMMIT ROLLBACK SAVEPOINT
+  caption: "DELETE removes chosen rows, TRUNCATE empties the table but keeps it, DROP removes the table itself. Rollback rules differ by database: PostgreSQL can roll back TRUNCATE and DROP inside a transaction; MySQL and Oracle commit them immediately."
+  visualizer: null
+explanation: |
+  ### The five families of SQL commands
+  | Family | Full name | Works on | Commands |
+  |---|---|---|---|
+  | **DDL** | Data Definition Language | the **structure** (tables, columns, indexes) | `CREATE`, `ALTER`, `DROP`, `TRUNCATE`, `RENAME` |
+  | **DML** | Data Manipulation Language | the **data** (rows) | `INSERT`, `UPDATE`, `DELETE`, `MERGE` |
+  | **DQL** | Data Query Language | reading data | `SELECT` |
+  | **DCL** | Data Control Language | **permissions** | `GRANT`, `REVOKE` |
+  | **TCL** | Transaction Control Language | transactions | `COMMIT`, `ROLLBACK`, `SAVEPOINT` |
+
+  Some books put SELECT inside DML. Both are accepted; mention DQL to show you know the finer split.
+
+  ### DDL: changing structure
+  ```sql
+  CREATE TABLE feedback (
+    id      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    message VARCHAR(100)
+  );
+  ALTER TABLE feedback ADD COLUMN rating INT DEFAULT 5;          -- new column
+  ALTER TABLE feedback RENAME COLUMN message TO comment;         -- rename column
+  ALTER TABLE feedback ALTER COLUMN comment TYPE VARCHAR(200);   -- change type
+  ALTER TABLE feedback ADD CONSTRAINT chk_rating CHECK (rating BETWEEN 1 AND 5);
+  ALTER TABLE feedback DROP COLUMN rating;                       -- remove column
+  ALTER TABLE feedback RENAME TO user_feedback;                  -- rename table
+  DROP TABLE user_feedback;
+  ```
+  `GENERATED ALWAYS AS IDENTITY` makes PostgreSQL number the rows automatically (1, 2, 3...).
+
+  > MySQL differences: auto numbers use `AUTO_INCREMENT`; changing a column's type is `ALTER TABLE t MODIFY comment VARCHAR(200);`; renaming a column is `RENAME COLUMN` in MySQL 8 (`CHANGE` in older versions).
+
+  `DROP TABLE IF EXISTS t;` avoids an error when the table is missing.
+
+  ### DML: changing data
+  ```sql
+  INSERT INTO departments (dept_id, dept_name) VALUES (50, 'Finance');   -- location becomes NULL
+  UPDATE employees SET salary = salary + 5000 WHERE dept_id = 20;       -- Priya and Kiran: 65000
+  DELETE FROM employees WHERE emp_id = 6;
+  ```
+  **Always check the WHERE clause** on UPDATE and DELETE. Without it, *every* row changes: `UPDATE employees SET salary = 70000;` gives everyone the same salary. A safe habit: run the same WHERE with a SELECT first, and work inside `BEGIN ... COMMIT` so you can ROLLBACK.
+
+  ### DCL: permissions
+  ```sql
+  GRANT SELECT ON employees TO intern_user;      -- can read
+  REVOKE SELECT ON employees FROM intern_user;   -- can't any more
+  ```
+
+  ### DELETE vs TRUNCATE vs DROP: the full comparison
+  | | DELETE | TRUNCATE | DROP |
+  |---|---|---|---|
+  | Family | DML | DDL | DDL |
+  | Removes | chosen rows (or all) | all rows | the whole table: data, structure, indexes, constraints |
+  | WHERE allowed | yes | no (syntax error) | no |
+  | How it works | row by row, logs each row | releases the table's data pages at once | removes the table definition and its storage |
+  | Speed on big tables | slow | very fast | very fast |
+  | Row DELETE triggers | fire | do not fire | do not fire |
+  | Identity / auto-increment | keeps counting | PostgreSQL keeps counting unless `RESTART IDENTITY`; MySQL resets to 1 | table is gone |
+  | Referenced by a foreign key | each row checked | refused (PostgreSQL: unless the child is truncated too or `CASCADE`) | refused unless `CASCADE` |
+  | Rollback | yes, inside a transaction | PostgreSQL and SQL Server: yes, inside a transaction. MySQL and Oracle: no (it commits immediately) | PostgreSQL: yes, inside a transaction. MySQL and Oracle: no |
+  | Table usable afterwards | yes | yes (empty) | no: `relation "t" does not exist` |
+
+  ### The rollback detail (where many answers go wrong)
+  The popular answer "TRUNCATE cannot be rolled back" is true for **MySQL and Oracle**, where DDL causes an **implicit commit** (the transaction is committed automatically). In **PostgreSQL**, DDL is transactional:
+  ```sql
+  BEGIN;
+  TRUNCATE orders_copy;          -- 0 rows now
+  ROLLBACK;
+  SELECT COUNT(*) FROM orders_copy;   -- 6 again
+  ```
+  Best interview answer: *"DELETE can always be rolled back inside a transaction. TRUNCATE and DROP are DDL; in MySQL and Oracle they auto-commit, so they can't be rolled back, but PostgreSQL and SQL Server can roll them back inside a transaction."*
+
+  ### When to use which
+  - Remove **some** rows, or need triggers to fire: **DELETE**.
+  - Empty a big staging or log table quickly, keep the table: **TRUNCATE**.
+  - The table is no longer needed at all: **DROP**.
+tinyCode:
+  code: |
+    CREATE TABLE orders_copy AS SELECT * FROM orders;   -- 6 rows
+
+    DELETE FROM orders_copy WHERE amount < 1500;
+    SELECT order_id, amount FROM orders_copy ORDER BY order_id;
+    --  order_id | amount
+    -- ----------+--------
+    --       101 |   2500
+    --       104 |   3000
+    --       106 |   1500
+
+    TRUNCATE orders_copy;       -- all rows gone, table still exists
+    SELECT COUNT(*) FROM orders_copy;   -- 0
+
+    DROP TABLE orders_copy;     -- table gone
+    SELECT * FROM orders_copy;
+    -- ERROR:  relation "orders_copy" does not exist
+  walkthrough: |
+    - `CREATE TABLE ... AS SELECT` (DDL) makes a copy of orders so we can safely destroy it.
+    - `DELETE ... WHERE amount < 1500` (DML) removes only orders 102, 103 and 105 (1200, 800, 1200). 1500 is not less than 1500, so order 106 stays.
+    - `TRUNCATE` removes every remaining row at once. It has no WHERE. The empty table is still there, so COUNT gives 0.
+    - `DROP TABLE` removes the table itself. Any later query on it fails with "relation does not exist" (PostgreSQL calls tables "relations").
+tryIt:
+  instructions: "Type this on PostgreSQL and watch the id column. Before each SELECT, predict the id of the new row."
+  code: |
+    CREATE TABLE feedback (
+      id      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      message VARCHAR(100)
+    );
+    INSERT INTO feedback (message) VALUES ('Good'), ('Nice'), ('Great');
+
+    TRUNCATE feedback;
+    INSERT INTO feedback (message) VALUES ('After TRUNCATE');
+    SELECT * FROM feedback;              -- id 4: counting continues
+
+    TRUNCATE feedback RESTART IDENTITY;
+    INSERT INTO feedback (message) VALUES ('After RESTART IDENTITY');
+    SELECT * FROM feedback;              -- id 1
+
+    ALTER TABLE feedback ADD COLUMN rating INT DEFAULT 5;
+    SELECT * FROM feedback;              -- rating 5 filled in
+
+    DROP TABLE feedback;
+predict:
+  code: |
+    CREATE TABLE feedback (
+      id      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      message VARCHAR(100)
+    );
+    INSERT INTO feedback (message) VALUES ('Good'), ('Nice'), ('Great');
+
+    DELETE FROM feedback;
+    INSERT INTO feedback (message) VALUES ('After DELETE');
+
+    SELECT * FROM feedback;
+  expectedOutput: |2
+     id |   message
+    ----+--------------
+      4 | After DELETE
+  explanation: |
+    The first three rows got ids 1, 2 and 3. `DELETE` removes rows but does **not** touch the identity counter, so the next insert gets **4**.
+
+    In PostgreSQL, plain `TRUNCATE` also continues counting (you'd get 4 there too); only `TRUNCATE ... RESTART IDENTITY` starts again at 1. In MySQL, `TRUNCATE` resets AUTO_INCREMENT to 1, which is the version most interview answers describe.
+commonMistakes:
+  - "Saying 'TRUNCATE can never be rolled back' without naming the database. In PostgreSQL it can, inside a transaction."
+  - "Trying TRUNCATE ... WHERE. TRUNCATE has no WHERE; use DELETE for chosen rows."
+  - "Running UPDATE or DELETE without WHERE and changing every row."
+  - "Calling TRUNCATE a DML command. It's DDL, even though it removes data."
+  - "Expecting DROP to keep the empty table. DROP removes the structure too."
+  - "Forgetting that TRUNCATE and DROP fail on a table referenced by a foreign key unless you use CASCADE."
+interviewBox:
+  why: "Why interviewers ask this: it's a quick check of SQL vocabulary and of how carefully you think about data loss and rollback."
+  questions:
+    - q: "What is the difference between DELETE, TRUNCATE and DROP?"
+      a: "DELETE is DML: it removes chosen rows using WHERE, row by row, fires triggers, and can be rolled back in a transaction. TRUNCATE is DDL: it removes all rows at once, much faster, keeps the table, and has no WHERE. DROP is DDL: it removes the whole table including its structure. In MySQL and Oracle, TRUNCATE and DROP commit immediately, but in PostgreSQL they can be rolled back inside a transaction."
+    - q: "What is the difference between DDL and DML?"
+      a: "DDL defines or changes the structure, like CREATE, ALTER, DROP and TRUNCATE. DML changes the data inside tables, like INSERT, UPDATE and DELETE."
+    - q: "What are DCL and TCL? Give examples."
+      a: "DCL controls permissions with GRANT and REVOKE. TCL controls transactions with COMMIT, ROLLBACK and SAVEPOINT."
+    - q: "How do you add a column to an existing table?"
+      a: "ALTER TABLE table_name ADD COLUMN column_name type, for example ALTER TABLE feedback ADD COLUMN rating INT DEFAULT 5. Existing rows get the default value."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "orders_copy has 6 rows. What does the last query return in PostgreSQL?"
+    code: |
+      BEGIN;
+      TRUNCATE orders_copy;
+      ROLLBACK;
+      SELECT COUNT(*) FROM orders_copy;
+    options: ["0", "6", "An error: TRUNCATE cannot run inside a transaction", "NULL"]
+    answer: 1
+    explanation: "PostgreSQL's DDL is transactional, so ROLLBACK undoes the TRUNCATE and the count is 6 again. In MySQL or Oracle, TRUNCATE would auto-commit and the answer would be 0."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This fails with: syntax error at or near \"WHERE\". Fix it."
+    code: |
+      TRUNCATE orders_copy WHERE amount > 2000;
+    options:
+      - "Write TRUNCATE TABLE orders_copy WHERE amount > 2000"
+      - "TRUNCATE has no WHERE; use DELETE FROM orders_copy WHERE amount > 2000"
+      - "Use DROP ... WHERE instead"
+      - "Put the condition in brackets"
+    answer: 1
+    explanation: "TRUNCATE always removes all rows. Adding the TABLE keyword is allowed but still doesn't permit WHERE. DELETE is the command for chosen rows."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "The goal was a 5000 raise for Sales (dept 20) only. What went wrong?"
+    code: |
+      UPDATE employees SET salary = salary + 5000;
+    options:
+      - "UPDATE needs the TABLE keyword"
+      - "The WHERE clause is missing, so every employee got the raise"
+      - "You can't use salary on both sides"
+      - "It should be INSERT"
+    answer: 1
+    explanation: "Without WHERE, UPDATE changes every row. The correct statement adds WHERE dept_id = 20 (giving Priya and Kiran 65000). salary = salary + 5000 is perfectly valid."
+  - id: q4
+    type: MATCH
+    prompt: "Match each command to its family"
+    pairs:
+      - left: "ALTER"
+        right: "DDL"
+      - left: "UPDATE"
+        right: "DML"
+      - left: "GRANT"
+        right: "DCL"
+      - left: "SAVEPOINT"
+        right: "TCL"
+    explanation: "DDL = structure, DML = data, DCL = permissions, TCL = transactions."
+  - id: q5
+    type: MCQ
+    prompt: "Which statement about TRUNCATE is TRUE?"
+    code: null
+    options:
+      - "It is a DML command"
+      - "It fires row-level DELETE triggers"
+      - "It removes all rows but keeps the table structure"
+      - "It removes the table definition"
+    answer: 2
+    explanation: "TRUNCATE is DDL, empties the table quickly and keeps the structure. It doesn't fire DELETE triggers. Removing the definition is DROP."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "In PostgreSQL, TRUNCATE customers fails while the orders table has a foreign key pointing to customers (unless you truncate both or use CASCADE)."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. The real error: cannot truncate a table referenced in a foreign key constraint. TRUNCATE orders, customers; or TRUNCATE customers CASCADE; works."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the statement that adds an email column to customers."
+    code: |
+      ALTER TABLE customers ____ COLUMN email VARCHAR(50);
+    acceptedAnswers: ["ADD", "add"]
+    explanation: "ALTER TABLE ... ADD COLUMN adds a column; existing rows get NULL (or the DEFAULT if one is given)."
+explainBack:
+  prompt: "Explain DELETE vs TRUNCATE vs DROP to a friend using the notebook analogy, including the rollback detail."
+  rubric:
+    - "I said DELETE removes chosen rows with WHERE and is DML"
+    - "I said TRUNCATE removes all rows fast but keeps the table and is DDL"
+    - "I said DROP removes the table structure too"
+    - "I explained rollback differs by database (PostgreSQL vs MySQL/Oracle)"
+    - "I named the SQL command families"
+  modelAnswer: |
+    DELETE is like erasing chosen lines in a notebook. You can use WHERE, it goes row by row so it's slower, triggers fire, and it can be rolled back inside a transaction. TRUNCATE is like tearing out all the written pages but keeping the notebook. It's very fast, has no WHERE, and is a DDL command. DROP throws away the whole notebook, so the table itself is gone. One detail: in MySQL and Oracle, TRUNCATE and DROP commit immediately, so no rollback, but PostgreSQL can roll them back inside a transaction. DDL changes structure, DML changes data, DCL is permissions, and TCL is commit and rollback.
+flashcards:
+  - front: "DDL vs DML"
+    back: "DDL = structure (CREATE, ALTER, DROP, TRUNCATE). DML = data (INSERT, UPDATE, DELETE)."
+  - front: "DCL and TCL"
+    back: "DCL: GRANT, REVOKE. TCL: COMMIT, ROLLBACK, SAVEPOINT."
+  - front: "DELETE vs TRUNCATE vs DROP in one line each"
+    back: "DELETE: chosen rows, WHERE, slow, triggers. TRUNCATE: all rows, fast, keeps table. DROP: removes the table itself."
+  - front: "Can TRUNCATE be rolled back?"
+    back: "MySQL/Oracle: no (implicit commit). PostgreSQL/SQL Server: yes, inside a transaction."
+  - front: "Identity after TRUNCATE"
+    back: "PostgreSQL continues counting unless TRUNCATE ... RESTART IDENTITY; MySQL resets AUTO_INCREMENT."
+keyTakeaways:
+  - "DDL changes structure, DML changes data, DQL reads, DCL controls access, TCL controls transactions."
+  - "DELETE removes chosen rows with WHERE; TRUNCATE empties the table; DROP removes it."
+  - "TRUNCATE is fast DDL with no WHERE and no row triggers."
+  - "Rollback of TRUNCATE/DROP depends on the database: yes in PostgreSQL, no in MySQL/Oracle."
+  - "Always double-check WHERE on UPDATE and DELETE."

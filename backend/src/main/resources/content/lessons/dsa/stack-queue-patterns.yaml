@@ -1,0 +1,402 @@
+slug: stack-queue-patterns
+world: DSA
+section: DSA
+order: 8
+title: "Stack and queue patterns"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: STACK_QUEUE
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE preparation: balanced brackets, next greater element (monotonic stack) and queue-based BFS are building blocks of many medium-level coding problems."
+otherCompanies: "Valid parentheses and stack/queue basics are common basic questions in TCS-style rounds; product companies extend them to monotonic stack problems (stock span, daily temperatures, largest rectangle)."
+why: |
+  A **stack** and a **queue** are the two simplest "waiting line" data structures, and they hide inside a huge number of problems:
+  - Matching brackets in code or expressions: **stack**.
+  - Undo / back button / recursion itself: **stack**.
+  - "Next greater element", "stock span", "daily temperatures": **monotonic stack**.
+  - Processing things in arrival order, printers, BFS on graphs and trees: **queue**.
+
+  The trick is not the data structure itself (you know push and pop). The trick is **recognising** when a problem secretly asks "what is the most recent unmatched thing?" (stack) or "what came first?" (queue). Many O(n^2) brute-force solutions become **O(n)** once you see that.
+analogy: |
+  - A **stack** is the **pile of plates** at a wedding buffet. The caterer puts clean plates on **top**, and guests take from the **top**. The last plate placed is the first one taken: **LIFO** (Last In, First Out).
+  - A **queue** is the **line at a railway ticket counter**. The person who came first is served first, new people join at the back: **FIFO** (First In, First Out).
+
+  A **monotonic stack** is like a line of people waiting to see over a wall: when a taller person arrives, everyone shorter in front of them gets their answer ("the next taller person is this one") and leaves the line.
+visual:
+  diagram: |
+    STACK (LIFO)            QUEUE (FIFO)
+      push 3 ->  | 3 | top     offer -> [ C | B | A ] -> poll
+                 | 2 |                  back          front
+                 | 1 |
+                 +---+
+
+    VALID PARENTHESES  "{[()]}"
+    read {  stack: {
+    read [  stack: { [
+    read (  stack: { [ (
+    read )  pop ( matches -> stack: { [
+    read ]  pop [ matches -> stack: {
+    read }  pop { matches -> stack: empty  => VALID
+
+    NEXT GREATER ELEMENT  [4, 5, 2, 25, 7]   (stack keeps indexes)
+    i=0 (4)  stack: [4]
+    i=1 (5)  5>4 pop 4 -> ans=5     stack: [5]
+    i=2 (2)  2<5 push               stack: [5,2]
+    i=3 (25) pop 2 -> 25, pop 5 -> 25  stack: [25]
+    i=4 (7)  push                   stack: [25,7]
+    leftovers get -1  =>  [5, 25, 25, -1, -1]
+  caption: "A stack serves the newest item first, a queue the oldest. For brackets, the top of the stack is the latest unmatched opener. For next greater, a bigger number pops and answers every smaller waiting number."
+  visualizer: stack-queue
+explanation: |
+  ### Key words
+  - **Stack**: add and remove at the **same end** (the top). Operations: `push` (add), `pop` (remove top), `peek` (look at top). All O(1).
+  - **Queue**: add at the **back**, remove from the **front**. Operations: `offer` (add), `poll` (remove front), `peek`. All O(1).
+  - **Deque** ("deck", double-ended queue): can add/remove at **both** ends. In Java, `ArrayDeque` works as both a stack and a queue.
+
+  ### Which Java class?
+  | Need | Use | Methods |
+  |---|---|---|
+  | Stack | `Deque<Integer> st = new ArrayDeque<>();` | `push`, `pop`, `peek`, `isEmpty` |
+  | Queue | `Queue<Integer> q = new ArrayDeque<>();` | `offer`, `poll`, `peek`, `isEmpty` |
+  | Avoid | `Stack<Integer>` (old, synchronized, slower) | still works, but prefer `ArrayDeque` |
+
+  Note: `ArrayDeque` does **not** allow `null` elements, and printing a stack made with `push` shows the **top first**.
+
+  ### Pattern 1: matching brackets (valid parentheses)
+  Rule: every closing bracket must match the **most recent unmatched** opening bracket. "Most recent" = top of a stack.
+  ```java
+  for (char c : s.toCharArray()) {
+      if (c == '(' || c == '[' || c == '{') stack.push(c);
+      else {
+          if (stack.isEmpty()) return false;        // closer with no opener
+          char open = stack.pop();
+          if (!matches(open, c)) return false;      // wrong type: "(]"
+      }
+  }
+  return stack.isEmpty();                           // leftover openers: "(("
+  ```
+  Three ways to fail: a closer with an empty stack, a wrong pair, and openers left at the end. O(n) time, O(n) space.
+
+  ### Pattern 2: monotonic stack (next greater element)
+  A **monotonic stack** keeps its items in one sorted direction (here: decreasing from bottom to top). For each element, we ask "who is the first bigger element to my right?"
+
+  Brute force checks everything to the right of each element: O(n^2). The stack version:
+  ```java
+  int[] ans = new int[n];
+  Arrays.fill(ans, -1);                         // default: no greater element
+  Deque<Integer> stack = new ArrayDeque<>();    // indexes still waiting
+  for (int i = 0; i < n; i++) {
+      while (!stack.isEmpty() && a[i] > a[stack.peek()]) {
+          ans[stack.pop()] = a[i];              // a[i] answers them
+      }
+      stack.push(i);
+  }
+  ```
+  **Why O(n)?** Each index is pushed once and popped at most once, so the inner `while` runs at most n times **in total**, not n times per element. We store **indexes**, so we know where to write the answer.
+
+  Same idea solves: stock span, daily temperatures, next smaller element (flip `>` to `<`), largest rectangle in a histogram.
+
+  ### Pattern 3: min stack (getMin in O(1))
+  Keep a second stack where each entry is "the minimum so far at this height".
+  ```java
+  void push(int x) {
+      values.push(x);
+      mins.push(mins.isEmpty() ? x : Math.min(x, mins.peek()));
+  }
+  void pop() { values.pop(); mins.pop(); }
+  int getMin() { return mins.peek(); }
+  ```
+  Both stacks grow and shrink together, so after any pop the min is still correct. All operations O(1).
+
+  ### Pattern 4: queue using two stacks
+  Use an `in` stack for adding and an `out` stack for removing. When `out` is empty, pour **all** of `in` into `out`: this reverses the order, so the oldest item ends up on top.
+  ```java
+  void offer(int x) { in.push(x); }
+  int poll() {
+      if (out.isEmpty()) while (!in.isEmpty()) out.push(in.pop());
+      return out.pop();
+  }
+  ```
+  One poll may cost O(n), but each item moves from `in` to `out` only once, so the **amortized** cost (average over many operations) is **O(1)**.
+
+  ### Pattern 5 (preview): queue for BFS
+  **BFS** (Breadth-First Search) explores level by level: first all neighbours at distance 1, then distance 2, and so on. A queue gives exactly this order because the oldest discovered item is processed first.
+  ```java
+  Queue<Integer> q = new ArrayDeque<>();
+  q.offer(start);
+  while (!q.isEmpty()) {
+      int cur = q.poll();
+      for (int next : neighbours(cur)) {
+          if (!visited[next]) { visited[next] = true; q.offer(next); }
+      }
+  }
+  ```
+  You will use this in the trees (level order) and graphs lessons.
+
+  ### How to recognise the pattern
+  | Clue in the problem | Pattern |
+  |---|---|
+  | brackets, tags, "undo", nested structure | stack |
+  | "next greater / smaller", "previous greater", span | monotonic stack |
+  | "get minimum in O(1)" | min stack (second stack) |
+  | "level by level", "shortest steps", "in order of arrival" | queue / BFS |
+
+  ### Complexity summary
+  | Problem | Time | Space |
+  |---|---|---|
+  | Valid parentheses | O(n) | O(n) |
+  | Next greater element (monotonic) | O(n) | O(n) |
+  | Min stack operations | O(1) each | O(n) |
+  | Queue via two stacks | O(1) amortized | O(n) |
+  | BFS | O(V + E) | O(V) |
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class StackQueue {
+        static boolean isValid(String s) {
+            Deque<Character> stack = new ArrayDeque<>();
+            for (char c : s.toCharArray()) {
+                if (c == '(' || c == '[' || c == '{') {
+                    stack.push(c);
+                } else {
+                    if (stack.isEmpty()) return false;
+                    char open = stack.pop();
+                    if ((c == ')' && open != '(') || (c == ']' && open != '[')
+                            || (c == '}' && open != '{')) return false;
+                }
+            }
+            return stack.isEmpty();
+        }
+
+        static int[] nextGreater(int[] a) {
+            int[] ans = new int[a.length];
+            Arrays.fill(ans, -1);
+            Deque<Integer> stack = new ArrayDeque<>();   // holds indexes
+            for (int i = 0; i < a.length; i++) {
+                while (!stack.isEmpty() && a[i] > a[stack.peek()]) {
+                    ans[stack.pop()] = a[i];
+                }
+                stack.push(i);
+            }
+            return ans;
+        }
+
+        public static void main(String[] args) {
+            System.out.println(isValid("{[()]}") + " " + isValid("([)]") + " " + isValid("(("));
+            System.out.println(Arrays.toString(nextGreater(new int[]{4, 5, 2, 25, 7})));
+
+            Queue<String> queue = new ArrayDeque<>();
+            queue.offer("A"); queue.offer("B"); queue.offer("C");
+            System.out.println(queue.poll() + " " + queue.peek() + " " + queue);
+        }
+    }
+  walkthrough: |
+    - **isValid**: openers are pushed. For a closer, an empty stack means "no opener", so false. Otherwise pop and check the pair. At the end, the stack must be empty.
+      - `{[()]}`: every closer matches the latest opener: `true`.
+      - `([)]`: at `)`, the top is `[`: wrong pair, `false`.
+      - `((`: no mismatch, but two openers are left over: `false`.
+    - **nextGreater**: the stack holds indexes still waiting for a bigger number. 5 answers 4; 25 answers 2 and then 5; 25 and 7 never get an answer, so they keep `-1`.
+    - **Queue**: `offer` adds at the back. `poll` removes `A` (the oldest), `peek` shows `B` without removing it, and the queue now holds `[B, C]`.
+
+    Output:
+    ```
+    true false false
+    [5, 25, 25, -1, -1]
+    A B [B, C]
+    ```
+tryIt:
+  instructions: "Type this MinStack that returns the minimum in O(1) using a second stack. Run it, then push 1 at the end and print getMin() again."
+  code: |
+    import java.util.ArrayDeque;
+    import java.util.Deque;
+
+    public class MinStack {
+        private final Deque<Integer> values = new ArrayDeque<>();
+        private final Deque<Integer> mins = new ArrayDeque<>();
+
+        void push(int x) {
+            values.push(x);
+            mins.push(mins.isEmpty() ? x : Math.min(x, mins.peek()));
+        }
+
+        void pop() { values.pop(); mins.pop(); }
+        int top() { return values.peek(); }
+        int getMin() { return mins.peek(); }
+
+        public static void main(String[] args) {
+            MinStack st = new MinStack();
+            st.push(5); st.push(3); st.push(7); st.push(2);
+            System.out.println("min = " + st.getMin());
+            st.pop();
+            System.out.println("min = " + st.getMin());
+            st.pop(); st.pop();
+            System.out.println("min = " + st.getMin() + ", top = " + st.top());
+        }
+    }
+predict:
+  code: |
+    import java.util.ArrayDeque;
+    import java.util.Deque;
+
+    public class Predict {
+        public static void main(String[] args) {
+            Deque<Integer> stack = new ArrayDeque<>();
+            stack.push(1);
+            stack.push(2);
+            stack.push(3);
+            int a = stack.pop();
+            stack.push(4);
+            int b = stack.peek();
+            System.out.println(a + " " + b + " " + stack);
+        }
+    }
+  expectedOutput: |
+    3 4 [4, 2, 1]
+  explanation: |
+    After pushing 1, 2, 3 the top is 3, so `pop()` returns 3. Then 4 is pushed on top, and `peek()` returns 4 without removing it. Printing an `ArrayDeque` used as a stack lists elements from the top down: `[4, 2, 1]`. A common wrong guess is `[1, 2, 4]`, which is the order they were added, not the stack's order.
+commonMistakes:
+  - "Forgetting the final stack.isEmpty() check in valid parentheses, so \"((\" is reported as valid."
+  - "Calling pop() or peek() on an empty stack without checking isEmpty(); ArrayDeque.pop() throws NoSuchElementException and peek() returns null."
+  - "Storing values instead of indexes in a monotonic stack when the answer must be written at the original position."
+  - "Thinking the monotonic stack is O(n^2) because of the nested while; each index is pushed and popped at most once, so it is O(n)."
+  - "Using the old Stack class out of habit; prefer ArrayDeque for both stacks and queues."
+  - "In queue-via-two-stacks, moving items from in to out when out is NOT empty, which breaks the order."
+interviewBox:
+  why: "Why interviewers ask this: stacks and queues show whether you can spot the hidden LIFO/FIFO structure in a problem and turn an O(n^2) scan into O(n)."
+  questions:
+    - q: "How do you check if a string of brackets is balanced?"
+      a: "I use a stack. For each opening bracket I push it. For a closing bracket, if the stack is empty I return false, otherwise I pop and check that it's the matching opener. At the end the stack must be empty, otherwise some openers were never closed. It's O(n) time and O(n) space."
+    - q: "How do you find the next greater element for every element in an array?"
+      a: "I use a monotonic stack of indexes. I go left to right. While the current value is bigger than the value at the index on top of the stack, I pop that index and set its answer to the current value. Then I push the current index. Whatever is left in the stack has no greater element, so its answer is minus one. Every index is pushed and popped once, so it's O(n)."
+    - q: "How would you implement a queue using two stacks?"
+      a: "One stack for incoming items and one for outgoing. Enqueue pushes onto the in stack. For dequeue, if the out stack is empty I pop everything from in and push it to out, which reverses the order, then I pop from out. Each element moves once, so the amortized cost is O(1) per operation."
+    - q: "What is the difference between a stack and a queue?"
+      a: "A stack is last in, first out, like a pile of plates: you add and remove at the top. A queue is first in, first out, like a ticket line: you add at the back and remove from the front. In Java I use ArrayDeque for both."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Next greater element with a monotonic stack. What is printed?"
+    code: |
+      int[] a = {2, 1, 3, 2, 4};
+      int[] ans = new int[a.length];
+      Arrays.fill(ans, -1);
+      Deque<Integer> st = new ArrayDeque<>();
+      for (int i = 0; i < a.length; i++) {
+          while (!st.isEmpty() && a[i] > a[st.peek()]) ans[st.pop()] = a[i];
+          st.push(i);
+      }
+      System.out.println(Arrays.toString(ans));
+    options: ["[3, 3, 4, 4, -1]", "[3, 3, 4, 4, 4]", "[1, 3, 2, 4, -1]", "[4, 4, 4, 4, -1]"]
+    answer: 0
+    explanation: "3 arrives and pops index 1 (value 1) and index 0 (value 2): both get 3. Then 2 waits; 4 arrives and pops 2 and 3: both get 4. Nothing is bigger than 4, so it keeps -1. \"[4, 4, 4, 4, -1]\" is the greatest element to the right, not the NEXT greater."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This checks if a string of only '(' and ')' is balanced. Which input gives the wrong answer and why?"
+    code: |
+      Deque<Character> stack = new ArrayDeque<>();
+      for (char c : s.toCharArray()) {
+          if (c == '(') stack.push(c);
+          else {
+              if (stack.isEmpty()) return false;
+              stack.pop();
+          }
+      }
+      return true;
+    options:
+      - "\"()\" returns false, because pop removes the wrong element"
+      - "\"((\" returns true, because it never checks that the stack is empty at the end"
+      - "\")(\" returns true, because the empty check is missing"
+      - "It throws an exception on an empty string"
+    answer: 1
+    explanation: "Unclosed openers stay on the stack, but the method returns true anyway. Fix: return stack.isEmpty(). \")(\" is handled correctly: the first ')' sees an empty stack and returns false. An empty string correctly returns true."
+  - id: q3
+    type: MCQ
+    prompt: "What is the total time complexity of the monotonic-stack next greater element for n elements?"
+    code: null
+    options: ["O(n^2), because there is a while loop inside a for loop", "O(n log n)", "O(n), because each index is pushed and popped at most once", "O(1)"]
+    answer: 2
+    explanation: "Count operations per element, not loops: each index enters the stack once and leaves at most once, so at most 2n stack operations. Nested loops do not automatically mean O(n^2); this is amortized analysis."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "A queue built from two stacks (in and out). 1, 2, 3 are enqueued, one dequeue happens, 4 is enqueued, then one more dequeue. What is printed?"
+    code: |
+      Deque<Integer> in = new ArrayDeque<>(), out = new ArrayDeque<>();
+      in.push(1); in.push(2); in.push(3);
+      if (out.isEmpty()) while (!in.isEmpty()) out.push(in.pop());
+      int first = out.pop();
+      in.push(4);
+      if (out.isEmpty()) while (!in.isEmpty()) out.push(in.pop());
+      int second = out.pop();
+      System.out.println(first + " " + second + " " + out + " " + in);
+    options: ["1 2 [3] [4]", "3 4 [2] [1]", "1 2 [3, 4] []", "1 4 [2, 3] []"]
+    answer: 0
+    explanation: "Pouring in (top 3, 2, 1) into out puts 1 on top, so the first dequeue gives 1. 4 goes into in. out is not empty, so nothing is poured; the second dequeue gives 2. out still holds [3] and in holds [4]. That is FIFO order 1, 2, 3, 4. \"3 4\" would be plain stack behaviour."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "In Java, ArrayDeque can be used both as a stack (push/pop) and as a queue (offer/poll)."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. ArrayDeque is a double-ended queue: push/pop work at the front (stack), offer adds at the back and poll removes from the front (queue). It is the recommended replacement for the old Stack class."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Min stack: fill in what is pushed onto the mins stack when it is not empty."
+    code: |
+      void push(int x) {
+          values.push(x);
+          mins.push(mins.isEmpty() ? x : ____);
+      }
+    acceptedAnswers: ["Math.min(x, mins.peek())", "Math.min(mins.peek(), x)", "Math.min(x,mins.peek())", "Math.min(mins.peek(),x)"]
+    explanation: "Each mins entry stores the minimum of everything at or below that height, so it is the smaller of the new value and the previous minimum. Pushing just x would lose the old minimum when x is bigger."
+  - id: q7
+    type: MATCH
+    prompt: "Match each problem to the structure that fits best"
+    pairs:
+      - left: "Check balanced brackets"
+        right: "Stack of opening brackets"
+      - left: "Daily temperatures (days until a warmer day)"
+        right: "Monotonic stack of indexes"
+      - left: "Level order traversal of a tree"
+        right: "Queue (BFS)"
+      - left: "getMin() in O(1)"
+        right: "Second stack of running minimums"
+    explanation: "Brackets need the most recent opener (stack). 'Next warmer' is a next-greater problem (monotonic stack). Level by level means FIFO (queue). Constant-time min needs the minimum remembered at every height."
+  - id: q8
+    type: MCQ
+    prompt: "Why does BFS use a queue instead of a stack?"
+    code: null
+    options:
+      - "A queue uses less memory than a stack"
+      - "A queue processes nodes in the order they were discovered, so all nodes at distance 1 are handled before distance 2"
+      - "A stack cannot store graph nodes"
+      - "A queue sorts the nodes automatically"
+    answer: 1
+    explanation: "FIFO order means closer nodes (discovered earlier) are processed first: level by level. With a stack you get depth-first behaviour instead. Memory use is similar, and neither structure sorts anything."
+explainBack:
+  prompt: "Explain to a friend how a stack checks balanced brackets and how a monotonic stack finds the next greater element."
+  rubric:
+    - "I explained LIFO with an everyday example like a pile of plates"
+    - "I described the three failure cases in bracket checking"
+    - "I explained that a bigger number pops and answers smaller waiting numbers"
+    - "I said why the monotonic stack is O(n) and not O(n^2)"
+    - "I mentioned that queues are used for BFS because they are FIFO"
+  modelAnswer: |
+    A stack is like a pile of plates: last in, first out. For brackets, I push every opening bracket. When a closing bracket comes, it must match the latest unmatched opener, which is the top of the stack. It fails if the stack is empty, if the pair doesn't match, or if openers remain at the end. For next greater element, I keep indexes of numbers still waiting. When a bigger number arrives, it pops every smaller waiting number and becomes their answer. Each index is pushed and popped once, so it's O(n). A queue is first in, first out, like a ticket line, and that's why BFS uses it.
+flashcards:
+  - front: "Stack vs queue order"
+    back: "Stack: LIFO (push/pop at the top). Queue: FIFO (offer at back, poll from front)."
+  - front: "Preferred Java class for stack and queue"
+    back: "ArrayDeque (not the old Stack class)."
+  - front: "Valid parentheses: 3 failure cases"
+    back: "Closer with empty stack, mismatched pair, openers left at the end."
+  - front: "Monotonic stack complexity"
+    back: "O(n): each index is pushed once and popped at most once."
+  - front: "Queue via two stacks: when to pour in -> out?"
+    back: "Only when out is empty. Amortized O(1) per operation."
+keyTakeaways:
+  - "Stack = LIFO, queue = FIFO; use ArrayDeque for both."
+  - "Brackets: push openers, pop and match on closers, and check empty at the end."
+  - "Monotonic stack of indexes solves next greater/smaller problems in O(n)."
+  - "Min stack: a second stack stores the minimum at every height."
+  - "Queues give BFS its level-by-level order."

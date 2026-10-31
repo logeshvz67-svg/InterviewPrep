@@ -1,0 +1,323 @@
+slug: sd-approach
+world: SYSTEM_DESIGN
+section: SD
+order: 1
+title: "System design: how to approach it"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Useful for SP technical interviews where design-basics questions can come up; the step-by-step structure keeps a fresher calm and organised."
+otherCompanies: "Product companies often have a design round even for juniors; a clear approach matters more than knowing every tool name."
+why: |
+  A system design question sounds scary: **"Design IRCTC"**, **"Design Swiggy"**, **"Design a URL shortener"**. There is no single correct answer, and that is exactly the point.
+
+  The interviewer is not checking whether you can build the real IRCTC in 45 minutes. They are checking:
+  - **Do you ask questions** before jumping in? (Real engineers clarify first.)
+  - **Can you break a big problem into small boxes** (client, server, database, cache)?
+  - **Can you reason with numbers** ("about 2,000 requests per second")?
+  - **Do you know trade-offs** ("a cache makes reads fast but data can be slightly old")?
+
+  Freshers usually fail not because they lack knowledge, but because they **start drawing randomly and go silent**. A fixed, step-by-step template fixes that. Once you know the 7 steps in this lesson, every later lesson in this tower (caching, load balancing, queues...) simply plugs into one of the steps.
+
+  If you finished the short "System design basics" lesson in the CS world, this tower goes deeper. If not, don't worry: we start from zero.
+analogy: |
+  Think of a **wedding caterer** visiting your family to plan a function.
+
+  A good caterer does not walk in and start cooking. They ask, in order:
+  1. **What do you need?** Lunch or dinner? Veg only? Sweets? *(functional requirements)*
+  2. **How well must it work?** Food must be hot, no one should wait more than 10 minutes, it must not run out. *(non-functional requirements)*
+  3. **How many guests?** 500 guests, 2 plates each, peak at 1 pm. *(back-of-the-envelope estimate)*
+  4. **How will guests be served?** Buffet counters, token system. *(API: how users interact)*
+  5. **What goes into stock?** Rice, dal, paneer, quantities. *(data model)*
+  6. **Layout of the hall:** kitchen -> counters -> tables. *(high-level diagram)*
+  7. **Special worries:** what if the gas runs out? Keep a backup cylinder. *(deep dives and trade-offs)*
+
+  A system design interview is exactly this conversation, but about software. Follow the same order every time.
+visual:
+  diagram: |
+    THE 7-STEP TEMPLATE (say each step out loud)
+
+    [1] Requirements  -> functional (what it does)
+         |               non-functional (fast? always up? scale?)
+         v
+    [2] Estimates     -> users, QPS, storage, peak
+         |
+         v
+    [3] API           -> POST /orders, GET /orders/{id}
+         |
+         v
+    [4] Data model    -> tables / documents, keys
+         |
+         v
+    [5] High-level    -> Client -> LB -> App servers -> Cache/DB
+         |
+         v
+    [6] Deep dives    -> the 1-2 hardest parts
+         |
+         v
+    [7] Trade-offs    -> what you chose, what you gave up, bottlenecks
+  caption: "Walk through the same 7 steps for every design question. Spend roughly 5 minutes on steps 1-2, 10 on steps 3-5, and the rest on deep dives and trade-offs."
+  visualizer: null
+explanation: |
+  ### What "system design" means
+  **System design** is deciding *which big pieces* a software system needs and *how they talk to each other* so that it works for many users. There are two flavours:
+  - **HLD (High-Level Design):** boxes and arrows: servers, databases, caches, queues. Lessons 1-9 of this tower.
+  - **LLD (Low-Level Design):** classes, interfaces, methods: how one service is coded. Lessons 10-12.
+
+  ### Step 1: Requirements (5 minutes, never skip)
+  **Functional requirements** = *what the system does* (features). For a food delivery app:
+  - user can search restaurants, place an order, pay, track the delivery.
+
+  **Non-functional requirements** = *how well it does it* (qualities):
+  - **Scalability:** works for 20 million users.
+  - **Latency:** search results in under 200 ms (milliseconds).
+  - **Availability:** the app is up 99.9% of the time.
+  - **Consistency:** a payment must never be charged twice.
+
+  Ask questions like: *"Should I focus on ordering or also on delivery tracking?"*, *"How many users?"*, *"Is it read-heavy or write-heavy?"* Then **write down the scope** you agreed. It is perfectly fine to say "I'll keep ratings and reviews out of scope."
+
+  ### Step 2: Back-of-the-envelope estimates
+  A **back-of-the-envelope estimate** is a rough calculation you could do on the back of an envelope. You only need the right *order of magnitude* (hundreds vs thousands vs millions).
+
+  Useful numbers to remember:
+  | Fact | Value |
+  |---|---|
+  | Seconds in a day | 86,400 (round to **~100,000** = 10^5) |
+  | 1 million requests/day | about **12 per second** |
+  | 1 KB x 1 million | 1 GB |
+  | 1 KB x 1 billion | 1 TB |
+
+  **QPS** means *queries (requests) per second*. Formula: `QPS = requests per day / 86,400`. **Peak QPS** is usually 2-5x the average (dinner rush, tatkal 10 am).
+
+  Example (food delivery): 20 million daily active users (**DAU**), 1 in 10 orders a day -> 2 million orders/day -> 2,000,000 / 86,400 = **~23 writes/s**. Each user opens 50 screens -> 1 billion views/day -> **~11,574 reads/s**. So it is **read-heavy**, which tells you caching will matter a lot.
+
+  ### Step 3: API design
+  An **API (Application Programming Interface)** is the list of requests a client can send. Keep it simple REST:
+  ```
+  GET  /restaurants?city=BLR&page=1     -> list restaurants
+  POST /orders        {items, address}  -> create an order, returns orderId
+  GET  /orders/{orderId}                -> order status
+  ```
+
+  ### Step 4: Data model
+  Decide the main entities and their keys: `User(id, name, phone)`, `Restaurant(id, name, city)`, `Order(id, userId, restaurantId, status, amount, createdAt)`. Say whether you would use SQL (relations, transactions; good for orders and payments) or NoSQL (flexible, huge scale; good for menus or activity logs). Lesson 5 covers this deeply.
+
+  ### Step 5: High-level diagram
+  Start simple, then grow:
+  ```
+  Client -> Load Balancer -> App Servers -> Database
+  ```
+  Then add pieces **only with a reason**: a cache because reads are 500x writes; a queue because sending SMS should not slow the order API; read replicas because one DB can't handle 35,000 reads/s.
+
+  ### Step 6: Deep dives
+  Pick the 1-2 hardest parts and go deeper. For IRCTC tatkal: *"How do we stop two people from booking the same last seat?"* (a database transaction with row locking). For a chat app: *"How does a message reach an offline user?"*
+
+  ### Step 7: Trade-offs and bottlenecks
+  Every choice has a cost. Say it out loud:
+  - "Caching makes reads fast, but data can be stale for up to 60 seconds."
+  - "I picked NoSQL for the feed for scale, but I lose easy joins."
+  - "The single database is a **single point of failure**, so I add a replica."
+
+  ### Golden habits
+  - **Think aloud.** Silence is the biggest red flag.
+  - **Start simple, then scale.** A one-server design first is fine.
+  - **Use numbers** to justify every box you add.
+  - **Check in:** "Shall I go deeper into payments or into search?"
+tinyCode:
+  code: |
+    public class Estimate {
+        public static void main(String[] args) {
+            long dau = 20_000_000L;              // daily active users
+            long ordersPerDay = dau / 10;        // 1 in 10 users orders
+            long viewsPerDay = dau * 50;         // each user opens 50 screens
+            long secondsPerDay = 86_400L;
+
+            long writeQps = ordersPerDay / secondsPerDay;
+            long readQps = viewsPerDay / secondsPerDay;
+            long peakReadQps = readQps * 3;      // dinner-time rush
+
+            long orderBytes = 1_000L;            // about 1 KB per order
+            long gbPerDay = ordersPerDay * orderBytes / 1_000_000_000L;
+
+            System.out.println("Orders/day   : " + ordersPerDay);
+            System.out.println("Write QPS    : " + writeQps);
+            System.out.println("Read QPS     : " + readQps);
+            System.out.println("Peak read QPS: " + peakReadQps);
+            System.out.println("Storage/day  : " + gbPerDay + " GB");
+            System.out.println("Storage/year : " + gbPerDay * 365 + " GB");
+        }
+    }
+  walkthrough: |
+    This program does **Step 2 (estimates)** for a food delivery app, the same way you would on a whiteboard.
+
+    - `dau = 20_000_000L`: 20 million daily active users. The `_` is just a separator for readability; `L` makes it a `long` so big numbers don't overflow an `int`.
+    - `ordersPerDay = dau / 10`: assume 1 in 10 users orders each day -> 2,000,000.
+    - `viewsPerDay = dau * 50`: every user opens about 50 screens -> 1,000,000,000 reads.
+    - `writeQps = ordersPerDay / secondsPerDay`: 2,000,000 / 86,400 = **23** (integer division drops the decimal).
+    - `readQps`: 1,000,000,000 / 86,400 = **11,574**. Reads are about 500x writes: a **read-heavy** system.
+    - `peakReadQps = readQps * 3`: the dinner rush is about 3x the average -> **34,722**. Design for the peak, not the average.
+    - Storage: 2 million orders x 1 KB = 2 GB per day, about **730 GB per year**. One good database server can hold this, but we will want backups and replicas.
+
+    Output:
+    ```
+    Orders/day   : 2000000
+    Write QPS    : 23
+    Read QPS     : 11574
+    Peak read QPS: 34722
+    Storage/day  : 2 GB
+    Storage/year : 730 GB
+    ```
+    In an interview you would round these: "about 25 writes a second, about 12,000 reads a second, peak around 35,000".
+tryIt:
+  instructions: "Type this design template from memory-friendly headings (pasting is off on purpose). Then fill it in for 'Design a cricket live-score app' in a notebook. Using the same template every time is what makes you calm in the interview."
+  code: |
+    DESIGN TEMPLATE: ______________________
+    1. Functional requirements (features)
+       - Users can ...
+       - Out of scope: ...
+    2. Non-functional requirements
+       - Scale: ___ DAU   Latency: < ___ ms
+       - Availability: ___   Consistency: strong / eventual
+    3. Estimates
+       - Requests/day = ___ -> QPS = ___ / 86,400
+       - Peak QPS = avg x ___   Storage/day = ___ x ___ KB
+    4. API
+       - GET  /...      POST /...
+    5. Data model
+       - Entity(id, ...)   SQL or NoSQL? why?
+    6. High-level diagram
+       - Client -> LB -> App -> Cache -> DB (+ queue?)
+    7. Deep dive + trade-offs
+       - Hardest part: ...   I chose ... and gave up ...
+predict:
+  code: |
+    public class Tatkal {
+        public static void main(String[] args) {
+            long bookings = 1_200_000L;      // booking attempts
+            long windowSeconds = 10 * 60;    // first 10 minutes
+            long searchesPerBooking = 5;
+
+            long bookingQps = bookings / windowSeconds;
+            long searchQps = bookingQps * searchesPerBooking;
+            System.out.println(bookingQps + " bookings/s");
+            System.out.println(searchQps + " searches/s");
+        }
+    }
+  expectedOutput: |
+    2000 bookings/s
+    10000 searches/s
+  explanation: |
+    IRCTC tatkal is the perfect example of a **peak**: the load is squeezed into a few minutes, not spread over the day.
+    - 10 minutes = 600 seconds.
+    - 1,200,000 / 600 = **2,000 booking requests per second**.
+    - Each booking needs about 5 searches (checking trains and seats), so 2,000 x 5 = **10,000 searches per second**.
+
+    The lesson: if you had divided by 86,400 (a whole day) you would get only about 14 per second, and you would design a system that crashes at 10 am. Always ask *when* the traffic comes.
+commonMistakes:
+  - "Jumping straight to drawing boxes without asking any requirement questions."
+  - "Going silent while thinking. Interviewers grade your reasoning, so think aloud."
+  - "Designing for the average load only and ignoring the peak (tatkal at 10 am, dinner rush, the last over of a match)."
+  - "Adding Kafka, Redis and microservices everywhere without a reason. Every box needs a 'because'."
+  - "Never mentioning trade-offs, as if your design had no downsides."
+  - "Spending 20 minutes on estimates. Rough numbers in 3-5 minutes are enough."
+interviewBox:
+  why: "Why interviewers ask this: open-ended design questions show how you think, communicate and handle ambiguity, which matters more for a junior than knowing every tool."
+  questions:
+    - q: "Practice: How would you approach 'Design a food delivery app like Swiggy' in 30 minutes?"
+      a: "First I'd clarify scope: search restaurants, place order, pay and track, and I'd keep reviews out of scope. Non-functional: maybe 20 million daily users, fast search, high availability, and no double payments. Then a quick estimate: around 2 million orders a day is about 25 writes a second, and reads are much higher, around 12,000 a second, so it's read-heavy. Next, simple APIs like POST /orders and GET /orders/{id}, and tables for users, restaurants and orders. Then the diagram: client, load balancer, stateless app servers, a cache for menus, and a SQL database for orders. Finally I'd deep-dive into payment and tracking and talk about trade-offs."
+    - q: "Practice: What is the difference between functional and non-functional requirements?"
+      a: "Functional requirements are what the system does, the features, like 'a user can book a ticket'. Non-functional requirements are how well it does it, like 'booking responds within one second', 'the site is up 99.9% of the time' or 'it handles 2,000 bookings a second'."
+    - q: "Practice: Why do back-of-the-envelope estimates matter?"
+      a: "They tell me which parts need scaling. If writes are 25 a second, one database is fine. If reads are 35,000 a second at peak, I need a cache and read replicas. Numbers turn guessing into reasons."
+    - q: "Practice: The interviewer says 'Design IRCTC'. What is your first sentence?"
+      a: "I'd say: before I start, can I clarify the scope? Should I focus on search and booking, including tatkal, or also on cancellations and refunds? And roughly how many users and bookings should I plan for, especially at the tatkal peak?"
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which of these is a NON-functional requirement for a UPI payment app?"
+    code: null
+    options: ["User can send money to a phone number", "User can see the transaction history", "A payment must complete within 2 seconds, 99.99% of the time", "User can scan a QR code"]
+    answer: 2
+    explanation: "Speed and uptime describe HOW WELL the system works, so they are non-functional. The other three are features (what the system does), so they are functional requirements."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "A cricket score app estimate. What does this print?"
+    code: |
+      long users = 30_000_000L;
+      long refreshesPerUser = 40;
+      long seconds = 4 * 3600;   // one T20 match ~ 4 hours
+      long qps = users * refreshesPerUser / seconds;
+      System.out.println(qps);
+    options: ["13888", "83333", "833333", "1200000000"]
+    answer: 1
+    explanation: "30,000,000 x 40 = 1,200,000,000 refreshes. A match lasts 4 x 3600 = 14,400 seconds. 1,200,000,000 / 14,400 = 83,333 (integer division). 13888 is what you get dividing by a whole day (86,400), which ignores that all traffic happens during the match."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "In a system design interview, it is a good idea to start with a simple one-server design and then scale it step by step."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Starting simple shows clear thinking, and each scaling step (cache, replicas, queue) then has a visible reason. Jumping to a giant microservice diagram usually hides weak reasoning."
+  - id: q4
+    type: MATCH
+    prompt: "Match each step of the template to an example"
+    pairs:
+      - left: "Requirements"
+        right: "Users can book tickets; refunds out of scope"
+      - left: "Estimates"
+        right: "2 million orders/day is about 23 writes/s"
+      - left: "API"
+        right: "POST /orders returns an orderId"
+      - left: "Data model"
+        right: "Order(id, userId, status, amount)"
+      - left: "Trade-offs"
+        right: "Cache makes reads fast but data may be stale"
+    explanation: "Each step has a clear job. Keeping them in order stops you from mixing tables into the requirements or numbers into the diagram."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the number of seconds in a day, used to convert requests per day into QPS."
+    code: |
+      long qps = requestsPerDay / ____;
+    acceptedAnswers: ["86400", "86_400", "86400L", "86_400L"]
+    explanation: "24 x 60 x 60 = 86,400 seconds. In interviews you can round it to 100,000 to make mental maths easy."
+  - id: q6
+    type: MCQ
+    prompt: "Your estimate shows 50 writes/s and 40,000 reads/s. Which addition is best justified by these numbers?"
+    options: ["A message queue for writes", "A cache (and read replicas) for reads", "Sharding the database for writes", "Nothing; one server handles it all"]
+    answer: 1
+    explanation: "Reads are 800x the writes, so the system is read-heavy: a cache and read replicas take the read load. 50 writes/s is tiny, so queues or sharding for writes are not justified yet."
+  - id: q7
+    type: MCQ
+    prompt: "What is the BEST first thing to do when given 'Design a cricket score app'?"
+    options: ["Draw the database schema", "Name the technologies (Kafka, Redis, MongoDB)", "Ask clarifying questions about features and scale", "Write the Java code for the score class"]
+    answer: 2
+    explanation: "Requirements come first. Without knowing whether you need ball-by-ball updates, commentary, or just final scores, any schema or tool choice is a guess."
+explainBack:
+  prompt: "Explain to a friend how you would handle any 'Design X' interview question, step by step."
+  rubric:
+    - "I named the steps in order: requirements, estimates, API, data model, diagram, deep dive, trade-offs"
+    - "I explained functional vs non-functional requirements"
+    - "I showed one quick estimate (requests per day divided by 86,400)"
+    - "I mentioned thinking aloud and starting simple"
+    - "I used an analogy like the wedding caterer"
+  modelAnswer: |
+    I treat it like a caterer planning a wedding. First I ask what is needed, that is the features, and how well it must work, like speed and uptime. Then I do quick maths: requests per day divided by about 86,400 gives requests per second, and I check the peak. Next I write simple APIs and the main tables. Then I draw a simple diagram: client, load balancer, app servers, database, and add a cache or queue only when the numbers say so. Finally I go deep on the hardest part and say the trade-offs out loud. And I keep talking the whole time.
+flashcards:
+  - front: "The 7 steps of a design answer"
+    back: "Requirements -> Estimates -> API -> Data model -> High-level diagram -> Deep dives -> Trade-offs."
+  - front: "Functional vs non-functional"
+    back: "Functional = what it does (features). Non-functional = how well (latency, availability, scale, consistency)."
+  - front: "1 million requests/day is about how many per second?"
+    back: "About 12 per second (1,000,000 / 86,400 = 11.6)."
+  - front: "QPS formula"
+    back: "QPS = requests per day / 86,400. Peak QPS is usually 2-5x average."
+  - front: "1 KB x 1 billion records = ?"
+    back: "About 1 TB."
+keyTakeaways:
+  - "Always clarify requirements first: functional (features) and non-functional (speed, uptime, scale)."
+  - "Rough estimates (QPS, storage, peak) justify every component you add."
+  - "Use the same 7-step template every time: it keeps you organised under pressure."
+  - "Start with a simple design, then scale with reasons."
+  - "Say trade-offs out loud; no design is free."
+  - "Think aloud and check in with the interviewer."

@@ -1,0 +1,323 @@
+slug: sql-select-basics
+world: SQL
+section: SQL
+order: 1
+title: "SELECT basics and filtering"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL, INFOSYS_DSE]
+infosysRelevance: "Foundation for every SQL question in DSE and SP technical rounds; you must write these queries quickly and without syntax slips."
+otherCompanies: "Basic SELECT and WHERE questions are common in TCS, Wipro, Cognizant, Accenture and Capgemini technical interviews and online tests."
+why: |
+  Almost every company stores its data in a **database**, and **SQL (Structured Query Language)** is the language we use to ask that database questions.
+
+  In interviews, SQL questions usually start small: *"show all employees in department 10 earning more than 50,000, highest salary first"*. If you can write that in one go, the interviewer relaxes and moves on to harder things.
+
+  This lesson also teaches the **logical order** in which SQL runs a query. That one idea explains many confusing errors later, like *"why can't I use my column alias in WHERE?"*.
+
+  Every lesson in SQL Caves uses the **same small tables** (employees, departments, customers, orders), so you can picture the data and check every answer by hand.
+analogy: |
+  Think of a **table** as a big register in a college office, like the attendance register.
+
+  - **FROM** is choosing *which register* to open.
+  - **WHERE** is your finger running down the rows, keeping only the rows you want ("only students from CSE").
+  - **SELECT** is choosing *which columns* to copy onto your paper (name and phone, not everything).
+  - **ORDER BY** is arranging your copied list (alphabetically, or by marks).
+  - **LIMIT** is "give me only the first 3".
+
+  You open the register first, then filter, then copy, then sort. SQL does the same.
+visual:
+  diagram: |
+    Our sample data (used in every SQL Caves lesson)
+
+    employees
+     emp_id | name  | dept_id | salary | manager_id | hire_date
+    --------+-------+---------+--------+------------+------------
+          1 | Asha  |      10 |  90000 |       NULL | 2019-03-01
+          2 | Ravi  |      10 |  75000 |          1 | 2020-07-15
+          3 | Priya |      20 |  60000 |          1 | 2021-01-10
+          4 | Kiran |      20 |  60000 |          3 | 2022-05-20
+          5 | Meena |      30 |  50000 |          1 | 2020-11-02
+          6 | Arjun |    NULL |  45000 |          3 | 2023-02-14
+          7 | Divya |      10 |  80000 |          2 | 2022-09-01
+
+    departments                       How a SELECT really runs:
+     dept_id | dept_name   | location   1. FROM      pick the table
+    ---------+-------------+---------   2. WHERE     keep some rows
+          10 | Engineering | Bengaluru  3. GROUP BY  (next lessons)
+          20 | Sales       | Mumbai     4. HAVING    (next lessons)
+          30 | HR          | Pune       5. SELECT    pick columns
+          40 | Marketing   | Chennai    6. DISTINCT  drop duplicates
+                                        7. ORDER BY  sort
+                                        8. LIMIT     cut the list
+  caption: "The sample employees and departments tables. Note Arjun has no department (NULL) and Asha has no manager. The right side shows the logical order SQL follows, which is NOT the order you type."
+  visualizer: null
+explanation: |
+  ### Tables, rows and columns
+  A **table** stores data in **rows** (one row = one employee) and **columns** (one column = one property, like `salary`). A **query** is a question you ask the database. The answer to a SELECT query is itself a small table, called the **result set**.
+
+  All examples run on **PostgreSQL** (a popular free database). Where **MySQL** behaves differently, we say so.
+
+  ### SELECT and FROM
+  ```sql
+  SELECT name, salary FROM employees;   -- two columns, all rows
+  SELECT * FROM employees;              -- * means "all columns"
+  ```
+  In interviews and real code, prefer naming the columns. `SELECT *` is fine for quick checks.
+
+  You can also compute new columns and give them a name with **AS** (an **alias** = a nickname):
+  ```sql
+  SELECT name, salary * 12 AS annual_salary FROM employees;
+  ```
+
+  ### WHERE: keep only some rows
+  `WHERE` takes a condition. Only rows where the condition is **true** are kept.
+
+  | Operator | Meaning | Example |
+  |---|---|---|
+  | `=`, `<>` (or `!=`) | equal, not equal | `dept_id = 10` |
+  | `>`, `<`, `>=`, `<=` | comparisons | `salary >= 60000` |
+  | `AND`, `OR`, `NOT` | combine conditions | `dept_id = 20 AND salary > 50000` |
+  | `IN (...)` | matches any value in a list | `dept_id IN (20, 30)` |
+  | `BETWEEN a AND b` | from a to b, **both ends included** | `salary BETWEEN 60000 AND 80000` |
+  | `LIKE` | text pattern | `name LIKE 'A%'` |
+  | `IS NULL`, `IS NOT NULL` | value is missing / present | `manager_id IS NULL` |
+
+  Text and dates go in **single quotes**: `'Asha'`, `'2021-01-10'`. (In PostgreSQL, double quotes mean a column or table name, not text.)
+
+  ### LIKE patterns
+  - `%` means "any number of characters (even zero)".
+  - `_` means "exactly one character".
+
+  `name LIKE 'A%'` gives Asha and Arjun. `name LIKE '_i%'` means "second letter is i": Kiran and Divya.
+
+  > MySQL difference: with its default settings, MySQL's `LIKE` ignores upper/lower case. PostgreSQL's `LIKE` is case-sensitive; use `ILIKE` there for case-insensitive matching.
+
+  ### AND is stronger than OR
+  Just like `*` is done before `+` in maths, SQL does `AND` before `OR`.
+  ```sql
+  WHERE dept_id = 20 OR dept_id = 10 AND salary > 80000
+  -- is read as: dept_id = 20 OR (dept_id = 10 AND salary > 80000)
+  ```
+  This returns Asha **and** everyone in Sales. If you meant "department 20 or 10, and salary above 80,000", add brackets: `(dept_id = 20 OR dept_id = 10) AND salary > 80000`. When in doubt, use brackets.
+
+  ### NULL: the "unknown" value
+  **NULL** means "no value / unknown". It is not zero and not an empty string. Any normal comparison with NULL (`=`, `<>`, `>`) gives **unknown**, and WHERE keeps only **true** rows. So:
+  - `manager_id = NULL` never matches anything. Always write `manager_id IS NULL`.
+  - `dept_id <> 10` does **not** return Arjun, because his dept_id is NULL. "Is unknown different from 10?" Answer: unknown. Row dropped.
+
+  ### DISTINCT, ORDER BY and LIMIT
+  - `SELECT DISTINCT dept_id FROM employees` removes duplicate rows from the result. With several columns, DISTINCT looks at the **whole row** (the combination).
+  - `ORDER BY salary DESC, name` sorts by salary high-to-low, and breaks ties by name A-to-Z. `ASC` (ascending) is the default.
+  - `LIMIT 3` keeps only 3 rows. `LIMIT 2 OFFSET 2` skips 2 rows, then keeps 2 (useful for paging).
+
+  Without ORDER BY, the database may return rows in **any** order. Never rely on "the order they were inserted".
+
+  > NULLs when sorting: PostgreSQL puts NULLs **last** in ASC order (first in DESC). MySQL puts them **first** in ASC. PostgreSQL lets you choose with `NULLS FIRST` / `NULLS LAST`.
+  > Other databases: SQL Server uses `SELECT TOP 3`, and Oracle uses `FETCH FIRST 3 ROWS ONLY` instead of LIMIT.
+
+  ### The logical order of a query
+  You **type** `SELECT ... FROM ... WHERE ... ORDER BY ...`, but the database **thinks** in this order:
+
+  `FROM` -> `WHERE` -> `GROUP BY` -> `HAVING` -> `SELECT` -> `DISTINCT` -> `ORDER BY` -> `LIMIT`
+
+  Two famous consequences:
+  1. An alias made in SELECT (like `annual_salary`) **cannot** be used in WHERE, because WHERE runs before SELECT. Repeat the expression instead: `WHERE salary * 12 > 900000`.
+  2. The alias **can** be used in ORDER BY, because ORDER BY runs after SELECT.
+tinyCode:
+  code: |
+    SELECT name, salary
+    FROM employees
+    WHERE salary >= 60000
+    ORDER BY salary DESC, name;
+
+    -- Result:
+    --  name  | salary
+    -- -------+--------
+    --  Asha  |  90000
+    --  Divya |  80000
+    --  Ravi  |  75000
+    --  Kiran |  60000
+    --  Priya |  60000
+  walkthrough: |
+    - `FROM employees` opens the employees table (7 rows).
+    - `WHERE salary >= 60000` keeps only rows with salary 60,000 or more. Meena (50,000) and Arjun (45,000) are dropped. 5 rows remain.
+    - `SELECT name, salary` keeps only these two columns.
+    - `ORDER BY salary DESC` sorts from highest to lowest salary.
+    - `, name` is the tie-breaker: Kiran and Priya both earn 60,000, so they are sorted alphabetically (K before P). Without it, their order is not guaranteed.
+    - The semicolon `;` ends the statement.
+tryIt:
+  instructions: "Type these queries one by one in PostgreSQL (psql or any online SQL editor with the sample tables). Before pressing Enter, guess how many rows each will return."
+  code: |
+    -- 1. Everyone in department 10
+    SELECT name, dept_id FROM employees WHERE dept_id = 10;
+
+    -- 2. Sales people earning above 50,000
+    SELECT name, salary FROM employees
+    WHERE salary > 50000 AND dept_id = 20;
+
+    -- 3. Names ending with 'a'
+    SELECT name FROM employees WHERE name LIKE '%a';
+
+    -- 4. Who has no manager?
+    SELECT name FROM employees WHERE manager_id IS NULL;
+
+    -- 5. Hired in 2020 or 2021, oldest first
+    SELECT name FROM employees
+    WHERE hire_date BETWEEN '2020-01-01' AND '2021-12-31'
+    ORDER BY hire_date;
+
+    -- 6. Third and fourth highest paid
+    SELECT name, salary FROM employees
+    ORDER BY salary DESC, name LIMIT 2 OFFSET 2;
+predict:
+  code: |
+    SELECT name
+    FROM employees
+    WHERE dept_id <> 10
+    ORDER BY name;
+  expectedOutput: |2
+     name
+    -------
+     Kiran
+     Meena
+     Priya
+  explanation: |
+    Departments other than 10 are 20 (Priya, Kiran) and 30 (Meena). **Arjun is missing** even though he is clearly "not in department 10". His `dept_id` is NULL, and `NULL <> 10` is *unknown*, not true, so WHERE drops him.
+
+    To include him you must ask for it: `WHERE dept_id <> 10 OR dept_id IS NULL` returns Arjun, Kiran, Meena, Priya.
+commonMistakes:
+  - "Writing `= NULL` instead of `IS NULL`. `= NULL` never matches any row."
+  - "Using a SELECT alias inside WHERE (`WHERE annual > 900000`). WHERE runs before SELECT, so the alias does not exist yet."
+  - "Mixing AND and OR without brackets. AND is applied first, which silently changes your result."
+  - "Thinking BETWEEN excludes the end values. `BETWEEN 60000 AND 80000` includes 60000 and 80000."
+  - "Expecting rows in insertion order without ORDER BY. The order is not guaranteed."
+  - "Putting text in double quotes in PostgreSQL. `'Asha'` is text; `\"Asha\"` is treated as a column name."
+interviewBox:
+  why: "Why interviewers ask this: basic filtering shows whether you have actually written SQL, and NULL handling quickly separates careful candidates from careless ones."
+  questions:
+    - q: "What is the order of execution of a SELECT query?"
+      a: "Logically, the database runs FROM first, then WHERE, then GROUP BY, then HAVING, then SELECT, then DISTINCT, then ORDER BY, and finally LIMIT. That is why an alias from SELECT can be used in ORDER BY but not in WHERE."
+    - q: "What is the difference between = NULL and IS NULL?"
+      a: "NULL means unknown, so comparing anything with = NULL gives unknown, not true, and no row matches. IS NULL is the special check that returns true when a value is missing."
+    - q: "What does DISTINCT do, and does it work on one column or the whole row?"
+      a: "DISTINCT removes duplicate rows from the result. If I select several columns, it looks at the whole combination of those columns, not just the first one."
+    - q: "How do you get the top 3 highest salaries?"
+      a: "Sort by salary descending and limit: SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 3. In SQL Server I would use TOP 3, and in Oracle FETCH FIRST 3 ROWS ONLY."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Using the sample employees table, which names does this return, in order?"
+    code: |
+      SELECT name, salary
+      FROM employees
+      WHERE salary BETWEEN 60000 AND 80000
+      ORDER BY salary DESC, name;
+    options:
+      - "Ravi only"
+      - "Divya, Ravi, Kiran, Priya"
+      - "Ravi, Kiran, Priya"
+      - "Asha, Divya, Ravi, Kiran, Priya"
+    answer: 1
+    explanation: "BETWEEN includes both ends, so 80000 (Divya) and 60000 (Kiran, Priya) are inside, plus Ravi at 75000. Asha's 90000 is outside. 'Ravi only' is what you'd get if you wrongly thought BETWEEN excludes the ends."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "How many rows does this return?"
+    code: |
+      SELECT name, dept_id, salary
+      FROM employees
+      WHERE dept_id = 20 OR dept_id = 10 AND salary > 80000;
+    options: ["1 row (Asha)", "3 rows (Asha, Priya, Kiran)", "5 rows", "0 rows"]
+    answer: 1
+    explanation: "AND runs before OR, so this means dept_id = 20 OR (dept_id = 10 AND salary > 80000). That gives both Sales people plus Asha: 3 rows. '1 row' is the answer you get only with brackets around the OR part."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This query is supposed to list employees who have no manager, but it returns zero rows. Why?"
+    code: |
+      SELECT name
+      FROM employees
+      WHERE manager_id = NULL;
+    options:
+      - "NULL must be written in quotes: 'NULL'"
+      - "Comparing with = NULL gives unknown, never true; it must be manager_id IS NULL"
+      - "The table has no NULL values"
+      - "WHERE cannot be used with NULL columns at all"
+    answer: 1
+    explanation: "Any = comparison with NULL is unknown, so no row passes. IS NULL returns Asha. Writing 'NULL' in quotes would compare with the text NULL, which is a different mistake (and fails on a number column)."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "PostgreSQL says: ERROR: column \"annual\" does not exist. What is wrong?"
+    code: |
+      SELECT name, salary * 12 AS annual
+      FROM employees
+      WHERE annual > 900000;
+    options:
+      - "AS cannot be used for calculated columns"
+      - "salary * 12 needs brackets"
+      - "WHERE runs before SELECT, so the alias annual does not exist yet; write WHERE salary * 12 > 900000"
+      - "900000 is too large for an INT"
+    answer: 2
+    explanation: "Logical order is FROM, WHERE, ... then SELECT. The alias is created in SELECT, after WHERE has already run. Repeating the expression in WHERE fixes it (Asha and Divya are returned). Aliases do work in ORDER BY."
+  - id: q5
+    type: MCQ
+    prompt: "Which pattern finds names whose SECOND letter is 'i' (Kiran, Divya)?"
+    code: null
+    options: ["LIKE 'i%'", "LIKE '%i%'", "LIKE '_i%'", "LIKE '?i*'"]
+    answer: 2
+    explanation: "_ matches exactly one character, then i, then % for anything. '%i%' matches an i anywhere, so it would also return Priya and Ravi, and ? and * are not SQL wildcards."
+  - id: q6
+    type: MATCH
+    prompt: "Match each clause to its job"
+    pairs:
+      - left: "WHERE"
+        right: "Keeps only rows where the condition is true"
+      - left: "ORDER BY"
+        right: "Sorts the result"
+      - left: "DISTINCT"
+        right: "Removes duplicate result rows"
+      - left: "LIMIT"
+        right: "Keeps only the first N rows"
+    explanation: "These four are the everyday tools of SELECT. Remember the logical order: WHERE first, then SELECT/DISTINCT, then ORDER BY, then LIMIT."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "In PostgreSQL, SELECT name FROM employees (with no ORDER BY) always returns rows in the order they were inserted."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Without ORDER BY the order is not guaranteed. It often looks like insertion order on a tiny table, but updates, deletes and parallel scans can change it."
+  - id: q8
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword to list employees whose dept_id is 20 or 30."
+    code: |
+      SELECT name FROM employees
+      WHERE dept_id ____ (20, 30);
+    acceptedAnswers: ["IN", "in"]
+    explanation: "IN (20, 30) is a short way of writing dept_id = 20 OR dept_id = 30. It returns Priya, Kiran and Meena."
+explainBack:
+  prompt: "Explain to a friend how SQL runs SELECT name FROM employees WHERE salary > 50000 ORDER BY name, and why NULL needs special care."
+  rubric:
+    - "I said FROM and WHERE run before SELECT, and ORDER BY runs near the end"
+    - "I explained that WHERE keeps only rows where the condition is true"
+    - "I explained that NULL means unknown and needs IS NULL"
+    - "I mentioned that without ORDER BY the order is not guaranteed"
+    - "I used simple words or an analogy"
+  modelAnswer: |
+    First the database opens the employees table, that's FROM. Then WHERE checks every row and keeps only those where salary is more than 50,000. After that, SELECT picks just the name column, and ORDER BY sorts the names alphabetically. If I don't write ORDER BY, the order can be anything. One tricky thing is NULL. NULL means the value is unknown, so a comparison like salary > 50000 on a NULL salary is not true, and that row disappears. If I want missing values, I must ask for them with IS NULL, never with = NULL.
+flashcards:
+  - front: "Logical order of a SELECT query"
+    back: "FROM -> WHERE -> GROUP BY -> HAVING -> SELECT -> DISTINCT -> ORDER BY -> LIMIT"
+  - front: "How do you check for a missing value?"
+    back: "column IS NULL (or IS NOT NULL). = NULL never matches."
+  - front: "LIKE wildcards"
+    back: "% = any number of characters (even zero); _ = exactly one character."
+  - front: "Does BETWEEN include the end values?"
+    back: "Yes. BETWEEN 10 AND 20 means >= 10 AND <= 20."
+  - front: "AND vs OR priority"
+    back: "AND is evaluated before OR. Use brackets to be clear."
+keyTakeaways:
+  - "SELECT picks columns, WHERE picks rows, ORDER BY sorts, LIMIT cuts."
+  - "Logical order is FROM, WHERE, GROUP BY, HAVING, SELECT, DISTINCT, ORDER BY, LIMIT."
+  - "NULL means unknown: use IS NULL, and remember <> also skips NULL rows."
+  - "AND binds tighter than OR; brackets make your intent clear."
+  - "Always add ORDER BY (with a tie-breaker) when the order matters."

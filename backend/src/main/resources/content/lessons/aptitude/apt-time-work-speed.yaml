@@ -1,0 +1,269 @@
+slug: apt-time-work-speed
+world: APTITUDE
+section: APT
+order: 4
+title: "Time and work, time-speed-distance"
+version: 1
+estimatedMinutes: 45
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI, ALL]
+infosysRelevance: "Infosys-style basics practice: work-rate and speed questions test whether you can turn a word problem into a simple equation quickly, a skill that also helps in coding rounds."
+otherCompanies: "Time and work, pipes and cisterns, trains and boats are common practice topics for TCS, Wipro, Cognizant, Accenture and Capgemini style tests."
+why: |
+  Time-and-work and time-speed-distance questions look long and scary: trains, pipes, boats, men working different hours. But they all use **one idea**: a **rate** (how much per unit of time).
+
+  - Work: "A finishes in 12 days" means A does **1/12 of the work per day**.
+  - Speed: "60 km/h" means **60 km per hour**.
+
+  Once you think in rates, you add rates when people work together, subtract them when a pipe is emptying, and add or subtract speeds for trains and boats.
+
+  This lesson gives the **LCM method** (no fractions), the **relative speed** idea, and the **average speed trap**, with many worked examples and Java checks.
+analogy: |
+  Think of **filling a water tank on your building's terrace**.
+
+  - The motor pump fills it in 20 minutes: each minute it adds 1/20 of the tank.
+  - Someone opened a tap below that empties it in 30 minutes: each minute it removes 1/30.
+  - The tank's real filling speed is "pump minus tap".
+
+  Work questions are the same: people are "pumps" adding work, and anything that undoes work is a "leak". Trains and boats are the same idea with distance instead of water.
+visual:
+  diagram: |
+    WORK: LCM METHOD
+    A alone: 12 days   B alone: 18 days
+    Total work = LCM(12, 18) = 36 units
+    A: 36/12 = 3 units/day   B: 36/18 = 2 units/day
+    Together: 5 units/day -> 36/5 = 7.2 days
+
+    RELATIVE SPEED (trains)
+    opposite:   ====>        <====    speed = s1 + s2
+    same dir:   ====>   ====>         speed = s1 - s2
+    distance to cross = length1 + length2
+
+    UNITS:  km/h --(x 5/18)--> m/s
+            m/s  --(x 18/5)--> km/h
+  caption: "Treat total work as LCM units to avoid fractions. For two moving objects, add speeds when they move towards each other and subtract when they move the same way."
+  visualizer: null
+explanation: |
+  ### Part A: Time and work
+
+  ### 1. Work rate
+  If A finishes a job in a days, A's **rate** is 1/a of the job per day. **Rates add** when people work together:
+  `1/a + 1/b = 1/T`, where T is the time together.
+
+  ### 2. The LCM method (no fractions)
+  Take the **total work = LCM of the days**, then each person's rate is a whole number.
+  **Worked**: A takes 12 days, B takes 18 days. Total = 36 units. A does 3/day, B does 2/day. Together 5/day -> 36/5 = **7.2 days**.
+  **Worked**: A and B together take 10 days; A alone takes 15. Total = 30 units. Together 3/day, A 2/day, so B 1/day -> B alone **30 days**.
+
+  ### 3. Efficiency
+  "A is twice as efficient as B" means A's rate is 2 when B's is 1.
+  **Worked**: Together they finish in 14 days. Total work = (2 + 1) x 14 = 42 units. A alone = 42 / 2 = **21 days**.
+
+  ### 4. Man-days formula
+  More workers, fewer days. `M1 x D1 x H1 / W1 = M2 x D2 x H2 / W2` (Men, Days, Hours per day, Work).
+  **Why**: the total "person-hours" needed for a fixed job stays the same.
+  **Worked**: 12 men finish a job in 18 days. 8 men take 12 x 18 / 8 = **27 days**.
+
+  ### 5. Pipes and cisterns
+  Filling pipes have positive rates; emptying pipes (leaks) have negative rates.
+  **Worked**: Pipe A fills a tank in 20 hours; pipe B empties it in 30 hours. LCM = 60 units. A +3/hour, B -2/hour, net +1/hour -> **60 hours**.
+
+  ### Part B: Time, speed and distance
+
+  ### 6. The basic formula and units
+  `Distance = Speed x Time`. Units must match.
+  `km/h to m/s: x 5/18` (because 1 km/h = 1000 m / 3600 s = 5/18 m/s). So 54 km/h = **15 m/s**, 72 km/h = **20 m/s**.
+
+  ### 7. Average speed trap
+  Going 40 km/h and returning 60 km/h over the **same distance**: average speed is **not** 50.
+  Average speed = total distance / total time = `2xy/(x + y)` = 2 x 40 x 60 / 100 = **48 km/h**.
+  **Why**: you spend **more time** at the slower speed, so it pulls the average down. Check with 120 km each way: 3 h + 2 h = 5 h for 240 km -> 48.
+
+  ### 8. Trains
+  - Crossing a pole or a person: distance = **train length**.
+  - Crossing a platform or bridge: distance = **train length + platform length**.
+  - Two trains: distance = **sum of lengths**; speed = **sum** (opposite directions) or **difference** (same direction). This is **relative speed**: how fast the gap between them changes.
+
+  **Worked**: A 150 m train at 54 km/h (15 m/s) crosses a pole in 150/15 = **10 s**, and a 250 m platform in 400/15 = **26.67 s**.
+  **Worked**: Trains of 120 m (72 km/h) and 180 m (36 km/h). Opposite directions: 108 km/h = 30 m/s, 300/30 = **10 s**. Same direction: 36 km/h = 10 m/s, 300/10 = **30 s**.
+
+  ### 9. Boats and streams
+  Downstream (with the current) speed = b + s; upstream = b - s. So `b = (down + up)/2`, `s = (down - up)/2`.
+  **Worked**: Downstream 14 km/h, upstream 8 km/h -> boat **11 km/h**, stream **3 km/h**.
+
+  ### 10. Late and early
+  Walking at 4 km/h, a boy is 10 minutes late; at 5 km/h he is 5 minutes early. The time difference is 15 min = 1/4 h. So d/4 - d/5 = 1/4 -> d/20 = 1/4 -> d = **5 km**.
+tinyCode:
+  code: |
+    public class TimeWorkSpeed {
+        static int gcd(int a, int b) { return b == 0 ? a : gcd(b, a % b); }
+        static int lcm(int a, int b) { return a / gcd(a, b) * b; }
+
+        public static void main(String[] args) {
+            int total = lcm(12, 18);
+            int rateA = total / 12, rateB = total / 18;
+            System.out.println("Together: " + (double) total / (rateA + rateB) + " days");
+
+            double speed = 54 * 5.0 / 18;
+            System.out.println("Train speed: " + speed + " m/s");
+            System.out.printf("Pole: %.2f s, platform: %.2f s%n",
+                    150 / speed, (150 + 250) / speed);
+
+            double x = 40, y = 60;
+            System.out.println("Average speed: " + 2 * x * y / (x + y) + " km/h");
+        }
+    }
+  walkthrough: |
+    - `lcm(12, 18)` = 36 units of work. `lcm` divides first (`a / gcd * b`) to keep numbers small.
+    - Rates: A = 3 units/day, B = 2 units/day. `(double) total / 5` = 7.2 (the cast avoids integer division, which would give 7).
+    - `54 * 5.0 / 18` converts km/h to m/s = 15.0.
+    - Pole: 150 / 15 = 10.00 s. Platform: 400 / 15 = 26.67 s.
+    - Average speed for equal distances uses 2xy/(x+y) = 4800/100 = 48.0.
+    - Output:
+    ```
+    Together: 7.2 days
+    Train speed: 15.0 m/s
+    Pole: 10.00 s, platform: 26.67 s
+    Average speed: 48.0 km/h
+    ```
+tryIt:
+  instructions: "Type this program (no pasting). It checks the pipes, man-days and boats examples. Run it and match each line with the lesson."
+  code: |
+    public class PipesBoats {
+        public static void main(String[] args) {
+            int total = 60;
+            int fill = total / 20, empty = total / 30;
+            System.out.println("Tank full in " + total / (fill - empty) + " hours");
+
+            int men1 = 12, days1 = 18, men2 = 8;
+            System.out.println("8 men need " + men1 * days1 / men2 + " days");
+
+            int down = 14, up = 8;
+            System.out.println("Boat: " + (down + up) / 2 + " km/h");
+            System.out.println("Stream: " + (down - up) / 2 + " km/h");
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int relKmph = 72 + 36;
+            int relMps = relKmph * 5 / 18;
+            int lengths = 120 + 180;
+            System.out.println(relMps);
+            System.out.println(lengths / relMps);
+            System.out.println(lengths / ((72 - 36) * 5 / 18));
+        }
+    }
+  expectedOutput: |
+    30
+    10
+    30
+  explanation: |
+    - Opposite directions: relative speed 108 km/h = 108 x 5/18 = **30** m/s.
+    - Distance to cross each other = 120 + 180 = 300 m, so 300 / 30 = **10** seconds.
+    - Same direction: (72 - 36) = 36 km/h = 10 m/s, so 300 / 10 = **30** seconds.
+commonMistakes:
+  - "Adding days instead of rates. A 12 days + B 18 days is not 30 days together; add 1/12 + 1/18."
+  - "Forgetting to convert km/h to m/s when lengths are in metres."
+  - "Averaging speeds directly (40 and 60 -> 50). For equal distances use 2xy/(x+y)."
+  - "Using only the train length when it crosses a platform. Add the platform length."
+  - "Adding speeds for trains moving in the same direction. Same direction: subtract."
+  - "In Java, writing total / 5 with ints (gives 7) instead of (double) total / 5 (gives 7.2)."
+interviewBox:
+  why: "Why this is practised: these questions test turning words into equations. Explaining a 'rate' idea clearly is also a good sign in technical discussions (throughput, requests per second)."
+  questions:
+    - q: "If one person finishes a task in 12 days and another in 18 days, how long together? Explain. (practice question)"
+      a: "I think in rates. I take the total work as 36 units, the LCM of 12 and 18. The first person does 3 units a day, the second 2 units a day, so together 5 units a day. 36 divided by 5 is 7.2 days."
+    - q: "Why is the average speed of a round trip not the simple average of the two speeds? (practice question)"
+      a: "Because you spend more time at the slower speed. Average speed is total distance divided by total time. For 40 and 60 km/h over the same distance, it is 2 times 40 times 60 over 100, which is 48, not 50."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "A can do a job in 10 days and B in 15 days. Working together, how many days do they take?"
+    code: null
+    options: ["12.5 days", "6 days", "25 days", "5 days"]
+    answer: 1
+    explanation: "LCM = 30 units. A 3/day, B 2/day, together 5/day -> 30/5 = 6 days. 12.5 is the average of 10 and 15, and 25 adds the days, both wrong ideas."
+  - id: q2
+    type: MCQ
+    prompt: "A 200 m train running at 72 km/h crosses a 300 m platform. How long does it take?"
+    code: null
+    options: ["10 s", "15 s", "25 s", "20 s"]
+    answer: 2
+    explanation: "72 km/h = 20 m/s. Distance = 200 + 300 = 500 m. 500/20 = 25 s. 10 s uses only the train length; 15 s uses only the platform."
+  - id: q3
+    type: MCQ
+    prompt: "A car goes to a town at 30 km/h and returns on the same road at 20 km/h. What is its average speed for the whole trip?"
+    code: null
+    options: ["25 km/h", "24 km/h", "26 km/h", "22 km/h"]
+    answer: 1
+    explanation: "2xy/(x + y) = 2 x 30 x 20 / 50 = 24 km/h. 25 is the simple average, which ignores that more time is spent at 20 km/h."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Two trains moving in the same direction pass each other using the sum of their speeds."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. In the same direction the gap closes at the difference of their speeds. The sum is used when they move towards each other."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Convert 54 km/h to metres per second."
+    code: |
+      54 x 5 / 18 = ____ m/s
+    acceptedAnswers: ["15"]
+    explanation: "1 km/h = 1000 m / 3600 s = 5/18 m/s, so 54 x 5/18 = 15 m/s."
+  - id: q6
+    type: MCQ
+    prompt: "15 men can finish a job in 20 days. How many days will 25 men take, working at the same rate?"
+    code: null
+    options: ["33 days", "12 days", "10 days", "15 days"]
+    answer: 1
+    explanation: "Total = 15 x 20 = 300 man-days. 300 / 25 = 12 days. 33 days comes from wrongly assuming more men need more days."
+  - id: q7
+    type: MCQ
+    prompt: "A boat goes 18 km/h downstream and 10 km/h upstream. What is the speed of the stream?"
+    code: null
+    options: ["14 km/h", "8 km/h", "4 km/h", "2 km/h"]
+    answer: 2
+    explanation: "Stream = (down - up)/2 = (18 - 10)/2 = 4 km/h. 14 km/h is the boat's speed in still water; 8 forgets to halve the difference."
+  - id: q8
+    type: MATCH
+    prompt: "Match each situation to the right distance or speed"
+    pairs:
+      - left: "Train crossing a pole"
+        right: "distance = train length"
+      - left: "Train crossing a platform"
+        right: "distance = train length + platform length"
+      - left: "Two trains, opposite directions"
+        right: "relative speed = sum of speeds"
+      - left: "Boat going upstream"
+        right: "speed = boat speed - stream speed"
+    explanation: "A pole has no length, a platform adds its length, opposite motion closes the gap faster (sum), and the current slows a boat going upstream."
+explainBack:
+  prompt: "Explain to a friend how to solve 'A takes 12 days, B takes 18 days, how long together?' and why trains moving the same way use the difference of speeds."
+  rubric:
+    - "I explained thinking in rates (work per day)"
+    - "I used the LCM method to avoid fractions"
+    - "I explained relative speed with the gap idea"
+    - "I warned about unit conversion (x 5/18)"
+  modelAnswer: |
+    I don't add the days; I add the speeds of work. I take the total work as the LCM of 12 and 18, which is 36 units. A does 3 units a day and B does 2, so together they do 5 a day, and 36 divided by 5 is 7.2 days. For trains, what matters is how fast the gap between them changes. If they move the same way, one is only gaining by the difference of their speeds. If they come towards each other, the gap closes by both speeds, so we add. And I convert kilometres per hour to metres per second by multiplying by 5 by 18.
+flashcards:
+  - front: "LCM method for work"
+    back: "Total work = LCM of days; each rate = total / days; time = total / sum of rates."
+  - front: "km/h to m/s"
+    back: "Multiply by 5/18 (m/s to km/h: x 18/5)."
+  - front: "Average speed, equal distances at x and y"
+    back: "2xy/(x + y). Not (x + y)/2."
+  - front: "Boat and stream speeds"
+    back: "boat = (down + up)/2, stream = (down - up)/2."
+  - front: "Man-days rule"
+    back: "M1 D1 H1 / W1 = M2 D2 H2 / W2."
+keyTakeaways:
+  - "Think in rates: work per day, distance per hour."
+  - "LCM method: total work in units, whole-number rates, no fractions."
+  - "Emptying pipes and opposing currents subtract from the rate."
+  - "Relative speed: add for opposite directions, subtract for the same direction."
+  - "Average speed for equal distances is 2xy/(x+y)."
+  - "Always convert units: km/h x 5/18 = m/s."

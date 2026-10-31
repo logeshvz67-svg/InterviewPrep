@@ -1,0 +1,421 @@
+slug: spring-ioc-di
+world: SPRING
+section: SPRING
+order: 1
+title: "IoC, DI and beans"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+infosysRelevance: "Core Spring theory for SP and DSE technical rounds: 'What is IoC / DI / a bean?' is the usual first Spring question, and it leads into scopes and injection types."
+otherCompanies: "A standard opening Spring question at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies go deeper into why constructor injection is better and how scopes behave."
+why: |
+  You already know a few annotations like `@RestController` or `@Service`. But **why** do they work? Who creates these objects? The answer is the **Spring container**, and that idea is called **IoC (Inversion of Control)** and **DI (Dependency Injection)**.
+
+  This lesson matters because:
+  - **"What is IoC and DI?"** is the most common first Spring interview question.
+  - Almost every Spring bug you will meet early ("No qualifying bean", a `null` field, "expected single matching bean but found 2") comes from not understanding how beans are created and connected.
+  - Everything later (configuration, JPA repositories, security filters) is just "more beans in the container".
+
+  Once you understand this lesson, Spring stops being magic annotations and becomes "a smart factory that builds and wires my objects".
+analogy: |
+  Think of a **wedding caterer** in India.
+
+  - Without a caterer, *you* go to the market, buy vegetables, hire a cook, rent vessels, and connect everything yourself. That is normal Java: `new Cook(new Vessels(), new Vegetables())` everywhere.
+  - With a caterer, you only say **what you need**: "I need a biryani counter". The caterer **creates** the cook, vessels and ingredients, **connects** them, and hands you a ready counter. You stopped controlling the creation: **control is inverted**. That is **IoC**.
+  - The caterer bringing the cook *to* your counter (instead of the counter hunting for a cook) is **Dependency Injection**.
+  - Every item the caterer manages (cook, counter, vessels) is a **bean**.
+  - Usually there is **one** head cook for the whole wedding (**singleton** scope), but every guest gets a **new** plate (**prototype** scope).
+visual:
+  diagram: |
+    WITHOUT Spring (you build everything)
+      OrderService s = new OrderService(new SmsNotifier());
+
+    WITH Spring (the container builds and wires)
+      +---------------- ApplicationContext (IoC container) -------+
+      |                                                           |
+      |  1. scan: finds @Component / @Service / @Repository ...   |
+      |  2. create:  SmsNotifier  --------+                       |
+      |                                   | inject (constructor)  |
+      |  3. create:  OrderService(notifier) <---+                 |
+      |  4. keep:    one copy of each (singleton) in a map        |
+      |       "smsNotifier"  -> SmsNotifier@1a2b                  |
+      |       "orderService" -> OrderService@3c4d                 |
+      +-----------------------------------------------------------+
+      Your code:  ctx.getBean(OrderService.class)  -> ready to use
+  caption: "The container scans your classes, creates each bean once, passes dependencies into constructors, and keeps them ready for you."
+  visualizer: null
+explanation: |
+  ### The problem Spring solves
+  A **dependency** is an object that another object needs to do its job. `OrderService` needs a `Notifier` to send messages, so `Notifier` is a dependency of `OrderService`.
+
+  In plain Java, each class creates its own dependencies with `new`. That causes trouble:
+  - Classes are **tightly coupled** (glued together): to switch from SMS to email you edit `OrderService`.
+  - Testing is hard: you cannot pass in a fake notifier.
+  - Creating the same heavy objects (database pools, HTTP clients) many times wastes memory.
+
+  ### IoC: Inversion of Control
+  **IoC** means: *your class does not create its dependencies; someone outside does.* The "someone" in Spring is the **IoC container**, also called the **ApplicationContext**. It is an object that creates, connects and stores all the important objects of your app.
+
+  ### DI: Dependency Injection
+  **DI** is *how* IoC is done: the container **injects** (passes in) the dependencies. There are three styles:
+
+  | Style | Looks like | Verdict |
+  |---|---|---|
+  | **Constructor injection** | `OrderService(Notifier n) { this.n = n; }` | Best. Fields can be `final`, nothing can be `null`, easy to test with `new`. |
+  | Setter injection | `@Autowired void setNotifier(Notifier n)` | For optional dependencies only. |
+  | Field injection | `@Autowired private Notifier n;` | Avoid. Hidden dependencies, cannot be `final`, hard to unit test. |
+
+  If a class has **only one constructor**, Spring uses it automatically. No `@Autowired` needed. Open `backend/src/main/java/com/codequest/security/JwtService.java` in your own app: its constructor takes `AppProperties` and `Clock`, and the comment explains why constructor injection was chosen.
+
+  ### What is a bean?
+  A **bean** is simply *an object created and managed by the Spring container*. A normal object you create with `new` is **not** a bean, so Spring will never inject anything into it.
+
+  ### How Spring finds beans: component scanning
+  **Component scanning** means Spring looks through your package (and its sub-packages) for classes with these annotations, called **stereotypes**:
+
+  | Annotation | Use it for | Extra behaviour |
+  |---|---|---|
+  | `@Component` | Any general helper class | none |
+  | `@Service` | Business logic | none (just clearer meaning) |
+  | `@Repository` | Database access | translates DB exceptions into Spring's `DataAccessException` |
+  | `@Controller` / `@RestController` | Web request handlers | handles HTTP; `@RestController` writes return values as JSON |
+
+  The other way to create a bean is a method marked `@Bean` inside a `@Configuration` class. Use it for classes you did not write. See `backend/src/main/java/com/codequest/config/ClockConfig.java`: it creates a `Clock` bean so services can ask "what time is it?" and tests can replace the clock.
+
+  ### Bean names and choosing between two beans
+  The default bean name is the class name with a small first letter: `SmsNotifier` becomes `smsNotifier`.
+
+  If **two** beans match one dependency (say `EmailNotifier` and `SmsNotifier` both implement `Notifier`), Spring cannot choose and startup fails with **NoUniqueBeanDefinitionException** ("expected single matching bean but found 2"). Fix it with:
+  - `@Primary` on one class: "use this one by default".
+  - `@Qualifier("emailNotifier")` on the parameter: "I want exactly this one". `@Qualifier` wins over `@Primary`.
+
+  If **zero** beans match, you get **NoSuchBeanDefinitionException** (usually a missing annotation or the class is outside the scanned package).
+
+  ### Bean scopes
+  A **scope** says how many copies of a bean exist.
+
+  | Scope | Copies | Typical use |
+  |---|---|---|
+  | `singleton` (default) | One per container | Services, repositories, controllers |
+  | `prototype` | A new one every time it is requested | Objects that hold per-use state |
+  | `request` | One per HTTP request | Web apps only |
+  | `session` | One per HTTP session | Web apps only |
+
+  A Spring singleton is "one per container", not the Java Singleton design pattern. Because one service object serves every request at the same time, **never keep per-user data in fields of a singleton**. That causes data leaking between users.
+
+  ### Bean lifecycle
+  1. **Instantiate**: the constructor runs (dependencies injected).
+  2. **Initialise**: a method marked `@PostConstruct` runs (good for warming caches).
+  3. **In use**: your code calls it.
+  4. **Destroy**: when the container closes, `@PreDestroy` runs (close files, connections). Spring does **not** call `@PreDestroy` on prototype beans; it forgets them after creating them.
+
+  `@PostConstruct` and `@PreDestroy` come from `jakarta.annotation` in Spring Boot 3 (not `javax.annotation`).
+
+  ### Where this lives in your app
+  `backend/src/main/java/com/codequest/CodeQuestApplication.java` has `@SpringBootApplication`, which turns on component scanning for the whole `com.codequest` package. That is how every `@Service`, `@Repository` and `@RestController` in your project becomes a bean.
+tinyCode:
+  code: |
+    package demo.ioc;
+
+    import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+    import org.springframework.context.annotation.ComponentScan;
+    import org.springframework.context.annotation.Configuration;
+    import org.springframework.stereotype.Component;
+    import org.springframework.stereotype.Service;
+
+    interface Notifier { String send(String msg); }
+
+    @Component
+    class SmsNotifier implements Notifier {
+        public String send(String msg) { return "SMS: " + msg; }
+    }
+
+    @Service
+    class OrderService {
+        private final Notifier notifier;
+        OrderService(Notifier notifier) { this.notifier = notifier; }
+        String placeOrder(String item) { return notifier.send(item + " ordered"); }
+    }
+
+    @Configuration
+    @ComponentScan
+    class AppConfig {}
+
+    public class IocDemo {
+        public static void main(String[] args) {
+            try (var ctx = new AnnotationConfigApplicationContext(AppConfig.class)) {
+                OrderService service = ctx.getBean(OrderService.class);
+                System.out.println(service.placeOrder("Biryani"));
+                System.out.println(service == ctx.getBean(OrderService.class));
+            }
+        }
+    }
+    // Output:
+    // SMS: Biryani ordered
+    // true
+  walkthrough: |
+    - `interface Notifier`: the **contract**. `OrderService` depends on the interface, not on SMS specifically. This keeps classes loosely coupled.
+    - `@Component class SmsNotifier`: tells Spring "create one of these and manage it". Its bean name becomes `smsNotifier`.
+    - `@Service class OrderService`: also a bean. It has **one constructor** that needs a `Notifier`, so Spring finds the only `Notifier` bean (`SmsNotifier`) and passes it in. That is **constructor injection**. No `@Autowired` needed.
+    - `private final Notifier notifier;`: `final` is possible only with constructor injection. It can never be `null` or change later.
+    - `@Configuration @ComponentScan class AppConfig`: starts scanning from this class's package (`demo.ioc`). In a Spring Boot app, `@SpringBootApplication` does this for you.
+    - `new AnnotationConfigApplicationContext(AppConfig.class)`: creates the **IoC container**. It scans, creates `SmsNotifier`, then creates `OrderService` with it.
+    - `ctx.getBean(OrderService.class)`: asks the container for the ready-made bean. In a real app you almost never call `getBean`; Spring injects beans into your controllers instead.
+    - The second print is `true` because the default scope is **singleton**: asking twice gives the same object.
+    - `try (...)` closes the container at the end, which runs any `@PreDestroy` methods.
+
+    To run it: create a project at start.spring.io (or use your `backend` project), put this file in `src/main/java/demo/ioc/`, and run `main`. Spring may also print a few log lines.
+tryIt:
+  instructions: "Type this scope demo (pasting is off on purpose). Predict the two lines before you run it: does Spring give you the same Counter both times? The same Ticket?"
+  code: |
+    package demo.scope;
+
+    import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+    import org.springframework.context.annotation.Scope;
+    import org.springframework.stereotype.Component;
+
+    @Component
+    class Counter {
+        private int count = 0;
+        int next() { return ++count; }
+    }
+
+    @Component
+    @Scope("prototype")
+    class Ticket { }
+
+    public class ScopeDemo {
+        public static void main(String[] args) {
+            try (var ctx = new AnnotationConfigApplicationContext("demo.scope")) {
+                Counter a = ctx.getBean(Counter.class);
+                Counter b = ctx.getBean(Counter.class);
+                a.next();
+                System.out.println("same counter? " + (a == b) + ", count = " + b.next());
+                Ticket t1 = ctx.getBean(Ticket.class);
+                Ticket t2 = ctx.getBean(Ticket.class);
+                System.out.println("same ticket? " + (t1 == t2));
+            }
+        }
+    }
+predict:
+  code: |
+    package demo.life;
+
+    import jakarta.annotation.PostConstruct;
+    import jakarta.annotation.PreDestroy;
+    import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+    import org.springframework.stereotype.Component;
+
+    @Component
+    class CacheWarmer {
+        CacheWarmer() { System.out.println("1. constructor"); }
+
+        @PostConstruct
+        void init() { System.out.println("2. @PostConstruct"); }
+
+        void use() { System.out.println("3. using the bean"); }
+
+        @PreDestroy
+        void cleanup() { System.out.println("4. @PreDestroy"); }
+    }
+
+    public class LifecycleDemo {
+        public static void main(String[] args) {
+            var ctx = new AnnotationConfigApplicationContext("demo.life");
+            ctx.getBean(CacheWarmer.class).use();
+            ctx.close();
+            System.out.println("5. context closed");
+        }
+    }
+  expectedOutput: |
+    1. constructor
+    2. @PostConstruct
+    3. using the bean
+    4. @PreDestroy
+    5. context closed
+  explanation: |
+    Singleton beans are created **while the container starts**, before your code asks for them. So the constructor runs first, then Spring calls the `@PostConstruct` method once the bean is fully built and injected. Then `main` uses the bean. `ctx.close()` shuts the container down and Spring calls `@PreDestroy` on every singleton, so "4" prints before "5". If `CacheWarmer` were a prototype bean, "4" would never print, because Spring does not track prototype beans after handing them out.
+commonMistakes:
+  - "Creating a bean yourself with `new BillingService()`. Spring never touches objects you create with `new`, so their `@Autowired` fields stay null and you get a NullPointerException."
+  - "Using field injection (`@Autowired private X x;`) everywhere. Prefer constructor injection: final fields, no nulls, and easy unit tests with `new Service(mock)`."
+  - "Two beans of the same interface without `@Primary` or `@Qualifier`. Startup fails with NoUniqueBeanDefinitionException."
+  - "Putting a class outside the main application's package. Component scanning never finds it, so you get NoSuchBeanDefinitionException."
+  - "Storing per-user data in a field of a singleton service. Every request shares that one object, so users see each other's data."
+  - "Importing `javax.annotation.PostConstruct` in Spring Boot 3. The correct package is `jakarta.annotation`."
+interviewBox:
+  why: "Why interviewers ask this: IoC and DI are the foundation of Spring. A clear answer shows you understand what Spring actually does, not just which annotations to copy."
+  questions:
+    - q: "What is IoC and what is DI?"
+      a: "IoC, Inversion of Control, means my classes don't create their own dependencies; the Spring container creates and connects them. DI, Dependency Injection, is how it does that: Spring passes the dependencies in, usually through the constructor. So my OrderService just asks for a Notifier, and Spring injects the right one."
+    - q: "Which type of dependency injection do you prefer and why?"
+      a: "Constructor injection. The fields can be final, the object can never exist with a missing dependency, and in unit tests I can just call new with mock objects. Field injection hides dependencies and needs reflection to test. Setter injection is only for optional dependencies."
+    - q: "What is a Spring bean and what are the bean scopes?"
+      a: "A bean is an object that the Spring container creates and manages. The default scope is singleton, one instance per container. Prototype gives a new instance every time. In web apps there are also request and session scopes, one per HTTP request or per user session."
+    - q: "Difference between @Component, @Service, @Repository and @Controller?"
+      a: "All four make a class a bean through component scanning. @Service and @Controller mainly show the role of the class. @Repository also converts database exceptions into Spring's DataAccessException. @Controller handles web requests, and @RestController adds @ResponseBody so return values become JSON."
+    - q: "If two beans implement the same interface, how does Spring choose?"
+      a: "By default it can't, and startup fails with NoUniqueBeanDefinitionException. I mark one with @Primary to make it the default, or use @Qualifier with the bean name at the injection point to pick one exactly. @Qualifier wins over @Primary."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What does 'Inversion of Control' mean in Spring?"
+    code: null
+    options:
+      - "Your class creates its own dependencies with new"
+      - "The Spring container creates objects and supplies their dependencies, instead of your code doing it"
+      - "Control flow runs from the last line of main to the first"
+      - "Spring converts interfaces into classes at compile time"
+    answer: 1
+    explanation: "IoC flips who is in charge of creating objects: the container builds and wires them, your class just declares what it needs. Option A is the normal, non-IoC way that IoC replaces. The other two are made up."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Both classes are in the scanned package. What does alert() print?"
+    code: |
+      interface Notifier { String name(); }
+
+      @Component
+      class EmailNotifier implements Notifier { public String name() { return "EMAIL"; } }
+
+      @Component
+      @Primary
+      class SmsNotifier implements Notifier { public String name() { return "SMS"; } }
+
+      @Service
+      class AlertService {
+          private final Notifier notifier;
+          AlertService(Notifier notifier) { this.notifier = notifier; }
+          void alert() { System.out.println("Sent by " + notifier.name()); }
+      }
+    options:
+      - "Sent by EMAIL"
+      - "Sent by SMS"
+      - "The app fails to start: two Notifier beans found"
+      - "Sent by EMAIL and then Sent by SMS"
+    answer: 1
+    explanation: "Two beans match Notifier, but @Primary on SmsNotifier tells Spring which one to inject by default, so it prints 'Sent by SMS'. Without @Primary (or a @Qualifier) the tempting answer C would be correct: startup would fail with NoUniqueBeanDefinitionException."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This app crashes at startup. Why?"
+    code: |
+      interface Notifier { String name(); }
+
+      @Component
+      class EmailNotifier implements Notifier { public String name() { return "EMAIL"; } }
+
+      @Component
+      class SmsNotifier implements Notifier { public String name() { return "SMS"; } }
+
+      @Service
+      class AlertService {
+          private final Notifier notifier;
+          AlertService(Notifier notifier) { this.notifier = notifier; }
+      }
+    options:
+      - "AlertService needs @Autowired on its constructor"
+      - "Two beans implement Notifier and nothing says which one to inject: NoUniqueBeanDefinitionException"
+      - "Interfaces cannot be injected; you must inject a class"
+      - "final fields cannot be injected by Spring"
+    answer: 1
+    explanation: "Spring finds two candidates (emailNotifier and smsNotifier) and refuses to guess: 'expected single matching bean but found 2'. Fix it with @Primary on one class or @Qualifier(\"smsNotifier\") on the parameter. @Autowired is optional for a single constructor, and injecting an interface into a final field is exactly the recommended style."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "The first bill(2) prints 100. The second one throws a NullPointerException. Why?"
+    code: |
+      @Component
+      class PriceCalculator { int total(int qty) { return qty * 50; } }
+
+      @Service
+      class BillingService {
+          @Autowired
+          private PriceCalculator calculator;
+          int bill(int qty) { return calculator.total(qty); }
+      }
+
+      // in main:
+      BillingService fromSpring = ctx.getBean(BillingService.class);
+      System.out.println(fromSpring.bill(2));
+      BillingService manual = new BillingService();
+      System.out.println(manual.bill(2));
+    options:
+      - "PriceCalculator is a prototype bean"
+      - "@Autowired only works on public fields"
+      - "The object made with new is not a bean, so Spring never injected calculator; it is null"
+      - "bill must be marked @Transactional"
+    answer: 2
+    explanation: "Spring only injects into objects it creates. new BillingService() is a plain object, so its @Autowired field stays null. This is also why constructor injection is safer: with a constructor, you could not even write new BillingService() without passing a PriceCalculator."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "By default, Spring creates only one instance of a @Service class per application context, and every class that needs it gets that same instance."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. The default scope is singleton: one instance per container, shared by everyone. That is why you must not keep per-user data in a service's fields. It is 'one per container', not the Java Singleton pattern with a private constructor."
+  - id: q6
+    type: MATCH
+    prompt: "Match each annotation to its best use"
+    pairs:
+      - left: "@Service"
+        right: "Business logic class"
+      - left: "@Repository"
+        right: "Database access class; DB errors become DataAccessException"
+      - left: "@RestController"
+        right: "Handles HTTP requests and returns JSON"
+      - left: "@Bean"
+        right: "Method in a @Configuration class that creates a bean you didn't write"
+      - left: "@Scope(\"prototype\")"
+        right: "A new instance every time it is requested"
+    explanation: "Stereotypes (@Service, @Repository, @RestController) are found by component scanning. @Bean methods are for third-party classes like Clock or PasswordEncoder. @Scope changes how many instances exist."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "EmailNotifier and SmsNotifier are both beans. Fill in the bean name so AlertService always gets the EmailNotifier."
+    code: |
+      @Service
+      class AlertService {
+          private final Notifier notifier;
+          AlertService(@Qualifier("____") Notifier notifier) {
+              this.notifier = notifier;
+          }
+      }
+    acceptedAnswers: ["emailNotifier"]
+    explanation: "The default bean name is the class name with a lowercase first letter: EmailNotifier becomes emailNotifier. 'EmailNotifier' with a capital E would not match any bean."
+  - id: q8
+    type: MCQ
+    prompt: "Why is constructor injection preferred over field injection?"
+    code: null
+    options:
+      - "It makes the app start faster"
+      - "Fields can be final, dependencies can never be missing, and tests can pass mocks with new"
+      - "Field injection does not work in Spring Boot 3"
+      - "Constructor injection creates prototype beans"
+    answer: 1
+    explanation: "Constructor injection makes dependencies visible and required. Field injection still works in Boot 3 (so C is false), it is just harder to test and hides what a class needs. Speed and scope have nothing to do with it."
+explainBack:
+  prompt: "Explain IoC, DI and beans to a friend who has only written plain Java with 'new'."
+  rubric:
+    - "I said the Spring container creates and stores the objects (beans)"
+    - "I explained DI as Spring passing dependencies in, usually through the constructor"
+    - "I said why constructor injection is the best choice"
+    - "I mentioned singleton as the default scope"
+    - "I used an analogy like a caterer"
+  modelAnswer: |
+    In plain Java, every class creates what it needs with new, so classes get glued together. In Spring, a container called the ApplicationContext creates the important objects for me. These managed objects are called beans. That's Inversion of Control: the container controls creation, not my class. Dependency Injection is how it connects them: if OrderService needs a Notifier in its constructor, Spring creates the Notifier and passes it in. I prefer constructor injection because fields can be final and testing with mocks is easy. By default each bean is a singleton, one shared instance. It's like a wedding caterer who brings the cook and vessels to your counter.
+flashcards:
+  - front: "IoC vs DI in one line each"
+    back: "IoC: the container creates and controls objects, not your class. DI: the container passes dependencies in (constructor, setter or field)."
+  - front: "What is a Spring bean?"
+    back: "An object created and managed by the Spring container. Objects made with new are not beans."
+  - front: "Default bean scope and the other main scopes"
+    back: "singleton (one per container, default), prototype (new each request for the bean), request, session (web only)."
+  - front: "Two beans match one dependency. Two fixes?"
+    back: "@Primary on one bean (default choice) or @Qualifier(\"beanName\") at the injection point (exact choice; wins over @Primary)."
+  - front: "Bean lifecycle order"
+    back: "constructor (inject) -> @PostConstruct -> in use -> @PreDestroy on context close (not for prototype beans)."
+  - front: "Default bean name of class SmsNotifier"
+    back: "smsNotifier (class name with lowercase first letter)."
+keyTakeaways:
+  - "IoC: the Spring container creates objects; DI: it passes them in, preferably through the constructor."
+  - "A bean is an object managed by the container; @Component/@Service/@Repository/@Controller and @Bean methods create them."
+  - "Default scope is singleton: one shared instance, so never store per-user data in its fields."
+  - "Two matching beans need @Primary or @Qualifier; zero matching beans means a missing annotation or wrong package."
+  - "Lifecycle: constructor, @PostConstruct, use, @PreDestroy (jakarta.annotation in Boot 3)."

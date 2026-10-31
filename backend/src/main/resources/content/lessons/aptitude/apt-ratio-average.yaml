@@ -1,0 +1,279 @@
+slug: apt-ratio-average
+world: APTITUDE
+section: APT
+order: 3
+title: "Ratio, averages and mixtures"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI, ALL]
+infosysRelevance: "Infosys-style basics practice: ratios, averages and the alligation rule are reused in partnership, mixtures, time-speed-distance and data interpretation questions."
+otherCompanies: "Ratio, average and mixture questions are common practice topics for TCS, Wipro, Cognizant, Accenture and Capgemini style tests."
+why: |
+  A **ratio** compares quantities; an **average** summarises many numbers with one; a **mixture** is just an average with weights. These three ideas are tightly connected, and once you see the link, many "different" questions become the same question.
+
+  Shortcuts in this lesson:
+  - combining ratios like A:B and B:C in one step,
+  - the **deviation method** for averages (no big additions),
+  - the **alligation** rule for mixtures (a two-line answer instead of algebra),
+  - the **replacement** formula for "remove and refill" questions.
+
+  As always, you will learn **why** each shortcut works, and check answers with small Java programs.
+analogy: |
+  Think of **mixing two types of rice at a ration shop**.
+
+  - Cheap rice costs Rs 40/kg and premium rice costs Rs 60/kg.
+  - The shopkeeper wants a mix that sells at Rs 52/kg.
+  - Every kg of cheap rice is Rs 12 **below** the target; every kg of premium is Rs 8 **above**.
+  - To balance, the "below" and "above" amounts must cancel, like children on a **see-saw**: the heavier side sits closer to the middle. So he needs more premium rice than cheap rice, in the ratio 2 : 3.
+
+  That see-saw balance is the **alligation** rule.
+visual:
+  diagram: |
+    ALLIGATION (the cross)
+
+      cheaper            dearer
+       Rs 40              Rs 60
+           \              /
+            \    mean    /
+              Rs 52
+            /           \
+           /             \
+     60 - 52 = 8     52 - 40 = 12
+     (cheap qty)      (dear qty)
+
+     cheap : dear = 8 : 12 = 2 : 3
+
+    COMBINING RATIOS
+    A : B     = 2 : 3   (x4)  ->  8 : 12
+        B : C =     4 : 5 (x3) ->     12 : 15
+    A : B : C = 8 : 12 : 15
+  caption: "Alligation: cross-subtract from the mean to get the quantity ratio. To combine ratios, make the common term (B) equal."
+  visualizer: null
+explanation: |
+  ### 1. Ratios
+  A **ratio** a : b says "for every a of the first, there are b of the second". You can multiply or divide both sides by the same number (2 : 3 = 4 : 6).
+
+  **Dividing an amount**: share Rs 1800 in the ratio 2 : 3 : 4. Total parts = 9, one part = 200. Shares = **400, 600, 800**.
+
+  **Combining ratios**: A : B = 2 : 3 and B : C = 4 : 5. Make B the same in both: LCM of 3 and 4 is 12. A : B = 8 : 12, B : C = 12 : 15, so **A : B : C = 8 : 12 : 15**.
+
+  **Proportion**: a : b = c : d means a/b = c/d, so **a x d = b x c** (cross multiply).
+
+  ### 2. Partnership
+  Profit is shared in the ratio of **capital x time**. **Why**: Rs 1000 for 2 months does the same "work" as Rs 2000 for 1 month.
+  **Worked**: A invests Rs 5000 for 12 months, B invests Rs 6000 for 8 months. 60000 : 48000 = 5 : 4. A profit of Rs 9000 splits as **A 5000, B 4000**.
+
+  ### 3. Averages
+  `Average = sum / count`, so **sum = average x count**. Most average questions are solved by working with sums.
+
+  **Deviation method**: pick a convenient guess, add the differences, divide by the count.
+  **Worked**: average of 47, 52, 49, 56, 46. Guess 50. Differences: -3, +2, -1, +6, -4, total 0. Average = 50 + 0/5 = **50**. **Why**: the average of (guess + difference) is guess + average difference.
+
+  **Worked (new member)**: 30 students have average age 15. When the teacher is included, the average becomes 16. Teacher = 31 x 16 - 30 x 15 = 496 - 450 = **46 years**.
+
+  **Worked (replacement)**: The average weight of 8 men goes up by 2 kg when a man of 40 kg is replaced by a new man. Total went up by 8 x 2 = 16, so the new man weighs 40 + 16 = **56 kg**.
+
+  **Shift rule**: if every number increases by k, the average increases by k. If every number is multiplied by k, the average is multiplied by k.
+
+  ### 4. Mixtures and alligation
+  A mixture's price (or concentration) is a **weighted average** of its parts. The **alligation rule**:
+
+  `cheaper quantity : dearer quantity = (dearer - mean) : (mean - cheaper)`
+
+  **Why**: if you mix q1 kg at price c with q2 kg at price d to get mean m, the gain on one side equals the loss on the other: q1 x (m - c) = q2 x (d - m). Rearranging gives the rule.
+
+  **Worked**: Rice at Rs 40 and Rs 60 mixed to sell at Rs 52 (no profit). Cheap : dear = (60 - 52) : (52 - 40) = 8 : 12 = **2 : 3**.
+
+  ### 5. Adding water to change a ratio
+  **Worked**: 60 L of milk and water in ratio 2 : 1. How much water to add to make it 1 : 2?
+  Milk = 40 L, water = 20 L. Milk does not change. For 1 : 2, water must be 80 L. **Add 60 L**.
+  **Tip**: always find the quantity that does **not** change first.
+
+  ### 6. Repeated replacement
+  A container has 40 L of milk. 4 L is taken out and replaced with water; this is done 2 times. Milk left:
+
+  `final = initial x (1 - removed/total)^n = 40 x (1 - 4/40)^2 = 40 x 0.81 = 32.4 L`
+
+  **Why**: each time, you keep 9/10 of whatever milk is there, so you multiply by 0.9 again and again.
+tinyCode:
+  code: |
+    public class RatioAverage {
+        static int gcd(int a, int b) { return b == 0 ? a : gcd(b, a % b); }
+
+        public static void main(String[] args) {
+            int a = 5000 * 12, b = 6000 * 8;
+            int g = gcd(a, b);
+            System.out.println("Partnership ratio = " + a / g + ":" + b / g);
+            System.out.println("A gets " + 9000 * a / (a + b));
+
+            int teacher = 31 * 16 - 30 * 15;
+            System.out.println("Teacher's age = " + teacher);
+
+            int cheap = 40, dear = 60, mean = 52;
+            int x = dear - mean, y = mean - cheap;
+            int h = gcd(x, y);
+            System.out.println("Cheap:dear = " + x / h + ":" + y / h);
+
+            double milk = 40;
+            for (int i = 0; i < 2; i++) {
+                milk = milk * (1 - 4.0 / 40);
+            }
+            System.out.printf("Milk left = %.1f L%n", milk);
+        }
+    }
+  walkthrough: |
+    - `gcd` is Euclid's method written recursively; we use it to reduce ratios to lowest terms.
+    - Partnership: capital x time gives 60000 and 48000. Dividing both by their GCD (12000) gives 5:4. A's share = 9000 x 60000 / 108000 = 5000. (We multiply first, then divide, so integer division stays exact.)
+    - Teacher: new total minus old total = 496 - 450 = 46.
+    - Alligation: (60 - 52) : (52 - 40) = 8 : 12, reduced by GCD 4 to 2 : 3.
+    - Replacement: each loop keeps 90% of the milk: 40 -> 36 -> 32.4.
+    - Output:
+    ```
+    Partnership ratio = 5:4
+    A gets 5000
+    Teacher's age = 46
+    Cheap:dear = 2:3
+    Milk left = 32.4 L
+    ```
+tryIt:
+  instructions: "Type this program (no pasting). It uses the deviation method for an average and checks the milk-water example. Run it and compare with the lesson."
+  code: |
+    public class DeviationAverage {
+        public static void main(String[] args) {
+            int[] nums = {47, 52, 49, 56, 46};
+            int guess = 50, diffSum = 0;
+            for (int n : nums) {
+                diffSum += n - guess;
+            }
+            double avg = guess + (double) diffSum / nums.length;
+            System.out.println("Average = " + avg);
+
+            int milk = 60 * 2 / 3, water = 60 - milk;
+            int waterNeeded = milk * 2;
+            System.out.println("Add water: " + (waterNeeded - water) + " L");
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int cheap = 30, dear = 50, mean = 36;
+            System.out.println((dear - mean) + ":" + (mean - cheap));
+            int[] marks = {70, 80, 90, 60};
+            int sum = 0;
+            for (int m : marks) sum += m;
+            System.out.println(sum / marks.length);
+        }
+    }
+  expectedOutput: |
+    14:6
+    75
+  explanation: |
+    - Alligation cross: (50 - 36) : (36 - 30) = **14:6** (which reduces to 7 : 3, but the program prints the raw numbers).
+    - Sum of marks = 300, count = 4, integer average = **75**.
+commonMistakes:
+  - "Combining A:B and B:C without making B equal first."
+  - "Writing the alligation ratio the wrong way round. (dearer - mean) goes with the CHEAPER quantity."
+  - "Averaging averages of groups of different sizes. Use sums (average x count), not the plain average of averages."
+  - "In 'add water' questions, changing the milk amount too. Find the part that stays the same first."
+  - "Partnership: sharing profit by capital only and forgetting the time."
+  - "Replacement: subtracting 4 L of milk each time. After the first round, the removed 4 L is part milk, part water; use (1 - r/T)^n."
+interviewBox:
+  why: "Why this is practised: ratio and average reasoning is used in aptitude tests and in everyday data work (weighted scores, averages in reports)."
+  questions:
+    - q: "Why can't you simply average two class averages to get the overall average? (practice question)"
+      a: "Because the classes may have different numbers of students. If class A has 10 students averaging 80 and class B has 40 averaging 60, the overall is (800 + 2400) / 50 = 64, not 70. Bigger groups pull the average more, so I use the totals."
+    - q: "Explain the alligation rule. (practice question)"
+      a: "When I mix a cheaper and a dearer item to get a mean price, the quantity ratio cheaper to dearer is (dearer minus mean) to (mean minus cheaper). It works because the money lost on one item must equal the money gained on the other, like a see-saw balance."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "If A : B = 3 : 4 and B : C = 6 : 7, what is A : B : C?"
+    code: null
+    options: ["3 : 4 : 7", "9 : 12 : 14", "18 : 24 : 21", "3 : 6 : 7"]
+    answer: 1
+    explanation: "Make B equal: LCM(4, 6) = 12. A : B = 9 : 12 and B : C = 12 : 14. So A : B : C = 9 : 12 : 14. Joining the ratios directly (3 : 4 : 7) ignores that B has different values."
+  - id: q2
+    type: MCQ
+    prompt: "The average of 5 numbers is 24. When one number is removed, the average of the rest is 22. What number was removed?"
+    code: null
+    options: ["2", "26", "32", "24"]
+    answer: 2
+    explanation: "Sum of 5 = 5 x 24 = 120. Sum of 4 = 4 x 22 = 88. Removed = 120 - 88 = 32. Answering 2 (24 - 22) mixes averages with values."
+  - id: q3
+    type: MCQ
+    prompt: "In what ratio must tea at Rs 120/kg be mixed with tea at Rs 180/kg to get a mixture worth Rs 156/kg?"
+    code: null
+    options: ["3 : 2", "2 : 3", "1 : 2", "4 : 5"]
+    answer: 1
+    explanation: "Cheap : dear = (180 - 156) : (156 - 120) = 24 : 36 = 2 : 3. The mean (156) is closer to the dearer price, so you need more of the dearer tea; 3 : 2 is the reversed mistake."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "If every number in a list is increased by 5, the average also increases by exactly 5."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. The sum increases by 5 x count, and dividing by count adds exactly 5 to the average."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "30 L of a mixture has milk and water in ratio 7 : 3. How many litres of water must be added to make the ratio 7 : 5?"
+    code: |
+      milk = 21, water = 9, water needed = 15
+      water to add = ____
+    acceptedAnswers: ["6", "6L", "6 L", "6 litres"]
+    explanation: "Milk stays at 21 L. For 7 : 5, water must be 21 x 5/7 = 15 L. It has 9 L, so add 6 L."
+  - id: q6
+    type: MCQ
+    prompt: "A invests Rs 20,000 for 12 months and B invests Rs 30,000 for 6 months. The total profit is Rs 14,000. What is A's share?"
+    code: null
+    options: ["Rs 5,600", "Rs 7,000", "Rs 8,000", "Rs 6,000"]
+    answer: 2
+    explanation: "Capital x time: A = 240000, B = 180000, ratio 4 : 3. A's share = 14000 x 4/7 = 8000. Rs 5,600 comes from sharing by capital only (2 : 3) and forgetting time."
+  - id: q7
+    type: MATCH
+    prompt: "Match each idea to its formula"
+    pairs:
+      - left: "Sum of a list"
+        right: "average x count"
+      - left: "Partnership share"
+        right: "proportional to capital x time"
+      - left: "Alligation (cheap : dear)"
+        right: "(dear - mean) : (mean - cheap)"
+      - left: "Repeated replacement"
+        right: "initial x (1 - removed/total)^n"
+    explanation: "These four formulas solve most ratio, average and mixture questions. Each comes from a simple balance or repeated-multiplication idea."
+  - id: q8
+    type: MCQ
+    prompt: "A vessel has 80 L of juice. 8 L is removed and replaced with water. This is done 2 times. How much juice is left?"
+    code: null
+    options: ["64 L", "64.8 L", "72 L", "65.6 L"]
+    answer: 1
+    explanation: "80 x (1 - 8/80)^2 = 80 x 0.81 = 64.8 L. 64 L comes from subtracting 8 L of juice twice, but the second 8 L removed is partly water."
+explainBack:
+  prompt: "Explain to a friend how to find the mixing ratio of two kinds of rice using alligation, and why it works."
+  rubric:
+    - "I stated the rule (dearer - mean) : (mean - cheaper)"
+    - "I said which side of the ratio is the cheaper quantity"
+    - "I explained the see-saw/balance reason"
+    - "I worked an example with numbers"
+  modelAnswer: |
+    Say rice costs 40 and 60 rupees a kilo and I want a mix worth 52. Every kilo of cheap rice is 12 below 52, and every kilo of costly rice is 8 above. To balance, total "below" must equal total "above", like a see-saw. So the cheap amount goes with 8 and the costly amount goes with 12. The rule is: cheap to dear equals dear minus mean, to mean minus cheap. Here that is 8 to 12, which is 2 to 3. So I mix 2 kilos of cheap rice with 3 kilos of costly rice.
+flashcards:
+  - front: "Combine A:B = 2:3 and B:C = 4:5"
+    back: "Make B equal (12): A:B:C = 8:12:15."
+  - front: "Alligation rule"
+    back: "cheap qty : dear qty = (dear - mean) : (mean - cheap)."
+  - front: "Replacement formula"
+    back: "final = initial x (1 - removed/total)^n."
+  - front: "Partnership profit ratio"
+    back: "capital x time for each partner."
+  - front: "New member joins, average changes"
+    back: "new member = new average x new count - old average x old count."
+keyTakeaways:
+  - "Ratios: make the common term equal before combining."
+  - "Average questions are easiest with sums: sum = average x count."
+  - "The deviation method avoids adding big numbers."
+  - "Alligation is a balance: (dear - mean) : (mean - cheap) gives cheap : dear."
+  - "In mixture changes, find the part that stays the same first."
+  - "Repeated replacement multiplies by (1 - r/T) each time."

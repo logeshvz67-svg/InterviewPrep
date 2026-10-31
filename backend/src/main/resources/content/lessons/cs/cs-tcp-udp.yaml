@@ -1,0 +1,280 @@
+slug: cs-tcp-udp
+world: CS_CORE
+section: CS
+order: 10
+title: "Networks: TCP vs UDP"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "TCP vs UDP and the 3-way handshake are core networking questions to prepare for SP and DSE technical rounds."
+otherCompanies: "A very common fresher question at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies add flow control, congestion control and 'which would you use for X?' design questions."
+why: |
+  Both TCP and UDP carry your data across the internet, but they make **very different promises**. Choosing the right one decides whether a video call feels smooth or a bank payment is reliable.
+
+  Interviewers like this topic because:
+  - **"TCP vs UDP"** is a classic comparison question,
+  - **"Explain the 3-way handshake"** checks if you understand connections,
+  - **"Which protocol for a video call / file download / DNS?"** tests your judgement.
+analogy: |
+  **TCP is like a registered post with acknowledgement**, and **UDP is like shouting announcements at a railway station**.
+
+  - TCP: before sending, you call your friend: "Are you there?" - "Yes, are you there?" - "Yes!" (handshake). Every parcel is numbered, your friend signs for each one, and if a parcel goes missing, you send it again. Slow but sure.
+  - UDP: the announcer just speaks: "Train 12627 on platform 4". No check whether everyone heard. If someone missed it, the next announcement comes anyway. Fast and light, and for live information a little loss is fine.
+visual:
+  diagram: |
+    TCP 3-way handshake (client ISN = 100, server ISN = 300)
+
+      CLIENT                                   SERVER
+        |  1. SYN  seq=100  ------------------->  |
+        |                                         |
+        |  <-------- 2. SYN+ACK seq=300 ack=101  |
+        |                                         |
+        |  3. ACK  seq=101 ack=301 ------------>  |
+        |          connection ESTABLISHED         |
+        |  data: seq=101, 50 bytes ------------>  |
+        |  <------------------------- ACK=151     |
+
+    UDP: no handshake
+      CLIENT  ---- datagram ---->  SERVER   (no ACK, no order)
+  caption: "TCP sets up a connection with SYN, SYN-ACK, ACK and numbers every byte. UDP just sends datagrams with no setup and no acknowledgements."
+  visualizer: null
+explanation: |
+  ### Where they live
+  TCP and UDP are **transport layer** (layer 4) protocols. They deliver data between **processes** (apps) using **port numbers**, on top of IP, which delivers between **hosts**.
+
+  ### Ports and sockets
+  - A **port** is a 16-bit number (0 to 65535) that identifies an app on a machine.
+    - **Well-known** 0-1023: HTTP 80, HTTPS 443, SSH 22, FTP 21, SMTP 25, DNS 53.
+    - **Registered** 1024-49151: MySQL 3306, PostgreSQL 5432, Spring Boot default 8080.
+    - **Dynamic / ephemeral** 49152-65535: temporary ports the OS gives to clients.
+  - A **socket** = IP address + port, one end of a connection. A TCP connection is identified by 4 values: client IP, client port, server IP, server port.
+
+  ### TCP (Transmission Control Protocol)
+  **Connection-oriented, reliable, ordered byte stream.**
+  1. **Connection setup: 3-way handshake**
+     - **SYN**: client sends a synchronize message with its starting sequence number (ISN), e.g. seq=100.
+     - **SYN-ACK**: server replies with its own ISN (seq=300) and acknowledges the client's: ack=101 ("I got up to 100, send 101 next").
+     - **ACK**: client acknowledges the server: ack=301. Connection established.
+     Why three and not two? Both sides must confirm that they can **send and receive** and agree on **both** starting sequence numbers.
+  2. **Reliability**
+     - Every byte has a **sequence number**; the receiver sends **ACKs** (ack = next byte expected).
+     - If no ACK arrives before a **timeout**, the sender **retransmits**. Three duplicate ACKs also trigger a fast retransmit.
+     - A **checksum** detects corrupted segments.
+     - Out-of-order segments are **reordered** and duplicates are dropped, so the app sees a clean stream.
+  3. **Flow control** (don't drown the receiver): the receiver advertises a **window** (rwnd) saying how many bytes it can still accept. The sender never sends more than that. This is the **sliding window**.
+  4. **Congestion control** (don't drown the network): the sender keeps a **congestion window** (cwnd).
+     - **Slow start**: start small and double cwnd every round trip.
+     - **Congestion avoidance**: after a threshold, grow by about one segment per round trip.
+     - On packet loss, **cut cwnd** (to half or back to 1), then grow again. This "additive increase, multiplicative decrease" (AIMD) keeps the internet from collapsing.
+  5. **Connection close: 4-way termination**: FIN -> ACK -> FIN -> ACK, because each direction is closed separately. The side that closes first waits in **TIME_WAIT** for a while to catch stray packets.
+
+  ### UDP (User Datagram Protocol)
+  **Connectionless, unreliable, message-oriented.**
+  - No handshake: just send a **datagram** (a self-contained message).
+  - No ACKs, no retransmission, no ordering, no flow or congestion control.
+  - Has a **checksum**, but corrupted datagrams are just dropped.
+  - Tiny **8-byte header** (TCP's is at least 20 bytes).
+  - Supports **broadcast and multicast** (one-to-many), which TCP does not.
+
+  ### TCP vs UDP table
+  | Point | TCP | UDP |
+  |---|---|---|
+  | Connection | Connection-oriented (handshake) | Connectionless |
+  | Reliability | Guaranteed delivery, retransmits | Best effort, may lose |
+  | Order | In order | Any order |
+  | Speed / overhead | Slower, more overhead | Faster, light |
+  | Header size | 20-60 bytes | 8 bytes |
+  | Flow/congestion control | Yes | No |
+  | Data unit | Byte stream (segments) | Messages (datagrams) |
+  | Broadcast/multicast | No | Yes |
+  | Used by | HTTP/1.1, HTTP/2, HTTPS, SMTP, FTP, SSH, databases | DNS queries, video calls, live streaming, online games, VoIP, DHCP |
+
+  ### When to use which
+  - **Every byte must arrive correctly** (web pages, payments, file downloads, emails, database queries): **TCP**.
+  - **Speed matters more than perfection, and old data is useless** (live video, voice calls, multiplayer game positions): **UDP**. A late video frame is worse than a missing one.
+  - **Tiny request-response** (a DNS lookup): **UDP**, because a handshake would cost more than the query itself. (DNS falls back to TCP for large responses.)
+  - Modern twist: **QUIC** (used by HTTP/3) runs on UDP but adds its own reliability and encryption, getting faster setup than TCP + TLS.
+
+  ### In Java
+  - TCP: `Socket` (client) and `ServerSocket` (server).
+  - UDP: `DatagramSocket` and `DatagramPacket`.
+tinyCode:
+  code: |
+    public class Handshake {
+        public static void main(String[] args) {
+            int clientIsn = 100, serverIsn = 300;
+
+            System.out.println("1. Client -> SYN      seq=" + clientIsn);
+            System.out.println("2. Server -> SYN+ACK  seq=" + serverIsn + " ack=" + (clientIsn + 1));
+            System.out.println("3. Client -> ACK      seq=" + (clientIsn + 1) + " ack=" + (serverIsn + 1));
+            System.out.println("   ESTABLISHED");
+
+            int seq = clientIsn + 1;
+            int[] chunks = {50, 30};                 // bytes the client sends
+            for (int len : chunks) {
+                System.out.println("Client -> DATA seq=" + seq + " len=" + len);
+                seq += len;
+                System.out.println("Server -> ACK  ack=" + seq);
+            }
+        }
+    }
+  walkthrough: |
+    - Each side picks a random **Initial Sequence Number (ISN)**; we use 100 and 300 so the numbers are easy.
+    - A SYN counts as one sequence number, so the server acknowledges with **ack=101** ("next I expect byte 101").
+    - The client's ACK says **ack=301** for the server's SYN.
+    - Data starts at seq=101. After 50 bytes, the server's ACK is **151** (the next byte it expects), after 30 more it is **181**.
+    - Output:
+    ```
+    1. Client -> SYN      seq=100
+    2. Server -> SYN+ACK  seq=300 ack=101
+    3. Client -> ACK      seq=101 ack=301
+       ESTABLISHED
+    Client -> DATA seq=101 len=50
+    Server -> ACK  ack=151
+    Client -> DATA seq=151 len=30
+    Server -> ACK  ack=181
+    ```
+    ACK numbers always mean "the next byte I am waiting for".
+tryIt:
+  instructions: "Type this simulation of TCP retransmission. Segment 3 is 'lost' the first time; because no ACK arrives, the sender times out and sends it again. A UDP sender would simply never resend it."
+  code: |
+    public class Retransmit {
+        public static void main(String[] args) {
+            boolean lostOnce = false;
+            for (int seg = 1; seg <= 4; seg++) {
+                System.out.println("Send segment " + seg);
+                if (seg == 3 && !lostOnce) {
+                    lostOnce = true;
+                    System.out.println("  ...no ACK (lost), timeout");
+                    seg--;                       // try the same segment again
+                    continue;
+                }
+                System.out.println("  ACK for " + seg);
+            }
+            System.out.println("All 4 delivered in order");
+        }
+    }
+predict:
+  code: |
+    public class AckPredict {
+        public static void main(String[] args) {
+            int clientIsn = 5000;
+            int ackFromServer = clientIsn + 1;       // after SYN
+            int[] sent = {100, 200, 150};
+            int next = ackFromServer;
+            for (int bytes : sent) next += bytes;
+            System.out.println("SYN-ACK ack=" + ackFromServer);
+            System.out.println("Final ACK=" + next);
+        }
+    }
+  expectedOutput: |
+    SYN-ACK ack=5001
+    Final ACK=5451
+  explanation: |
+    The SYN uses one sequence number, so the server acknowledges 5001. Then the client sends 100 + 200 + 150 = 450 bytes starting at 5001, so the next expected byte is 5001 + 450 = **5451**. That is the ACK value after all data arrives.
+commonMistakes:
+  - "Saying UDP has no error checking at all. It has a checksum; it just doesn't retransmit or reorder."
+  - "Saying the handshake is SYN, ACK, SYN. It's SYN, SYN-ACK, ACK."
+  - "Mixing up flow control (protects the receiver, rwnd) and congestion control (protects the network, cwnd)."
+  - "Saying ACK = the last byte received. ACK = the NEXT byte expected."
+  - "Saying UDP is 'bad'. It's the right choice for real-time traffic and small queries like DNS."
+  - "Saying connection termination is 3-way. It is usually 4 steps (FIN, ACK, FIN, ACK) because each direction closes separately."
+interviewBox:
+  why: "Why interviewers ask this: it tests whether you understand reliability trade-offs and can pick the right tool for an application."
+  questions:
+    - q: "What is the difference between TCP and UDP?"
+      a: "TCP is connection-oriented and reliable: it does a handshake, numbers every byte, sends acknowledgements, retransmits lost data and delivers in order, plus flow and congestion control. UDP is connectionless: it just sends datagrams with no guarantee of delivery or order, but it is faster and has a smaller header. TCP is used for web, email and file transfer; UDP for DNS, video calls and games."
+    - q: "Explain the TCP 3-way handshake."
+      a: "The client sends SYN with its initial sequence number. The server replies SYN-ACK with its own sequence number and an acknowledgement of the client's number plus one. The client sends ACK acknowledging the server's number plus one. Now both sides know the other can send and receive, and both sequence numbers are agreed."
+    - q: "What is flow control vs congestion control?"
+      a: "Flow control stops the sender from overwhelming the receiver; the receiver advertises a window of how much it can accept. Congestion control stops the sender from overwhelming the network; TCP uses a congestion window with slow start and reduces it when it detects packet loss."
+    - q: "Why does DNS use UDP?"
+      a: "A DNS query is small and needs one request and one response. A TCP handshake would add an extra round trip and more overhead than the query itself. If a UDP query is lost, the client simply asks again. For large responses or zone transfers, DNS uses TCP."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the correct order of the TCP 3-way handshake?"
+    code: null
+    options: ["SYN, ACK, SYN-ACK", "SYN, SYN-ACK, ACK", "ACK, SYN, FIN", "SYN, FIN, ACK"]
+    answer: 1
+    explanation: "Client SYN, server SYN-ACK (its own SYN plus acknowledging the client), client ACK. FIN is used for closing, not opening."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Client ISN = 100. After the handshake the client sends 50 bytes and then 30 bytes. What ACK number does the server send after the second chunk?"
+    code: |
+      SYN seq=100
+      data starts at seq=101
+      chunk1 = 50 bytes, chunk2 = 30 bytes
+    options: ["180", "181", "130", "151"]
+    answer: 1
+    explanation: "Data starts at 101. 101 + 50 + 30 = 181, the next byte expected. 180 forgets that the SYN consumed one sequence number (or that ACK means NEXT byte); 151 is the ACK after only the first chunk."
+  - id: q3
+    type: MATCH
+    prompt: "Match each application to the protocol it usually uses"
+    pairs:
+      - left: "Downloading a file"
+        right: "TCP, every byte must arrive"
+      - left: "Live video call"
+        right: "UDP, late data is useless"
+      - left: "DNS lookup"
+        right: "UDP, tiny query and response"
+      - left: "Sending an email (SMTP)"
+        right: "TCP, reliable delivery needed"
+    explanation: "Reliability-critical transfers use TCP; real-time or tiny request-response traffic prefers UDP's low overhead."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Flow control in TCP protects the network from congestion."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Flow control protects the RECEIVER (receive window). Congestion control protects the NETWORK (congestion window, slow start)."
+  - id: q5
+    type: MCQ
+    prompt: "What is the size of a UDP header?"
+    code: null
+    options: ["8 bytes", "20 bytes", "32 bytes", "64 bytes"]
+    answer: 0
+    explanation: "UDP's header is just 8 bytes: source port, destination port, length and checksum. TCP's header is at least 20 bytes, which is part of why UDP is lighter."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Complete the well-known port: HTTPS runs on port ____."
+    code: |
+      HTTP  -> 80
+      HTTPS -> ____
+    acceptedAnswers: ["443"]
+    explanation: "HTTPS uses 443 by default; HTTP 80, SSH 22, DNS 53."
+  - id: q7
+    type: MCQ
+    prompt: "Which feature does UDP support that TCP does not?"
+    code: null
+    options: ["Retransmission", "In-order delivery", "Broadcast and multicast", "Congestion control"]
+    answer: 2
+    explanation: "UDP can send one datagram to many receivers (broadcast/multicast). TCP is strictly one-to-one. The other three are TCP features."
+explainBack:
+  prompt: "Explain TCP vs UDP to a friend using the registered post vs railway announcement analogy, including the 3-way handshake."
+  rubric:
+    - "I explained TCP is connection-oriented and reliable, UDP is connectionless and best effort"
+    - "I described SYN, SYN-ACK, ACK"
+    - "I mentioned sequence numbers, ACKs and retransmission"
+    - "I gave examples of when to use each"
+    - "I mentioned flow or congestion control"
+  modelAnswer: |
+    TCP is like registered post. Before sending, the two sides do a handshake: the client says SYN, the server says SYN-ACK, the client says ACK. Then every byte is numbered, the receiver acknowledges what it got, and anything lost is sent again, so data arrives complete and in order. TCP also slows down if the receiver or the network is overloaded. UDP is like a railway announcement: it just sends, with no handshake, no acknowledgement and no resending. That makes it fast and light. So I'd use TCP for web pages, payments and file downloads, and UDP for video calls, games and DNS lookups, where speed matters more than every single packet.
+flashcards:
+  - front: "TCP 3-way handshake"
+    back: "SYN (seq=x) -> SYN-ACK (seq=y, ack=x+1) -> ACK (ack=y+1)."
+  - front: "TCP vs UDP in one line"
+    back: "TCP: connection-oriented, reliable, ordered, flow/congestion control. UDP: connectionless, fast, no guarantees, 8-byte header."
+  - front: "Flow vs congestion control"
+    back: "Flow: protect receiver (rwnd). Congestion: protect network (cwnd, slow start, AIMD)."
+  - front: "Common ports"
+    back: "HTTP 80, HTTPS 443, SSH 22, FTP 21, SMTP 25, DNS 53, MySQL 3306, PostgreSQL 5432."
+  - front: "What does an ACK number mean?"
+    back: "The next byte the receiver expects."
+keyTakeaways:
+  - "TCP and UDP are transport-layer protocols that use ports to reach apps."
+  - "TCP: handshake, sequence numbers, ACKs, retransmission, ordering, flow and congestion control."
+  - "UDP: no connection, no guarantees, tiny header, supports broadcast/multicast."
+  - "Use TCP when every byte matters; UDP for real-time traffic and tiny queries like DNS."
+  - "ACK = next byte expected; the SYN itself consumes one sequence number."

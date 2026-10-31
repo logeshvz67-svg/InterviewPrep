@@ -1,0 +1,336 @@
+slug: sql-joins
+world: SQL
+section: SQL
+order: 2
+title: "Joins: INNER, LEFT, RIGHT, SELF"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+infosysRelevance: "Joins are core for DSE and SP SQL questions: expect to write an INNER/LEFT join and explain the difference with a small example."
+otherCompanies: "A very common technical-interview topic at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies (especially the self join 'employee and manager' question)."
+why: |
+  Real databases split data into many tables so nothing is stored twice. Employee rows store only `dept_id`, not the department name. To show "Asha works in Engineering", you must **join** the two tables.
+
+  Interviewers love joins because one small question checks a lot:
+  - Do you know which rows **disappear** in an INNER join?
+  - Do you know where **NULLs appear** in a LEFT join?
+  - Can you join a table **to itself** (employee and their manager)?
+
+  If you can draw the result of a join on paper, you can answer almost any join question.
+analogy: |
+  Think of a **wedding guest list** and a **table seating chart**.
+
+  - **INNER JOIN**: only guests who have a seat number *and* whose seat exists on the chart. Guests without a seat, and empty tables, are not listed.
+  - **LEFT JOIN** (guests on the left): every guest is listed. If a guest has no seat, write "seat: NULL" next to their name.
+  - **RIGHT JOIN** (tables on the right): every table is listed, even an empty table with "guest: NULL".
+  - **FULL OUTER JOIN**: everyone and every table. Nobody is left out.
+  - **SELF JOIN**: the guest list matched with *itself*, for example to write each guest next to the relative who invited them.
+visual:
+  diagram: |
+    employees (left)                departments (right)
+    name  | dept_id                 dept_id | dept_name
+    ------+--------                 --------+------------
+    Asha  |  10 ------------------>    10   | Engineering
+    Ravi  |  10 ------------------>    10
+    Divya |  10 ------------------>    10
+    Priya |  20 ------------------>    20   | Sales
+    Kiran |  20 ------------------>    20
+    Meena |  30 ------------------>    30   | HR
+    Arjun | NULL   (no match)          40   | Marketing (no match)
+
+    INNER JOIN  -> 6 rows  (Arjun and Marketing dropped)
+    LEFT JOIN   -> 7 rows  (Arjun kept, dept_name = NULL)
+    RIGHT JOIN  -> 7 rows  (Marketing kept, name = NULL)
+    FULL JOIN   -> 8 rows  (both kept)
+    CROSS JOIN  -> 7 x 4 = 28 rows (every pair)
+  caption: "Each arrow is a match on dept_id. Arjun (NULL department) and Marketing (no employees) are the two 'lonely' rows; the join type decides whether they survive."
+  visualizer: null
+explanation: |
+  ### What a join does
+  A **join** combines rows from two tables into one wider row, using a **join condition** written after `ON`. Usually the condition says "this column in table A equals that column in table B", like `e.dept_id = d.dept_id`.
+
+  We give tables short **aliases** (`employees e`, `departments d`) and prefix columns with them (`e.name`). This avoids typing long names and removes confusion when both tables have a column with the same name.
+
+  Our two "lonely" rows make every join type easy to see:
+  - **Arjun** has `dept_id = NULL`: he matches no department.
+  - **Marketing** (dept 40) has no employees.
+
+  ### INNER JOIN (or just JOIN)
+  Keeps only rows that **match on both sides**.
+  ```sql
+  SELECT e.name, d.dept_name
+  FROM employees e
+  INNER JOIN departments d ON e.dept_id = d.dept_id
+  ORDER BY e.emp_id;
+  ```
+  Result: 6 rows (Asha, Ravi, Priya, Kiran, Meena, Divya). Arjun and Marketing are gone.
+
+  ### LEFT JOIN (LEFT OUTER JOIN)
+  Keeps **every row from the left table** (the one after FROM). Where there is no match, the right table's columns are filled with **NULL**.
+  ```sql
+  SELECT e.name, d.dept_name
+  FROM employees e
+  LEFT JOIN departments d ON e.dept_id = d.dept_id;
+  ```
+  Result: 7 rows; Arjun appears with `dept_name = NULL`.
+
+  ### RIGHT JOIN
+  The mirror image: keeps every row from the **right** table. `employees e RIGHT JOIN departments d` keeps Marketing with `name = NULL`. Most people rewrite RIGHT joins as LEFT joins by swapping the table order, because it reads more naturally.
+
+  ### FULL OUTER JOIN
+  Keeps **everything** from both sides: matched rows, Arjun (with NULL department) and Marketing (with NULL name). 8 rows.
+
+  > MySQL difference: MySQL does **not** support `FULL OUTER JOIN`. The usual trick is a LEFT JOIN **UNION** a RIGHT JOIN (UNION removes the duplicate matched rows):
+  > ```sql
+  > SELECT e.name, d.dept_name FROM employees e LEFT JOIN departments d ON e.dept_id = d.dept_id
+  > UNION
+  > SELECT e.name, d.dept_name FROM employees e RIGHT JOIN departments d ON e.dept_id = d.dept_id;
+  > ```
+
+  ### CROSS JOIN
+  Pairs **every** row of A with **every** row of B (a **Cartesian product**). 7 employees x 4 departments = 28 rows. It has no ON clause. Useful for generating combinations, for example every department with every shift ('Day', 'Night'). If you forget the ON condition in old-style joins (`FROM employees, departments` with no WHERE), you accidentally get a cross join.
+
+  ### SELF JOIN
+  A table joined **to itself**, using two different aliases. Classic example: show each employee with their manager's name. `manager_id` points to another row in the same table.
+  ```sql
+  SELECT e.name AS employee, m.name AS manager
+  FROM employees e
+  LEFT JOIN employees m ON e.manager_id = m.emp_id
+  ORDER BY e.emp_id;
+  ```
+  ```
+   employee | manager
+  ----------+---------
+   Asha     | NULL
+   Ravi     | Asha
+   Priya    | Asha
+   Kiran    | Priya
+   Meena    | Asha
+   Arjun    | Priya
+   Divya    | Ravi
+  ```
+  We used LEFT JOIN so Asha (the boss, no manager) still appears. With INNER JOIN she would disappear.
+
+  ### ON vs WHERE in a LEFT JOIN (a famous trap)
+  - A condition in **ON** decides *which rows match*. Unmatched left rows still survive with NULLs.
+  - A condition in **WHERE** runs *after* the join and removes rows. If it tests a right-table column, the NULL rows fail the test, and your LEFT JOIN quietly behaves like an INNER JOIN.
+
+  ### Finding rows with NO match (anti-join)
+  "Which departments have no employees?" LEFT JOIN, then keep rows where the right side is NULL:
+  ```sql
+  SELECT d.dept_name
+  FROM departments d
+  LEFT JOIN employees e ON e.dept_id = d.dept_id
+  WHERE e.emp_id IS NULL;      -- Marketing
+  ```
+
+  ### Quick summary
+  | Join | Keeps |
+  |---|---|
+  | INNER | only matching pairs |
+  | LEFT | all left rows + matches (NULLs for missing right) |
+  | RIGHT | all right rows + matches (NULLs for missing left) |
+  | FULL OUTER | all rows from both (not in MySQL) |
+  | CROSS | every combination, rows(A) x rows(B) |
+  | SELF | a table joined with itself using two aliases |
+
+  One more fact: if one left row matches **several** right rows, it appears **several times**. Anil has 3 orders, so `customers LEFT JOIN orders` shows Anil 3 times.
+tinyCode:
+  code: |
+    SELECT e.name, d.dept_name
+    FROM employees e
+    LEFT JOIN departments d ON e.dept_id = d.dept_id
+    ORDER BY e.emp_id;
+
+    -- Result:
+    --  name  |  dept_name
+    -- -------+-------------
+    --  Asha  | Engineering
+    --  Ravi  | Engineering
+    --  Priya | Sales
+    --  Kiran | Sales
+    --  Meena | HR
+    --  Arjun | NULL
+    --  Divya | Engineering
+  walkthrough: |
+    - `FROM employees e` makes employees the **left** table and gives it the alias `e`.
+    - `LEFT JOIN departments d` brings in departments as the **right** table, alias `d`.
+    - `ON e.dept_id = d.dept_id` is the matching rule: same department number.
+    - For each employee, the database finds the matching department row and glues the two rows together.
+    - Arjun's dept_id is NULL, so nothing matches. Because this is a LEFT join he is still kept, and `d.dept_name` becomes NULL.
+    - Marketing has no employee, and departments is the right table, so it does not appear.
+    - `ORDER BY e.emp_id` keeps the original employee order.
+tryIt:
+  instructions: "Type each join and count the rows before running it. Compare INNER, LEFT and RIGHT on the same two tables, then try the self join."
+  code: |
+    -- 1. Only matched rows (expect 6)
+    SELECT e.name, d.dept_name
+    FROM employees e
+    INNER JOIN departments d ON e.dept_id = d.dept_id;
+
+    -- 2. Every department, even with no employees (expect 7)
+    SELECT e.name, d.dept_name
+    FROM employees e
+    RIGHT JOIN departments d ON e.dept_id = d.dept_id;
+
+    -- 3. Employee with manager name (self join)
+    SELECT e.name AS employee, m.name AS manager
+    FROM employees e
+    LEFT JOIN employees m ON e.manager_id = m.emp_id;
+
+    -- 4. Departments with no employees
+    SELECT d.dept_name
+    FROM departments d
+    LEFT JOIN employees e ON e.dept_id = d.dept_id
+    WHERE e.emp_id IS NULL;
+predict:
+  code: |
+    SELECT d.dept_name, e.name
+    FROM departments d
+    LEFT JOIN employees e
+           ON e.dept_id = d.dept_id
+          AND e.salary > 70000
+    ORDER BY d.dept_id, e.name;
+  expectedOutput: |2
+      dept_name  | name
+    -------------+-------
+     Engineering | Asha
+     Engineering | Divya
+     Engineering | Ravi
+     Sales       | NULL
+     HR          | NULL
+     Marketing   | NULL
+  explanation: |
+    The salary condition is inside **ON**, so it only controls which employees *match*. In Engineering, Asha, Divya and Ravi earn more than 70,000, so they match. Sales, HR and Marketing have no matching employee, but departments is the left table, so they are **still kept** with `name = NULL`.
+
+    If you moved `e.salary > 70000` into a **WHERE** clause instead, the NULL rows would fail the test and only the 3 Engineering rows would remain.
+commonMistakes:
+  - "Putting a right-table filter in WHERE after a LEFT JOIN, which removes the NULL rows and turns it into an INNER JOIN."
+  - "Selecting a column that exists in both tables without an alias prefix (e.g. dept_id). PostgreSQL says the column reference is ambiguous."
+  - "Using INNER JOIN for the employee-manager self join and losing the top boss who has no manager."
+  - "Forgetting the join condition, which creates a cross join (every row paired with every row)."
+  - "Expecting FULL OUTER JOIN to work in MySQL. Use LEFT JOIN UNION RIGHT JOIN there."
+  - "Being surprised by repeated rows: a customer with 3 orders appears 3 times after the join."
+interviewBox:
+  why: "Why interviewers ask this: joins are the heart of relational databases. Drawing a LEFT vs INNER join result on small tables shows real understanding."
+  questions:
+    - q: "What is the difference between INNER JOIN and LEFT JOIN?"
+      a: "INNER JOIN returns only rows that match in both tables. LEFT JOIN returns all rows from the left table, and where there is no match, the right table's columns come back as NULL. For example, an employee without a department is dropped by INNER JOIN but kept by LEFT JOIN."
+    - q: "What is a self join? Give an example."
+      a: "A self join joins a table with itself using two aliases. The classic example is employees and managers: the manager_id column points to another employee in the same table, so I join employees e with employees m on e.manager_id = m.emp_id to show each employee next to their manager's name."
+    - q: "MySQL has no FULL OUTER JOIN. How do you get the same result?"
+      a: "I write a LEFT JOIN and a RIGHT JOIN with the same condition and combine them with UNION. UNION removes the duplicate matched rows, so I get matched rows plus unmatched rows from both sides."
+    - q: "What is a CROSS JOIN, and how many rows does it return?"
+      a: "A cross join pairs every row of the first table with every row of the second, with no condition. So it returns rows in A multiplied by rows in B, for example 7 employees times 4 departments gives 28 rows."
+    - q: "How do you find departments that have no employees?"
+      a: "LEFT JOIN departments to employees on dept_id and keep rows where the employee side is NULL, like WHERE e.emp_id IS NULL. NOT EXISTS with a subquery also works."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "How many rows does this return on the sample data?"
+    code: |
+      SELECT e.name, d.dept_name
+      FROM employees e
+      FULL OUTER JOIN departments d ON e.dept_id = d.dept_id;
+    options: ["6", "7", "8", "28"]
+    answer: 2
+    explanation: "6 matched rows + Arjun (no department) + Marketing (no employees) = 8. 7 would be a LEFT or RIGHT join, and 28 is the cross join."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "How many rows does this return? (Anil has 3 orders, Sneha 2, Rahul 1, Fatima 0.)"
+    code: |
+      SELECT c.name, o.order_id
+      FROM customers c
+      LEFT JOIN orders o ON o.customer_id = c.customer_id;
+    options: ["4", "6", "7", "24"]
+    answer: 2
+    explanation: "Each order makes one row (3 + 2 + 1 = 6), and the LEFT JOIN keeps Fatima once with order_id NULL: 7 rows. 6 is the INNER JOIN answer; 4 forgets that matches repeat the left row."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "PostgreSQL rejects this query. What is the problem?"
+    code: |
+      SELECT name, dept_id
+      FROM employees e
+      JOIN departments d ON e.dept_id = d.dept_id;
+    options:
+      - "JOIN must be written as INNER JOIN"
+      - "dept_id exists in both tables, so it is ambiguous; write e.dept_id or d.dept_id"
+      - "name is ambiguous too"
+      - "Aliases cannot be used in ON"
+    answer: 1
+    explanation: "The real error is: column reference \"dept_id\" is ambiguous. Prefix it with an alias. name is fine because departments has dept_name, not name. JOIN alone means INNER JOIN."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "The goal: list ALL departments, plus their high earners (salary > 70000) if any. This returns only 3 Engineering rows. Why?"
+    code: |
+      SELECT d.dept_name, e.name
+      FROM departments d
+      LEFT JOIN employees e ON e.dept_id = d.dept_id
+      WHERE e.salary > 70000;
+    options:
+      - "LEFT JOIN should be RIGHT JOIN"
+      - "The WHERE filter removes rows where e.salary is NULL; move the condition into ON"
+      - "salary must be compared as text"
+      - "You need DISTINCT"
+    answer: 1
+    explanation: "Departments with no high earner get e.salary = NULL, and NULL > 70000 is not true, so WHERE removes them. Putting AND e.salary > 70000 in the ON clause keeps all 4 departments. Changing to RIGHT JOIN would make employees the kept side, the opposite of what we want."
+  - id: q5
+    type: MCQ
+    prompt: "In the employee-manager self join, why do we use LEFT JOIN instead of INNER JOIN?"
+    code: null
+    options:
+      - "INNER JOIN is not allowed when joining a table to itself"
+      - "So that Asha, who has no manager (manager_id NULL), still appears"
+      - "LEFT JOIN is faster"
+      - "To avoid duplicate rows"
+    answer: 1
+    explanation: "Asha's manager_id is NULL, so she matches no row. INNER JOIN would drop her (6 rows); LEFT JOIN keeps her with manager = NULL (7 rows). INNER self joins are perfectly legal."
+  - id: q6
+    type: MATCH
+    prompt: "Match each join to what it keeps"
+    pairs:
+      - left: "INNER JOIN"
+        right: "Only rows that match on both sides"
+      - left: "LEFT JOIN"
+        right: "All rows of the first table, NULLs where no match"
+      - left: "FULL OUTER JOIN"
+        right: "All rows from both tables"
+      - left: "CROSS JOIN"
+        right: "Every row paired with every row"
+    explanation: "RIGHT JOIN is the mirror of LEFT JOIN. CROSS JOIN gives rows(A) x rows(B)."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "MySQL supports FULL OUTER JOIN directly."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. MySQL has no FULL OUTER JOIN; combine a LEFT JOIN and a RIGHT JOIN with UNION. PostgreSQL, Oracle and SQL Server do support it."
+explainBack:
+  prompt: "Explain INNER vs LEFT JOIN to a friend using the employees and departments tables, and say what a self join is."
+  rubric:
+    - "I said INNER keeps only matching rows and LEFT keeps every left row"
+    - "I explained that missing matches become NULL in a LEFT join"
+    - "I gave the Arjun or Marketing example"
+    - "I explained a self join with the employee-manager example"
+    - "I mentioned MySQL's lack of FULL OUTER JOIN or the ON vs WHERE trap"
+  modelAnswer: |
+    A join glues rows from two tables together using a matching rule, like same dept_id. An inner join keeps only rows that match on both sides, so Arjun, who has no department, disappears, and so does Marketing, which has no employees. A left join keeps every row from the left table, so Arjun stays, and his department name just shows as NULL. A right join is the mirror, and a full outer join keeps everything, though MySQL doesn't support it. A self join is when a table joins itself, like matching each employee's manager_id to another employee's id to print the manager's name.
+flashcards:
+  - front: "INNER vs LEFT JOIN"
+    back: "INNER: only matches. LEFT: all left rows, NULLs for missing right side."
+  - front: "FULL OUTER JOIN in MySQL?"
+    back: "Not supported. Use LEFT JOIN ... UNION ... RIGHT JOIN."
+  - front: "Rows in a CROSS JOIN of 7 and 4 rows"
+    back: "7 x 4 = 28 (every combination)."
+  - front: "Self join example"
+    back: "employees e JOIN employees m ON e.manager_id = m.emp_id (employee with manager name)."
+  - front: "Filter in ON vs WHERE for a LEFT JOIN"
+    back: "ON: controls matching, unmatched rows kept. WHERE: removes rows after the join, can drop the NULL rows."
+keyTakeaways:
+  - "INNER keeps matches only; LEFT/RIGHT keep one whole side; FULL keeps both."
+  - "Unmatched columns come back as NULL in outer joins."
+  - "A self join uses two aliases of the same table (employee and manager)."
+  - "CROSS JOIN = every combination; MySQL lacks FULL OUTER JOIN."
+  - "For LEFT JOINs, put right-table filters in ON, not WHERE, unless you want them removed."
+  - "Anti-join pattern: LEFT JOIN ... WHERE right.id IS NULL."

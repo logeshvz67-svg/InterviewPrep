@@ -1,0 +1,324 @@
+slug: sd-apis-rate-limiting
+world: SYSTEM_DESIGN
+section: SD
+order: 7
+title: "APIs, rate limiting and security basics"
+version: 1
+estimatedMinutes: 45
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Useful for SP: REST API design, pagination and a token-bucket rate limiter are good practice for design-basics and coding-plus-design questions."
+otherCompanies: "Rate limiter design is a very common product-company question; REST, idempotency keys and JWT basics come up in most backend interviews."
+why: |
+  Every box in your design diagram talks to others through **APIs**. A clean API makes the system easy to use; a sloppy one causes bugs like **double payments** and **apps that load 1 lakh rows at once**.
+
+  This lesson covers the API-level topics interviewers ask juniors about:
+  - **REST vs gRPC**: which to use where.
+  - **Pagination**: never return everything.
+  - **Idempotency keys**: tapping "Pay" twice must charge only once (very relevant for UPI apps).
+  - **Rate limiting**: stop one user or bot from flooding the system (think tatkal bots). You'll build a **token bucket** in Java, a very popular interview program.
+  - **Security basics**: HTTPS, authentication with JWT, and the difference between authentication and authorization.
+analogy: |
+  **Rate limiting = the token system at a temple darshan queue.**
+  The temple gives out tokens. The token counter holds at most **3 tokens** at a time, and the priest adds **1 new token every second**. Each devotee needs one token to enter. A group of 3 arriving together all get in (a **burst**). The 4th must wait (**HTTP 429 Too Many Requests**). If nobody comes for a while, tokens pile up again, but never more than 3.
+
+  **Idempotency key = the bill number at a restaurant.** If the waiter brings the same bill number twice, the cashier says "already paid" instead of charging you again.
+
+  **JWT = a stamped visitor pass at an office gate.** Security checks your ID once (login) and gives you a pass with your name, role and expiry, stamped with a seal nobody can forge. Every floor just checks the seal on your pass instead of calling security again.
+visual:
+  diagram: |
+    REQUEST PATH WITH THE BASICS
+
+    Client --HTTPS--> API Gateway -------------------> Order Service
+      |   Authorization: Bearer <JWT>                   (stateless)
+      |   Idempotency-Key: 7f3a...
+      |               |
+      |               +-- 1. verify JWT signature, expiry
+      |               +-- 2. rate limit: tokens left for user?
+      |               |        yes -> forward     no -> 429
+      |               +-- 3. route /orders -> Order Service
+
+    TOKEN BUCKET (capacity 3, refill 1 token/second)
+     t=0s   [o o o] -> 3 requests OK, 4th gets 429
+     t=1s   [o    ] -> 1 OK, next 429
+     t=5s   [o o o] -> refilled, but capped at 3
+  caption: "An API gateway checks the token (auth), applies rate limits and routes requests. The token bucket allows short bursts up to its capacity and a steady rate after that."
+  visualizer: null
+explanation: |
+  ### REST in one minute
+  **REST** is a style of HTTP API where URLs name **resources** (nouns) and HTTP **methods** say what to do:
+  | Method | Meaning | Example | Idempotent? |
+  |---|---|---|---|
+  | GET | Read | `GET /orders/42` | Yes |
+  | POST | Create | `POST /orders` | **No** (twice = two orders) |
+  | PUT | Replace | `PUT /users/7` | Yes |
+  | PATCH | Partly update | `PATCH /orders/42 {status}` | Usually not guaranteed |
+  | DELETE | Delete | `DELETE /cart/items/3` | Yes |
+
+  Use status codes properly: `200 OK`, `201 Created`, `400 Bad Request`, `401 Unauthorized` (not logged in), `403 Forbidden` (logged in but not allowed), `404 Not Found`, `429 Too Many Requests`, `500 Internal Server Error`.
+
+  Version your API: `/v1/orders`, so you can change it later without breaking old apps.
+
+  ### REST vs gRPC (briefly)
+  | | REST (JSON over HTTP) | gRPC |
+  |---|---|---|
+  | Format | Human-readable JSON | Compact binary (Protocol Buffers) |
+  | Speed | Good | Faster, smaller messages |
+  | Contract | Often loose (OpenAPI docs) | Strict `.proto` file, generated code |
+  | Best for | Public APIs, browsers, mobile apps | Internal service-to-service calls |
+
+  Interview line: *"REST for the public/mobile API, gRPC between internal microservices."*
+
+  ### Pagination
+  Never return all 1 lakh orders at once. Two styles:
+  - **Offset pagination:** `GET /orders?page=3&size=20` -> SQL `LIMIT 20 OFFSET 40`. Simple, lets you jump to page 50. But deep offsets are slow (the DB still walks past skipped rows), and new rows arriving can cause duplicates or skipped items between pages.
+  - **Cursor (keyset) pagination:** `GET /orders?after=1234&size=20` -> `WHERE id > 1234 ORDER BY id LIMIT 20`. Fast at any depth and stable while data changes. Can't jump to a random page. Best for infinite scroll feeds.
+
+  ### Idempotency keys
+  Networks fail. The app sends `POST /payments`, the server charges the user, but the response is lost. The app retries... and charges again. Fix: the client generates a unique **Idempotency-Key** (a random UUID) per payment attempt and sends it as a header. The server stores `key -> result`. If the same key comes again, it returns the **stored result** without charging again. This is how payment APIs make POST safe to retry.
+
+  ### Rate limiting
+  **Rate limiting** caps how many requests a client (user, API key or IP address) can make in a time window. It protects against bots (tatkal scripts), abuse, bugs in clients that retry in a loop, and keeps the system fair.
+
+  Common algorithms:
+  | Algorithm | Idea | Note |
+  |---|---|---|
+  | **Token bucket** | Bucket of N tokens refills at R per second; each request takes 1 | Allows short bursts; very common |
+  | **Leaky bucket** | Requests leave a queue at a fixed rate | Smooth constant output |
+  | **Fixed window counter** | Count per minute (12:00-12:01) | Simple; burst at window edges (up to 2x) |
+  | **Sliding window** | Count over the *last* 60 seconds | More accurate, a bit more memory |
+
+  **Where:** usually in the **API gateway** or load balancer, before requests reach your services. **With many servers:** keep counters in a shared store like **Redis** (with atomic increments) so all servers see the same count. When limited, return **429** and a `Retry-After` header.
+
+  ### Security basics
+  - **HTTPS** = HTTP over **TLS** encryption. It stops anyone on the network (public Wi-Fi) from reading or changing data, and the certificate proves you're talking to the real server. Always use it. TLS is usually "terminated" (decrypted) at the load balancer or gateway.
+  - **Authentication (AuthN)** = *who are you?* (login with password or OTP).
+  - **Authorization (AuthZ)** = *what are you allowed to do?* (only an admin can refund; you can only see your own orders).
+  - **JWT (JSON Web Token)** = a signed token the server gives after login: `header.payload.signature`. The payload holds claims like user ID, role and expiry. The client sends it as `Authorization: Bearer <token>` on every request. Any server can verify the **signature** without a database lookup, which keeps servers **stateless**.
+    - The payload is only **Base64-encoded, not encrypted**: anyone can read it. Never put passwords in it.
+    - Keep access tokens short-lived (say 15 minutes) and use a **refresh token** to get new ones. Revoking a JWT early is hard; that is the trade-off.
+  - Other must-mentions: hash passwords (bcrypt), validate all input (prevent SQL injection with prepared statements), never log secrets.
+
+  ### How to answer "Design a rate limiter"
+  1. Requirements: limit per user/IP/API key? Limits like 100 requests per minute? Must it work across many servers?
+  2. Algorithm: token bucket (allows bursts) and why.
+  3. Where: API gateway middleware.
+  4. Storage: Redis with per-user keys and TTL; atomic operations.
+  5. Response: 429 with `Retry-After`; headers showing remaining quota.
+  6. Trade-offs: fail-open vs fail-closed if Redis is down; accuracy vs memory.
+tinyCode:
+  code: |
+    public class TokenBucket {
+        private final int capacity;          // max burst size
+        private final double refillPerSec;   // steady rate
+        private double tokens;
+        private long lastRefillMs;
+
+        TokenBucket(int capacity, double refillPerSec, long nowMs) {
+            this.capacity = capacity;
+            this.refillPerSec = refillPerSec;
+            this.tokens = capacity;          // start full
+            this.lastRefillMs = nowMs;
+        }
+
+        boolean allow(long nowMs) {
+            double elapsedSec = (nowMs - lastRefillMs) / 1000.0;
+            tokens = Math.min(capacity, tokens + elapsedSec * refillPerSec);
+            lastRefillMs = nowMs;
+            if (tokens >= 1) {
+                tokens -= 1;
+                return true;                 // request allowed
+            }
+            return false;                    // HTTP 429 Too Many Requests
+        }
+
+        public static void main(String[] args) {
+            TokenBucket bucket = new TokenBucket(3, 1.0, 0);   // 3 burst, 1 per second
+            long[] times = {0, 0, 0, 0, 1000, 1000, 5000, 5000, 5000, 5000};
+            StringBuilder sb = new StringBuilder();
+            for (long t : times) {
+                sb.append(t).append("ms:").append(bucket.allow(t) ? "OK" : "429").append(' ');
+            }
+            System.out.println(sb.toString().trim());
+        }
+    }
+  walkthrough: |
+    - `capacity` = the biggest burst allowed (3). `refillPerSec` = the steady rate (1 token per second).
+    - The bucket **starts full** (3 tokens).
+    - We pass the time in as `nowMs` instead of reading the real clock. This makes the demo **deterministic** and easy to test (a good habit to mention in interviews).
+    - `allow`: first **refill** based on elapsed time (`elapsed seconds x rate`), but never above `capacity` (`Math.min`). Then, if at least one token is left, take it and allow; else reject.
+
+    Trace:
+    - t=0: 3 tokens -> OK, OK, OK (0 left) -> 4th request **429**.
+    - t=1000 ms: 1 second passed -> +1 token -> OK; the next one at the same time -> **429**.
+    - t=5000 ms: 4 seconds passed -> +4, but capped at **3** -> OK, OK, OK, then **429**.
+
+    Output:
+    ```
+    0ms:OK 0ms:OK 0ms:OK 0ms:429 1000ms:OK 1000ms:429 5000ms:OK 5000ms:OK 5000ms:OK 5000ms:429
+    ```
+    In production you'd keep one bucket per user (a `Map<userId, TokenBucket>`, or Redis keys) and make `allow` thread-safe (`synchronized` or atomic Redis scripts).
+tryIt:
+  instructions: "Type this pagination demo. The first part is offset pagination (page 3 of size 3); the second is cursor pagination (the 3 orders after id 13). Predict both lists before running."
+  code: |
+    import java.util.*;
+
+    public class Pages {
+        public static void main(String[] args) {
+            List<Integer> orderIds = List.of(11, 12, 13, 14, 15, 16, 17);
+            int pageSize = 3, page = 3;                       // offset pagination, page numbers start at 1
+            int from = (page - 1) * pageSize;
+            int to = Math.min(from + pageSize, orderIds.size());
+            System.out.println(orderIds.subList(from, to));
+
+            int cursor = 13;                                  // cursor pagination: "after id 13"
+            List<Integer> next = new ArrayList<>();
+            for (int id : orderIds) if (id > cursor && next.size() < pageSize) next.add(id);
+            System.out.println(next);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class IdemKey {
+        static Map<String, String> seen = new HashMap<>();   // idempotency key -> result
+        static int charges = 0;
+
+        static String pay(String idempotencyKey, int amount) {
+            if (seen.containsKey(idempotencyKey)) {
+                return seen.get(idempotencyKey);             // replay: same answer, no new charge
+            }
+            charges++;
+            String result = "PAID Rs." + amount + " txn-" + charges;
+            seen.put(idempotencyKey, result);
+            return result;
+        }
+
+        public static void main(String[] args) {
+            System.out.println(pay("key-abc", 250));
+            System.out.println(pay("key-abc", 250));         // user tapped Pay twice / retry
+            System.out.println(pay("key-xyz", 99));
+            System.out.println("Charges: " + charges);
+        }
+    }
+  expectedOutput: |
+    PAID Rs.250 txn-1
+    PAID Rs.250 txn-1
+    PAID Rs.99 txn-2
+    Charges: 2
+  explanation: |
+    - First call with `key-abc`: not seen, so charge (`charges` = 1) and store the result `PAID Rs.250 txn-1`.
+    - Second call with the **same key** (a retry or a double tap): found in `seen`, so the **stored result** is returned. Same transaction id, **no new charge**.
+    - `key-xyz` is a new payment: charged, `txn-2`.
+    - Total charges: **2**, not 3.
+
+    In a real system `seen` would be a database table with the key as a **unique** column (and an expiry, say 24 hours), so it works across servers and restarts.
+commonMistakes:
+  - "Using GET for actions that change data, or POST for plain reads."
+  - "Returning all rows without pagination; it gets slower and heavier as data grows."
+  - "Retrying POST /payments without an idempotency key, causing double charges."
+  - "Keeping rate-limit counters only in one server's memory when there are many servers behind a load balancer."
+  - "Thinking JWT payloads are encrypted. They are only Base64-encoded and signed; anyone can read them."
+  - "Mixing up 401 (not authenticated) and 403 (authenticated but not allowed)."
+interviewBox:
+  why: "Why interviewers ask this: APIs are where users meet your system; rate limiting, idempotency and auth show you think about abuse, retries and safety."
+  questions:
+    - q: "Practice: Design a rate limiter for an API (100 requests per minute per user)."
+      a: "I'd put it in the API gateway so every service is protected. I'd use a token bucket per user: capacity 100, refilling at 100 per minute, which allows short bursts but keeps the average rate. Since there are many gateway servers, I'd store each user's bucket in Redis with atomic operations and a TTL. When the bucket is empty I'd return 429 Too Many Requests with a Retry-After header. I'd also decide whether to allow or block traffic if Redis is down; for a payment API I'd fail closed, for a read API maybe fail open."
+    - q: "Practice: How do you stop a user from being charged twice when the app retries a payment request?"
+      a: "Use an idempotency key. The app creates a unique ID for each payment attempt and sends it in a header. The server saves the key with the result in a table where the key is unique. If the same key arrives again, the server returns the saved result instead of charging again."
+    - q: "Practice: Offset vs cursor pagination: which would you use for an infinite-scroll feed?"
+      a: "Cursor pagination. It uses 'give me items after this id', which stays fast even deep into the feed and doesn't repeat or skip items when new posts arrive. Offset pagination is fine for admin tables where users jump to page numbers."
+    - q: "Practice: What is a JWT and how does it keep servers stateless?"
+      a: "A JWT is a signed token the server issues after login. It contains claims like the user ID, role and expiry, plus a signature. The client sends it with every request, and any server can verify the signature with the key, without looking up a session in a database. So no server has to remember the session. The trade-offs are that the payload is readable, so no secrets inside, and revoking a token early is hard, so tokens should be short-lived."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Using the TokenBucket class from Tiny code with capacity 2 and refill 0.5 tokens per second (one token every 2 seconds). What prints?"
+    code: |
+      TokenBucket b = new TokenBucket(2, 0.5, 0);
+      System.out.println(b.allow(0) + " " + b.allow(0) + " " + b.allow(0)
+              + " " + b.allow(1000) + " " + b.allow(2000));
+    options: ["true true false true true", "true true false false true", "true true true false true", "true false false false true"]
+    answer: 1
+    explanation: "Starts with 2 tokens: two trues, then false (0 left). At 1000 ms only 0.5 tokens have refilled, less than 1, so false. At 2000 ms another 0.5 arrives, making 1.0, so true. The tempting option 1 forgets that half a token is not enough."
+  - id: q2
+    type: MCQ
+    prompt: "A logged-in normal user calls an admin-only refund API. Which status code fits best?"
+    options: ["401 Unauthorized", "403 Forbidden", "404 Not Found", "429 Too Many Requests"]
+    answer: 1
+    explanation: "The user IS authenticated (we know who they are) but is not authorized for this action, so 403. 401 means not authenticated (missing or invalid token)."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "Anyone who gets a JWT can read the user ID and role inside its payload."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. The payload is only Base64-encoded, not encrypted. The signature stops tampering, not reading. So never put passwords or secrets in it, and always send it over HTTPS."
+  - id: q4
+    type: MATCH
+    prompt: "Match each concept to its purpose"
+    pairs:
+      - left: "Idempotency key"
+        right: "Makes retrying a POST safe"
+      - left: "Rate limiting"
+        right: "Caps requests per client in a time window"
+      - left: "HTTPS"
+        right: "Encrypts traffic and proves the server is real"
+      - left: "Cursor pagination"
+        right: "Fetches the next items after a given id"
+      - left: "gRPC"
+        right: "Fast binary calls between internal services"
+    explanation: "Each tool solves one specific API problem: safe retries, abuse protection, transport security, efficient paging, and fast internal calls."
+  - id: q5
+    type: MCQ
+    prompt: "Which rate limiting algorithm naturally allows a short burst and then a steady rate?"
+    options: ["Token bucket", "Fixed window counter", "Leaky bucket", "Round robin"]
+    answer: 0
+    explanation: "Saved-up tokens allow a burst up to the capacity, then requests are limited to the refill rate. A leaky bucket smooths everything to a constant rate (no bursts). Round robin is a load balancing algorithm, not rate limiting."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the HTTP status code returned when a client is rate limited."
+    code: |
+      if (!bucket.allow(now)) {
+          return ResponseEntity.status(____).header("Retry-After", "1").build();
+      }
+    acceptedAnswers: ["429", "HttpStatus.TOO_MANY_REQUESTS"]
+    explanation: "429 Too Many Requests is the standard code for rate limiting, usually with a Retry-After header telling the client when to try again."
+  - id: q7
+    type: MCQ
+    prompt: "Your API runs on 10 servers behind a load balancer. Each keeps its own in-memory counter limiting a user to 100 requests per minute. What is the problem?"
+    options: ["Nothing; this is correct", "A user could make up to about 1,000 requests per minute, spread across servers", "Requests become slower than with Redis", "The load balancer will reject all requests"]
+    answer: 1
+    explanation: "Each server only sees its share, so the real limit becomes about 100 x 10. A shared store like Redis gives one counter per user across all servers."
+explainBack:
+  prompt: "Explain rate limiting, idempotency keys and JWT to a friend using the temple token counter, the restaurant bill number and the office visitor pass."
+  rubric:
+    - "I explained the token bucket: capacity for bursts, refill rate, reject with 429 when empty"
+    - "I explained why rate limit counters must be shared across servers"
+    - "I explained idempotency keys preventing double charges on retry"
+    - "I explained JWT as a signed pass that any server can verify without a session store"
+    - "I separated authentication (who) from authorization (what allowed)"
+  modelAnswer: |
+    Rate limiting is like a temple token counter: it holds at most a few tokens and adds one every second. A small group can enter together, but after that people wait; in APIs the waiting answer is 429. With many servers, the counter must be shared, like in Redis. An idempotency key is like a bill number: if the same bill comes twice, the cashier says it's already paid, so retries don't double charge. A JWT is like a stamped visitor pass: security checks you once at login, and every floor just checks the stamp. Logging in is authentication; what the pass allows you to enter is authorization.
+flashcards:
+  - front: "Token bucket in one line"
+    back: "Bucket holds up to N tokens, refills at R per second; each request takes one token; empty bucket = 429."
+  - front: "Offset vs cursor pagination"
+    back: "Offset: LIMIT/OFFSET, jump to any page, slow when deep. Cursor: WHERE id > last, fast and stable, no random jumps."
+  - front: "Idempotency key"
+    back: "Client sends a unique key per operation; server stores key -> result and replays the result on repeats."
+  - front: "401 vs 403"
+    back: "401 = not authenticated (who are you?). 403 = authenticated but not allowed."
+  - front: "JWT structure and caution"
+    back: "header.payload.signature. Signed, not encrypted: readable by anyone. Keep short-lived; use refresh tokens."
+  - front: "REST vs gRPC"
+    back: "REST/JSON for public and mobile APIs; gRPC (binary, strict contracts) for fast internal service calls."
+keyTakeaways:
+  - "Design REST APIs with nouns, correct methods, proper status codes and versioning."
+  - "Always paginate; prefer cursor pagination for feeds and deep lists."
+  - "Idempotency keys make retries of POST requests safe, especially for payments."
+  - "Token bucket rate limiting allows bursts and a steady rate; share counters in Redis across servers."
+  - "HTTPS everywhere; JWT carries signed claims so servers stay stateless, but its payload is readable."
+  - "Authentication is who you are; authorization is what you may do."

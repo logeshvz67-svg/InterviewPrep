@@ -1,0 +1,343 @@
+slug: sd-lld-principles
+world: SYSTEM_DESIGN
+section: SD
+order: 10
+title: "Low-level design: OOP design principles"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE: strong OOP and class design are central to Infosys-style technical interviews, and LLD questions test exactly that."
+otherCompanies: "LLD / machine-coding rounds are common at product companies; SOLID and composition vs inheritance are standard OOP questions everywhere."
+why: |
+  So far this tower was about **boxes and arrows** (HLD). Many interviews for juniors focus more on **LLD (Low-Level Design)**: "Design the classes for a parking lot", "Design a food ordering system", "Design Splitwise". Here you write **classes, interfaces, enums and relationships**, and sometimes runnable Java.
+
+  The interviewer is checking whether your code is **easy to change**. Will adding UPI payments next month mean editing 10 files, or adding one new class? That is what **SOLID**, **composition over inheritance** and **programming to interfaces** are about.
+
+  You may have met SOLID in the Java world (Section I). This lesson applies it to **design questions** and teaches the simple **ASCII class diagrams** you can draw on a whiteboard. The next two lessons use these skills for a full parking lot and real design patterns.
+analogy: |
+  Think of a **modular kitchen** vs a kitchen where everything is cemented into the wall.
+
+  - In a modular kitchen, the **chimney, hob and oven fit standard slots** (interfaces). Want an induction hob instead of gas? Unscrew one, plug in another. Nothing else changes. That's the **Open/Closed principle** and **programming to interfaces**.
+  - Each appliance does **one job**: the mixer mixes, the fridge cools. A "fridge-oven-washing-machine" combo would be a nightmare to repair. That's **Single Responsibility**.
+  - The kitchen **has** a hob; it doesn't **inherit** from a hob. Building by plugging parts together is **composition**, and it's far more flexible than "a Kitchen IS-A Hob".
+visual:
+  diagram: |
+    ASCII CLASS DIAGRAM (UML basics)
+
+          <<interface>>
+         +--------------------+
+         |   PaymentMethod    |
+         +--------------------+
+         | + pay(amt): String |
+         +--------------------+
+            ^             ^          ^ (dashed in UML) = implements
+            :             :
+    +---------------+ +---------------+
+    |  UpiPayment   | |  CardPayment  |
+    +---------------+ +---------------+
+    | - upiId:String| |               |
+    +---------------+ +---------------+
+
+    +---------------------+  uses   +---------------+
+    |      Checkout       |<>------>| PaymentMethod |   <>-> has-a
+    +---------------------+         +---------------+
+    | - payment           |  uses   +---------------+
+    | - notifier          |<>------>|   Notifier    |
+    +---------------------+         +---------------+
+    | + placeOrder(amt)   |
+    +---------------------+
+    + public  - private  ^ implements/extends  <>-> has-a
+  caption: "Checkout HAS-A PaymentMethod (an interface) and a Notifier. UPI and card payments IMPLEMENT the interface, so new payment types plug in without changing Checkout."
+  visualizer: null
+explanation: |
+  ### LLD vs HLD
+  | | HLD (High-Level Design) | LLD (Low-Level Design) |
+  |---|---|---|
+  | Question | Which services, databases, caches, queues? | Which classes, interfaces, methods, relationships? |
+  | Output | Architecture diagram | Class diagram + code |
+  | Example | "Design Swiggy's backend" | "Design the classes for a parking lot" |
+  | Skills | Scaling, trade-offs | OOP, SOLID, design patterns, clean code |
+
+  ### How to approach an LLD question (the template)
+  1. **Clarify requirements** and list the use cases ("park a car", "pay at exit").
+  2. **Find the nouns** -> candidate classes (ParkingLot, Spot, Vehicle, Ticket). **Find the verbs** -> methods (park, unpark, calculateFee).
+  3. **Find fixed sets of values** -> enums (VehicleType, SpotSize, OrderStatus).
+  4. **Draw relationships**: is-a (inheritance/implements), has-a (composition/association), with multiplicities (1 lot has many levels).
+  5. **Spot what will change** (pricing rules, payment types) -> hide behind **interfaces** (often the Strategy pattern).
+  6. **Write the core code**, run one small scenario, and discuss extensions.
+
+  ### SOLID applied to design
+  **S: Single Responsibility Principle.** A class should have **one reason to change**.
+  - Bad: `Order` calculates price, saves itself to MySQL, and sends SMS.
+  - Good: `Order` (data + rules), `OrderRepository` (saving), `Notifier` (SMS).
+
+  **O: Open/Closed Principle.** Open for **extension**, closed for **modification**.
+  - Bad: `if (type.equals("UPI")) ... else if (type.equals("CARD")) ...` inside `Checkout`. Every new payment type edits this method.
+  - Good: a `PaymentMethod` interface; adding `WalletPayment` is a **new class**, and `Checkout` doesn't change.
+
+  **L: Liskov Substitution Principle.** A subclass must work **anywhere its parent works**, without surprises.
+  - Classic violation: `Penguin extends Bird` but `fly()` throws an exception. Code that expects any `Bird` to fly now crashes. Fix the model: `Bird` (no fly) and a `FlyingBird` interface for those that can.
+
+  **I: Interface Segregation Principle.** Many small, focused interfaces beat one fat one.
+  - Bad: `interface Worker { cook(); deliver(); acceptPayment(); }` forces a delivery partner to implement `cook()`.
+  - Good: `Cook`, `Deliverer`, `PaymentAcceptor` as separate interfaces.
+
+  **D: Dependency Inversion Principle.** High-level classes depend on **abstractions (interfaces)**, not concrete classes. Pass dependencies in through the constructor (**dependency injection**), which Spring does for you with `@Autowired`/constructor injection.
+  - `Checkout(PaymentMethod payment, Notifier notifier)` instead of `new UpiPayment()` inside `Checkout`. Also makes testing easy: pass a fake payment.
+
+  ### Composition over inheritance
+  - **Inheritance (is-a):** `Car extends Vehicle`. Use when the child truly **is** a kind of parent and follows all its rules (Liskov).
+  - **Composition (has-a):** `Car` **has an** `Engine` field. You can swap engines (petrol, electric) at runtime, combine behaviours freely, and avoid deep fragile class trees.
+
+  Why prefer composition: inheritance is fixed at compile time, exposes the parent's internals to the child, and deep hierarchies break when the parent changes ("fragile base class"). Example: instead of `EmailNotifyingOrder extends Order` and `SmsNotifyingOrder extends Order` and `EmailAndSmsNotifyingOrder...`, give `Order` a `List<Notifier>`.
+
+  ### Programming to an interface
+  Declare variables by the **interface type**: `List<String> list = new ArrayList<>();`, `PaymentMethod p = new UpiPayment(...)`. Code that only knows the interface works with any implementation.
+
+  ### Relationships in UML class diagrams (ASCII versions)
+  | Relationship | Meaning | Example | Drawn as |
+  |---|---|---|---|
+  | Inheritance | is-a (extends) | `Car extends Vehicle` | arrow with hollow triangle `--|>` |
+  | Realisation | implements | `UpiPayment implements PaymentMethod` | dashed arrow `..|>` |
+  | Association | uses / knows | `Driver` uses `Car` | plain line `-->` |
+  | Aggregation | has-a, parts can live alone | `Team` has `Players` | hollow diamond `<>--` |
+  | Composition | has-a, parts die with the whole | `Order` has `OrderItems` | filled diamond `<#>--` |
+
+  Class boxes have three parts: **name**, **fields**, **methods**, with `+` for public, `-` for private, `#` for protected. Multiplicity: `1`, `0..1`, `*` (many), e.g. `ParkingLot 1 --- * Level`.
+
+  ### Clean-code habits interviewers notice
+  - Fields `private`, and `final` where possible.
+  - Meaningful names (`calculateFee`, not `calc`).
+  - Enums instead of magic strings (`OrderStatus.DELIVERED`, not `"delivered"`).
+  - Small methods, no giant if-else chains.
+tinyCode:
+  code: |
+    public class Checkout {
+        private final PaymentMethod payment;   // HAS-A (composition), typed by an interface
+        private final Notifier notifier;
+
+        Checkout(PaymentMethod payment, Notifier notifier) {   // dependencies are injected
+            this.payment = payment;
+            this.notifier = notifier;
+        }
+
+        void placeOrder(int amount) {
+            String receipt = payment.pay(amount);
+            notifier.send(receipt);
+        }
+
+        public static void main(String[] args) {
+            new Checkout(new UpiPayment("ravi@okbank"), new Notifier()).placeOrder(250);
+            new Checkout(new CardPayment(), new Notifier()).placeOrder(99);
+        }
+    }
+
+    interface PaymentMethod {
+        String pay(int amount);
+    }
+
+    class UpiPayment implements PaymentMethod {
+        private final String upiId;
+        UpiPayment(String upiId) { this.upiId = upiId; }
+        public String pay(int amount) { return "Paid Rs." + amount + " via UPI " + upiId; }
+    }
+
+    class CardPayment implements PaymentMethod {
+        public String pay(int amount) { return "Paid Rs." + amount + " via card"; }
+    }
+
+    class Notifier {
+        void send(String msg) { System.out.println("SMS: " + msg); }
+    }
+  walkthrough: |
+    This small program shows four principles at once. (Save it as `Checkout.java`; the class with `main` comes first so `java Checkout.java` finds it.)
+    - **Programming to an interface:** `Checkout` stores a `PaymentMethod`, not a `UpiPayment`. It never knows which payment it is using.
+    - **Open/Closed:** to add wallet payments, write `class WalletPayment implements PaymentMethod`. `Checkout` is not edited at all.
+    - **Single Responsibility:** `Checkout` coordinates, payment classes pay, `Notifier` sends messages. Each has one reason to change.
+    - **Dependency Inversion / injection:** dependencies come in through the **constructor**. In a test you can pass a fake `PaymentMethod` that never touches a real bank. Spring does exactly this with constructor injection.
+    - **Composition:** `Checkout` HAS-A payment and HAS-A notifier; it doesn't extend either.
+
+    Output:
+    ```
+    SMS: Paid Rs.250 via UPI ravi@okbank
+    SMS: Paid Rs.99 via card
+    ```
+tryIt:
+  instructions: "Type this discount example. Each discount is a separate class behind one interface, so adding a new offer never touches the loop (Open/Closed). Predict the final amount, then swap the two offers and predict again."
+  code: |
+    import java.util.*;
+
+    public class Discounts {
+        public static void main(String[] args) {
+            List<Discount> offers = List.of(new PercentDiscount(10), new FlatDiscount());
+            int amount = 500;
+            for (Discount d : offers) {
+                amount = d.apply(amount);
+            }
+            System.out.println(amount);
+        }
+    }
+
+    interface Discount {
+        int apply(int amount);
+    }
+
+    class FlatDiscount implements Discount {
+        public int apply(int amount) { return amount - 50; }
+    }
+
+    class PercentDiscount implements Discount {
+        private final int percent;
+        PercentDiscount(int percent) { this.percent = percent; }
+        public int apply(int amount) { return amount - amount * percent / 100; }
+    }
+predict:
+  code: |
+    public class Engine {
+        static class Eng {
+            String start() { return "Engine started"; }
+        }
+        static class Car {
+            private final Eng engine = new Eng();       // Car HAS-A Engine
+            String drive() { return engine.start() + ", car moving"; }
+        }
+        static class ElectricEng extends Eng {
+            @Override String start() { return "Motor humming"; }
+        }
+        public static void main(String[] args) {
+            System.out.println(new Car().drive());
+            Eng e = new ElectricEng();
+            System.out.println(e.start());
+        }
+    }
+  expectedOutput: |
+    Engine started, car moving
+    Motor humming
+  explanation: |
+    - `Car` **has** an `Eng` field (composition). `drive()` **delegates** to `engine.start()` and adds its own text: "Engine started, car moving".
+    - `Eng e = new ElectricEng();` declares the variable by the parent type but creates the child. Calling `e.start()` runs the **overridden** method (runtime polymorphism): "Motor humming".
+
+    Design note: this `Car` creates its own `new Eng()`, so it can never get an electric engine. Taking the engine through the constructor (`Car(Eng engine)`) would make it swappable: that's dependency injection.
+commonMistakes:
+  - "Putting everything in one giant class (pricing, saving, notifications), which breaks Single Responsibility."
+  - "Long if-else or switch chains on type strings; use an interface and one class per type (Open/Closed)."
+  - "Using inheritance just to reuse code when there is no real is-a relationship; prefer composition."
+  - "Subclasses that throw 'not supported' for parent methods, which breaks Liskov substitution."
+  - "Creating dependencies with new inside the class instead of injecting them, making it hard to test or swap."
+  - "Jumping into code without listing use cases, classes and relationships first."
+interviewBox:
+  why: "Why interviewers ask this: LLD shows whether your code will be easy to extend and maintain, which matters every day on a real team."
+  questions:
+    - q: "Practice: What is the difference between HLD and LLD?"
+      a: "HLD is the big picture: which services, databases, caches and queues we need and how they connect. LLD zooms into one part and designs the classes, interfaces, methods and relationships, often with code. For example, HLD for a food app shows the order service and its database; LLD shows the Order, Cart and PaymentMethod classes inside it."
+    - q: "Practice: Explain the Open/Closed principle with an example."
+      a: "Classes should be open for extension but closed for modification. If checkout has an if-else for UPI, card and wallet, every new payment type means editing and retesting that method. Instead, I create a PaymentMethod interface with one class per type. Adding net banking is just a new class, and checkout doesn't change."
+    - q: "Practice: Why prefer composition over inheritance?"
+      a: "Inheritance is fixed at compile time and tightly couples the child to the parent, so deep hierarchies break easily. With composition, a class holds other objects as fields and delegates to them, so I can swap behaviour at runtime and combine features freely. For example, an Order holding a list of Notifiers is better than separate subclasses for SMS orders and email orders."
+    - q: "Practice: How do you approach an LLD question like 'design a library management system'?"
+      a: "I clarify the use cases first, like issue a book, return it, pay a fine, search. Then I pick the nouns as classes: Library, Book, BookCopy, Member, Loan. Fixed values become enums, like BookStatus. I draw relationships, for example one Book has many copies, and a Member has many Loans. Things likely to change, like fine rules, go behind an interface. Then I write the core classes and run one scenario."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Same classes as Try It, but the offers are swapped. What prints?"
+    code: |
+      List<Discount> offers = List.of(new FlatDiscount(), new PercentDiscount(10));
+      int amount = 500;
+      for (Discount d : offers) {
+          amount = d.apply(amount);
+      }
+      System.out.println(amount);
+    options: ["400", "405", "450", "395"]
+    answer: 1
+    explanation: "Flat first: 500 - 50 = 450. Then 10% of 450 is 45: 450 - 45 = 405. With the original order (10% first) the answer is 400. Order matters, which is why the discount rules belong in clear, separate classes."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This compiles, but startMigration(new Penguin()) crashes. Which principle is broken?"
+    code: |
+      class Bird {
+          void fly() { System.out.println("Flying"); }
+      }
+      class Penguin extends Bird {
+          @Override
+          void fly() { throw new UnsupportedOperationException("Penguins can't fly"); }
+      }
+      static void startMigration(Bird b) { b.fly(); }
+    options:
+      - "Single Responsibility: Bird does too much"
+      - "Liskov Substitution: a Penguin cannot safely be used wherever a Bird is expected"
+      - "Interface Segregation: Bird has too many interfaces"
+      - "There is no design problem; exceptions are normal"
+    answer: 1
+    explanation: "Code written for any Bird expects fly() to work; the subclass breaks that promise, so substitution fails. Fix the model: keep fly() out of Bird and add a FlyingBird interface for birds that can fly."
+  - id: q3
+    type: MCQ
+    prompt: "Checkout contains: if (type.equals(\"UPI\")) {...} else if (type.equals(\"CARD\")) {...}. Adding Wallet means editing this method. Which principle does this break?"
+    options: ["Open/Closed", "Liskov Substitution", "Dependency Inversion only", "None"]
+    answer: 0
+    explanation: "Every new type forces a modification of existing code, so it is not closed for modification. A PaymentMethod interface with one class per type fixes it."
+  - id: q4
+    type: MATCH
+    prompt: "Match each SOLID letter to its idea"
+    pairs:
+      - left: "S"
+        right: "One reason to change per class"
+      - left: "O"
+        right: "Add new behaviour without editing old code"
+      - left: "L"
+        right: "Subclasses must work wherever the parent works"
+      - left: "I"
+        right: "Small focused interfaces, not one fat one"
+      - left: "D"
+        right: "Depend on abstractions; inject dependencies"
+    explanation: "These five ideas all aim at the same goal: code that is easy to change and test."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "An Order class that has a List<OrderItem> field is an example of composition (has-a)."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. The order holds items as a field; items make no sense without the order, which is composition (a strong has-a). Inheritance would be 'Order extends Something'."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword so WalletPayment can be used wherever a PaymentMethod (an interface) is expected."
+    code: |
+      class WalletPayment ____ PaymentMethod {
+          public String pay(int amount) { return "Paid Rs." + amount + " via wallet"; }
+      }
+    acceptedAnswers: ["implements"]
+    explanation: "A class implements an interface (it extends a class). Once it implements PaymentMethod, Checkout can use it without any change."
+  - id: q7
+    type: MCQ
+    prompt: "In an LLD question, which is usually the BEST candidate to become an enum?"
+    options: ["Customer", "VehicleType (BIKE, CAR, TRUCK)", "ParkingLot", "PaymentService"]
+    answer: 1
+    explanation: "Enums are for a small fixed set of values. VehicleType has a known list. Customer and ParkingLot are classes with state and behaviour; PaymentService is a service class or interface."
+explainBack:
+  prompt: "Explain LLD and SOLID to a friend using the modular kitchen analogy."
+  rubric:
+    - "I separated LLD (classes and code) from HLD (services and boxes)"
+    - "I explained Open/Closed with interfaces as standard slots"
+    - "I explained Single Responsibility (one appliance, one job)"
+    - "I explained composition over inheritance (a kitchen has a hob)"
+    - "I mentioned the LLD approach: use cases, nouns to classes, verbs to methods, enums, relationships"
+  modelAnswer: |
+    HLD is the building plan with rooms and pipes; LLD is how each room is fitted. Good low-level design is like a modular kitchen. Appliances fit standard slots, which are interfaces, so swapping a gas hob for induction doesn't need breaking walls; that's open for extension, closed for modification. Each appliance does one job, which is single responsibility. The kitchen has a hob instead of being a hob, which is composition over inheritance, and it's more flexible. In an interview I list the use cases, turn nouns into classes and verbs into methods, use enums for fixed values, draw relationships, and put things likely to change behind interfaces.
+flashcards:
+  - front: "LLD vs HLD"
+    back: "HLD: services, databases, caches, queues (boxes and arrows). LLD: classes, interfaces, methods, relationships (code)."
+  - front: "LLD approach in 6 steps"
+    back: "Use cases -> nouns = classes, verbs = methods -> enums -> relationships -> interfaces for what changes -> code + scenario."
+  - front: "Composition over inheritance: why?"
+    back: "Has-a is flexible (swap parts at runtime, combine behaviours); deep is-a hierarchies are rigid and fragile."
+  - front: "Liskov violation example"
+    back: "Penguin extends Bird but fly() throws. Fix: FlyingBird interface only for birds that fly."
+  - front: "UML: aggregation vs composition"
+    back: "Aggregation (hollow diamond): parts live on their own (Team-Players). Composition (filled diamond): parts die with the whole (Order-OrderItems)."
+keyTakeaways:
+  - "LLD designs classes and relationships; HLD designs services and infrastructure."
+  - "Start from use cases: nouns become classes, verbs become methods, fixed sets become enums."
+  - "Apply SOLID: one responsibility, extend without modifying, safe substitution, small interfaces, injected abstractions."
+  - "Prefer composition (has-a) over inheritance (is-a) unless there's a true is-a relationship."
+  - "Program to interfaces so new implementations plug in without changes."
+  - "Draw simple ASCII class diagrams: three-part boxes, +/- visibility, and clear relationship arrows."

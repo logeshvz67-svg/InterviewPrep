@@ -1,0 +1,314 @@
+slug: sd-databases
+world: SYSTEM_DESIGN
+section: SD
+order: 5
+title: "Databases at scale"
+version: 1
+estimatedMinutes: 45
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Strong SP material: SQL vs NoSQL, replication, sharding and CAP in simple words are standard design-basics questions, and they connect to the DBMS theory you already study."
+otherCompanies: "Product companies expect you to choose a database and justify it; service companies often ask SQL vs NoSQL and indexing as theory questions."
+why: |
+  Almost every design ends with "...and the data goes into a database". But **one database server has limits**: it can only handle so many queries per second and hold so much data. When IRCTC, Paytm or Swiggy grow, the database is usually the **first thing that breaks**.
+
+  This lesson answers the questions every design interviewer asks:
+  - **SQL or NoSQL?** And *why* for this use case?
+  - How do you handle **lots of reads**? (indexes, caching, **read replicas**)
+  - How do you handle **lots of data and writes**? (**sharding**)
+  - What does **CAP** mean, and what is **eventual consistency**, in plain words?
+
+  You already know basic SQL; now you'll learn how databases behave when there are millions of users.
+analogy: |
+  Think of a **bank with one head office ledger**.
+
+  - **Replication:** The head office (the **leader**) writes every transaction in the master ledger. Every evening, photocopies go to branch offices (**followers / read replicas**). Customers can *check* balances at any branch (reads), but *deposits* are only written at the head office (writes). For a few hours, a branch copy may be slightly old: that's **replication lag** and **eventual consistency**.
+  - **Sharding:** The ledger becomes too thick for one office, so accounts starting with A-H are kept in the Delhi office, I-P in Mumbai, Q-Z in Chennai. Each office holds only **part** of the data. Now you must always know which office has which account (the **shard key**).
+  - **CAP:** If the phone line between offices breaks (a **network partition**), each branch must choose: keep serving customers with possibly old data (**availability**), or close the counter until the line is fixed (**consistency**).
+visual:
+  diagram: |
+    REPLICATION (leader-follower)          SHARDING (split the data)
+
+          writes                              App (knows shard key)
+            |                             /         |          \
+            v                        user%3=0   user%3=1   user%3=2
+       +---------+                      |          |           |
+       | Leader  |                  +-------+  +-------+  +-------+
+       +---------+                  |Shard 0|  |Shard 1|  |Shard 2|
+        |  async  \                 |3,6,9..|  |1,4,7..|  |2,5,8..|
+        v  copy    v                +-------+  +-------+  +-------+
+    +--------+ +--------+            each shard can also have
+    |Follower| |Follower|            its own replicas
+    +--------+ +--------+
+        ^          ^
+        +-- reads -+
+  caption: "Replication copies the SAME data to more machines to spread reads and survive failures. Sharding splits DIFFERENT data across machines to spread writes and storage."
+  visualizer: null
+explanation: |
+  ### SQL vs NoSQL
+  **SQL (relational) databases** like PostgreSQL and MySQL store data in **tables** with a fixed **schema** (columns defined up front), support **joins**, and give **ACID transactions** (all-or-nothing, consistent, isolated, durable).
+
+  **NoSQL** means "not only SQL": databases built for flexible data and massive horizontal scale. Four main types:
+  | Type | Stores | Example | Good for |
+  |---|---|---|---|
+  | **Key-value** | `key -> value` | Redis, DynamoDB | Sessions, cache, carts |
+  | **Document** | JSON-like documents | MongoDB | Product catalogues, menus, profiles |
+  | **Wide-column** | Rows with many dynamic columns, partitioned | Cassandra, HBase | Chat messages, time-series, huge write volume |
+  | **Graph** | Nodes and edges | Neo4j | Friend networks, recommendations |
+
+  How to choose (say this in interviews):
+  - **SQL** when data is relational and correctness matters: payments, orders, bookings, inventory.
+  - **NoSQL** when you need huge scale, flexible shape, or simple access by key: chat history, activity feeds, logs, catalogues.
+  - Many real systems use **both** (polyglot persistence): orders in PostgreSQL, chat in Cassandra, cache in Redis.
+
+  ### Indexing recap
+  An **index** is like the index at the back of a textbook: instead of reading every page (a **full table scan**), the database jumps straight to matching rows. Most SQL indexes are **B-trees** (sorted trees): lookups are O(log n).
+  - Index the columns you filter or join on: `WHERE user_id = ?`, `WHERE pnr = ?`.
+  - Cost: indexes take space and **slow down writes** (each insert updates the index too). Don't index everything.
+
+  ### Replication: leader-follower
+  **Replication** = keeping copies of the same data on several servers.
+  - The **leader** (also called primary/master) accepts all **writes**.
+  - **Followers** (replicas/secondaries) copy the leader's changes and serve **reads**.
+  - Benefits: spreads read load (read replicas), and if the leader dies a follower can be **promoted** (failover), so no SPOF.
+
+  **Synchronous** replication: the leader waits for the follower to confirm. No data loss, but slower writes.
+  **Asynchronous** replication: the leader doesn't wait. Fast, but followers can lag behind, so a read just after a write may show **old data** (replication lag).
+
+  A common fix for "I just posted, why can't I see it?": **read-your-own-writes**: read from the leader for a few seconds after the user writes.
+
+  ### Sharding (horizontal partitioning)
+  **Sharding** splits rows across multiple databases; each database (**shard**) holds a subset. The **shard key** decides where a row goes.
+  | Strategy | How | Pro | Con |
+  |---|---|---|---|
+  | **Hash-based** | `hash(userId) % N` | Even spread | Range queries are hard; changing N moves data (use consistent hashing) |
+  | **Range-based** | Cities A-H on shard 1, I-P on shard 2... | Range queries are easy | **Hot spots** (Mumbai shard overloaded) |
+  | **Directory-based** | A lookup table: key -> shard | Flexible | The lookup service is extra work and must not be a SPOF |
+  | **Geo-based** | India users in Mumbai region, EU users in Frankfurt | Low latency, data laws | Uneven sizes |
+
+  Sharding problems to mention: **cross-shard joins** are hard (avoid them, or denormalise data), **resharding** is painful, and **hot keys** (a celebrity's account) can overload one shard.
+
+  **Pick a shard key that matches your main query.** For a chat app, shard messages by `conversationId` so one conversation lives on one shard.
+
+  ### CAP theorem in simple words
+  In a distributed database, a **network partition** (P) means some servers can't talk to others. When that happens, you must choose:
+  - **C (Consistency):** every read sees the latest write, or gets an error.
+  - **A (Availability):** every request gets an answer, even if it might be old.
+
+  Partitions *will* happen in real networks, so the real choice is **CP or AP during a partition**:
+  - **CP:** bank balance, seat booking: better to refuse than to be wrong.
+  - **AP:** likes count, "last seen", product reviews: better to show slightly old data than an error.
+
+  ### Eventual consistency
+  **Eventual consistency** = if no new writes happen, all replicas will *eventually* show the same value. Like a WhatsApp group where one friend sees the message a few seconds later than another. Perfectly fine for likes or view counts; not fine for money.
+
+  ### Scaling ladder for a database (say it in this order)
+  1. Add the right **indexes** and fix slow queries.
+  2. Add a **cache** for hot reads.
+  3. **Scale vertically** (bigger machine).
+  4. Add **read replicas** for read-heavy load.
+  5. **Shard** when writes or data size outgrow one leader.
+tinyCode:
+  code: |
+    public class Sharding {
+        static int shardFor(long userId, int shards) {
+            return (int) (userId % shards);          // hash-based: here the hash is the id itself
+        }
+
+        public static void main(String[] args) {
+            long[] users = {101, 202, 303, 404, 505};
+            for (long u : users) {
+                System.out.println("user " + u + " -> shard " + shardFor(u, 4));
+            }
+            int moved = 0;
+            for (long u = 1; u <= 1000; u++) {
+                if (shardFor(u, 4) != shardFor(u, 5)) moved++;   // add a 5th shard
+            }
+            System.out.println("Moved when 4 -> 5 shards: " + moved + " of 1000");
+        }
+    }
+  walkthrough: |
+    - `shardFor` is **hash-based sharding** in its simplest form: the shard is `userId % shards`. (Real systems hash the id first so patterns in ids don't cause uneven shards.)
+    - With 4 shards: 101 % 4 = 1, 202 % 4 = 2, 303 % 4 = 3, 404 % 4 = 0, 505 % 4 = 1.
+    - The loop checks users 1 to 1000: does the shard change if we go from 4 to 5 shards?
+
+    Output:
+    ```
+    user 101 -> shard 1
+    user 202 -> shard 2
+    user 303 -> shard 3
+    user 404 -> shard 0
+    user 505 -> shard 1
+    Moved when 4 -> 5 shards: 800 of 1000
+    ```
+    **80% of users would have to move** to a new database just because we added one shard. Moving that much data in production is slow and risky. This is exactly why large systems use **consistent hashing** (Lesson 3) or a **directory** for sharding, and why choosing the number of shards up front matters.
+tryIt:
+  instructions: "Type this read/write router. Writes (INSERT/UPDATE) must go to the leader; reads (SELECT) rotate across read replicas. Predict each line before running."
+  code: |
+    import java.util.*;
+
+    public class Router {
+        static String leader = "DB-Leader";
+        static List<String> replicas = List.of("Replica-1", "Replica-2");
+        static int next = 0;
+
+        static String route(String sql) {
+            if (sql.startsWith("SELECT")) {                // reads go to replicas
+                String r = replicas.get(next);
+                next = (next + 1) % replicas.size();
+                return r;
+            }
+            return leader;                                 // writes go to the leader
+        }
+
+        public static void main(String[] args) {
+            String[] queries = {"SELECT menu", "INSERT order", "SELECT order", "UPDATE order", "SELECT menu"};
+            for (String q : queries) System.out.println(q + " -> " + route(q));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class ReplicaLag {
+        static Map<String, Integer> leader = new HashMap<>();
+        static Map<String, Integer> follower = new HashMap<>();
+
+        static void replicate() { follower.putAll(leader); }   // async copy, runs "later"
+
+        public static void main(String[] args) {
+            leader.put("seats", 10);
+            replicate();
+            leader.put("seats", 9);                            // someone just booked
+            System.out.println("Leader: " + leader.get("seats"));
+            System.out.println("Follower: " + follower.get("seats"));
+            replicate();
+            System.out.println("Follower later: " + follower.get("seats"));
+        }
+    }
+  expectedOutput: |
+    Leader: 9
+    Follower: 10
+    Follower later: 9
+  explanation: |
+    - `seats = 10` is written and replicated, so both have 10.
+    - A booking writes `seats = 9` on the **leader only**. Replication is asynchronous, so the follower still says **10**.
+    - After the next `replicate()`, the follower catches up to **9**.
+
+    That middle line is **replication lag**: a read from a replica can show stale data for a short time. The system is **eventually consistent**. That's fine for showing "about 10 seats left" on a search page, but the actual booking must check seats on the **leader**, inside a transaction.
+commonMistakes:
+  - "Saying 'NoSQL is faster than SQL' as a rule. It depends on the access pattern; pick by data shape and consistency needs."
+  - "Sending writes to read replicas. Only the leader accepts writes in leader-follower replication."
+  - "Forgetting replication lag: a user writes, then reads from a replica and doesn't see their own change."
+  - "Sharding too early. Indexes, caching, a bigger machine and read replicas come first."
+  - "Choosing a shard key that creates hot spots (like city, when Mumbai has 10x the users) or forces cross-shard joins."
+  - "Explaining CAP as 'pick any two'. Partitions happen anyway, so the real choice is consistency or availability during a partition."
+interviewBox:
+  why: "Why interviewers ask this: the database is usually the bottleneck, so they want to see if you can choose a database and scale it with clear reasons."
+  questions:
+    - q: "Practice: SQL or NoSQL for a food delivery app?"
+      a: "Both, for different parts. Orders and payments need transactions and correctness, so I'd keep them in a SQL database like PostgreSQL. Restaurant menus change shape a lot and are read heavily, so a document store or a cache works well. Order tracking events and logs are huge in volume, so a wide-column store like Cassandra could fit. I'd start with SQL for the core and add others only where needed."
+    - q: "Practice: What is the difference between replication and sharding?"
+      a: "Replication copies the same data to multiple servers. It helps with read load and with surviving a server failure. Sharding splits different rows across servers, so each server has only part of the data. It helps when the data or the write load is too big for one server. Big systems use both: each shard has its own replicas."
+    - q: "Practice: Explain the CAP theorem with an example."
+      a: "When the network splits and servers can't talk to each other, a distributed database must choose between consistency and availability. For seat booking I'd choose consistency: it's better to show an error than to sell the same seat twice. For a likes counter I'd choose availability: showing 1,002 likes instead of 1,005 for a few seconds is fine."
+    - q: "Practice: Your database is slow because of heavy reads. What steps would you take, in order?"
+      a: "First check slow queries and add proper indexes. Then add a cache like Redis for hot data. If that's not enough, scale up the machine, and add read replicas and send read queries there. Only if writes or data size are too big for one leader would I shard."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Range-based sharding by the first letter of the city. What is printed for Pune and Surat?"
+    code: |
+      static String shardFor(String city) {
+          char c = Character.toUpperCase(city.charAt(0));
+          if (c <= 'H') return "shard-1";
+          if (c <= 'P') return "shard-2";
+          return "shard-3";
+      }
+      // main:
+      System.out.println("Pune -> " + shardFor("Pune"));
+      System.out.println("Surat -> " + shardFor("Surat"));
+    options: ["Pune -> shard-3 / Surat -> shard-3", "Pune -> shard-2 / Surat -> shard-3", "Pune -> shard-2 / Surat -> shard-2", "Pune -> shard-1 / Surat -> shard-3"]
+    answer: 1
+    explanation: "'P' <= 'P' is true, so Pune goes to shard-2 (the boundary is inclusive). 'S' is after 'P', so Surat goes to shard-3. Range sharding keeps alphabetically close cities together, which can make one shard hot."
+  - id: q2
+    type: MCQ
+    prompt: "Which database type fits a 'friends of friends' recommendation feature best?"
+    options: ["Key-value store", "Graph database", "Wide-column store", "Plain CSV files"]
+    answer: 1
+    explanation: "Friend networks are nodes and edges; graph databases traverse relationships efficiently. Key-value stores only look up by key, and wide-column stores are built for huge write volumes, not multi-hop relationships."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "In leader-follower replication, read replicas help when the system has too many WRITES."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Every write still goes to the single leader, and followers must apply every write too. Replicas spread READS. Too many writes needs sharding (or a bigger leader)."
+  - id: q4
+    type: MATCH
+    prompt: "Match each term to its plain meaning"
+    pairs:
+      - left: "Shard key"
+        right: "The field that decides which database holds a row"
+      - left: "Replication lag"
+        right: "A replica shows old data for a short time"
+      - left: "Eventual consistency"
+        right: "All copies become the same if writes stop"
+      - left: "Index"
+        right: "A sorted lookup structure to avoid full table scans"
+      - left: "Failover"
+        right: "A follower is promoted when the leader dies"
+    explanation: "These five terms appear in almost every database scaling answer."
+  - id: q5
+    type: MCQ
+    prompt: "During a network partition, a ticket booking system refuses bookings rather than risk selling one seat twice. Which choice is it making?"
+    options: ["AP: availability over consistency", "CP: consistency over availability", "CA: no partitions allowed", "It is not a CAP choice"]
+    answer: 1
+    explanation: "Refusing requests to stay correct is choosing consistency over availability during a partition: CP. An AP system would keep accepting bookings and fix conflicts later."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the operator for simple hash-based sharding across N shards."
+    code: |
+      int shard = (int) (userId ____ N);
+    acceptedAnswers: ["%"]
+    explanation: "The remainder after dividing by N is always between 0 and N-1, which maps every id to one of the N shards. Remember that changing N moves most keys."
+  - id: q7
+    type: MCQ
+    prompt: "A user updates their profile name and immediately refreshes, but sees the OLD name. Reads go to an async replica. What is the best fix?"
+    options: ["Delete the replica", "Read-your-own-writes: read this user's profile from the leader for a short time after they write", "Add more indexes", "Switch to range sharding"]
+    answer: 1
+    explanation: "The cause is replication lag. Routing that user's reads to the leader right after a write shows their change while keeping replicas for everyone else. Indexes and sharding don't affect lag."
+  - id: q8
+    type: MCQ
+    prompt: "What is the main cost of adding many indexes to a table?"
+    options: ["Reads become slower", "Writes become slower and storage grows", "The table can no longer be joined", "Transactions stop working"]
+    answer: 1
+    explanation: "Every insert or update must also update each index, and each index takes space. Reads on indexed columns actually get faster."
+explainBack:
+  prompt: "Explain replication, sharding and CAP to a friend using the bank head office and branches."
+  rubric:
+    - "I said the leader takes writes and followers copy data and serve reads"
+    - "I explained replication lag / eventual consistency"
+    - "I explained sharding as splitting data by a shard key, and one problem it brings"
+    - "I explained CAP as a choice between consistency and availability during a network split"
+    - "I gave a SQL vs NoSQL example"
+  modelAnswer: |
+    Think of a bank. The head office is the leader: every deposit is written there. Branches get copies, those are the followers, and customers can check balances at any branch, which spreads the read load. Copies arrive a little late, so a branch may show an old balance for a while; that is eventual consistency. When the ledger is too big for one office, we split accounts A to H in Delhi and so on; that's sharding, and the account letter is the shard key. If the phone lines between offices break, each branch must choose: answer with maybe-old data, or stop until it's fixed. That's the CAP choice. Money needs correctness, so banks choose consistency.
+flashcards:
+  - front: "SQL vs NoSQL in one line"
+    back: "SQL: tables, schema, joins, ACID; great for payments/orders. NoSQL: flexible shape, easy horizontal scale; great for chats, feeds, catalogues."
+  - front: "4 NoSQL types"
+    back: "Key-value (Redis), Document (MongoDB), Wide-column (Cassandra), Graph (Neo4j)."
+  - front: "Replication vs sharding"
+    back: "Replication = same data on many servers (reads, failover). Sharding = different data on different servers (writes, size)."
+  - front: "CAP in practice"
+    back: "During a network partition choose C (correct or error) or A (always answer, maybe stale). Money -> CP; likes -> AP."
+  - front: "Database scaling ladder"
+    back: "Indexes -> cache -> bigger machine -> read replicas -> sharding."
+keyTakeaways:
+  - "Choose SQL for relational, transactional data and NoSQL for huge scale or flexible shape; many systems use both."
+  - "Indexes speed up reads but slow writes; index what you filter and join on."
+  - "Leader-follower replication spreads reads and enables failover, but async replicas can lag."
+  - "Sharding splits data by a shard key; pick it to match your main query and avoid hot spots."
+  - "CAP: during a partition, choose consistency (money, seats) or availability (likes, last seen)."
+  - "Scale in order: indexes, cache, vertical, replicas, then sharding."

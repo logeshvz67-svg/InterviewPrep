@@ -1,0 +1,323 @@
+slug: sd-chat-notifications
+world: SYSTEM_DESIGN
+section: SD
+order: 9
+title: "Design a chat and notification system"
+version: 1
+estimatedMinutes: 50
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT]
+infosysRelevance: "A strong second case study for SP-level design practice: real-time connections, message storage and fan-out combine many earlier lessons."
+otherCompanies: "'Design WhatsApp' and 'Design a notification service' are very common product-company practice questions."
+why: |
+  "Design WhatsApp" or "Design a notification system" is the natural next case study after the URL shortener. It adds **real-time** communication, which brings new questions:
+  - How does the server **push** a message to a phone instantly? (polling vs long polling vs **WebSockets**)
+  - Where do messages live, and how do we deliver to someone who is **offline**?
+  - How does one message reach **all 200 members** of a family group? (**fan-out**)
+  - How do the **grey and blue ticks** work? (**delivery status**)
+  - How do notifications (push, SMS, email) get sent reliably for things like "Your order is out for delivery" or "Wicket! Kohli out"?
+
+  You'll use almost every earlier lesson here: load balancing, caching, databases (wide-column stores), queues and idempotency.
+analogy: |
+  Think of the **old post office vs a telephone call**.
+
+  - **Polling** is like going to the post office every 5 minutes asking "Any letter for me?" Most trips are wasted.
+  - **Long polling** is like waiting *at* the counter until a letter arrives (or the counter closes after a while), then going back to wait again.
+  - **WebSocket** is like a **phone call that stays connected**. Either side can speak any time, instantly. That's what chat apps use.
+
+  For offline users, think of the **postman leaving a "missed delivery" slip**: the message waits at the post office (the **message store**), a **push notification** (the slip) tells you something arrived, and when you come online, you collect everything (**sync**).
+
+  **Fan-out** is like a wedding invitation: one invitation is designed, but a copy is delivered to every guest.
+visual:
+  diagram: |
+         Asha's phone                           Ravi's phone (online)
+             |  WebSocket                          ^  WebSocket
+             v                                     |
+     +----------------+    who is where?    +----------------+
+     | Chat server 1  |-----> Presence ---->| Chat server 2  |
+     +----------------+   (Redis: user ->   +----------------+
+             |              server, online)
+             | 1. save message (seq no.)
+             v
+     +------------------------+      Meena offline?
+     | Message store          |      +---------------------+
+     | (Cassandra, by chatId) |      | Queue -> Notification|
+     +------------------------+      | service -> FCM/APNs  |
+                                     |  -> push to Meena   |
+                                     +---------------------+
+     Status: SENT (saved) -> DELIVERED (on device) -> READ (opened)
+  caption: "Each online user keeps a WebSocket to some chat server. A message is saved first, then delivered to online recipients through their server, while offline recipients get a push notification and sync later."
+  visualizer: null
+explanation: |
+  ### Step 1: Requirements
+  **Functional:** one-to-one chat, group chat (up to, say, 256 members), online/last-seen status, delivery status (sent, delivered, read), push notifications when offline, message history across devices.
+  **Non-functional:** very low latency (under ~200 ms), high availability, messages must **never be lost**, and order must be correct **within a chat**.
+  **Out of scope (say so):** voice/video calls, end-to-end encryption details, media processing.
+
+  ### Step 2: Estimates
+  Assume 50 million DAU, each sending 40 messages a day = **2 billion messages/day**, about **23,000 messages/s** on average and maybe 3x at peak. At ~100 bytes per message: **200 GB/day**, about 73 TB/year. So the message store must scale horizontally: a strong hint for a wide-column NoSQL store.
+
+  ### Step 3: How does the server reach the client?
+  | Technique | How it works | Good | Bad |
+  |---|---|---|---|
+  | **Short polling** | Client asks "anything new?" every N seconds | Simple, works everywhere | Wasteful; delay up to N seconds |
+  | **Long polling** | Client asks; server holds the request open until data arrives or a timeout | Fewer wasted calls, near real-time | Reconnect after every message; still heavy |
+  | **WebSocket** | One persistent, two-way (full-duplex) connection over TCP | Instant both ways, low overhead | Stateful connections; servers must track who is connected where |
+  | **SSE** (Server-Sent Events) | Persistent one-way stream server -> client | Simple for live feeds | Client can't send on it |
+
+  Chat needs both directions instantly, so: **WebSockets**. For a cricket live-score page (only server -> client), **SSE** or even polling every few seconds is fine.
+
+  ### Step 4: The main components
+  - **Chat servers** keep WebSocket connections. One server can hold tens of thousands of connections. These servers are **stateful** (they hold connections), so the load balancer must keep a connection on the same server.
+  - **Presence / session service** (often Redis): `userId -> which chat server, online/offline, last seen`. Updated on connect/disconnect and by **heartbeats** (small "I'm alive" pings every few seconds).
+  - **Message store**: wide-column NoSQL like Cassandra, **partitioned by `chatId`** and sorted by a message sequence number or time. That makes "load the last 50 messages of this chat" one fast read.
+  - **Notification service**: sends push notifications through **FCM** (Firebase Cloud Messaging, Android) and **APNs** (Apple Push Notification service, iPhone), plus SMS/email providers.
+  - **Queue** (Kafka) between chat servers and the notification service, so notifications are async and retried.
+
+  ### Step 5: Sending a message (1-to-1)
+  1. Asha's app sends the message over its WebSocket to chat server 1, with a client-generated **message ID** (for idempotent retries).
+  2. Server 1 **saves it** to the message store with a per-chat **sequence number**, then acks Asha: **SENT** (one grey tick).
+  3. Server 1 asks presence: where is Ravi? Online on server 2 -> forward it there -> pushed over Ravi's WebSocket.
+  4. Ravi's phone acks receipt -> status **DELIVERED** (two grey ticks) flows back to Asha.
+  5. Ravi opens the chat -> **READ** (blue ticks).
+  6. If Ravi is **offline**: the message stays in the store, an event goes to the queue, and the notification service sends a push. When Ravi reconnects, his app **syncs**: "give me messages after the last sequence number I have".
+
+  **Save first, then deliver.** If delivery fails, the message is still safe.
+
+  ### Step 6: Group chats and fan-out
+  **Fan-out** = delivering one message to many recipients.
+  - **Fan-out on write:** when the message is sent, push a copy (or a pointer) to every member's inbox right away. Fast reads; expensive for huge groups.
+  - **Fan-out on read:** store the message once in the group; each member pulls it when they open the chat. Cheap writes; slower reads.
+
+  For small groups (up to a few hundred), store the message once per group and **deliver to each online member** through their chat server, with push notifications for offline members. For channels with millions of followers (a celebrity's broadcast), use fan-out on read. The same trade-off appears in social media news feeds.
+
+  Group delivery status: the message shows "delivered" only when **all** members have received it, so the group status is the **lowest** status among members.
+
+  ### Step 7: Ordering, duplicates and reliability
+  - **Ordering:** server-assigned **sequence numbers per chat**. Clients sort by sequence number, not by phone time (phone clocks can be wrong).
+  - **Duplicates:** networks retry, so the client message ID lets the server ignore repeats (idempotency, Lesson 6).
+  - **Reconnects:** WebSockets drop when you enter a tunnel. The app reconnects and syncs from its last sequence number.
+  - **Scaling chat servers:** add more; presence tells everyone where each user is connected.
+
+  ### Designing a notification system (common follow-up)
+  "Your food is out for delivery", OTPs, "Wicket!" alerts:
+  1. Producer services publish events to a **queue**.
+  2. The **notification service** reads events, checks **user preferences** (opted out of promos?), applies **rate limits** (no 50 promos a day), renders templates.
+  3. It routes to channel workers: **push (FCM/APNs)**, **SMS** gateway, **email** provider, each with its own queue and **retries with backoff**.
+  4. Use **priorities**: OTPs and payment alerts go before marketing.
+  5. Record delivery status; use **idempotency keys** so a retry doesn't send the same OTP SMS twice.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class GroupChat {
+        enum Status { SENT, DELIVERED, READ }
+
+        static Set<String> online = new HashSet<>(Set.of("Ravi", "Kiran"));
+        static Map<String, List<String>> inbox = new HashMap<>();     // stored for offline users
+        static Map<String, Status> status = new TreeMap<>();          // per-member delivery status
+
+        static void send(String from, List<String> group, String text) {
+            for (String member : group) {                             // fan-out: one copy per member
+                if (member.equals(from)) continue;
+                if (online.contains(member)) {
+                    System.out.println("WebSocket -> " + member + ": " + text);
+                    status.put(member, Status.DELIVERED);
+                } else {
+                    inbox.computeIfAbsent(member, k -> new ArrayList<>()).add(text);
+                    System.out.println("Push notification -> " + member);
+                    status.put(member, Status.SENT);
+                }
+            }
+        }
+
+        static void comesOnline(String user) {
+            online.add(user);
+            for (String msg : inbox.getOrDefault(user, List.of())) {
+                System.out.println("Sync on connect -> " + user + ": " + msg);
+                status.put(user, Status.DELIVERED);
+            }
+            inbox.remove(user);
+        }
+
+        public static void main(String[] args) {
+            List<String> group = List.of("Asha", "Ravi", "Meena", "Kiran");
+            send("Asha", group, "Match at 7?");
+            comesOnline("Meena");
+            status.put("Ravi", Status.READ);                          // Ravi opened the chat
+            System.out.println(status);
+        }
+    }
+  walkthrough: |
+    A tiny simulation of group-chat **fan-out** with online/offline users.
+    - `online`: the presence info. Ravi and Kiran are connected; Meena is not.
+    - `inbox`: messages waiting for offline users (in real life, the message store plus a "last synced" pointer).
+    - `status`: per-member delivery status. A `TreeMap` prints names in alphabetical order.
+    - `send`: loops over every group member except the sender (that loop **is** the fan-out).
+      - Online -> "deliver over WebSocket" and mark **DELIVERED**.
+      - Offline -> store in the inbox, send a **push notification**, mark **SENT**.
+    - `comesOnline("Meena")`: Meena reconnects; her pending messages are **synced** and her status becomes DELIVERED.
+    - Finally Ravi opens the chat, so his status becomes **READ**.
+
+    Output:
+    ```
+    WebSocket -> Ravi: Match at 7?
+    Push notification -> Meena
+    WebSocket -> Kiran: Match at 7?
+    Sync on connect -> Meena: Match at 7?
+    {Kiran=DELIVERED, Meena=DELIVERED, Ravi=READ}
+    ```
+    Asha's group message would still show **two grey ticks**, not blue, because Kiran and Meena haven't read it yet.
+tryIt:
+  instructions: "Type this tick-status demo. Enum ordinal() gives SENT=0, DELIVERED=1, READ=2. A group message shows the LOWEST status among members, so one member who hasn't read keeps the ticks grey."
+  code: |
+    public class Ticks {
+        enum Status { SENT, DELIVERED, READ }
+
+        static String ticks(Status s) {
+            return switch (s) {
+                case SENT -> "one grey tick";
+                case DELIVERED -> "two grey ticks";
+                case READ -> "two blue ticks";
+            };
+        }
+
+        public static void main(String[] args) {
+            for (Status s : Status.values()) {
+                System.out.println(s + " = " + ticks(s));
+            }
+            Status overall = Status.READ;
+            Status[] members = {Status.READ, Status.DELIVERED, Status.READ};
+            for (Status m : members) {
+                if (m.ordinal() < overall.ordinal()) overall = m;   // group shows the "lowest" status
+            }
+            System.out.println("Group message shows: " + ticks(overall));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Order {
+        record Msg(long seq, String text) {}
+        public static void main(String[] args) {
+            List<Msg> arrived = new ArrayList<>(List.of(
+                new Msg(3, "see you"), new Msg(1, "hi"), new Msg(2, "match at 7?")));
+            arrived.sort(Comparator.comparingLong(Msg::seq));
+            for (Msg m : arrived) System.out.println(m.seq() + ": " + m.text());
+        }
+    }
+  expectedOutput: |
+    1: hi
+    2: match at 7?
+    3: see you
+  explanation: |
+    Messages can **arrive out of order** (different network paths, retries after a reconnect). Here message 3 arrived first.
+    The app sorts by the **server-assigned sequence number** (`seq`), not by arrival order or the phone's clock, so the chat always shows 1, 2, 3.
+
+    `record Msg(long seq, String text)` is a compact Java class with a constructor and accessors `seq()` and `text()`. `Comparator.comparingLong(Msg::seq)` sorts by that field.
+commonMistakes:
+  - "Choosing short polling for a chat app; it wastes huge numbers of requests and adds delay."
+  - "Delivering before saving: if the recipient's server crashes, the message is lost. Save first, then deliver."
+  - "Ordering messages by the phone's clock instead of a server-assigned sequence number per chat."
+  - "Forgetting offline users: no push notification, no sync on reconnect."
+  - "Treating chat servers as stateless. They hold WebSocket connections, so you need a presence service to know who is where."
+  - "Sending notifications synchronously inside the chat flow, without a queue, retries or user preferences."
+interviewBox:
+  why: "Why interviewers ask this: chat combines real-time connections, storage at scale, fan-out and reliability, so it shows whether you can connect the building blocks."
+  questions:
+    - q: "Practice: Design a simple WhatsApp-like chat. Where do you start?"
+      a: "I'd clarify scope: one-to-one and group chat, delivery ticks, offline push, history; calls are out of scope. Estimate: 50 million users sending 40 messages a day is about 2 billion messages a day, around 23,000 per second. Clients keep WebSocket connections to chat servers. A presence service in Redis records which server each user is on. Every message is saved first in a Cassandra-like store partitioned by chat ID with a sequence number, then forwarded to the recipient's server and pushed over their WebSocket. Offline users get a push notification through a queue and sync when they reconnect. Then I'd go deeper into group fan-out and ordering."
+    - q: "Practice: Polling, long polling or WebSockets for chat? And for a live cricket score page?"
+      a: "For chat, WebSockets, because both sides need to send instantly and polling wastes requests. For a live score page, data only flows from server to client and a few seconds of delay is fine, so server-sent events or even polling every few seconds with a CDN cache is simpler and cheaper."
+    - q: "Practice: How do the ticks (sent, delivered, read) work?"
+      a: "When the server saves the message it acks the sender, which is one tick. When the recipient's device receives it, the device sends a delivery ack back through the server, which is two grey ticks. When the user opens the chat, the app sends a read receipt, which turns them blue. In groups, the status is the lowest among all members."
+    - q: "Practice: Design a notification service for a food delivery app."
+      a: "Services like orders and payments publish events to a queue. The notification service consumes them, checks the user's preferences and rate limits, fills a template, and sends through channel-specific workers for push, SMS and email, each with retries and backoff and a dead letter queue. OTPs and payment alerts get high priority over offers. I'd use idempotency keys so retries don't send duplicate SMS, and store delivery status for tracking."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Estimate the cost of short polling. What does this print?"
+    code: |
+      long users = 1_000_000L;
+      long pollEverySec = 5;
+      long pollQps = users / pollEverySec;
+      long messagesPerSec = 20_000;
+      System.out.println("Poll requests/s: " + pollQps);
+      System.out.println("Wasted (no new data): about " + (pollQps - messagesPerSec) + "/s");
+    options: ["Poll requests/s: 5000000 / Wasted: about 4980000/s", "Poll requests/s: 200000 / Wasted: about 180000/s", "Poll requests/s: 20000 / Wasted: about 0/s", "Poll requests/s: 200000 / Wasted: about 20000/s"]
+    answer: 1
+    explanation: "1,000,000 users / 5 seconds = 200,000 requests per second. Only about 20,000 carry new messages, so about 180,000 per second are wasted. WebSockets avoid this by pushing only when there is data."
+  - id: q2
+    type: MCQ
+    prompt: "Why does a chat system need a presence/session service?"
+    options: ["To store all old messages", "To know whether a user is online and which chat server holds their WebSocket", "To encrypt messages", "To rate limit logins"]
+    answer: 1
+    explanation: "Chat servers are stateful: a user's connection lives on one specific server. Presence maps userId to server and online status, so a message can be routed there (or trigger a push if offline). Old messages live in the message store."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "In a chat system, the server should save a message to the database before trying to deliver it."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Saving first means the message survives crashes and network drops; delivery can be retried and offline users can sync later. Delivering first risks losing the message."
+  - id: q4
+    type: MATCH
+    prompt: "Match each technique to its description"
+    pairs:
+      - left: "Short polling"
+        right: "Client asks for updates every few seconds"
+      - left: "Long polling"
+        right: "Server holds the request open until data arrives"
+      - left: "WebSocket"
+        right: "Persistent two-way connection"
+      - left: "Server-Sent Events"
+        right: "Persistent one-way stream from server to client"
+    explanation: "Chat needs two-way instant messaging, so WebSockets. Live scores only need server-to-client updates, so SSE or polling can be enough."
+  - id: q5
+    type: MCQ
+    prompt: "A celebrity broadcast channel has 50 million followers. Which fan-out approach fits best?"
+    options: ["Fan-out on write: copy the message into all 50 million inboxes immediately", "Fan-out on read: store once, followers fetch it when they open the channel", "Send 50 million SMS", "Use short polling for all followers every second"]
+    answer: 1
+    explanation: "Writing 50 million copies per post is very expensive and slow. Storing once and letting followers pull is far cheaper. Fan-out on write suits small groups where fast reads matter."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the field that should decide message order within a chat."
+    code: |
+      messages.sort(Comparator.comparingLong(Msg::____));
+    acceptedAnswers: ["seq", "seq()"]
+    explanation: "Sort by the server-assigned per-chat sequence number. Phone timestamps can be wrong, and arrival order can change with retries and reconnects."
+  - id: q7
+    type: MCQ
+    prompt: "Which database is the most natural fit for storing billions of chat messages, read as 'latest 50 messages of chat X'?"
+    options: ["A single MySQL table with no partitioning", "A wide-column store like Cassandra partitioned by chatId, sorted by sequence number", "A graph database", "Browser localStorage"]
+    answer: 1
+    explanation: "Partitioning by chatId keeps a conversation together, and sorting by sequence makes 'latest 50' one fast range read. It also scales writes horizontally for about 23,000 messages per second. A single unpartitioned table would struggle at this size."
+explainBack:
+  prompt: "Explain how a WhatsApp-style message travels from Asha to Ravi (online) and Meena (offline), using the phone call and post office analogies."
+  rubric:
+    - "I explained why WebSockets beat polling (phone call vs repeated post office trips)"
+    - "I said the message is saved first with a sequence number"
+    - "I explained presence: finding which server Ravi is connected to"
+    - "I explained offline handling: push notification and sync on reconnect"
+    - "I explained the ticks: sent, delivered, read"
+  modelAnswer: |
+    Polling is like walking to the post office every five minutes to check for letters, so chat apps use WebSockets instead, which are like a phone call that stays connected. When Asha sends a message, her chat server first saves it with a sequence number and gives her one tick. Then it asks the presence service where Ravi is connected and forwards the message to that server, which pushes it to his phone; his phone confirms, so Asha sees two ticks, and blue ones when he reads it. Meena is offline, so the message waits in the store, a push notification goes out through a queue, and her app syncs everything when she comes back online.
+flashcards:
+  - front: "Polling vs long polling vs WebSocket"
+    back: "Polling: ask every N s (wasteful). Long polling: server holds the request until data. WebSocket: persistent two-way connection (chat)."
+  - front: "Golden rule for message reliability"
+    back: "Save first (with a per-chat sequence number), then deliver; offline users sync from their last sequence number."
+  - front: "Presence service"
+    back: "Tracks userId -> online/offline, last seen, and which chat server holds the connection (often Redis + heartbeats)."
+  - front: "Fan-out on write vs on read"
+    back: "Write: push copies to every inbox now (fast reads, costly for huge audiences). Read: store once, fetch on open (cheap writes)."
+  - front: "Notification service pipeline"
+    back: "Event -> queue -> preferences + rate limits + template -> channel workers (push/SMS/email) with retries, priorities, idempotency."
+keyTakeaways:
+  - "Use WebSockets for two-way real-time chat; SSE or polling is enough for one-way live updates."
+  - "Chat servers are stateful; a presence service tracks who is connected where."
+  - "Save messages first in a store partitioned by chatId, ordered by a sequence number."
+  - "Offline users get push notifications (FCM/APNs) and sync on reconnect."
+  - "Fan-out on write for small groups, fan-out on read for huge audiences."
+  - "Notifications go through queues with preferences, priorities, retries and idempotency."

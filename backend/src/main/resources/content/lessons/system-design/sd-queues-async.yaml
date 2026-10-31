@@ -1,0 +1,303 @@
+slug: sd-queues-async
+world: SYSTEM_DESIGN
+section: SD
+order: 6
+title: "Message queues and async processing"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Good SP material: queues, producer-consumer and idempotency link system design to Java concurrency (BlockingQueue), which SP interviews like to connect."
+otherCompanies: "Kafka/RabbitMQ concepts, at-least-once delivery and idempotent consumers are standard in product-company backend interviews."
+why: |
+  When you place a Swiggy order, many things must happen: save the order, charge the payment, notify the restaurant, send an SMS, send an email, update analytics, assign a delivery partner. If the **order API** did all of that before replying, you would stare at a spinner for 10 seconds, and if the SMS service was down, your order would fail.
+
+  **Message queues** fix this. The API does the essential work (save the order), drops a message into a queue, and replies immediately. Other services pick up the message and do their work **asynchronously** (later, in the background).
+
+  Queues appear in almost every real design: notifications, order processing, video encoding, payment reconciliation, IRCTC waiting-list updates. And they bring interview favourites: **at-least-once delivery**, **duplicates** and **idempotency**. Java's `BlockingQueue` lets you see the whole idea in 20 lines.
+analogy: |
+  Think of a busy **restaurant kitchen with an order spike**.
+
+  - The **waiter** (producer) takes your order, writes it on a slip, sticks it on the **order rail** (the queue), and goes back to the next table immediately. He does not stand in the kitchen waiting for your dosa.
+  - The **cooks** (consumers) take slips from the rail one by one, in order, at their own speed. During the lunch rush the rail fills up, but nothing is lost; the cooks just work through it. Hire more cooks (consumers) to go faster.
+  - If a cook drops a slip and a manager re-hangs it, the dish could be made **twice** (a duplicate message). A smart cook checks "has slip #42 already been cooked?" before starting. That check is **idempotency**.
+visual:
+  diagram: |
+    SYNC (slow, fragile)
+     Client -> Order API -> save -> pay -> SMS -> email -> reply (5 s)
+                                         X SMS down = order fails!
+
+    ASYNC WITH A QUEUE
+     Client -> Order API -> save order -> reply "Order placed" (200 ms)
+                   |
+                   | publish "OrderPlaced #42"
+                   v
+            +---------------------------+
+            |  QUEUE / TOPIC  [42][43]  |   buffer during spikes
+            +---------------------------+
+               |          |          |
+               v          v          v
+          SMS worker  Email worker  Analytics worker   (consumers)
+          retries if a worker fails; each worker skips duplicates
+  caption: "With a queue, the API replies fast and the slow or unreliable work happens in the background. The queue absorbs spikes and lets each consumer retry independently."
+  visualizer: null
+explanation: |
+  ### Why use a message queue?
+  A **message queue** is a buffer that stores messages from **producers** (senders) until **consumers** (receivers) process them.
+  1. **Decoupling:** the order service doesn't need to know who sends SMS. Add a new consumer (say, loyalty points) without touching the producer.
+  2. **Faster responses:** the API replies after the essential step; slow work happens **asynchronously**.
+  3. **Absorbing spikes (load levelling):** at 10 am tatkal or a cricket final, requests pile up in the queue instead of crashing the workers.
+  4. **Reliability:** if a consumer crashes, messages wait in the queue and are retried later.
+
+  **Synchronous** = the caller waits for the result. **Asynchronous** = the caller hands off the work and continues.
+
+  ### Point-to-point vs publish-subscribe
+  - **Point-to-point (work queue):** each message is processed by **one** consumer. Example: video encoding jobs shared among 10 workers.
+  - **Publish-subscribe (pub/sub):** each message goes to **every subscriber group**. Example: `OrderPlaced` goes to SMS, email and analytics, and each does its own thing.
+
+  ### Kafka vs RabbitMQ (concept level)
+  | | RabbitMQ | Kafka |
+  |---|---|---|
+  | Model | Classic message broker; queues with routing | Distributed **log**: messages appended to **topics** split into **partitions** |
+  | After consuming | Message is usually deleted | Message **stays** for a retention period (e.g. 7 days); consumers track their **offset** |
+  | Strength | Flexible routing, task queues, per-message acks | Very high throughput, replaying old events, event streaming |
+  | Typical use | Send email/SMS jobs, background tasks | Order events, click streams, logs, analytics pipelines |
+
+  Kafka keeps order **within a partition**, so you use a key like `orderId` to keep all events of one order in order. A **consumer group** is a set of consumers sharing the work of a topic; each partition goes to one consumer in the group.
+
+  ### Delivery guarantees
+  | Guarantee | Meaning | Risk |
+  |---|---|---|
+  | **At-most-once** | Delivered 0 or 1 times | Messages can be lost |
+  | **At-least-once** | Delivered 1 or more times | **Duplicates** possible |
+  | **Exactly-once** | Exactly 1 time | Hard and costly; usually only within one system |
+
+  Most real systems use **at-least-once**: the consumer **acknowledges (acks)** a message after processing it. If it crashes before the ack, the broker redelivers the message. So the consumer may see the same message twice.
+
+  ### Idempotency: making duplicates harmless
+  An operation is **idempotent** if doing it twice has the same effect as doing it once. "Set order status to DELIVERED" is idempotent; "add Rs.100 to wallet" is not.
+
+  How to make consumers idempotent:
+  - Give every message a unique **message ID** (or use the order ID).
+  - Before processing, check a **processed IDs** store (a DB table with a unique constraint, or Redis). If seen, skip.
+  - Or design the write itself to be idempotent: `UPDATE orders SET status='PAID' WHERE id=42` instead of incrementing.
+
+  Rule to say in interviews: **"At-least-once delivery plus idempotent consumers gives effectively-once processing."**
+
+  ### Failures: retries and dead letter queues
+  - **Retry with backoff:** wait 1 s, 2 s, 4 s... before retrying, so you don't hammer a struggling service.
+  - **Dead letter queue (DLQ):** after N failed attempts, move the message to a separate queue for humans to inspect, so one bad message ("poison message") doesn't block everything.
+
+  ### Back-pressure
+  If producers are faster than consumers, the queue grows. A **bounded** queue (fixed capacity) pushes back: producers wait or get rejected. In Java, `ArrayBlockingQueue` with a capacity does this: `put` waits when full, `offer` returns `false`.
+
+  ### Java: BlockingQueue = an in-memory message queue
+  | Method | When full / empty |
+  |---|---|
+  | `put(x)` | Waits (blocks) until space is free |
+  | `take()` | Waits until an item is available |
+  | `offer(x)` | Returns `false` immediately if full |
+  | `poll()` | Returns `null` immediately if empty |
+
+  A real broker adds persistence (messages survive restarts), many machines and network access, but the producer-consumer idea is identical.
+
+  ### How to use queues in a design answer
+  1. Identify slow or unreliable steps that the user doesn't need to wait for (SMS, email, invoice PDF).
+  2. "The order service publishes `OrderPlaced` to Kafka; SMS, email and analytics consume it."
+  3. Mention at-least-once, idempotent consumers, retries with backoff and a DLQ.
+tinyCode:
+  code: |
+    import java.util.concurrent.*;
+
+    public class OrderQueue {
+        public static void main(String[] args) throws InterruptedException {
+            BlockingQueue<String> queue = new ArrayBlockingQueue<>(3);
+
+            Thread consumer = new Thread(() -> {
+                try {
+                    while (true) {
+                        String order = queue.take();            // waits if the queue is empty
+                        if (order.equals("STOP")) break;        // poison pill: time to stop
+                        System.out.println("Kitchen preparing " + order);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+            consumer.start();
+
+            for (int i = 1; i <= 5; i++) {
+                queue.put("order-" + i);                        // waits if the queue is full
+            }
+            queue.put("STOP");
+            consumer.join();
+            System.out.println("All orders handled");
+        }
+    }
+  walkthrough: |
+    - `ArrayBlockingQueue<>(3)`: a **bounded** queue that holds at most 3 messages. This is our "order rail".
+    - The **consumer thread** (the kitchen) loops forever: `take()` waits until a message arrives, then processes it.
+    - `"STOP"` is a **poison pill**: a special message that tells the consumer to finish. It's a common pattern for shutting down consumers cleanly.
+    - The **main thread** is the producer (the waiter). `put` adds 5 orders. When the queue already holds 3, `put` **waits** until the kitchen takes one. That is **back-pressure**.
+    - `consumer.join()` makes main wait until the consumer thread finishes, so "All orders handled" prints last.
+
+    Output (always in this order, because only the consumer prints the orders and a queue is FIFO):
+    ```
+    Kitchen preparing order-1
+    Kitchen preparing order-2
+    Kitchen preparing order-3
+    Kitchen preparing order-4
+    Kitchen preparing order-5
+    All orders handled
+    ```
+tryIt:
+  instructions: "Type this idempotent consumer. The broker delivers at-least-once, so some messages arrive twice. The Set of processed IDs makes sure each SMS is sent only once. Predict the output first."
+  code: |
+    import java.util.*;
+
+    public class Idempotent {
+        static Set<String> processed = new HashSet<>();
+        static int smsSent = 0;
+
+        static void onMessage(String messageId) {
+            if (!processed.add(messageId)) {               // add returns false if already present
+                System.out.println("skip duplicate " + messageId);
+                return;
+            }
+            smsSent++;
+            System.out.println("send SMS for " + messageId);
+        }
+
+        public static void main(String[] args) {
+            // at-least-once delivery: m2 is redelivered after a timeout
+            String[] delivered = {"m1", "m2", "m2", "m3", "m1"};
+            for (String id : delivered) onMessage(id);
+            System.out.println("SMS sent: " + smsSent);
+        }
+    }
+predict:
+  code: |
+    import java.util.concurrent.*;
+
+    public class Offer {
+        public static void main(String[] args) {
+            BlockingQueue<String> q = new ArrayBlockingQueue<>(2);
+            System.out.println(q.offer("a"));
+            System.out.println(q.offer("b"));
+            System.out.println(q.offer("c"));
+            System.out.println(q.poll() + " " + q.size());
+        }
+    }
+  expectedOutput: |
+    true
+    true
+    false
+    a 1
+  explanation: |
+    - The queue has capacity **2**. `offer("a")` and `offer("b")` succeed: `true`, `true`.
+    - `offer("c")` finds the queue full. Unlike `put`, `offer` does **not wait**; it returns `false` immediately and "c" is dropped. (This is how a system can reject work under overload instead of hanging.)
+    - `poll()` removes the head, **"a"** (FIFO), leaving one item, so the size is **1**.
+commonMistakes:
+  - "Assuming each message is delivered exactly once. With at-least-once delivery, consumers MUST handle duplicates."
+  - "Putting a queue in front of something the user must wait for anyway, like checking the payment result before showing 'Paid'."
+  - "Using an unbounded queue everywhere; under a long spike it grows until memory runs out."
+  - "Retrying failed messages forever and blocking the queue; use backoff and a dead letter queue."
+  - "Using offer() and ignoring that it returned false, silently losing messages."
+  - "Expecting global ordering in Kafka; order is guaranteed only within a partition."
+interviewBox:
+  why: "Why interviewers ask this: queues are how real systems stay fast and reliable, and duplicate handling shows whether you think about failures."
+  questions:
+    - q: "Practice: Why would you put a message queue between the order service and the notification service?"
+      a: "Three reasons. The order API can reply as soon as the order is saved, instead of waiting for SMS and email. If the notification service is down, messages wait in the queue and are retried, so orders don't fail. And during a dinner-time spike the queue absorbs the burst while workers catch up. It also decouples the services, so adding a new consumer like analytics needs no change to the order service."
+    - q: "Practice: What is at-least-once delivery and how do you deal with duplicates?"
+      a: "At-least-once means a message is redelivered if the consumer doesn't acknowledge it, for example if it crashed after doing the work but before the ack. So the same message can arrive twice. I make the consumer idempotent: each message has a unique ID, and before processing I check a processed-IDs table with a unique constraint. If it's already there, I skip it."
+    - q: "Practice: Kafka or RabbitMQ for sending order confirmation emails? And for a clickstream analytics pipeline?"
+      a: "For emails, RabbitMQ is a simple fit: it's a task queue with per-message acknowledgements and retries. For clickstream analytics, Kafka fits better, because it handles very high throughput and keeps the events for days so multiple consumers can read or even replay them."
+    - q: "Practice: What is a dead letter queue?"
+      a: "It's a separate queue where messages go after failing a set number of times. This stops one broken message from blocking or endlessly retrying in the main queue, and engineers can inspect and replay those messages later."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Using the idempotent consumer from Try It, the broker delivers these IDs: a, b, a, a, c. What is the last line printed?"
+    code: |
+      String[] delivered = {"a", "b", "a", "a", "c"};
+      for (String id : delivered) onMessage(id);
+      System.out.println("SMS sent: " + smsSent);
+    options: ["SMS sent: 5", "SMS sent: 3", "SMS sent: 2", "SMS sent: 4"]
+    answer: 1
+    explanation: "Set.add returns false for an ID already present, so both repeats of 'a' are skipped. Unique IDs are a, b, c, so 3 SMS are sent. 5 is what a non-idempotent consumer would send."
+  - id: q2
+    type: MCQ
+    prompt: "Which step of placing a food order is the BEST candidate to move to an async queue?"
+    options: ["Validating the cart items", "Saving the order to the database", "Sending the order confirmation SMS and email", "Returning the order ID to the user"]
+    answer: 2
+    explanation: "The user doesn't need to wait for SMS and email, and those services can be slow or down. Validation, saving and returning the ID are part of the core response."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "'Set order status = DELIVERED' is an idempotent operation, but 'add Rs.50 cashback to wallet' is not."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Setting a status twice leaves the same result. Adding cashback twice gives Rs.100, so that consumer needs a processed-ID check (or a unique transaction ID) to be safe."
+  - id: q4
+    type: MATCH
+    prompt: "Match each term to its meaning"
+    pairs:
+      - left: "Producer"
+        right: "Sends messages into the queue"
+      - left: "Consumer"
+        right: "Reads and processes messages"
+      - left: "Dead letter queue"
+        right: "Holds messages that kept failing"
+      - left: "Consumer group"
+        right: "Consumers that share the partitions of a topic"
+      - left: "Ack"
+        right: "Consumer tells the broker the message is done"
+    explanation: "These are the basic vocabulary of any queue-based design."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the BlockingQueue method that WAITS until a message is available."
+    code: |
+      String order = queue.____();
+    acceptedAnswers: ["take"]
+    explanation: "take() blocks until an element is available. poll() returns null immediately when the queue is empty, so it doesn't wait."
+  - id: q6
+    type: MCQ
+    prompt: "A consumer processes a payment message, then crashes before sending the ack. With at-least-once delivery, what happens?"
+    options: ["The message is lost", "The broker redelivers the message, so it may be processed twice", "The broker deletes the queue", "The producer is blocked forever"]
+    answer: 1
+    explanation: "No ack means the broker assumes failure and redelivers. The work already happened once, so without idempotency the payment could be processed twice."
+  - id: q7
+    type: MCQ
+    prompt: "In Kafka, you need all events of the same order (placed, paid, delivered) processed in order. What do you do?"
+    options: ["Use one topic per event type", "Use the orderId as the message key so all its events go to the same partition", "Use many partitions with random keys", "Ordering is impossible in Kafka"]
+    answer: 1
+    explanation: "Kafka guarantees order within a partition, and the same key always maps to the same partition. Random keys spread one order's events across partitions, losing order."
+explainBack:
+  prompt: "Explain message queues and idempotency to a friend using the restaurant order rail."
+  rubric:
+    - "I explained producer (waiter) and consumer (cook) with the queue as the rail"
+    - "I gave at least two benefits: fast replies, spike absorption, decoupling, retries"
+    - "I explained at-least-once delivery and why duplicates happen"
+    - "I explained idempotency with a processed-ID check"
+    - "I mentioned a dead letter queue or retries with backoff"
+  modelAnswer: |
+    A queue is like the order rail in a restaurant kitchen. The waiter, the producer, hangs the slip and goes back to customers immediately, so customers don't wait. Cooks, the consumers, take slips at their own speed, and during a rush the slips just pile up instead of chaos. If a cook crashes before marking a slip done, the slip goes back on the rail, so a dish might be made twice; that's at-least-once delivery. So a smart cook checks the slip number first and skips it if it's already done; that's idempotency. Slips that fail again and again go to a separate tray, the dead letter queue.
+flashcards:
+  - front: "3 reasons to use a message queue"
+    back: "Decoupling services, fast API replies (async work), absorbing spikes (plus retries for reliability)."
+  - front: "At-most-once vs at-least-once"
+    back: "At-most-once: may lose messages. At-least-once: never loses, but may duplicate. Most systems use at-least-once."
+  - front: "How to make a consumer idempotent"
+    back: "Unique message ID + check a processed-IDs store (unique constraint) before acting; or make the write itself idempotent."
+  - front: "put vs offer, take vs poll"
+    back: "put/take wait (block). offer returns false when full; poll returns null when empty."
+  - front: "Kafka ordering rule"
+    back: "Order is guaranteed only within a partition; use the same key (e.g. orderId) to keep related events in order."
+keyTakeaways:
+  - "Queues decouple services, speed up responses and absorb traffic spikes."
+  - "Point-to-point: one consumer per message. Pub/sub: every subscriber group gets it."
+  - "Kafka is a retained, partitioned log for high-throughput events; RabbitMQ is a flexible task queue."
+  - "At-least-once delivery plus idempotent consumers gives effectively-once processing."
+  - "Use retries with backoff and a dead letter queue for failing messages."
+  - "Java's BlockingQueue shows the producer-consumer idea: put/take block, offer/poll don't."

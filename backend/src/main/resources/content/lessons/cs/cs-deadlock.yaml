@@ -1,0 +1,310 @@
+slug: cs-deadlock
+world: CS_CORE
+section: CS
+order: 3
+title: "OS: deadlock"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Coffman conditions are a common basic OS question for SP and DSE; the Banker's algorithm numerical is good practice for SP-level technical rounds."
+otherCompanies: "Deadlock conditions are a standard question in TCS, Wipro, Cognizant, Accenture and Capgemini interviews; product companies connect it to Java locks and database deadlocks."
+why: |
+  A **deadlock** freezes programs forever: nothing crashes, nothing moves. It is one of the scariest bugs in real systems, and a favourite OS interview topic.
+
+  You will be expected to:
+  - define deadlock and list the **four Coffman conditions** without hesitation,
+  - explain **prevention vs avoidance vs detection and recovery**,
+  - run the **Banker's algorithm** on a small table (a classic numerical).
+
+  The same ideas come back in Java (`synchronized` locks) and databases (row locks), so this lesson pays off three times.
+analogy: |
+  Picture a **narrow lane in an old city with two cars facing each other**.
+
+  - Car A wants to go forward, but Car B is in the way.
+  - Car B wants to go forward, but Car A is in the way.
+  - Neither will reverse (no preemption), each is holding its part of the lane (hold and wait), the lane fits only one car (mutual exclusion), and each is waiting for the other (circular wait).
+
+  Nobody moves, forever. That is a deadlock. Remove **any one** of those four conditions (for example, one driver agrees to reverse) and traffic flows again.
+visual:
+  diagram: |
+    Resource Allocation Graph (deadlock)
+
+         holds              wants
+    R1 --------> P1 ------------------+
+    ^                                  |
+    | wants                            v
+    P2 <------------------------------ R2
+                    holds
+
+    P1 holds R1 and waits for R2.
+    P2 holds R2 and waits for R1.
+    Cycle P1 -> R2 -> P2 -> R1 -> P1  =>  DEADLOCK
+    (with one instance per resource, a cycle means deadlock)
+  caption: "Two processes, two resources, each holding one and waiting for the other: a cycle in the resource allocation graph."
+  visualizer: null
+explanation: |
+  ### What is a deadlock?
+  A **deadlock** is a situation where a set of processes are **all waiting for each other**, so none of them can ever continue. A **resource** is anything a process needs exclusive use of: a printer, a file lock, a database row, a Java lock.
+
+  ### The four Coffman conditions
+  A deadlock can happen **only if all four** hold at the same time:
+  | Condition | Plain meaning |
+  |---|---|
+  | **Mutual exclusion** | A resource can be used by only one process at a time |
+  | **Hold and wait** | A process holds at least one resource while waiting for another |
+  | **No preemption** | A resource cannot be forcibly taken away; it is released only voluntarily |
+  | **Circular wait** | P1 waits for P2, P2 waits for P3, ..., Pn waits for P1 |
+
+  Memory trick: **"My Hungry Neighbour Cooks"** = Mutual exclusion, Hold and wait, No preemption, Circular wait.
+
+  ### Three ways to handle deadlock (plus one lazy way)
+  **1. Prevention**: design the system so at least one condition can **never** be true.
+  - Break *mutual exclusion*: make resources shareable (e.g. read-only files). Often impossible for printers or locks.
+  - Break *hold and wait*: a process must request **all** resources at once, or release everything before asking again. Wastes resources.
+  - Break *no preemption*: if a request fails, take back what the process holds.
+  - Break *circular wait*: number all resources and always request them in **increasing order**. This is the most practical rule (in Java: always lock `A` before `B`).
+
+  **2. Avoidance**: allow all four conditions, but before granting a request, check whether the system stays in a **safe state**. The famous method is the **Banker's algorithm**. It needs to know each process's **maximum** demand in advance.
+
+  **3. Detection and recovery**: let deadlocks happen, detect them (a cycle in the wait-for graph, or a detection algorithm similar to Banker's), then recover by **killing a process** or **preempting resources and rolling back**. Databases do this.
+
+  **4. Ignore it (Ostrich algorithm)**: pretend deadlocks don't happen and reboot if they do. Windows and Linux mostly do this for general apps, because prevention is costly.
+
+  ### Safe state
+  A state is **safe** if there is at least one order (a **safe sequence**) in which every process can get its maximum need and finish. Safe means no deadlock is possible. **Unsafe does not always mean deadlock**, but it means deadlock *may* happen.
+
+  ### Banker's algorithm: worked example
+  5 processes, 3 resource types A, B, C (total 10, 5, 7).
+  | Process | Allocation (A B C) | Max (A B C) | Need = Max - Allocation |
+  |---|---|---|---|
+  | P0 | 0 1 0 | 7 5 3 | 7 4 3 |
+  | P1 | 2 0 0 | 3 2 2 | 1 2 2 |
+  | P2 | 3 0 2 | 9 0 2 | 6 0 0 |
+  | P3 | 2 1 1 | 2 2 2 | 0 1 1 |
+  | P4 | 0 0 2 | 4 3 3 | 4 3 1 |
+  Available = Total - sum of Allocation = (10-7, 5-2, 7-5) = **(3, 3, 2)**.
+
+  **Safety algorithm**: repeatedly find a process whose Need <= Work (Work starts as Available). Pretend it finishes and **returns its Allocation**: Work = Work + Allocation.
+  | Step | Pick | Need <= Work? | New Work |
+  |---|---|---|---|
+  | 1 | P1 | (1,2,2) <= (3,3,2) yes | (5,3,2) |
+  | 2 | P3 | (0,1,1) <= (5,3,2) yes | (7,4,3) |
+  | 3 | P4 | (4,3,1) <= (7,4,3) yes | (7,4,5) |
+  | 4 | P0 | (7,4,3) <= (7,4,5) yes | (7,5,5) |
+  | 5 | P2 | (6,0,0) <= (7,5,5) yes | (10,5,7) |
+  All finish, so the state is **SAFE** with safe sequence **<P1, P3, P4, P0, P2>**. (P0 could not go first: it needs 7 A but only 3 are available.) Notice the final Work equals the total (10, 5, 7): a good self-check.
+
+  **Resource request**: if P1 asks for (1, 0, 2): check Request <= Need (1,2,2) yes, Request <= Available (3,3,2) yes. Pretend to grant: Available becomes (2,3,0), P1's Allocation (3,0,2), Need (0,2,0). Run the safety algorithm again: <P1, P3, P4, P0, P2> still works, so **grant it**. If instead P4 asked for (3, 3, 0), Available would become (0,0,2), no process could finish, so the request is **denied** and P4 waits.
+
+  ### Deadlock vs starvation
+  | | Deadlock | Starvation |
+  |---|---|---|
+  | What | Processes wait for each other forever | One process waits a very long time while others run |
+  | Progress | Nobody in the cycle progresses | The system progresses, one process does not |
+  | Fix | Break a Coffman condition | Aging, fair scheduling |
+
+  ### Livelock (bonus)
+  In a **livelock**, processes keep changing state in response to each other but make no progress, like two people in a corridor both stepping aside the same way again and again.
+tinyCode:
+  code: |
+    import java.util.Arrays;
+
+    public class Bankers {
+        public static void main(String[] args) {
+            int[][] alloc = {{0,1,0}, {2,0,0}, {3,0,2}, {2,1,1}, {0,0,2}};
+            int[][] max   = {{7,5,3}, {3,2,2}, {9,0,2}, {2,2,2}, {4,3,3}};
+            int[] work = {3, 3, 2};                  // Available
+            int n = 5, m = 3;
+            boolean[] done = new boolean[n];
+            StringBuilder seq = new StringBuilder();
+
+            for (int round = 0; round < n; round++) {
+                boolean progress = false;
+                for (int i = 0; i < n; i++) {
+                    if (done[i]) continue;
+                    boolean canRun = true;
+                    for (int j = 0; j < m; j++)
+                        if (max[i][j] - alloc[i][j] > work[j]) canRun = false;  // Need > Work
+                    if (canRun) {
+                        for (int j = 0; j < m; j++) work[j] += alloc[i][j];  // it finishes, returns all
+                        done[i] = true;
+                        progress = true;
+                        seq.append("P").append(i).append(" ");
+                        System.out.println("P" + i + " finishes, Work = " + Arrays.toString(work));
+                    }
+                }
+                if (!progress) break;
+            }
+            boolean safe = seq.length() == n * 3;
+            System.out.println(safe ? "SAFE: " + seq.toString().trim() : "UNSAFE");
+        }
+    }
+  walkthrough: |
+    - `alloc` and `max` are the tables from the worked example; `work` starts as Available (3, 3, 2).
+    - **Need** is computed on the fly as `max[i][j] - alloc[i][j]`.
+    - The inner loop scans P0..P4. If every Need value is <= Work, that process can finish: we add its allocation back to Work (it releases what it held).
+    - The outer loop repeats the scan, because finishing one process may free enough for another. If a full scan makes no progress, we stop.
+    - Each finished process appends "Pi " (3 characters), so 15 characters means all 5 finished: **safe**.
+    - Output:
+    ```
+    P1 finishes, Work = [5, 3, 2]
+    P3 finishes, Work = [7, 4, 3]
+    P4 finishes, Work = [7, 4, 5]
+    P0 finishes, Work = [7, 5, 5]
+    P2 finishes, Work = [10, 5, 7]
+    SAFE: P1 P3 P4 P0 P2
+    ```
+tryIt:
+  instructions: "Type this program. Both threads lock A then B in the SAME order (prevention by breaking circular wait), so it always finishes. Then try swapping the lock order in t2 to (B, then A) and add Thread.sleep(100) between the two locks: the program may hang forever. That hang is a real deadlock."
+  code: |
+    public class LockOrder {
+        static final Object A = new Object();
+        static final Object B = new Object();
+
+        static void work(String name) {
+            synchronized (A) {          // always A first...
+                synchronized (B) {      // ...then B
+                    System.out.println(name + " got A and B");
+                }
+            }
+        }
+
+        public static void main(String[] args) throws InterruptedException {
+            Thread t1 = new Thread(() -> work("t1"));
+            Thread t2 = new Thread(() -> work("t2"));
+            t1.start(); t2.start();
+            t1.join(); t2.join();
+            System.out.println("No deadlock: both finished");
+        }
+    }
+predict:
+  code: |
+    public class TinyBanker {
+        public static void main(String[] args) {
+            // one resource type, 12 units in total
+            int[] alloc = {5, 2, 2};
+            int[] max   = {10, 4, 9};
+            int available = 12 - (5 + 2 + 2);
+            boolean[] done = new boolean[3];
+            String order = "";
+            for (int round = 0; round < 3; round++)
+                for (int i = 0; i < 3; i++)
+                    if (!done[i] && max[i] - alloc[i] <= available) {
+                        available += alloc[i];
+                        done[i] = true;
+                        order += "P" + i + " ";
+                    }
+            System.out.println(order + "| available=" + available);
+        }
+    }
+  expectedOutput: |
+    P1 P0 P2 | available=12
+  explanation: |
+    Available starts at 12 - 9 = 3. Needs are P0 5, P1 2, P2 7. Scan 1: P0 needs 5 > 3 (skip), P1 needs 2 <= 3 so it finishes and returns 2, available 5. P2 needs 7 > 5 (skip). Scan 2: P0 needs 5 <= 5, finishes, available 10. P2 needs 7 <= 10, finishes, available 12. Safe sequence P1, P0, P2, and all 12 units are back.
+commonMistakes:
+  - "Listing only three Coffman conditions, or listing 'starvation' as one. The four are mutual exclusion, hold and wait, no preemption, circular wait."
+  - "Saying an unsafe state IS a deadlock. Unsafe means deadlock is possible, not certain."
+  - "In Banker's, adding the Need back to Work. When a process finishes it returns its ALLOCATION."
+  - "Forgetting Need = Max - Allocation and comparing Max with Available instead."
+  - "Confusing prevention (break a condition by design) with avoidance (check safety before each grant)."
+  - "Mixing up deadlock and starvation: in starvation the system still makes progress."
+interviewBox:
+  why: "Why interviewers ask this: deadlocks appear in OS, multithreaded Java and databases; they want to see you can name the causes and choose a strategy."
+  questions:
+    - q: "What are the necessary conditions for deadlock?"
+      a: "Four conditions must hold together: mutual exclusion, where only one process can use a resource; hold and wait, where a process holds one resource and waits for another; no preemption, where resources cannot be taken away; and circular wait, where processes wait for each other in a cycle. Breaking any one prevents deadlock."
+    - q: "What is the difference between deadlock prevention and avoidance?"
+      a: "Prevention designs the system so one of the four conditions can never happen, for example always taking locks in a fixed order. Avoidance allows the conditions but checks every request, like the Banker's algorithm, and grants it only if the system stays in a safe state."
+    - q: "Explain the Banker's algorithm in simple words."
+      a: "Like a bank that never lends money unless it can still satisfy every customer in some order. Each process declares its maximum need. For each request, the OS pretends to grant it, then checks if there is a safe sequence where every process can get its remaining need, finish and return its resources. If yes, grant; if not, the process waits."
+    - q: "How would you prevent a deadlock in Java code?"
+      a: "Always acquire locks in the same global order, keep lock scopes small, avoid calling unknown code while holding a lock, and use tryLock with a timeout from ReentrantLock so a thread can back off instead of waiting forever."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which of these is NOT one of the four Coffman conditions?"
+    code: null
+    options: ["Mutual exclusion", "Hold and wait", "Starvation", "Circular wait"]
+    answer: 2
+    explanation: "The four conditions are mutual exclusion, hold and wait, no preemption and circular wait. Starvation is a different problem where one process waits long while the system still progresses."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Banker's table: P1 has Allocation (2,0,0) and Max (3,2,2). Available is (3,3,2). What is P1's Need, and can it run now?"
+    code: |
+      Need = Max - Allocation
+      Can run if Need <= Available (every column)
+    options: ["(1,2,2), yes", "(5,2,2), no", "(1,2,2), no", "(3,2,2), yes"]
+    answer: 0
+    explanation: "Need = (3-2, 2-0, 2-0) = (1,2,2). Compared with Available (3,3,2), every column fits, so P1 can run. (3,2,2) is Max, not Need, a common slip."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "If the system is in an unsafe state, a deadlock has definitely already happened."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Unsafe means there is no guaranteed safe sequence, so deadlock MAY happen. Processes might still finish if they don't ask for their full maximum."
+  - id: q4
+    type: MATCH
+    prompt: "Match each strategy to an example"
+    pairs:
+      - left: "Prevention"
+        right: "Always lock resources in increasing number order"
+      - left: "Avoidance"
+        right: "Banker's algorithm checks for a safe state before granting"
+      - left: "Detection and recovery"
+        right: "Find a cycle in the wait-for graph, then kill a process"
+      - left: "Ostrich approach"
+        right: "Ignore deadlocks and reboot if one happens"
+    explanation: "Prevention removes a condition by design; avoidance decides per request; detection lets it happen and fixes it; the ostrich approach accepts rare deadlocks to avoid overhead."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "Single resource type, Available = 3. Needs: P0 = 5, P1 = 2, P2 = 7. Allocations: P0 = 5, P1 = 2, P2 = 2. Scanning P0, P1, P2 repeatedly, what is the safe sequence?"
+    code: |
+      Work = 3
+      pick any Pi with Need <= Work, then Work += Allocation(Pi)
+    options: ["P0 P1 P2", "P1 P0 P2", "P1 P2 P0", "Unsafe"]
+    answer: 1
+    explanation: "Only P1 fits first (2 <= 3); Work becomes 5. Then P0 fits (5 <= 5); Work becomes 10. Then P2 (7 <= 10); Work 12. P1 P2 P0 fails because P2 needs 7 when Work is only 5."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "When a process finishes in the safety algorithm, what do we add back to Work?"
+    code: |
+      for (int j = 0; j < m; j++)
+          work[j] += ____[i][j];
+    acceptedAnswers: ["alloc", "allocation"]
+    explanation: "A finished process releases everything it currently HOLDS, which is its allocation. Adding Need would invent resources that never existed."
+  - id: q7
+    type: MCQ
+    prompt: "Two Java threads: t1 locks A then B; t2 locks B then A. Which Coffman condition is easiest to break to fix this?"
+    code: null
+    options: ["Mutual exclusion, by removing synchronized", "Circular wait, by making both threads lock A before B", "No preemption, by calling Thread.stop()", "Hold and wait, by adding more CPU cores"]
+    answer: 1
+    explanation: "A fixed lock order makes a cycle impossible. Removing synchronized breaks correctness, Thread.stop() is deprecated and unsafe, and more cores do nothing for deadlock."
+explainBack:
+  prompt: "Explain to a friend what a deadlock is, the four conditions, and how the Banker's algorithm avoids it."
+  rubric:
+    - "I defined deadlock as processes waiting for each other forever"
+    - "I listed all four Coffman conditions"
+    - "I explained prevention vs avoidance vs detection"
+    - "I explained safe state and how Banker's checks Need <= Available"
+    - "I used an analogy like two cars in a narrow lane"
+  modelAnswer: |
+    A deadlock is when processes wait for each other forever, like two cars facing each other in a narrow lane and neither will reverse. It needs four conditions together: mutual exclusion, hold and wait, no preemption and circular wait. Prevention breaks one of them by design, like always taking locks in the same order. Avoidance, like the Banker's algorithm, checks every request: it pretends to grant it, then looks for an order in which every process can get its remaining need, finish, and return what it holds. If such a safe sequence exists, the request is granted; otherwise the process waits. Detection lets deadlock happen and then kills or rolls back a process.
+flashcards:
+  - front: "Four Coffman conditions"
+    back: "Mutual exclusion, hold and wait, no preemption, circular wait. All four needed for deadlock."
+  - front: "Most practical prevention rule"
+    back: "Break circular wait: acquire resources (locks) in a fixed global order."
+  - front: "Banker's: Need formula and finishing rule"
+    back: "Need = Max - Allocation. If Need <= Work, the process can finish: Work += Allocation."
+  - front: "Safe vs unsafe state"
+    back: "Safe: some sequence lets all processes finish. Unsafe: deadlock possible, not certain."
+  - front: "Deadlock vs starvation"
+    back: "Deadlock: a cycle of processes waiting forever. Starvation: one process waits indefinitely while others progress."
+keyTakeaways:
+  - "Deadlock needs all four: mutual exclusion, hold and wait, no preemption, circular wait."
+  - "Prevention breaks a condition; avoidance (Banker's) checks for a safe state; detection finds and recovers."
+  - "Banker's: Need = Max - Allocation; a process that finishes returns its Allocation to Work."
+  - "Safe sequence for the classic example: P1, P3, P4, P0, P2."
+  - "In Java, a fixed lock order or tryLock with timeout prevents most deadlocks."

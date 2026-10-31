@@ -1,0 +1,251 @@
+slug: interview-mock-basics
+world: INTERVIEW
+section: INTERVIEW
+order: 1
+title: "How mock interviews work"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+infosysRelevance: "Infosys-style practice: SP and DSE hiring usually ends in face-to-face rounds where clear thinking and clear speaking matter as much as code. This lesson sets up your practice system for them."
+otherCompanies: "Every service and product company interviews in rounds (online test, technical, HR, sometimes managerial). The same practice loop works for TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  An interview is a **skill**, like riding a bike. You do not get good at it by reading about it. You get good by **doing it many times in a safe place** and fixing one small thing each time.
+
+  You already know a lot of Java. But many people with good knowledge fail interviews because:
+  - they freeze when a real person asks the question,
+  - they speak in long, confusing sentences,
+  - they never practised saying the answer **out loud**.
+
+  A **mock interview** (a practice interview that does not count) fixes this. It lets you make mistakes where mistakes are free.
+
+  You are switching from a non-technical job to development. That is a **strength**, not a weakness: you have real work experience, deadlines and teamwork stories. This world teaches you how to show that clearly, even if your spoken English is still growing.
+analogy: |
+  Think of a **cricket net session**.
+
+  - A batter does not wait for the real match to face fast bowling. They go to the **nets** and face hundreds of balls.
+  - In the nets, getting out costs nothing. The coach says "your head moved", the batter fixes **one** thing, and faces the next ball.
+  - On match day, the body already knows what to do.
+
+  In Code Quest:
+  - The **Mock interview boss fight** is your net session for speaking.
+  - The **Mock tests** tab is your practice match for the written / online test.
+  - The **Interview diary** is the coach's notebook: what went wrong and what to fix.
+visual:
+  diagram: |
+    A TYPICAL HIRING JOURNEY (practice view)
+
+    [Online test] --> [Technical round] --> [HR round] --> Offer
+     aptitude,         Java, OOP, DSA,       you, your story,
+     coding            SQL, your project     attitude, fit
+
+    THE PRACTICE LOOP IN CODE QUEST
+
+       +-----------+     +------------+     +--------------+
+       | Prepare   | --> | Mock fight | --> | Review       |
+       | lesson +  |     | 5 questions|     | score + diary|
+       | flashcards|     | voice/type |     | fix 1 thing  |
+       +-----------+     +------------+     +------+-------+
+             ^                                     |
+             +-------------------------------------+
+                     repeat 2-3 times a week
+  caption: "Real interviews come in rounds. You practise each round in a loop: prepare, fight a mock, review, fix one thing, repeat."
+  visualizer: null
+explanation: |
+  ### What is an interview "round"?
+  A **round** is one stage of the hiring process. Each round checks something different. Companies change their process often, so always read the official careers page for the current steps. In general practice terms:
+
+  | Round | What it usually checks | How you practise here |
+  |---|---|---|
+  | **Online test** | Aptitude (maths, logic, English) and coding on a computer, with a timer | Aptitude world + Aptitude Arena + Mock tests tab |
+  | **Technical round** | Java, OOP, collections, DSA basics, SQL; can you explain and write simple code? | Java/DSA/SQL lessons + Technical boss fight |
+  | **Project round** (often inside the technical round) | Do you really understand what you built? | Lesson 4 of this world + your Spring projects |
+  | **HR round** | Your story, attitude, honesty, communication, flexibility | HR boss fight + Communication Gym |
+
+  ### What interviewers are really looking for
+  They are not looking for a perfect person. They usually look for four things:
+  1. **Clear basics**: can you explain simple ideas correctly?
+  2. **Thinking**: when you do not know, do you think step by step, or do you panic?
+  3. **Communication**: can a teammate understand you? Simple English is fine. *Clear* is more important than *fancy*.
+  4. **Attitude**: are you honest, willing to learn, and calm?
+
+  ### The three practice tools in this app
+  **1. Mock interview boss fight** (Interview Colosseum, gold button).
+  - Pick a round: **HR**, **Technical** or **Spring**.
+  - You get **5 practice questions**, spoken aloud. Answer by **voice or by typing**.
+  - Each answer takes HP off the Interview Dragon. At the end you get a score card.
+  - Warm up first in the **Communication Gym**, which shows your pace (words per minute), filler words and pauses.
+
+  **2. Mock tests** (Colosseum, Mock tests tab).
+  - Timed tests for the online round. You enter the **official pattern** from the company's careers page yourself; the app never guesses it.
+  - Sit like it is real: phone away, timer on, no pausing.
+
+  **3. Interview diary** (Colosseum, Interview diary tab).
+  - After every real or mock interview, write: company, round, date, the **question**, **your answer**, and a **better answer**. Add tags like `oop, project`.
+  - Lesson 6 of this world teaches you to use it well.
+
+  ### How to prepare in the week before an interview
+  - **Day -7 to -3**: one boss fight per day. Rotate HR, Technical, Spring.
+  - Prepare your **three core answers** in writing first: "Tell me about yourself", "Explain your project", "Why do you want to switch to development?"
+  - Read them aloud **five times each**. Then speak them *without* reading. It is fine if the words change; the **structure** should stay.
+  - **Day -2**: one full mock test with a timer.
+  - **Day -1**: light revision only (flashcards and your diary). Sleep well. Check your laptop, camera, mic and internet if it is online.
+
+  ### After the interview: the 15-minute review
+  Do this the **same day**, while you still remember:
+  1. Write down every question you remember in the diary.
+  2. Mark each answer: good / okay / weak.
+  3. For each weak answer, write a better answer **in simple English**.
+  4. Pick **one** thing to fix next time (for example, "stop saying 'basically'").
+
+  ### Honest note on nerves
+  Everybody is nervous, including experienced developers. Nervous is normal. The goal is not zero nerves; the goal is **nerves plus a plan**. Breathe slowly, take a two-second pause before answering, and use the structures you will learn in the next lessons.
+tinyCode:
+  code: |
+    MY MOCK INTERVIEW PLAN (week before an interview)
+
+    Day -7  HR boss fight        Fix: speak slower
+    Day -6  Technical boss fight Fix: use Concept-Example-Use case
+    Day -5  Spring boss fight    Fix: say "I'm not sure" honestly
+    Day -4  HR boss fight        Fix: fewer fillers
+    Day -3  Technical boss fight Fix: think aloud
+    Day -2  Timed mock test      Fix: skip hard questions, come back
+    Day -1  Flashcards + diary   Fix: sleep early
+
+    After every fight: write 1 weak answer in my diary.
+  walkthrough: |
+    - This is a **plan**, not code. In the Interview world, the "code" boxes hold templates and scripts you type to learn a structure.
+    - Each day has **one practice** and **one thing to fix**. One fix per day is enough. Trying to fix ten things at once fixes nothing.
+    - The rounds rotate (HR, Technical, Spring) so no muscle gets lazy.
+    - Day -2 is a **timed** test, so you get used to the clock before the real one.
+    - Day -1 is **light**. Cramming the night before raises stress and lowers recall.
+    - The last line is the most important habit: every fight feeds the diary.
+tryIt:
+  instructions: "Type this post-interview review template. Typing it (not pasting) helps you remember the four steps. Use it after your next boss fight."
+  code: |
+    POST-INTERVIEW REVIEW (15 minutes, same day)
+
+    Company / round: ____________
+    Date: ____________
+
+    1. Questions I remember:
+       - ____________
+       - ____________
+    2. Each answer: good / okay / weak
+    3. Weak answer, rewritten in simple English:
+       ____________
+    4. ONE thing I will fix next time:
+       ____________
+predict:
+  code: |
+    Rahul's review after a mock HR fight:
+
+    1. Questions I remember: "Tell me about yourself", "Why IT?"
+    2. Marked: first answer okay, second answer weak.
+    3. Better answer for "Why IT?" written in simple English.
+
+    Which ONE step of the 4-step review is missing?
+    Type the missing step as a short phrase.
+  expectedOutput: |
+    One thing to fix next time
+  explanation: |
+    The review has four steps: questions, mark each answer, rewrite weak answers, and **one thing to fix next time**. Rahul skipped step 4. Without a single, clear fix, the next mock will repeat the same mistakes. Example fix: "Pause for two seconds before I start answering."
+commonMistakes:
+  - "Only reading answers silently. Interviews are spoken: practise out loud, by voice in the boss fight."
+  - "Trying to memorise answers word by word. When you forget one word you freeze. Memorise the structure, not the sentence."
+  - "Skipping the review after a mock. The learning happens in the review, not in the fight."
+  - "Trying to fix ten things at once. Pick one fix per session."
+  - "Doing the first mock test on the real exam day. Practise the timer and the format before."
+  - "Believing online posts about 'the exact questions'. Prepare the basics deeply; patterns and questions change."
+interviewBox:
+  why: "Why this matters: interviewers notice quickly whether a candidate has practised speaking. A practised candidate sounds calm and organised, even with simple English."
+  questions:
+    - q: "How did you prepare for this interview? (practice question)"
+      a: "I made a plan for the week. I revised Java, OOP and SQL basics, and I did practice interviews where I answered out loud. After each one I wrote my weak answers in a diary and improved them. That helped me speak more clearly."
+    - q: "Are you nervous? (practice question)"
+      a: "A little, yes, because this opportunity is important to me. But I have practised, so I am ready to do my best."
+    - q: "Do you have any questions for us? (practice question)"
+      a: "Yes, thank you. What does a new developer usually work on in the first few months? And how does the team help new people learn?"
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which round mainly checks your story, attitude and honesty?"
+    code: null
+    options: ["Online test", "Technical round", "HR round", "Coding round"]
+    answer: 2
+    explanation: "The HR round is about you as a person: your story, attitude, flexibility and communication. The technical round checks concepts and code; the online test checks aptitude and coding under time."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "The best way to prepare is to memorise every answer word by word."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. If you forget one word, a memorised answer collapses. Memorise the structure (like Present-Past-Future), then say it in your own words. The tempting part is that word-by-word feels safe, but it breaks under pressure."
+  - id: q3
+    type: MATCH
+    prompt: "Match each Code Quest tool to what it practises"
+    pairs:
+      - left: "Mock interview boss fight"
+        right: "Speaking answers aloud to 5 practice questions"
+      - left: "Mock tests tab"
+        right: "Timed online-test practice using the official pattern you enter"
+      - left: "Interview diary"
+        right: "Recording questions and writing better answers"
+      - left: "Communication Gym"
+        right: "Pace, fillers and pauses while speaking"
+    explanation: "Each tool has one job. Boss fights train spoken answers, mock tests train the timed online round, the diary stores lessons from each interview, and the Gym trains your voice."
+  - id: q4
+    type: MCQ
+    prompt: "It is the night before your interview. What is the best plan?"
+    code: null
+    options: ["Learn a brand-new topic like Kafka", "Do three full mock tests back to back", "Light revision of flashcards and diary, check your setup, sleep early", "Stay up late reading interview experiences online"]
+    answer: 2
+    explanation: "The night before is for light revision and rest. A brand-new topic or three long tests raise stress and tire your brain. Late-night reading costs sleep, and sleep is what helps you recall."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the last step of the post-interview review."
+    code: |
+      1. Write the questions I remember
+      2. Mark each answer good / okay / weak
+      3. Rewrite weak answers in simple English
+      4. Pick ONE thing to ____ next time
+    acceptedAnswers: ["fix", "improve", "change"]
+    explanation: "The review ends with one clear fix. One fix per session is realistic and it actually changes your next interview."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "Switching from a non-technical job to development is something you should hide in interviews."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Your work experience shows discipline, deadlines and teamwork. Explained honestly and positively, the switch shows motivation. Hiding it makes your resume look confusing."
+  - id: q7
+    type: MCQ
+    prompt: "Which skill do interviewers usually value MORE than fancy English?"
+    code: null
+    options: ["Using long technical words", "Speaking clearly and simply", "Speaking very fast", "Never pausing"]
+    answer: 1
+    explanation: "Clear and simple wins. Long words and fast speech make you harder to understand. Short pauses are fine; they show you are thinking."
+explainBack:
+  prompt: "Explain to a friend how you will use mock interviews to prepare for a real one."
+  rubric:
+    - "I named the main rounds and what each checks"
+    - "I described the loop: prepare, mock, review, fix one thing"
+    - "I mentioned practising out loud, not only reading"
+    - "I said what I do after an interview (diary review)"
+    - "I spoke in short, simple sentences"
+  modelAnswer: |
+    Interviews usually have rounds: an online test, a technical round where they check Java and my project, and an HR round about me and my attitude. To prepare, I use mock interviews like a cricket net session. I prepare a topic, then I do a practice interview and answer out loud. After that I review: I write the questions, mark my weak answers, and rewrite them in simple English in my diary. Then I choose one thing to fix next time. I repeat this a few times a week, so on the real day I feel calm.
+flashcards:
+  - front: "The 4-step review after an interview"
+    back: "1. Write the questions. 2. Mark good/okay/weak. 3. Rewrite weak answers simply. 4. Pick ONE thing to fix."
+  - front: "What do interviewers look for (4 things)?"
+    back: "Clear basics, step-by-step thinking, clear communication, honest learning attitude."
+  - front: "Memorise words or structure?"
+    back: "Structure. Then say it in your own words, so forgetting one word doesn't freeze you."
+  - front: "Night before an interview"
+    back: "Light revision, check laptop/camera/internet, sleep early. No new topics."
+keyTakeaways:
+  - "Interviews are a skill: practise out loud in a safe place, many times."
+  - "Each round checks something different: aptitude/coding, technical depth, your story and attitude."
+  - "Use the loop: prepare, boss fight, review in the diary, fix one thing."
+  - "Memorise structures, not sentences."
+  - "Clear, simple English beats fancy English. Your career switch is a strength when told honestly."

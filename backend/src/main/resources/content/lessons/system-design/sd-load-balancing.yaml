@@ -1,0 +1,341 @@
+slug: sd-load-balancing
+world: SYSTEM_DESIGN
+section: SD
+order: 3
+title: "Load balancing and consistent hashing"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Good SP design-round material: load balancing algorithms and consistent hashing are common follow-ups, and the TreeMap ring is a neat Java coding exercise."
+otherCompanies: "Consistent hashing is a favourite product-company question (distributed caches, sharding); load balancer basics come up in most backend interviews."
+why: |
+  The moment you have **more than one server** (Lesson 2), someone has to decide *which server handles which request*. That someone is the **load balancer**. It appears in almost every design diagram you will ever draw.
+
+  Then comes a harder question: when data is spread over many cache or database servers, **how do you decide which server holds which key**, in a way that doesn't break when you add or remove a server? The naive answer `hash(key) % N` moves almost every key when N changes. **Consistent hashing** moves only a small fraction. It is used in distributed caches, Cassandra/DynamoDB-style databases and CDNs, and interviewers love it because it mixes design with a little algorithm.
+
+  You will build it yourself in Java with a `TreeMap`.
+analogy: |
+  **Load balancer = the traffic policeman at a toll plaza.** Cars (requests) arrive; he waves each one to a free booth (server). If a booth's barrier is broken (health check failed), he stops sending cars there.
+
+  **Consistent hashing = seats around a round dining table at a family function.** Imagine the table as a circle with seat numbers 0 to 359. Waiters (servers) stand at a few points on the circle. Each guest (key) sits at a seat, and is served by the **first waiter clockwise** from their seat.
+  - If one waiter goes home, only *his* guests move to the next waiter clockwise. Everyone else keeps their waiter.
+  - With `% N`, it is like renumbering every guest's waiter whenever staff changes: total chaos.
+visual:
+  diagram: |
+    LOAD BALANCER
+                      Clients
+                         |
+                         v
+                    +---------+   GET /health every 5 s
+                    |   LB    |----------------------+
+                    +---------+                      |
+                    /    |    \                      v
+                 +----+ +----+ +----+          S3 failed 3 checks
+                 | S1 | | S2 | | S3 |  X  ->   remove from pool
+                 +----+ +----+ +----+
+
+    CONSISTENT HASHING (ring 0..359 drawn as a line; end wraps to 0)
+      0     50    90    150   200   250   300   330  359
+      |-----k-----A-----k-----B-----k-----C-----k-----|
+            |     ^     |     ^     |     ^     |     |
+            +-----+     +-----+     +-----+     +-----+--> wraps to A
+       key -> first server clockwise (to the right)
+       50->A  150->B  250->C  330->A
+       B dies: only 150 moves (to C); the rest stay put
+  caption: "Top: a load balancer spreads requests and drops servers that fail health checks. Bottom: on the ring, each key (k) goes to the next server clockwise, so removing one server only moves that server's keys."
+  visualizer: null
+explanation: |
+  ### What a load balancer does
+  A **load balancer (LB)** sits in front of your servers and spreads incoming requests among them. It gives you:
+  - **Scalability:** add servers behind it, clients don't notice.
+  - **Availability:** if a server dies, the LB stops sending traffic to it.
+  - **One entry point:** clients know one address; servers can change behind it.
+
+  ### L4 vs L7 load balancing
+  The "L" refers to layers of the network model (OSI layers).
+  | | L4 (transport layer) | L7 (application layer) |
+  |---|---|---|
+  | Looks at | IP address and port only (TCP/UDP) | Full HTTP request: URL, headers, cookies |
+  | Speed | Very fast, simple | A bit slower, does more work |
+  | Smart routing | No | Yes: `/api/payments` -> payment servers, `/images` -> image servers |
+  | Example | AWS Network Load Balancer | Nginx, AWS Application Load Balancer |
+
+  Interview line: *"I'd use an L7 load balancer so I can route by URL path and terminate HTTPS there."*
+
+  ### Load balancing algorithms
+  | Algorithm | How it picks | Good when |
+  |---|---|---|
+  | **Round robin** | S1, S2, S3, S1, S2... in turn | Servers are equal, requests similar |
+  | **Weighted round robin** | Bigger servers get more turns (S1 weight 2: S1, S1, S2...) | Servers have different sizes |
+  | **Least connections** | Server with fewest active connections | Requests take very different times (video calls, long downloads) |
+  | **IP / key hash** | `hash(clientIP) % N` | Same client should reach same server (simple stickiness) |
+
+  ### Health checks
+  The LB regularly calls something like `GET /health` on each server (say every 5 seconds). If a server fails 3 checks in a row, it is removed from the pool; when it passes again, it is added back. This is how one crashed server doesn't hurt users.
+
+  ### Sticky sessions
+  **Sticky sessions** (session affinity) mean the LB sends a user to the *same* server every time, usually using a cookie. It is a quick fix for stateful servers, but:
+  - load becomes uneven (one server may get all the heavy users),
+  - if that server dies, the user's session is lost.
+  Better fix: make servers **stateless** with a shared session store (Lesson 2).
+
+  ### The LB is a SPOF too
+  One load balancer is a single point of failure. Use two in **active-passive** mode (the passive one takes over the same IP address if the active one dies), or a managed cloud LB that is already redundant. At global scale, **DNS** spreads users across data centres first.
+
+  ### Why `hash(key) % N` breaks
+  Suppose you store user sessions on 3 cache servers using `server = hash(key) % 3`. Now you add a 4th server: `hash(key) % 4`. For most keys the answer changes, so about **75% of keys move** to a different server. Every cache misses at once and the database gets crushed.
+
+  ### Consistent hashing
+  1. Imagine a **ring** of hash values (0 to 2^31 - 1; in drawings, 0 to 359).
+  2. Put each **server** on the ring at `hash(serverName)`.
+  3. Put each **key** on the ring at `hash(key)`.
+  4. A key belongs to the **first server clockwise** from it; if none, wrap around to the first server.
+
+  When a server is **added**, it only takes keys from its clockwise neighbour. When a server is **removed**, only its keys move to the next server. On average only about **1/N of the keys** move.
+
+  ### Virtual nodes
+  With only 3 points on the ring, one server may get a huge arc by bad luck. **Virtual nodes** put each server on the ring many times (`S1#0`, `S1#1` ... `S1#99`). The arcs become small and even, so load is balanced, and when a server leaves, its keys spread across *all* remaining servers instead of dumping on one neighbour.
+
+  ### Java: the ring is a TreeMap
+  A `TreeMap<Integer, String>` keeps positions sorted. `ceilingEntry(h)` returns the first entry with key >= h, which is exactly "first server clockwise". If it returns `null`, wrap with `firstEntry()`. Lookups are O(log n).
+
+  ### How to answer "Where would you put load balancers?"
+  1. In front of the web/app servers (always).
+  2. Between internal services if they scale independently.
+  3. Mention the algorithm (round robin or least connections), health checks and redundancy.
+  4. If data is partitioned (cache cluster, shards), mention consistent hashing.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class ConsistentHashing {
+        private final TreeMap<Integer, String> ring = new TreeMap<>();
+        private final int virtualNodes;
+
+        ConsistentHashing(int virtualNodes) { this.virtualNodes = virtualNodes; }
+
+        // mix the bits of hashCode so nearby strings land far apart on the ring
+        static int hash(String s) {
+            int h = s.hashCode();
+            h ^= (h >>> 16); h *= 0x85ebca6b;
+            h ^= (h >>> 13); h *= 0xc2b2ae35;
+            h ^= (h >>> 16);
+            return h & 0x7fffffff;               // keep it non-negative
+        }
+
+        void addServer(String name) {
+            for (int i = 0; i < virtualNodes; i++) ring.put(hash(name + "#" + i), name);
+        }
+
+        void removeServer(String name) {
+            for (int i = 0; i < virtualNodes; i++) ring.remove(hash(name + "#" + i));
+        }
+
+        String serverFor(String key) {
+            Map.Entry<Integer, String> e = ring.ceilingEntry(hash(key));
+            return (e != null ? e : ring.firstEntry()).getValue();
+        }
+
+        public static void main(String[] args) {
+            ConsistentHashing ch = new ConsistentHashing(100);
+            for (String s : List.of("S1", "S2", "S3")) ch.addServer(s);
+
+            int keys = 10_000;
+            Map<String, String> before = new HashMap<>();
+            for (int i = 0; i < keys; i++) before.put("user" + i, ch.serverFor("user" + i));
+
+            ch.addServer("S4");                  // scale out: one new server
+            int movedRing = 0, movedModulo = 0;
+            for (int i = 0; i < keys; i++) {
+                String k = "user" + i;
+                if (!before.get(k).equals(ch.serverFor(k))) movedRing++;
+                if (hash(k) % 3 != hash(k) % 4) movedModulo++;
+            }
+            System.out.println("Keys moved with consistent hashing: " + movedRing);
+            System.out.println("Keys moved with hash % N          : " + movedModulo);
+        }
+    }
+  walkthrough: |
+    - `TreeMap<Integer, String> ring`: ring position -> server name, kept **sorted** by position.
+    - `hash(...)`: `String.hashCode()` puts similar strings ("S1#1", "S1#2") close together, so we "mix" the bits with a few shifts and multiplications (a standard trick from the MurmurHash finaliser). `& 0x7fffffff` clears the sign bit so positions are never negative.
+    - `addServer`: puts each server on the ring **100 times** (virtual nodes `S1#0`...`S1#99`) for even spreading.
+    - `serverFor`: `ceilingEntry(hash(key))` = first server at or after the key's position (clockwise). If the key is past the last server, `null` comes back and we wrap to `firstEntry()`.
+    - `main`: places 10,000 keys on 3 servers, remembers where each went, adds S4, and counts how many keys changed server. For comparison it also counts how many would move with plain `hash % 3` -> `hash % 4`.
+
+    Output on Java 21:
+    ```
+    Keys moved with consistent hashing: 2318
+    Keys moved with hash % N          : 7406
+    ```
+    About **23%** of keys moved with the ring (ideal is 1/4 = 25%: exactly the share the new server should take). With modulo, about **74%** moved. That difference is why distributed caches use consistent hashing.
+tryIt:
+  instructions: "Type this tiny load balancer. Round robin cycles through the servers using % to wrap around; least connections picks the server with the smallest active count. Change the counts and predict the winner before running."
+  code: |
+    import java.util.*;
+
+    public class RoundRobin {
+        public static void main(String[] args) {
+            List<String> servers = List.of("S1", "S2", "S3");
+            int next = 0;
+            List<String> picked = new ArrayList<>();
+            for (int req = 1; req <= 5; req++) {
+                picked.add(servers.get(next));
+                next = (next + 1) % servers.size();   // move to the next server, wrap at the end
+            }
+            System.out.println("Round robin: " + String.join(" ", picked));
+
+            Map<String, Integer> active = new TreeMap<>(Map.of("S1", 7, "S2", 2, "S3", 4));
+            String least = Collections.min(active.entrySet(), Map.Entry.comparingByValue()).getKey();
+            System.out.println("Least connections -> " + least);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Ring {
+        static TreeMap<Integer, String> ring = new TreeMap<>();
+
+        static String serverFor(int keyPos) {
+            Map.Entry<Integer, String> e = ring.ceilingEntry(keyPos); // first server clockwise
+            if (e == null) e = ring.firstEntry();                     // wrap around past 359
+            return e.getValue();
+        }
+
+        public static void main(String[] args) {
+            ring.put(90, "A");
+            ring.put(200, "B");
+            ring.put(300, "C");
+            int[] keys = {50, 150, 250, 330};
+            for (int k : keys) System.out.println(k + " -> " + serverFor(k));
+            ring.remove(200);                                         // server B dies
+            System.out.println("After B dies: 150 -> " + serverFor(150));
+        }
+    }
+  expectedOutput: |
+    50 -> A
+    150 -> B
+    250 -> C
+    330 -> A
+    After B dies: 150 -> C
+  explanation: |
+    Servers sit at 90 (A), 200 (B) and 300 (C). Each key goes to the **first server at or after** its position:
+    - 50 -> next is 90 -> **A**.
+    - 150 -> next is 200 -> **B**.
+    - 250 -> next is 300 -> **C**.
+    - 330 -> nothing at or after 330, so `ceilingEntry` returns `null` and we wrap to the first entry, 90 -> **A**.
+
+    After removing B, key 150's next server is 300 -> **C**. Keys 50, 250 and 330 did not move at all. Only the dead server's keys moved: that is the whole point of consistent hashing.
+commonMistakes:
+  - "Forgetting the wrap-around: when ceilingEntry returns null, the key belongs to the FIRST server on the ring."
+  - "Using hash(key) % N for a cache cluster that will grow; adding one server reshuffles most keys and causes a flood of cache misses."
+  - "Leaving the load balancer itself as a single point of failure."
+  - "Relying on sticky sessions as the main design; prefer stateless servers with a shared session store."
+  - "Skipping virtual nodes, which leaves load uneven when there are only a few servers."
+  - "Mixing up L4 (IP and port only) with L7 (can read URLs, headers and cookies)."
+interviewBox:
+  why: "Why interviewers ask this: load balancers appear in every design, and consistent hashing tests whether you understand how data is spread over many machines."
+  questions:
+    - q: "Practice: What is the difference between an L4 and an L7 load balancer?"
+      a: "An L4 load balancer works at the transport layer. It only sees IP addresses and ports, so it's very fast but can't make smart decisions. An L7 load balancer understands HTTP, so it can route by URL path, headers or cookies, for example sending /payments to payment servers. I'd usually pick L7 for web apps."
+    - q: "Practice: Which load balancing algorithm would you use for a video-call service, and why?"
+      a: "Least connections. Calls last very different times, so round robin could pile many long calls on one server. Least connections sends each new call to the server with the fewest active ones, which keeps load even."
+    - q: "Practice: Explain consistent hashing and why it is better than hash mod N."
+      a: "With hash mod N, if N changes from 3 to 4, most keys map to a different server, so a cache cluster loses most of its hits at once. In consistent hashing, servers and keys are placed on a ring, and each key goes to the first server clockwise. Adding or removing a server only moves the keys next to it, about 1 over N of them. Virtual nodes place each server many times on the ring so the load stays even."
+    - q: "Practice: How does the load balancer know a server is down?"
+      a: "Through health checks. It calls something like /health every few seconds. If a server fails a few checks in a row, the load balancer stops sending it traffic, and adds it back when it becomes healthy again."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Weighted round robin: S1 has weight 2, S2 has weight 1. What prints?"
+    code: |
+      List<String> slots = List.of("S1", "S1", "S2");
+      List<String> out = new ArrayList<>();
+      for (int req = 0; req < 6; req++) {
+          out.add(slots.get(req % slots.size()));
+      }
+      System.out.println(String.join(" ", out));
+    options: ["S1 S2 S1 S2 S1 S2", "S1 S1 S2 S1 S1 S2", "S1 S1 S1 S1 S2 S2", "S2 S1 S1 S2 S1 S1"]
+    answer: 1
+    explanation: "req % 3 gives 0,1,2,0,1,2, so slots S1, S1, S2 repeat twice. S1 gets twice as many requests as S2, which is what weight 2 means. Plain round robin would alternate S1 S2."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Ring positions 0-359. Servers: X at 100, Y at 250. Using ceilingEntry with wrap-around, which server gets key 260?"
+    code: |
+      ring.put(100, "X");
+      ring.put(250, "Y");
+      Map.Entry<Integer, String> e = ring.ceilingEntry(260);
+      if (e == null) e = ring.firstEntry();
+      System.out.println(e.getValue());
+    options: ["X", "Y", "null", "NullPointerException"]
+    answer: 0
+    explanation: "No server is at or after 260, so ceilingEntry returns null and we wrap to the first entry (100 -> X). Y at 250 is BEFORE 260 going clockwise, so it is not chosen."
+  - id: q3
+    type: MCQ
+    prompt: "You want /api/payments to go to one server pool and /images to another. Which load balancer do you need?"
+    options: ["L4 load balancer", "L7 load balancer", "DNS only", "Any; all load balancers read URLs"]
+    answer: 1
+    explanation: "Routing by URL path needs the load balancer to understand HTTP, which is layer 7. An L4 balancer only sees IP addresses and ports."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "With consistent hashing, adding one server to a 3-server cache cluster moves roughly 3/4 of all keys."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Roughly 1/4 move (the share the new server takes over). About 3/4 moving is what happens with plain hash % N when N goes from 3 to 4."
+  - id: q5
+    type: MATCH
+    prompt: "Match the algorithm to the situation it suits best"
+    pairs:
+      - left: "Round robin"
+        right: "Identical servers, short similar requests"
+      - left: "Weighted round robin"
+        right: "One server has double the CPU of the others"
+      - left: "Least connections"
+        right: "Requests last very different amounts of time"
+      - left: "IP hash"
+        right: "Same client should keep hitting the same server"
+    explanation: "Each algorithm fixes a specific unevenness: equal servers, unequal servers, unequal request lengths, or a need for stickiness."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the TreeMap method that finds the first server at or after a key's position on the ring."
+    code: |
+      Map.Entry<Integer, String> e = ring.____(hash(key));
+      if (e == null) e = ring.firstEntry();
+    acceptedAnswers: ["ceilingEntry"]
+    explanation: "ceilingEntry(k) returns the entry with the smallest key >= k, which is the next server clockwise. floorEntry would look counter-clockwise, and higherEntry skips a server sitting exactly at k."
+  - id: q7
+    type: MCQ
+    prompt: "What is the main problem with sticky sessions?"
+    options: ["They make HTTPS impossible", "Load can become uneven and sessions are lost if that server dies", "They only work with L4 load balancers", "They require consistent hashing"]
+    answer: 1
+    explanation: "Sticky sessions pin a user to one server, so heavy users can overload it, and the session disappears if it crashes. Stateless servers with a shared store avoid both problems."
+explainBack:
+  prompt: "Explain load balancing and consistent hashing using the toll plaza and the round dining table."
+  rubric:
+    - "I said what a load balancer does and mentioned health checks"
+    - "I named at least two algorithms (round robin, least connections)"
+    - "I explained why hash mod N moves most keys when servers change"
+    - "I explained the ring: each key goes to the first server clockwise"
+    - "I mentioned virtual nodes for even load"
+  modelAnswer: |
+    A load balancer is like a toll plaza policeman: it waves each request to a booth, using round robin or picking the least busy booth, and it checks health so broken booths get no cars. When data is split over many cache servers, using hash mod N is bad, because when N changes almost every key moves. Consistent hashing is like a round table: servers stand at points on a circle and each key goes to the first server clockwise. If one server leaves, only its keys move to the next one. Putting each server many times on the ring, called virtual nodes, keeps the load even.
+flashcards:
+  - front: "L4 vs L7 load balancer"
+    back: "L4: sees IP and port, fast, dumb. L7: reads HTTP (URL, headers, cookies), can route smartly and terminate HTTPS."
+  - front: "Least connections"
+    back: "Send the request to the server with the fewest active connections; best when request durations vary a lot."
+  - front: "Consistent hashing rule"
+    back: "Key goes to the first server clockwise on the ring (TreeMap.ceilingEntry, wrap to firstEntry)."
+  - front: "Keys moved when adding 1 server: modulo vs consistent hashing"
+    back: "hash % N: most keys (about 75% going 3->4). Consistent hashing: about 1/N of keys."
+  - front: "Why virtual nodes?"
+    back: "Each server appears many times on the ring, so arcs are small and even and a leaving server's keys spread over all others."
+keyTakeaways:
+  - "A load balancer spreads requests, hides servers behind one address and skips unhealthy servers via health checks."
+  - "L7 balancers can route by URL and headers; L4 balancers only see IP and port."
+  - "Pick the algorithm by situation: round robin, weighted, least connections or hash."
+  - "Prefer stateless servers over sticky sessions; make the LB itself redundant."
+  - "Consistent hashing moves only about 1/N of keys when servers change; use virtual nodes for balance."
+  - "In Java, a TreeMap with ceilingEntry and firstEntry is a complete hash ring."

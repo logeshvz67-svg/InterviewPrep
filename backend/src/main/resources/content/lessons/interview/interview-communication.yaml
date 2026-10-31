@@ -1,0 +1,250 @@
+slug: interview-communication
+world: INTERVIEW
+section: INTERVIEW
+order: 5
+title: "Communication skills"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+infosysRelevance: "Infosys-style practice: developers in service companies talk to teammates and clients every day, so clear spoken communication is commonly noticed in SP and DSE interviews alongside technical skill."
+otherCompanies: "Communication is judged in every round at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies, especially in client-facing roles and video interviews."
+why: |
+  You may think: "My English is weak, so I will fail." That is **not true**.
+
+  Interviewers do not expect perfect grammar or a fancy accent. They expect to **understand you**. Clear communication is mostly about **habits**, not vocabulary:
+  - speaking at a comfortable **pace**,
+  - using fewer **filler words** ("basically", "like", "umm"),
+  - using short **pauses** instead of noise,
+  - **signposting** your answer ("First... Second... Finally..."),
+  - **listening** fully and **clarifying** when unsure,
+  - looking calm and present on a **video call**.
+
+  These habits can improve a lot in a few weeks of daily practice. The Communication Gym measures them for you.
+analogy: |
+  Think of a **good railway station announcement**.
+
+  - It is **slow and clear**: "Train number one-two-six-two-seven... Karnataka Express..."
+  - It has **pauses** between pieces of information.
+  - It has **structure**: train number, name, platform, time. Always in the same order.
+  - It does **not** say "basically, like, umm, the train is, you know, coming".
+
+  The announcer may not use difficult words, but every passenger understands. That is your goal in an interview.
+visual:
+  diagram: |
+    ONE GOOD SPOKEN ANSWER
+
+    Listen fully -> [pause 2s] -> Signpost -> Point 1 -> . -> Point 2
+                                  "There are    (short   pause  ...
+                                   two main     sentence)
+                                   differences"
+                       -> "So, in short..." -> STOP
+
+    PACE METER (Communication Gym)
+    |--slow--|======= comfortable =======|--fast--|
+    0       100                         165     words/minute
+                (aim for about 110-160)
+  caption: "Listen, pause, signpost, give short points with pauses between, summarise, stop. Keep your pace in the comfortable zone."
+  visualizer: null
+explanation: |
+  ### 1. Pace: slow down
+  **Pace** is how fast you speak, measured in **words per minute (WPM)**. When nervous, most people speed up, and the listener gets lost.
+  - The Communication Gym shows "comfortable" at roughly **100-165 WPM**; aim for about **110-160**.
+  - Trick: speak as if you are explaining to someone on a slightly bad phone line.
+  - Slower speech also hides grammar mistakes, because you have time to choose words.
+
+  ### 2. Fillers: replace them with silence
+  **Fillers** are words that carry no meaning: *umm, uh, like, basically, actually, you know, I mean, so yeah*.
+  - A few are normal. Many make you sound unsure.
+  - The fix is **not** to "try harder". The fix is to **replace the filler with a short pause**.
+  - Practise: record a 60-second answer in the Gym, look at the filler count, record again with pauses. Watch the number fall.
+
+  ### 3. Pauses are powerful
+  A **pause** of one or two seconds feels long to you but normal to the listener.
+  - **Before** answering: "That's a good question." *(pause)* Then answer.
+  - **Between** points: it shows the listener where one idea ends.
+  - **After** the key sentence: it lets the important part land.
+
+  ### 4. Signposts: give your answer a map
+  **Signposts** are small phrases that tell the listener where you are in the answer.
+  | Purpose | Signpost |
+  |---|---|
+  | Preview | "There are two main differences." |
+  | Order | "First... Second... Finally..." |
+  | Example | "For example..." |
+  | Contrast | "On the other hand..." |
+  | Summary | "So, in short..." |
+
+  If you lose your way in the middle, a signpost saves you: "So, the second point is..."
+
+  ### 5. Short sentences
+  Long sentences with many "and... and... which... so..." are hard to follow and easy to break. Use **one idea per sentence**. Simple English such as "It is fast. It uses more memory." is perfectly professional.
+
+  ### 6. Listening and clarifying
+  Half of communication is listening.
+  - Let the interviewer **finish** the question. Do not start answering in the middle.
+  - If unclear, **clarify**: "Just to confirm, are you asking about the difference between HashMap and Hashtable?"
+  - If you did not hear: "Sorry, could you please repeat that?" This is completely normal.
+  - **Paraphrasing** (repeating the question in your own words) also buys you thinking time.
+
+  ### 7. Body language on video calls
+  | Do | Avoid |
+  |---|---|
+  | Camera at eye level, face well lit (light in front of you, not behind) | Laptop on your lap looking up at your nose |
+  | Look at the **camera** when speaking, at the screen when listening | Looking at your notes or phone constantly |
+  | Plain background, quiet room, phone on silent | Fan noise, TV, people walking behind |
+  | Sit straight, small smile, nod while listening | Slouching, touching your face, typing while they talk |
+  | Test mic, camera and internet 30 minutes before | Joining late because of an update or a dead mouse battery |
+
+  ### 8. Practising with weak spoken English
+  - Every day, speak **one answer aloud** in the Gym (5 minutes is enough).
+  - Read good answers aloud, then say them **without reading**.
+  - Learn **phrases**, not just words: "That's a good question", "Let me think for a moment", "In short...".
+  - Your accent is fine. Clarity matters, not accent.
+tinyCode:
+  code: |
+    SIGNPOST SCRIPT (for any "difference between X and Y")
+
+    "That's a good question."              (pause)
+    "There are two main differences."      (pause)
+    "First, ________."                     (pause)
+    "Second, ________."                    (pause)
+    "For example, ________."               (pause)
+    "So, in short, ________."              STOP.
+  walkthrough: |
+    - **"That's a good question."** plus a pause buys two seconds of thinking time politely.
+    - **"There are two main differences."** previews the answer, so the listener knows what is coming.
+    - **"First... Second..."** keeps you on track. If you lose your way, you know where to continue.
+    - **"For example..."** makes it concrete.
+    - **"So, in short..."** summarises in one line. Then you **stop**. Stopping is a skill: do not keep adding "and also, basically...".
+    - The `(pause)` marks are part of the script. Practise them as seriously as the words.
+tryIt:
+  instructions: "Type this filler-to-pause practice sheet. Then record each 'better' line in the Communication Gym and check the filler count."
+  code: |
+    FILLER -> PAUSE PRACTICE
+
+    WEAK:   "Umm, basically, like, a thread is, you know,
+             a small, umm, part of a program."
+    BETTER: "A thread is a small unit of a program.  (pause)
+             It runs at the same time as other threads."
+
+    WEAK:   "So, actually, I mean, I used Spring Boot, so yeah."
+    BETTER: "I used Spring Boot.  (pause)
+             It made building the REST API fast."
+
+    MY RULE: When I want to say "umm", I stay silent instead.
+predict:
+  code: |
+    Candidate's answer on a video call:
+
+    "There are two main differences between an interface and
+     an abstract class. First, a class can implement many
+     interfaces, but extend only one abstract class. Second,
+     an abstract class can have instance variables and
+     constructors."
+
+    Signposts used: preview, "First", "Second".
+    Which signpost is missing at the end? Type it exactly
+    as taught in the lesson.
+  expectedOutput: |
+    So, in short
+  explanation: |
+    The answer previews ("There are two main differences") and orders the points ("First... Second..."), but never closes. Adding "**So, in short**, use an interface for a capability many classes share, and an abstract class for a common base with shared code" gives a clear ending and tells the interviewer you are done.
+commonMistakes:
+  - "Speaking faster when nervous. Slow down; aim for about 110-160 words per minute."
+  - "Trying to stop fillers by force. Replace each filler with a short pause instead."
+  - "Starting to answer before the interviewer finishes the question."
+  - "Guessing what an unclear question means instead of asking to clarify."
+  - "Looking at the screen or notes instead of the camera while speaking on video."
+  - "Not stopping: adding 'and also, basically...' after the answer is complete."
+interviewBox:
+  why: "Why this matters: interviewers judge communication in every answer, not in a separate test. Clear habits make your technical knowledge visible."
+  questions:
+    - q: "Your English is not very fluent. How will you communicate with clients? (practice question)"
+      a: "You are right that I am still improving my spoken English. I practise every day by recording my answers and doing mock interviews. I speak slowly and use simple, clear sentences, and when something is unclear I ask questions to confirm. I believe clear and simple communication works well with clients, and I will keep improving."
+    - q: "How do you make sure you understood a requirement correctly? (practice question)"
+      a: "I listen fully first. Then I repeat it back in my own words, like: 'Just to confirm, you want the report to show only active users?' If anything is unclear, I ask before I start. This saves time later."
+    - q: "Explain the difference between == and equals() in Java. (practice question; use signposts)"
+      a: "There are two main points. First, == compares references, that means whether two variables point to the same object. Second, equals() compares the content, if the class overrides it, like String does. So, in short, use equals() to compare the values of objects."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the best way to reduce filler words like 'umm' and 'basically'?"
+    code: null
+    options: ["Speak faster so there is no time for fillers", "Replace each filler with a short silent pause", "Memorise every answer word by word", "Use more difficult English words"]
+    answer: 1
+    explanation: "A short pause does the same job as a filler (thinking time) without the noise. Speaking faster usually adds fillers; memorising breaks under pressure; difficult words make you less clear."
+  - id: q2
+    type: MATCH
+    prompt: "Match each signpost to its purpose"
+    pairs:
+      - left: "There are two main differences."
+        right: "Preview what is coming"
+      - left: "First... Second..."
+        right: "Show the order of points"
+      - left: "For example..."
+        right: "Make a point concrete"
+      - left: "So, in short..."
+        right: "Summarise and close the answer"
+    explanation: "Signposts are a map for the listener: preview, order, example, summary. They also keep you on track when nervous."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "A 2-second pause before answering makes you look unprepared."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A short pause looks thoughtful and calm. It feels long to you but normal to the listener. Rushing in with 'umm' looks less prepared."
+  - id: q4
+    type: MCQ
+    prompt: "On a video interview, where should you look while YOU are speaking?"
+    code: null
+    options: ["At your notes", "At the camera", "At your own video tile", "Out of the window to think"]
+    answer: 1
+    explanation: "Looking at the camera feels like eye contact to the interviewer. Notes and your own tile look like you are distracted."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the clarifying phrase."
+    code: |
+      "Just to ____, are you asking about HashMap or Hashtable?"
+    acceptedAnswers: ["confirm", "clarify", "check"]
+    explanation: "Confirming the question shows careful listening and prevents answering the wrong question. It also gives you a moment to think."
+  - id: q6
+    type: MCQ
+    prompt: "Which pace range is a comfortable target for interview answers?"
+    code: null
+    options: ["50-70 words per minute", "About 110-160 words per minute", "200-250 words per minute", "Pace does not matter"]
+    answer: 1
+    explanation: "About 110-160 WPM is easy to follow. 50-70 sounds too slow and hesitant; 200+ is too fast for most listeners, especially on a call."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "You need a perfect accent to do well in interviews."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Interviewers need to understand you, not hear a particular accent. Pace, pauses, short sentences and structure matter far more."
+explainBack:
+  prompt: "Explain to a friend with weak spoken English how they can sound clear in an interview."
+  rubric:
+    - "I mentioned slowing down (pace)"
+    - "I explained replacing fillers with pauses"
+    - "I explained signposts like 'First... Second... So, in short'"
+    - "I mentioned listening fully and clarifying"
+    - "I gave at least one video-call tip"
+  modelAnswer: |
+    You don't need perfect English; you need clear English. First, slow down. When we are nervous we speak fast, so speak like you are on a bad phone line. Second, when you want to say "umm" or "basically", stay silent for a second instead. Third, use signposts: "There are two points. First... Second... So, in short..." That gives your answer a map. Also, listen to the full question, and if it is unclear, say "Just to confirm..." On video, look at the camera, sit in good light, and keep your phone away. Practise one answer every day.
+flashcards:
+  - front: "Comfortable speaking pace"
+    back: "About 110-160 words per minute. Slow down when nervous."
+  - front: "How to remove fillers"
+    back: "Replace each 'umm/basically/like' with a 1-2 second silent pause."
+  - front: "Signpost set"
+    back: "'There are two main...' -> 'First...' -> 'Second...' -> 'For example...' -> 'So, in short...' -> stop."
+  - front: "Clarifying phrase"
+    back: "'Just to confirm, are you asking about...?'"
+  - front: "Video call checklist"
+    back: "Camera at eye level, light in front, look at camera when speaking, quiet room, test 30 min before."
+keyTakeaways:
+  - "Clear beats fancy: interviewers need to understand you, not hear perfect English."
+  - "Slow down; aim for about 110-160 words per minute."
+  - "Replace fillers with short pauses."
+  - "Signposts give every answer a map: preview, First/Second, example, summary."
+  - "Listen fully, clarify when unsure, and look at the camera on video calls."

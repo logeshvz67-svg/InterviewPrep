@@ -1,0 +1,306 @@
+slug: sql-transactions-acid
+world: SQL
+section: SQL
+order: 9
+title: "Transactions and ACID"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+infosysRelevance: "ACID properties and transactions are standard DBMS theory for DSE and SP rounds; isolation levels are a good SP-level depth question."
+otherCompanies: "'Explain ACID properties' is one of the most common DBMS practice questions at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies go deeper into isolation levels."
+why: |
+  Imagine sending Rs 2,000 from Asha's account to Ravi's. That is **two** updates: subtract from Asha, add to Ravi. What if the server crashes **between** them? Asha loses money and Ravi never gets it.
+
+  A **transaction** groups statements so they succeed **together** or fail **together**. The **ACID** properties describe the promises a database makes about transactions.
+
+  In interviews:
+  - "Explain ACID with an example" is a top DBMS question.
+  - "What are isolation levels? What is a dirty read?" checks deeper understanding.
+  - Knowing the default level in **PostgreSQL vs MySQL** shows real-world awareness.
+analogy: |
+  Think of a **UPI payment**.
+
+  - You press Pay. Either the money leaves your account **and** reaches the shop, or nothing happens at all. You never see "money gone, shop didn't receive". That's **atomicity**.
+  - Your balance can never go below zero if the bank's rule says so. That's **consistency**.
+  - If you and your brother pay from the same joint account at the same moment, the bank handles them so the final balance is correct, as if one happened after the other. That's **isolation**.
+  - Once you see "Payment successful", the money stays moved even if the bank's server restarts a second later. That's **durability**.
+visual:
+  diagram: |
+    accounts before: Asha 5000, Ravi 1000
+
+    BEGIN;
+      UPDATE ... balance - 2000 WHERE Asha  -> Asha 3000 (not yet final)
+      UPDATE ... balance + 2000 WHERE Ravi  -> Ravi 3000 (not yet final)
+    COMMIT;      -> both changes saved permanently   (Asha 3000, Ravi 3000)
+      or
+    ROLLBACK;    -> both changes undone               (Asha 5000, Ravi 1000)
+
+    Session A (READ COMMITTED)        Session B
+    BEGIN;
+    SELECT balance -> 5000
+                                      UPDATE balance = 4000; (commits)
+    SELECT balance -> 4000   <- non-repeatable read!
+    COMMIT;
+  caption: "Top: a transfer is all-or-nothing; COMMIT keeps both updates, ROLLBACK undoes both. Bottom: in PostgreSQL's default READ COMMITTED level, the same SELECT can see a different value inside one transaction if another session commits in between."
+  visualizer: null
+explanation: |
+  ### What is a transaction?
+  A **transaction** is a group of SQL statements treated as **one unit of work**.
+  ```sql
+  BEGIN;                                   -- MySQL: START TRANSACTION;
+  UPDATE accounts SET balance = balance - 2000 WHERE acc_id = 1;
+  UPDATE accounts SET balance = balance + 2000 WHERE acc_id = 2;
+  COMMIT;                                  -- make it permanent
+  ```
+  - `BEGIN` (or `START TRANSACTION`) starts it.
+  - `COMMIT` saves all changes permanently and makes them visible to others.
+  - `ROLLBACK` undoes every change since BEGIN.
+  - `SAVEPOINT name` marks a point inside; `ROLLBACK TO SAVEPOINT name` undoes only the work after that point.
+
+  **Autocommit**: in both PostgreSQL and MySQL, a statement run **outside** BEGIN is its own tiny transaction and is committed immediately. A later `ROLLBACK` can't undo it (PostgreSQL just warns: *there is no transaction in progress*).
+
+  ### ACID
+  | Letter | Property | Plain meaning | Bank example |
+  |---|---|---|---|
+  | **A** | Atomicity | all or nothing | debit and credit both happen, or neither |
+  | **C** | Consistency | the database moves from one valid state to another; all rules (constraints) hold | `CHECK (balance >= 0)` is never broken |
+  | **I** | Isolation | concurrent transactions don't see each other's half-done work | two transfers at once give the right final balance |
+  | **D** | Durability | once committed, it survives crashes | data is in the write-ahead log on disk before COMMIT returns |
+
+  How databases do it: atomicity and durability use a **log** (PostgreSQL calls it the **WAL**, write-ahead log): changes are written to the log first, so after a crash committed work is replayed and uncommitted work is ignored. Isolation uses **locks** and/or **MVCC** (multi-version concurrency control: readers see a snapshot, writers create new row versions, so readers and writers don't block each other).
+
+  ### Errors inside a transaction (PostgreSQL)
+  If any statement fails inside a PostgreSQL transaction, the whole transaction becomes **aborted**. Every following statement fails with `current transaction is aborted, commands ignored until end of transaction block`, and `COMMIT` actually performs a **ROLLBACK**. Atomicity in action: nothing half-done is saved.
+
+  > MySQL difference: in MySQL a failed statement is rolled back on its own, but the transaction stays open, and earlier successful statements can still be committed. Your application must decide to ROLLBACK.
+
+  ### Concurrency problems (anomalies)
+  When transactions run at the same time, these problems can appear:
+  | Anomaly | What happens |
+  |---|---|
+  | **Dirty read** | T1 reads data that T2 changed but has **not committed** yet; T2 then rolls back, so T1 used data that never existed |
+  | **Non-repeatable read** | T1 reads a row twice and gets **different values**, because T2 updated and committed in between |
+  | **Phantom read** | T1 runs the same WHERE query twice and gets **new rows**, because T2 inserted and committed in between |
+  | **Lost update** | T1 and T2 both read a balance, both write a new value, and one write overwrites the other |
+
+  ### Isolation levels (SQL standard)
+  Higher levels prevent more anomalies but allow less concurrency.
+  | Level | Dirty read | Non-repeatable read | Phantom read |
+  |---|---|---|---|
+  | READ UNCOMMITTED | possible | possible | possible |
+  | READ COMMITTED | prevented | possible | possible |
+  | REPEATABLE READ | prevented | prevented | possible (standard) |
+  | SERIALIZABLE | prevented | prevented | prevented |
+
+  ### PostgreSQL vs MySQL defaults
+  | | PostgreSQL | MySQL (InnoDB) |
+  |---|---|---|
+  | Default level | **READ COMMITTED** | **REPEATABLE READ** |
+  | READ UNCOMMITTED | accepted, but behaves like READ COMMITTED (never dirty reads) | really allows dirty reads |
+  | REPEATABLE READ | snapshot of the whole transaction: also no phantoms; a conflicting update fails with *could not serialize access due to concurrent update* | consistent snapshot for plain SELECTs; uses gap/next-key locks for locking reads |
+  | Start a transaction | `BEGIN;` | `START TRANSACTION;` (or `BEGIN;`) |
+
+  ```sql
+  SHOW transaction_isolation;                     -- PostgreSQL: read committed
+  BEGIN ISOLATION LEVEL REPEATABLE READ;          -- PostgreSQL, for one transaction
+  SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;   -- see note below
+  ```
+  `SET TRANSACTION` works in both databases, but at a different moment: in PostgreSQL write it right after `BEGIN` (before the first query); in MySQL write it before `START TRANSACTION`, and it applies to the next transaction.
+  We tested this on PostgreSQL 16 with two sessions: in READ COMMITTED, a second SELECT in the same transaction saw another session's committed update (5000 became 4000). In REPEATABLE READ, the second SELECT still showed the old value, and a row inserted by the other session was not visible until our transaction ended.
+
+  ### Preventing lost updates
+  - Write the change relative to the stored value in one statement: `SET balance = balance - 100` (not "read in the app, then write a fixed number").
+  - Or lock the row while you work on it: `SELECT ... FOR UPDATE` inside the transaction.
+  - Or use REPEATABLE READ / SERIALIZABLE and retry when the database reports a serialization error.
+tinyCode:
+  code: |
+    CREATE TABLE accounts (
+      acc_id  INT PRIMARY KEY,
+      holder  VARCHAR(20) NOT NULL,
+      balance INT NOT NULL CHECK (balance >= 0)
+    );
+    INSERT INTO accounts VALUES (1, 'Asha', 5000), (2, 'Ravi', 1000);
+
+    BEGIN;
+    UPDATE accounts SET balance = balance - 2000 WHERE acc_id = 1;
+    UPDATE accounts SET balance = balance + 2000 WHERE acc_id = 2;
+    COMMIT;
+
+    SELECT * FROM accounts ORDER BY acc_id;
+    --  acc_id | holder | balance
+    -- --------+--------+---------
+    --       1 | Asha   |    3000
+    --       2 | Ravi   |    3000
+  walkthrough: |
+    - The `CHECK (balance >= 0)` constraint is a consistency rule: no account may go negative.
+    - `BEGIN` starts the transaction. Changes after this are not final yet; other sessions still see the old balances.
+    - The first UPDATE takes 2000 from Asha (5000 -> 3000).
+    - The second UPDATE gives 2000 to Ravi (1000 -> 3000).
+    - `COMMIT` makes both changes permanent and visible together. If the server crashed before COMMIT, neither change would survive.
+    - The total money (6000) is the same before and after: the transfer moved money, it didn't create or destroy any.
+tryIt:
+  instructions: "Run this after the tiny code (balances 3000 and 3000). Before each SELECT, write down the balances you expect. The third block fails on purpose: notice what PostgreSQL says."
+  code: |
+    -- 1. ROLLBACK undoes everything since BEGIN
+    BEGIN;
+    UPDATE accounts SET balance = balance - 500 WHERE acc_id = 1;
+    ROLLBACK;
+    SELECT * FROM accounts ORDER BY acc_id;        -- 3000, 3000
+
+    -- 2. A transfer that breaks the CHECK rule
+    BEGIN;
+    UPDATE accounts SET balance = balance + 9000 WHERE acc_id = 2;
+    UPDATE accounts SET balance = balance - 9000 WHERE acc_id = 1;
+    UPDATE accounts SET balance = balance + 1 WHERE acc_id = 2;
+    COMMIT;
+    SELECT * FROM accounts ORDER BY acc_id;        -- still 3000, 3000
+
+    -- 3. Check your isolation level
+    SHOW transaction_isolation;
+predict:
+  code: |
+    -- Start: Asha 3000, Ravi 3000
+    BEGIN;
+    UPDATE accounts SET balance = balance - 500 WHERE acc_id = 1;
+    SAVEPOINT after_debit;
+    UPDATE accounts SET balance = balance + 500 WHERE acc_id = 2;
+    ROLLBACK TO SAVEPOINT after_debit;
+    COMMIT;
+
+    SELECT * FROM accounts ORDER BY acc_id;
+  expectedOutput: |2
+     acc_id | holder | balance
+    --------+--------+---------
+          1 | Asha   |    2500
+          2 | Ravi   |    3000
+  explanation: |
+    `ROLLBACK TO SAVEPOINT after_debit` undoes **only** the work done after the savepoint (Ravi's +500). The debit from Asha happened **before** the savepoint, so it is kept, and `COMMIT` saves it.
+
+    Result: Asha 2500, Ravi unchanged at 3000. 500 rupees "disappeared", which shows why savepoints must be used carefully. A full `ROLLBACK` instead would have restored both to 3000.
+commonMistakes:
+  - "Thinking ROLLBACK can undo a statement that already ran in autocommit mode (outside BEGIN). It can't."
+  - "Mixing up consistency (rules/constraints always hold) with isolation (concurrent transactions don't interfere)."
+  - "Saying PostgreSQL's default isolation is REPEATABLE READ. PostgreSQL defaults to READ COMMITTED; MySQL InnoDB defaults to REPEATABLE READ."
+  - "Mixing up non-repeatable read (same row, changed value) and phantom read (same query, new rows)."
+  - "Continuing to send statements after an error in a PostgreSQL transaction; it is aborted and COMMIT will roll back."
+  - "Reading a value into the app and writing back a fixed number, causing lost updates under concurrency."
+interviewBox:
+  why: "Why interviewers ask this: transactions are what make databases trustworthy for money and orders, and ACID is the standard vocabulary for that."
+  questions:
+    - q: "What are the ACID properties? Explain with an example."
+      a: "Atomicity means all or nothing: in a bank transfer the debit and credit both happen or neither. Consistency means the database always follows its rules, like balance never negative. Isolation means two transfers running at the same time don't see each other's half-done work. Durability means once the transfer is committed, it survives a crash."
+    - q: "What is the difference between COMMIT, ROLLBACK and SAVEPOINT?"
+      a: "COMMIT makes all changes of the transaction permanent. ROLLBACK undoes all of them. SAVEPOINT marks a point inside the transaction so ROLLBACK TO SAVEPOINT can undo just the part after it, while keeping the earlier work."
+    - q: "What are dirty read, non-repeatable read and phantom read?"
+      a: "A dirty read is reading another transaction's uncommitted change. A non-repeatable read is reading the same row twice and getting different values because someone committed an update in between. A phantom read is running the same query twice and getting extra rows because someone inserted and committed in between."
+    - q: "What are the isolation levels, and what are the defaults in PostgreSQL and MySQL?"
+      a: "Read uncommitted, read committed, repeatable read and serializable, from weakest to strongest. PostgreSQL defaults to read committed, and MySQL InnoDB defaults to repeatable read. In PostgreSQL, read uncommitted behaves like read committed, so dirty reads never happen."
+    - q: "How does a database guarantee durability?"
+      a: "It writes changes to a log on disk, like PostgreSQL's write-ahead log, before reporting that the commit succeeded. After a crash it replays the log, so committed transactions are not lost."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Asha has 3000 and Ravi 3000, with CHECK (balance >= 0). What are the balances after this runs in PostgreSQL?"
+    code: |
+      BEGIN;
+      UPDATE accounts SET balance = balance + 9000 WHERE acc_id = 2;
+      UPDATE accounts SET balance = balance - 9000 WHERE acc_id = 1;  -- fails CHECK
+      UPDATE accounts SET balance = balance + 1 WHERE acc_id = 2;
+      COMMIT;
+    options:
+      - "Asha 3000, Ravi 12001"
+      - "Asha 3000, Ravi 12000"
+      - "Asha 3000, Ravi 3000"
+      - "Asha -6000, Ravi 12001"
+    answer: 2
+    explanation: "The second UPDATE breaks the CHECK, so PostgreSQL aborts the transaction. The third UPDATE is ignored ('current transaction is aborted'), and COMMIT performs a ROLLBACK, undoing Ravi's +9000 too. 'Ravi 12000' is what you'd expect if the first update were kept, which atomicity forbids."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "A developer runs this in psql (autocommit on) and is surprised the balance stays reduced. Why?"
+    code: |
+      UPDATE accounts SET balance = balance - 100 WHERE acc_id = 1;
+      ROLLBACK;
+      -- WARNING:  there is no transaction in progress
+    options:
+      - "ROLLBACK only works in MySQL"
+      - "No BEGIN was issued, so the UPDATE ran in autocommit mode and was already committed"
+      - "ROLLBACK needs a savepoint name"
+      - "UPDATE statements can never be rolled back"
+    answer: 1
+    explanation: "Without BEGIN, each statement is its own transaction and commits immediately. The later ROLLBACK has nothing to undo, as the warning says. Inside BEGIN ... ROLLBACK the update would be undone."
+  - id: q3
+    type: MATCH
+    prompt: "Match each ACID property to its meaning"
+    pairs:
+      - left: "Atomicity"
+        right: "All statements succeed or none do"
+      - left: "Consistency"
+        right: "Data always satisfies the rules and constraints"
+      - left: "Isolation"
+        right: "Concurrent transactions don't see each other's unfinished work"
+      - left: "Durability"
+        right: "Committed data survives a crash"
+    explanation: "Use the bank transfer example for each one in an interview."
+  - id: q4
+    type: MCQ
+    prompt: "Transaction T1 reads Asha's balance (5000). T2 updates it to 4000 and commits. T1 reads it again and gets 4000. Which anomaly is this?"
+    code: null
+    options: ["Dirty read", "Non-repeatable read", "Phantom read", "Lost update"]
+    answer: 1
+    explanation: "Same row, read twice, different committed value: a non-repeatable read. It's not dirty because T2 had committed. Phantoms are about new rows appearing in a repeated query."
+  - id: q5
+    type: MCQ
+    prompt: "What are the default isolation levels?"
+    code: null
+    options:
+      - "PostgreSQL: REPEATABLE READ, MySQL InnoDB: READ COMMITTED"
+      - "PostgreSQL: READ COMMITTED, MySQL InnoDB: REPEATABLE READ"
+      - "Both: SERIALIZABLE"
+      - "Both: READ UNCOMMITTED"
+    answer: 1
+    explanation: "SHOW transaction_isolation in PostgreSQL prints 'read committed'. MySQL InnoDB's default is REPEATABLE READ. The first option has them swapped, a common slip."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "In PostgreSQL, setting READ UNCOMMITTED allows dirty reads."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. PostgreSQL accepts the setting but treats it as READ COMMITTED, so you never see uncommitted data. MySQL's READ UNCOMMITTED really allows dirty reads."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the statement that undoes only the work done after the savepoint named s1."
+    code: |
+      ROLLBACK TO ____ s1;
+    acceptedAnswers: ["SAVEPOINT", "savepoint"]
+    explanation: "ROLLBACK TO SAVEPOINT s1 keeps work before s1 and undoes work after it. The transaction stays open; you still need COMMIT or ROLLBACK."
+explainBack:
+  prompt: "Explain ACID to a friend using a UPI payment, and say what an isolation level is."
+  rubric:
+    - "I explained all four letters with the payment example"
+    - "I said COMMIT saves and ROLLBACK undoes"
+    - "I explained at least one anomaly (dirty, non-repeatable or phantom read)"
+    - "I said higher isolation prevents more anomalies but reduces concurrency"
+    - "I named the PostgreSQL and MySQL default levels"
+  modelAnswer: |
+    A transaction is a group of steps that must act as one, like a UPI payment. Atomicity means the money leaves my account and reaches the shop, or nothing happens. Consistency means rules like "balance can't go negative" always hold. Isolation means two payments at the same time don't mess each other up. Durability means once it says success, the payment survives even a server crash. Isolation levels decide how much transactions can see of each other. Weaker levels allow problems like reading a value twice and getting different answers; stronger ones stop that but allow less parallel work. PostgreSQL defaults to read committed, MySQL to repeatable read.
+flashcards:
+  - front: "ACID"
+    back: "Atomicity (all or nothing), Consistency (rules hold), Isolation (no interference), Durability (survives crashes)."
+  - front: "Dirty vs non-repeatable vs phantom read"
+    back: "Dirty: read uncommitted data. Non-repeatable: same row, different value. Phantom: same query, new rows."
+  - front: "Isolation levels, weakest to strongest"
+    back: "READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE."
+  - front: "Default isolation level: PostgreSQL vs MySQL"
+    back: "PostgreSQL: READ COMMITTED. MySQL InnoDB: REPEATABLE READ."
+  - front: "SAVEPOINT"
+    back: "A marker inside a transaction; ROLLBACK TO SAVEPOINT undoes only the work after it."
+  - front: "Error inside a PostgreSQL transaction"
+    back: "Transaction is aborted; later statements are ignored and COMMIT rolls back."
+keyTakeaways:
+  - "A transaction is all-or-nothing: BEGIN, then COMMIT or ROLLBACK."
+  - "ACID = Atomicity, Consistency, Isolation, Durability."
+  - "Anomalies: dirty read, non-repeatable read, phantom read, lost update."
+  - "Isolation levels trade safety for concurrency; SERIALIZABLE is the strictest."
+  - "PostgreSQL defaults to READ COMMITTED; MySQL InnoDB to REPEATABLE READ."
+  - "Statements outside BEGIN autocommit and can't be rolled back."

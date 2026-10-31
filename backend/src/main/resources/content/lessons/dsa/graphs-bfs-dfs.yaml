@@ -1,0 +1,438 @@
+slug: graphs-bfs-dfs
+world: DSA
+section: DSA
+order: 12
+title: "Graphs: BFS and DFS"
+version: 1
+estimatedMinutes: 50
+rebuild: false
+patternCode: GRAPHS
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Important for SP preparation: grid and graph problems (number of islands, shortest path in an unweighted grid, dependency ordering) are a common source of medium and hard coding questions."
+otherCompanies: "Product-company interviews use BFS/DFS constantly (islands, rotting oranges, word ladder, course schedule, clone graph). Service-company rounds mostly ask basic BFS/DFS traversal and representation questions."
+why: |
+  A **graph** is a set of things (called **vertices** or **nodes**) connected by links (called **edges**). Graphs are everywhere:
+  - cities and roads (Google Maps),
+  - people and friendships (Instagram followers),
+  - courses and prerequisites ("take DSA before Algorithms"),
+  - a grid of land and water cells in a puzzle.
+
+  Trees and linked lists are actually special graphs. So once you learn **BFS** (Breadth-First Search) and **DFS** (Depth-First Search), you have two master keys that open a huge family of problems: connectivity, shortest path in unweighted graphs, counting islands, detecting cycles, and ordering tasks with dependencies.
+
+  The code templates are short. The real skill is **modelling**: seeing that "a grid of '1's and '0's" or "a list of course prerequisites" is a graph, and then choosing BFS or DFS.
+analogy: |
+  Imagine news spreading in your **college WhatsApp groups**.
+
+  - **BFS** is like a rumour spreading in **waves**: first everyone directly in your group hears it (distance 1), then their contacts (distance 2), and so on. That's why BFS naturally finds the **minimum number of hops** to reach someone.
+  - **DFS** is like exploring a **maze in a temple fair**: keep walking down one path as deep as possible; when you hit a dead end, come back to the last junction and try the next path. Good for "explore everything connected to me" and for detecting loops.
+
+  In both cases you must remember **who already heard the news** (a `visited` set), or the same message bounces around forever.
+visual:
+  diagram: |
+    UNDIRECTED GRAPH            ADJACENCY LIST
+        0 ---- 1                0: [1, 2]
+        |      |                1: [0, 3]
+        2 ---- 3 ---- 4         2: [0, 3]
+                                3: [1, 2, 4]
+        5  (isolated)           4: [3]
+                                5: []
+
+    BFS from 0 (queue, level by level)
+    level 0: 0
+    level 1: 1, 2
+    level 2: 3
+    level 3: 4         dist = [0, 1, 1, 2, 3, -1]
+
+    DFS from 0 (go deep first, backtrack)
+    0 -> 1 -> 3 -> 2 (0 seen, 3 seen: back) -> 4
+    order = [0, 1, 3, 2, 4]
+  caption: "An adjacency list stores each node's neighbours. BFS spreads in rings and gives the fewest-edges distance; DFS dives down one path and backtracks. Node 5 is unreachable, so its distance stays -1."
+  visualizer: null
+explanation: |
+  ### Key words
+  - **Vertex / node**: a thing (city, person, cell). Usually numbered 0 to V-1.
+  - **Edge**: a connection between two nodes. **Undirected** = two-way (friendship). **Directed** = one-way (Instagram follow, prerequisite).
+  - **Weighted**: edges have a cost (road length). This lesson focuses on **unweighted** graphs.
+  - **Neighbour**: a node directly connected by an edge.
+  - **Connected component**: a group of nodes that can all reach each other.
+  - **Cycle**: a path that comes back to where it started.
+  - **V** = number of vertices, **E** = number of edges.
+
+  ### Representations
+  | | Adjacency list | Adjacency matrix |
+  |---|---|---|
+  | Idea | for each node, a list of neighbours | V x V table, `m[u][v] = 1` if edge |
+  | Space | O(V + E) | O(V^2) |
+  | "Is u connected to v?" | O(degree of u) | O(1) |
+  | Loop over neighbours | fast, only real neighbours | O(V) every time |
+  | Use when | almost always (sparse graphs) | small or very dense graphs |
+
+  ```java
+  List<List<Integer>> adj = new ArrayList<>();
+  for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
+  for (int[] e : edges) {
+      adj.get(e[0]).add(e[1]);
+      adj.get(e[1]).add(e[0]);   // skip this line for a DIRECTED graph
+  }
+  ```
+  A **grid** is also a graph: each cell is a node and its up/down/left/right cells are neighbours. You don't build a list; you compute neighbours on the fly.
+
+  ### BFS: shortest path in an unweighted graph
+  ```java
+  int[] dist = new int[n];
+  Arrays.fill(dist, -1);              // -1 means "not visited"
+  Queue<Integer> q = new ArrayDeque<>();
+  dist[start] = 0;
+  q.offer(start);
+  while (!q.isEmpty()) {
+      int u = q.poll();
+      for (int v : adj.get(u)) {
+          if (dist[v] == -1) {        // mark when ADDING to the queue
+              dist[v] = dist[u] + 1;
+              q.offer(v);
+          }
+      }
+  }
+  ```
+  **Why does BFS give the shortest path?** The queue processes all nodes at distance d before any node at distance d+1. So the first time we reach a node, it is by the fewest edges. (For weighted edges you need Dijkstra's algorithm instead.)
+
+  **Mark visited when you enqueue, not when you dequeue.** Otherwise the same node can be added to the queue many times.
+
+  ### DFS: explore deeply
+  ```java
+  void dfs(int u, boolean[] visited) {
+      visited[u] = true;
+      // process u
+      for (int v : adj.get(u)) {
+          if (!visited[v]) dfs(v, visited);
+      }
+  }
+  ```
+  DFS uses the **call stack** (or your own `Deque` as a stack). Very deep graphs (like a 1000 x 1000 grid of land) can cause `StackOverflowError` with recursion; then use an explicit stack or BFS.
+
+  ### Number of islands (connected components in a grid)
+  Scan every cell. When you find unvisited land `'1'`, that is a **new island**: count it, then DFS (or BFS) to mark the whole island as visited, so it isn't counted again.
+  ```java
+  void sink(char[][] g, int r, int c) {
+      if (r < 0 || c < 0 || r >= g.length || c >= g[0].length || g[r][c] != '1') return;
+      g[r][c] = '0';                  // mark visited
+      sink(g, r + 1, c); sink(g, r - 1, c);
+      sink(g, r, c + 1); sink(g, r, c - 1);
+  }
+  ```
+  The same "count how many times you start a new DFS" idea counts connected components in any graph. Time O(rows x cols).
+
+  ### Cycle detection
+  - **Undirected graph**: during DFS, if you see a visited neighbour that is **not your parent** (the node you came from), there is a cycle.
+  - **Directed graph**: use three states. Seeing a node that is still **on the current path** means a back edge, which means a cycle.
+  ```java
+  // state: 0 = unvisited, 1 = on current path, 2 = done
+  boolean hasCycle(int u) {
+      state[u] = 1;
+      for (int v : adj.get(u)) {
+          if (state[v] == 1) return true;              // back edge
+          if (state[v] == 0 && hasCycle(v)) return true;
+      }
+      state[u] = 2;
+      return false;
+  }
+  ```
+
+  ### Topological sort (intro)
+  For a **directed acyclic graph** (DAG: directed, no cycles), a **topological order** lists nodes so that every edge u -> v has u **before** v. Example: an order to take courses respecting prerequisites.
+
+  **Kahn's algorithm** (BFS-based):
+  1. Count **in-degree** (number of incoming edges) of every node.
+  2. Put all nodes with in-degree 0 (no prerequisites) in a queue.
+  3. Poll a node, add it to the order, and reduce the in-degree of its neighbours; any neighbour that reaches 0 joins the queue.
+  4. If the order has fewer than V nodes, the graph has a **cycle** (impossible schedule).
+
+  ### Choosing BFS or DFS
+  | Need | Use |
+  |---|---|
+  | Fewest steps / shortest path (unweighted) | BFS |
+  | Level by level, "minimum time to spread" | BFS |
+  | Explore a whole component, count components | either (DFS is shorter to write) |
+  | Cycle detection in directed graphs, path existence | DFS |
+  | Topological sort | Kahn's (BFS) or DFS |
+
+  ### Complexity
+  | Algorithm | Time | Space |
+  |---|---|---|
+  | BFS / DFS (adjacency list) | O(V + E) | O(V) |
+  | BFS / DFS (matrix) | O(V^2) | O(V) |
+  | Number of islands (R x C grid) | O(R x C) | O(R x C) worst-case recursion |
+  | Kahn's topological sort | O(V + E) | O(V) |
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class GraphBasics {
+        static List<List<Integer>> adj = new ArrayList<>();
+
+        static void addEdge(int u, int v) {      // undirected: add both ways
+            adj.get(u).add(v);
+            adj.get(v).add(u);
+        }
+
+        static int[] bfs(int start, int n) {
+            int[] dist = new int[n];
+            Arrays.fill(dist, -1);                // -1 = not visited yet
+            Queue<Integer> q = new ArrayDeque<>();
+            dist[start] = 0;
+            q.offer(start);
+            while (!q.isEmpty()) {
+                int u = q.poll();
+                for (int v : adj.get(u)) {
+                    if (dist[v] == -1) {          // first time we reach v
+                        dist[v] = dist[u] + 1;
+                        q.offer(v);
+                    }
+                }
+            }
+            return dist;
+        }
+
+        static void dfs(int u, boolean[] visited, List<Integer> order) {
+            visited[u] = true;
+            order.add(u);
+            for (int v : adj.get(u)) {
+                if (!visited[v]) dfs(v, visited, order);
+            }
+        }
+
+        public static void main(String[] args) {
+            int n = 6;
+            for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
+            addEdge(0, 1); addEdge(0, 2); addEdge(1, 3);
+            addEdge(2, 3); addEdge(3, 4);            // node 5 has no edges
+
+            System.out.println("BFS dist from 0: " + Arrays.toString(bfs(0, n)));
+            List<Integer> order = new ArrayList<>();
+            dfs(0, new boolean[n], order);
+            System.out.println("DFS order from 0: " + order);
+        }
+    }
+  walkthrough: |
+    - **adj** is an adjacency list: `adj.get(3)` is the list of 3's neighbours. `addEdge` adds both directions because the graph is undirected.
+    - **bfs**: `dist` doubles as the visited array (-1 = not visited). From 0 we reach 1 and 2 (distance 1), then 3 (distance 2, found first through 1), then 4 (distance 3). Node 5 is never reached, so it stays -1.
+    - **dfs**: visits 0, then its first neighbour 1, then 1's unvisited neighbour 3, then 3's unvisited neighbour 2 (0 is already visited), then back at 3 it continues to 4.
+    - The orders depend on the order neighbours were added. Different adjacency orders give different (but still correct) traversals.
+
+    Output:
+    ```
+    BFS dist from 0: [0, 1, 1, 2, 3, -1]
+    DFS order from 0: [0, 1, 3, 2, 4]
+    ```
+tryIt:
+  instructions: "Type this number-of-islands solution. Each time the scan finds land, it counts one island and 'sinks' the whole island with DFS. Then change the last row to \"10011\" and predict the new count before running."
+  code: |
+    public class Islands {
+        static void sink(char[][] g, int r, int c) {
+            if (r < 0 || c < 0 || r >= g.length || c >= g[0].length || g[r][c] != '1') return;
+            g[r][c] = '0';                        // mark visited by sinking the land
+            sink(g, r + 1, c); sink(g, r - 1, c);
+            sink(g, r, c + 1); sink(g, r, c - 1);
+        }
+
+        static int countIslands(char[][] g) {
+            int count = 0;
+            for (int r = 0; r < g.length; r++) {
+                for (int c = 0; c < g[0].length; c++) {
+                    if (g[r][c] == '1') {
+                        count++;                  // found a new island
+                        sink(g, r, c);            // remove all of it
+                    }
+                }
+            }
+            return count;
+        }
+
+        public static void main(String[] args) {
+            char[][] grid = {
+                "11000".toCharArray(),
+                "11000".toCharArray(),
+                "00100".toCharArray(),
+                "00011".toCharArray()
+            };
+            System.out.println(countIslands(grid));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Predict {
+        public static void main(String[] args) {
+            Map<Character, List<Character>> g = new HashMap<>();
+            g.put('A', List.of('B', 'C'));
+            g.put('B', List.of('D'));
+            g.put('C', List.of('D', 'E'));
+            g.put('D', List.of());
+            g.put('E', List.of());
+
+            Queue<Character> q = new ArrayDeque<>();
+            Set<Character> seen = new HashSet<>();
+            q.offer('A');
+            seen.add('A');
+            StringBuilder out = new StringBuilder();
+            while (!q.isEmpty()) {
+                char u = q.poll();
+                out.append(u);
+                for (char v : g.get(u)) {
+                    if (seen.add(v)) q.offer(v);
+                }
+            }
+            System.out.println(out);
+        }
+    }
+  expectedOutput: |
+    ABCDE
+  explanation: |
+    This is BFS on a directed graph. A is processed first and adds B and C. B adds D. C's neighbour D is already seen (`seen.add` returns false), so only E is added. The queue order is A, B, C, D, E. D appears only once because we mark nodes as seen when we add them to the queue.
+commonMistakes:
+  - "Forgetting the visited check, so the traversal loops forever on a cycle (or overflows the stack in DFS)."
+  - "Marking a node visited when it is polled instead of when it is enqueued in BFS; the same node gets added many times."
+  - "Using DFS to find the shortest path in an unweighted graph; DFS finds A path, BFS finds the SHORTEST."
+  - "Adding only one direction for an undirected edge (or both directions for a directed edge)."
+  - "Forgetting the bounds check (r < 0, c >= cols ...) before reading a grid cell."
+  - "Using BFS for weighted shortest paths; weights need Dijkstra's algorithm."
+interviewBox:
+  why: "Why interviewers ask this: graph problems check whether you can model a real situation as nodes and edges and pick the right traversal; BFS/DFS are the base of many harder algorithms."
+  questions:
+    - q: "What is the difference between BFS and DFS?"
+      a: "BFS explores level by level using a queue: first all neighbours at distance one, then distance two, so it finds the shortest path in an unweighted graph. DFS goes as deep as possible along one path using recursion or a stack, then backtracks; it's good for exploring components, detecting cycles and topological sort. Both are O(V plus E) with an adjacency list."
+    - q: "How do you count the number of islands in a grid?"
+      a: "I treat each land cell as a node connected to its four neighbours. I scan every cell; when I find land that's not visited, I increase the count and run DFS or BFS from it to mark the whole island as visited, for example by changing it to water. The answer is how many times I started a new search. It's O(rows times columns)."
+    - q: "Adjacency list or adjacency matrix?"
+      a: "An adjacency list uses O(V plus E) space and lets me loop over only real neighbours, so it's better for most graphs, which are sparse. A matrix uses V squared space but answers 'is there an edge between u and v' in O(1), so it's useful for small or very dense graphs."
+    - q: "What is topological sort and how do you detect if it's impossible?"
+      a: "It's an ordering of a directed graph where every edge goes from an earlier node to a later one, like ordering courses by prerequisites. With Kahn's algorithm I count in-degrees, start with nodes that have zero in-degree, and keep removing them and reducing their neighbours' in-degrees. If I can't output all V nodes, there is a cycle, so no valid order exists."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Undirected graph with edges (0,1), (0,2), (1,3), (2,4), (3,4), added in that order to an adjacency list (both directions). What does DFS from 0 print?"
+    code: |
+      void dfs(int u, boolean[] vis) {
+          vis[u] = true;
+          System.out.print(u + " ");
+          for (int v : adj.get(u)) if (!vis[v]) dfs(v, vis);
+      }
+    options: ["0 1 3 4 2", "0 1 2 3 4", "0 2 4 3 1", "0 1 3 2 4"]
+    answer: 0
+    explanation: "Lists: 0:[1,2], 1:[0,3], 2:[0,4], 3:[1,4], 4:[2,3]. DFS goes 0 -> 1 -> 3 -> 4 -> 2 (4's first unvisited neighbour), then everything is visited. \"0 1 2 3 4\" is the BFS (level) order, not DFS."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Kahn's algorithm on 4 tasks with dependencies 0->1, 0->2, 1->3, 2->3. What is printed?"
+    code: |
+      int[] indeg = new int[n];
+      for (int[] e : deps) { g.get(e[0]).add(e[1]); indeg[e[1]]++; }
+      Queue<Integer> q = new ArrayDeque<>();
+      for (int i = 0; i < n; i++) if (indeg[i] == 0) q.offer(i);
+      List<Integer> order = new ArrayList<>();
+      while (!q.isEmpty()) {
+          int u = q.poll();
+          order.add(u);
+          for (int v : g.get(u)) if (--indeg[v] == 0) q.offer(v);
+      }
+      System.out.println(order + " " + (order.size() == n));
+    options: ["[0, 1, 2, 3] true", "[3, 1, 2, 0] true", "[0, 1, 3, 2] true", "[0] false"]
+    answer: 0
+    explanation: "Only 0 starts with in-degree 0. Removing 0 drops 1 and 2 to 0, both join the queue. Removing 1 drops 3 to 1; removing 2 drops it to 0, so 3 comes last. All 4 nodes are placed, so true (no cycle). 3 cannot appear before 2 because it depends on 2."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This flood fill on the grid {\"11\", \"11\"} crashes with StackOverflowError. Why?"
+    code: |
+      void sink(char[][] g, int r, int c) {
+          if (r < 0 || c < 0 || r >= g.length || c >= g[0].length || g[r][c] != '1') return;
+          sink(g, r + 1, c);
+          sink(g, r - 1, c);
+          sink(g, r, c + 1);
+          sink(g, r, c - 1);
+      }
+    options:
+      - "The bounds check is in the wrong order"
+      - "The cell is never marked visited (e.g. g[r][c] = '0'), so two land cells keep calling each other forever"
+      - "It should use BFS; DFS can't work on grids"
+      - "char comparison with != is not allowed"
+    answer: 1
+    explanation: "(0,0) calls (1,0), which calls back (0,0), which is still '1', and so on without end. Marking the cell before recursing (g[r][c] = '0' or a visited array) fixes it. DFS works fine on grids, and the bounds check order is correct."
+  - id: q4
+    type: MCQ
+    prompt: "What is the time complexity of BFS on a graph with V vertices and E edges stored as an adjacency list?"
+    code: null
+    options: ["O(V)", "O(E log V)", "O(V + E)", "O(V^2)"]
+    answer: 2
+    explanation: "Every vertex is enqueued once (V) and every adjacency entry is examined once (about E, or 2E for undirected). O(V^2) is the cost with an adjacency matrix, since each row is scanned fully."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "In an unweighted graph, BFS from a source gives the minimum number of edges to every reachable node."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. BFS finishes all nodes at distance d before touching distance d+1, so the first time a node is reached is via a shortest path. DFS does not have this property, and with weighted edges you need Dijkstra."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "BFS distances: fill in the distance of a newly discovered neighbour v of u."
+    code: |
+      for (int v : adj.get(u)) {
+          if (dist[v] == -1) {
+              dist[v] = ____;
+              q.offer(v);
+          }
+      }
+    acceptedAnswers: ["dist[u] + 1", "dist[u]+1", "1 + dist[u]", "1+dist[u]"]
+    explanation: "v is one edge further than u, the node it was discovered from. Writing dist[v] + 1 would use v's own -1, giving 0."
+  - id: q7
+    type: MATCH
+    prompt: "Match each problem to the best approach"
+    pairs:
+      - left: "Minimum moves for a knight on a chessboard"
+        right: "BFS (shortest path, unweighted)"
+      - left: "Count separate friend circles"
+        right: "Count how many times a new DFS starts"
+      - left: "Order courses by prerequisites"
+        right: "Topological sort (Kahn's)"
+      - left: "Check if a directed graph has a loop"
+        right: "DFS with 'on current path' state"
+    explanation: "Fewest moves = BFS. Components = number of fresh DFS/BFS starts. Dependencies = topological order. A node seen again while still on the current DFS path means a directed cycle."
+  - id: q8
+    type: MCQ
+    prompt: "A graph has 10,000 nodes and only 20,000 edges. Which representation is better and why?"
+    code: null
+    options:
+      - "Adjacency matrix, because edge lookup is O(1)"
+      - "Adjacency list, because it uses O(V + E) space instead of 100 million matrix cells"
+      - "Either; both use the same memory"
+      - "An array of edges sorted by weight"
+    answer: 1
+    explanation: "A 10,000 x 10,000 matrix has 100,000,000 cells, almost all zero. The list stores only the 20,000 edges (40,000 entries undirected). The matrix's O(1) lookup isn't worth that much memory for a sparse graph."
+explainBack:
+  prompt: "Explain BFS and DFS to a friend using the WhatsApp rumour and the temple-fair maze, and say when you'd use each."
+  rubric:
+    - "I defined nodes and edges with an everyday example"
+    - "I explained BFS spreads level by level with a queue and gives the shortest path in unweighted graphs"
+    - "I explained DFS goes deep and backtracks, using recursion or a stack"
+    - "I mentioned the visited set and why it is needed"
+    - "I stated O(V + E) with an adjacency list"
+  modelAnswer: |
+    A graph is things connected by links, like students connected in WhatsApp groups. BFS is like a rumour: first everyone directly connected hears it, then their contacts, level by level. I use a queue for that, and because closer people are reached first, BFS gives the shortest path when all links cost the same. DFS is like exploring a maze: go down one path as far as possible, then come back and try the next. I use recursion or a stack, and it's great for counting components like islands or detecting cycles. In both I keep a visited set, otherwise I go around in circles. With an adjacency list both are O(V plus E).
+flashcards:
+  - front: "BFS vs DFS data structure"
+    back: "BFS: queue (level by level). DFS: recursion / stack (deep first)."
+  - front: "Shortest path in an unweighted graph"
+    back: "BFS; dist[v] = dist[u] + 1 when v is first discovered."
+  - front: "BFS/DFS complexity (adjacency list)"
+    back: "O(V + E) time, O(V) space."
+  - front: "Number of islands idea"
+    back: "Scan cells; on unvisited land, count++ and flood-fill (DFS/BFS) to mark the whole island."
+  - front: "Kahn's algorithm detects a cycle when..."
+    back: "The output order has fewer than V nodes."
+  - front: "Directed cycle via DFS"
+    back: "States 0/1/2; reaching a node in state 1 (on current path) = cycle."
+keyTakeaways:
+  - "Graphs = nodes + edges; use an adjacency list (O(V + E) space) for most problems."
+  - "BFS uses a queue and finds shortest paths in unweighted graphs; mark visited when enqueuing."
+  - "DFS uses recursion/stack; great for components, islands, cycles and topological sort."
+  - "Always track visited nodes, or cycles cause infinite loops."
+  - "Grids are graphs: neighbours are up, down, left and right cells."
+  - "Topological sort (Kahn's) orders a DAG; leftover nodes mean a cycle."

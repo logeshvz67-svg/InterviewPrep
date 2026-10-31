@@ -1,0 +1,288 @@
+slug: cs-osi-tcpip
+world: CS_CORE
+section: CS
+order: 8
+title: "Networks: OSI and TCP/IP models"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "The OSI layers with protocols and devices are a very common networking basics question to prepare for SP and DSE technical rounds."
+otherCompanies: "OSI vs TCP/IP is a standard fresher question at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies expect you to place HTTP, TCP, IP and Ethernet in the right layer."
+why: |
+  When you open a website, your message passes through many steps: an app, a transport protocol, IP routing, Wi-Fi or cable, and finally electrical signals. The **OSI model** gives a name and a number to each step.
+
+  Why it matters:
+  - **"Explain the OSI model"** is one of the most common networking questions for freshers.
+  - Follow-ups like "which layer does a router work at?" or "is HTTP layer 7?" are quick marks if you know the table.
+  - It gives you a vocabulary for debugging: "is this a DNS problem (layer 7) or a cable problem (layer 1)?"
+analogy: |
+  Think of **sending a gift by courier from Chennai to Delhi**.
+
+  - **Application**: you write a letter (the actual message).
+  - **Presentation**: you translate it to Hindi and seal it in a locked box (format and encryption).
+  - **Session**: you and your friend agree "I'll send 3 parcels this week" (manage the conversation).
+  - **Transport**: the courier numbers the parcels 1/3, 2/3, 3/3 and promises delivery, resending lost ones (TCP).
+  - **Network**: the courier decides the route Chennai -> Hyderabad -> Delhi using the address (IP routing).
+  - **Data link**: each local van delivers from one hub to the next hub (frames between neighbours, MAC addresses).
+  - **Physical**: the actual road and truck (cables, radio waves, bits).
+
+  At each step, a new **label is stuck on top**. The receiver peels them off in reverse order.
+visual:
+  diagram: |
+    #  OSI layer      PDU       Examples            Device
+    7  Application    Data      HTTP, DNS, SMTP     -
+    6  Presentation   Data      TLS, JPEG, UTF-8    -
+    5  Session        Data      RPC, sessions       -
+    4  Transport      Segment   TCP, UDP (ports)    -
+    3  Network        Packet    IP, ICMP, routing   Router
+    2  Data link      Frame     Ethernet, Wi-Fi,MAC Switch
+    1  Physical       Bits      Cables, signals     Hub, repeater
+
+    TCP/IP:  Application (7+6+5) | Transport (4) | Internet (3)
+             | Link / Network access (2+1)
+
+    Sender adds headers going DOWN, receiver removes them going UP:
+    [ETH][IP][TCP][ HTTP data ][ETH trailer]
+  caption: "Seven OSI layers with their data unit names, protocols and devices, and how they collapse into the four-layer TCP/IP model."
+  visualizer: null
+explanation: |
+  ### What is a network model?
+  A **network model** splits the huge job of "send data between computers" into **layers**. Each layer does one job and only talks to the layer just above and just below it. Benefits: you can change one layer (Wi-Fi instead of cable) without changing others, and it's easier to learn and debug.
+
+  - **Protocol**: a set of rules two machines follow to talk (like HTTP or TCP).
+  - **PDU (Protocol Data Unit)**: the name of the data at a layer (segment, packet, frame...).
+
+  Mnemonic from layer 1 to 7: **"Please Do Not Throw Sausage Pizza Away"** (Physical, Data link, Network, Transport, Session, Presentation, Application).
+
+  ### The 7 OSI layers (top to bottom)
+  **7. Application layer**: what the user's app speaks. Protocols: **HTTP/HTTPS** (web), **DNS** (names to IPs), **SMTP/POP3/IMAP** (email), **FTP** (files), **SSH**.
+
+  **6. Presentation layer**: formats the data so both sides understand it: **encoding** (ASCII, UTF-8), **compression**, **encryption/decryption** (TLS is often placed here), media formats (JPEG, MP4).
+
+  **5. Session layer**: opens, manages and closes a **session** (a conversation) between two apps; can add checkpoints to resume a long transfer. Examples: RPC, NetBIOS, session management in APIs.
+
+  **4. Transport layer**: **end-to-end** delivery between **processes**, identified by **port numbers** (80 for HTTP, 443 for HTTPS). **TCP** gives reliable, ordered delivery; **UDP** is fast with no guarantees. Does **segmentation**, flow control, error recovery. PDU: **segment** (TCP) / datagram (UDP).
+
+  **3. Network layer**: delivery between **hosts across networks**, using **logical addresses (IP addresses)** and **routing** (choosing a path). Protocols: **IP (IPv4/IPv6)**, **ICMP** (used by `ping`), routing protocols like OSPF and BGP. Device: **router**. PDU: **packet**.
+
+  **2. Data link layer**: delivery between **neighbouring devices on the same network**, using **physical addresses (MAC addresses)**. Adds a frame header and a trailer with an error check (**CRC/FCS**). Protocols: **Ethernet**, **Wi-Fi (802.11)**, **ARP** (finds the MAC for an IP; sits between layers 2 and 3). Devices: **switch**, bridge. PDU: **frame**.
+
+  **1. Physical layer**: sends raw **bits** as electrical signals, light or radio waves. Cables, connectors, voltages, data rate. Devices: **hub**, **repeater**, cables, network card hardware.
+
+  ### Encapsulation and decapsulation
+  - **Encapsulation** (sender, going down): each layer adds its own **header** to the data from the layer above. HTTP data -> TCP adds ports -> IP adds IP addresses -> Ethernet adds MAC addresses and a trailer -> bits on the wire.
+  - **Decapsulation** (receiver, going up): each layer reads and removes its own header and passes the rest up.
+
+  ### Which address at which layer?
+  | Layer | Address | Example |
+  |---|---|---|
+  | Transport (4) | Port | 443 |
+  | Network (3) | IP address | 142.250.183.14 |
+  | Data link (2) | MAC address | 3c:22:fb:1a:9e:01 |
+  Easy way to remember: **MAC = which device next to me, IP = which computer in the world, port = which app on that computer**.
+
+  ### The TCP/IP model
+  OSI is a teaching reference. The internet actually runs on the **TCP/IP model** (4 layers; some books show 5 by splitting the bottom layer):
+  | TCP/IP layer | OSI layers | Protocols |
+  |---|---|---|
+  | Application | 7, 6, 5 | HTTP, DNS, SMTP, FTP, TLS |
+  | Transport | 4 | TCP, UDP |
+  | Internet | 3 | IP, ICMP |
+  | Link (Network access) | 2, 1 | Ethernet, Wi-Fi, ARP |
+
+  ### OSI vs TCP/IP
+  | Point | OSI | TCP/IP |
+  |---|---|---|
+  | Layers | 7 | 4 (or 5) |
+  | Nature | Theoretical reference model | Practical, used on the internet |
+  | Developed by | ISO | US DoD (ARPANET research) |
+  | Session/Presentation | Separate layers | Merged into Application |
+
+  ### Devices summary
+  | Device | Layer | What it does |
+  |---|---|---|
+  | Hub | 1 | Repeats bits to all ports (no intelligence) |
+  | Switch | 2 | Forwards frames to the right port using MAC addresses |
+  | Router | 3 | Forwards packets between networks using IP addresses |
+  | Firewall / gateway | 3 to 7 | Filters traffic, can inspect up to the application |
+tinyCode:
+  code: |
+    public class Encapsulation {
+        public static void main(String[] args) {
+            String data = "GET /home";                                   // L7 data
+            String segment = "[TCP 50000->80]" + data;                    // L4 adds ports
+            String packet  = "[IP 10.0.0.5->93.184.216.34]" + segment;    // L3 adds IPs
+            String frame   = "[ETH aa:aa->bb:bb]" + packet + "[CRC]";     // L2 adds MACs + trailer
+
+            System.out.println("On the wire: " + frame);
+
+            // Receiver: each layer removes its own header (decapsulation)
+            String up = frame.substring(frame.indexOf(']') + 1, frame.length() - "[CRC]".length());
+            System.out.println("After L2:    " + up);
+            up = up.substring(up.indexOf(']') + 1);
+            System.out.println("After L3:    " + up);
+            up = up.substring(up.indexOf(']') + 1);
+            System.out.println("After L4:    " + up);
+        }
+    }
+  walkthrough: |
+    - We fake each layer's header with a string in square brackets, so you can **see** encapsulation.
+    - The transport layer adds source and destination **ports** (50000 is a random client port, 80 is HTTP).
+    - The network layer adds source and destination **IP addresses**.
+    - The data link layer adds **MAC addresses** in front and an error-check trailer (`[CRC]`) at the end.
+    - On the receiver, each layer cuts off the part up to its first `]` (its header). The data link layer also removes the trailer.
+    - Output:
+    ```
+    On the wire: [ETH aa:aa->bb:bb][IP 10.0.0.5->93.184.216.34][TCP 50000->80]GET /home[CRC]
+    After L2:    [IP 10.0.0.5->93.184.216.34][TCP 50000->80]GET /home
+    After L3:    [TCP 50000->80]GET /home
+    After L4:    GET /home
+    ```
+    Real headers are bytes, not text, but the idea is exactly this: wrap going down, unwrap going up.
+tryIt:
+  instructions: "Type this layer quiz helper. It stores each OSI layer with its PDU and an example protocol, and prints them from layer 7 down to 1. Typing it once is a great way to memorise the table."
+  code: |
+    public class OsiTable {
+        record Layer(int no, String name, String pdu, String example) {}
+
+        public static void main(String[] args) {
+            Layer[] layers = {
+                new Layer(7, "Application", "Data", "HTTP, DNS"),
+                new Layer(6, "Presentation", "Data", "TLS, JPEG"),
+                new Layer(5, "Session", "Data", "RPC"),
+                new Layer(4, "Transport", "Segment", "TCP, UDP"),
+                new Layer(3, "Network", "Packet", "IP, ICMP"),
+                new Layer(2, "Data link", "Frame", "Ethernet, Wi-Fi"),
+                new Layer(1, "Physical", "Bits", "Cables, radio")
+            };
+            for (Layer l : layers)
+                System.out.printf("%d %-12s %-8s %s%n", l.no(), l.name(), l.pdu(), l.example());
+        }
+    }
+predict:
+  code: |
+    import java.util.ArrayDeque;
+    import java.util.Deque;
+
+    public class HeaderStack {
+        public static void main(String[] args) {
+            Deque<String> headers = new ArrayDeque<>();
+            String[] down = {"HTTP", "TCP", "IP", "ETH"};   // sender adds in this order
+            for (String h : down) headers.push(h);
+
+            StringBuilder receiver = new StringBuilder();
+            while (!headers.isEmpty()) receiver.append(headers.pop()).append(" ");
+            System.out.println(receiver.toString().trim());
+            System.out.println(down.length + " layers handled");
+        }
+    }
+  expectedOutput: |
+    ETH IP TCP HTTP
+    4 layers handled
+  explanation: |
+    Headers behave like a **stack**: the sender pushes HTTP, then TCP, then IP, then ETH, so ETH is outermost. The receiver pops the outermost first: ETH (layer 2), IP (layer 3), TCP (layer 4), and finally reaches HTTP (layer 7). Last added, first removed.
+commonMistakes:
+  - "Saying a router works at layer 2 or a switch at layer 3. Classic switch = layer 2 (MAC), router = layer 3 (IP)."
+  - "Putting TCP or UDP in the network layer. They are transport layer (layer 4); IP is the network layer."
+  - "Mixing up PDU names. Transport = segment, network = packet, data link = frame, physical = bits."
+  - "Saying the internet runs on the OSI model. It runs on TCP/IP; OSI is a reference model for learning and discussion."
+  - "Mixing up MAC and IP addresses. MAC is the hardware address for the next hop; IP is the logical end-to-end address."
+interviewBox:
+  why: "Why interviewers ask this: it checks whether you can organise networking knowledge, and it's the base for HTTP, TCP and DNS questions."
+  questions:
+    - q: "Explain the OSI model."
+      a: "The OSI model divides network communication into seven layers. Physical sends bits; data link sends frames between neighbours using MAC addresses; network routes packets across networks using IP; transport gives end-to-end delivery between processes using ports, with TCP or UDP; session manages conversations; presentation handles format, compression and encryption; and application is where protocols like HTTP and DNS work."
+    - q: "What is the difference between the OSI and TCP/IP models?"
+      a: "OSI has seven layers and is a theoretical reference model. TCP/IP has four layers, application, transport, internet and link, and is what the internet actually uses. TCP/IP merges OSI's application, presentation and session into one application layer, and data link and physical into the link layer."
+    - q: "At which layers do a hub, a switch and a router work?"
+      a: "A hub works at the physical layer and just repeats bits. A switch works at the data link layer and forwards frames using MAC addresses. A router works at the network layer and forwards packets between networks using IP addresses."
+    - q: "What is encapsulation?"
+      a: "As data goes down the layers at the sender, each layer adds its own header, for example TCP adds ports and IP adds addresses. At the receiver, each layer removes its header going up. That removal is called decapsulation."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each protocol or device to its OSI layer"
+    pairs:
+      - left: "HTTP"
+        right: "Application (7)"
+      - left: "TCP"
+        right: "Transport (4)"
+      - left: "Router"
+        right: "Network (3)"
+      - left: "Switch"
+        right: "Data link (2)"
+      - left: "Hub"
+        right: "Physical (1)"
+    explanation: "HTTP is an application protocol; TCP gives end-to-end delivery with ports; routers use IP; switches use MAC addresses; hubs only repeat bits."
+  - id: q2
+    type: MCQ
+    prompt: "What is the PDU (data unit) called at the transport layer when using TCP?"
+    code: null
+    options: ["Frame", "Packet", "Segment", "Bit"]
+    answer: 2
+    explanation: "Transport = segment, network = packet, data link = frame, physical = bits. 'Packet' is a common wrong answer because people use it loosely for everything."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "In the TCP/IP model, the OSI session and presentation layers are merged into the application layer."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. TCP/IP's application layer covers OSI layers 5, 6 and 7, and its link layer covers 1 and 2."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "A sender adds headers in the order HTTP, TCP, IP, ETH. In what order does the receiver process (remove) them?"
+    code: |
+      push HTTP, push TCP, push IP, push ETH
+      pop until empty
+    options: ["HTTP TCP IP ETH", "ETH IP TCP HTTP", "IP TCP ETH HTTP", "ETH TCP IP HTTP"]
+    answer: 1
+    explanation: "Encapsulation works like a stack: the last header added (Ethernet, outermost) is removed first, then IP, then TCP, then the application data. Option 1 is the sender's order, not the receiver's."
+  - id: q5
+    type: MCQ
+    prompt: "Which layer is responsible for encryption, compression and data format conversion in OSI?"
+    code: null
+    options: ["Session", "Presentation", "Transport", "Data link"]
+    answer: 1
+    explanation: "The presentation layer is the 'translator': encoding, compression and encryption. The session layer manages conversations; transport handles end-to-end delivery."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Complete the sentence: the network layer uses ____ addresses to route packets between networks."
+    code: |
+      Network layer address type: ____
+    acceptedAnswers: ["IP", "ip", "logical", "IP address"]
+    explanation: "The network layer uses logical IP addresses. MAC addresses belong to the data link layer, and ports to the transport layer."
+  - id: q7
+    type: MCQ
+    prompt: "Which layer adds the trailer with a CRC (error-check) value to the data?"
+    code: null
+    options: ["Network", "Transport", "Data link", "Application"]
+    answer: 2
+    explanation: "The data link layer wraps a packet into a frame with a header (MAC addresses) and a trailer (FCS/CRC) to detect transmission errors on the link."
+explainBack:
+  prompt: "Explain the 7 OSI layers to a friend using the courier analogy, and say how TCP/IP maps to them."
+  rubric:
+    - "I named all seven layers in order"
+    - "I gave a protocol or device example for most layers"
+    - "I explained encapsulation (headers added going down, removed going up)"
+    - "I mapped OSI to the 4 TCP/IP layers"
+    - "I explained MAC vs IP vs port"
+  modelAnswer: |
+    Sending data is like sending a courier. At the top, the application layer is the letter itself, like an HTTP request. Presentation formats and encrypts it, and session manages the conversation. Transport, with TCP or UDP, numbers the pieces and uses ports to reach the right app. Network uses IP addresses and routers to choose the route. Data link uses MAC addresses and switches to hop from one device to the next, and physical sends bits over cables or Wi-Fi. Each layer sticks its own label on the parcel going down, and the receiver peels them off going up. The internet uses the TCP/IP model: application, transport, internet and link.
+flashcards:
+  - front: "OSI layers 1 to 7"
+    back: "Physical, Data link, Network, Transport, Session, Presentation, Application (Please Do Not Throw Sausage Pizza Away)."
+  - front: "PDU names"
+    back: "Transport: segment. Network: packet. Data link: frame. Physical: bits."
+  - front: "Hub, switch, router layers"
+    back: "Hub = 1 (physical), switch = 2 (MAC), router = 3 (IP)."
+  - front: "TCP/IP model layers"
+    back: "Application (OSI 5-7), Transport (4), Internet (3), Link (1-2)."
+  - front: "Port vs IP vs MAC"
+    back: "Port = which app (L4). IP = which computer across networks (L3). MAC = which device on the local link (L2)."
+keyTakeaways:
+  - "OSI has 7 layers; each does one job and talks only to its neighbours."
+  - "Transport uses ports (TCP/UDP), network uses IP addresses, data link uses MAC addresses."
+  - "Data units: segment, packet, frame, bits."
+  - "Encapsulation adds headers going down; decapsulation removes them going up."
+  - "The internet runs on the 4-layer TCP/IP model, which merges OSI 5-7 and 1-2."

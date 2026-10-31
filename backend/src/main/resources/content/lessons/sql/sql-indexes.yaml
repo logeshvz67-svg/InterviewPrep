@@ -1,0 +1,332 @@
+slug: sql-indexes
+world: SQL
+section: SQL
+order: 6
+title: "Indexes"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+infosysRelevance: "Index basics (what they are, when they help, clustered vs non-clustered, composite left-prefix) are useful theory for SP and DSE technical interviews."
+otherCompanies: "'What is an index and what are its disadvantages?' is a common DBMS practice question in service companies; product companies go deeper into composite indexes and EXPLAIN."
+why: |
+  A query that takes 2 milliseconds on 100 rows can take **seconds** on 10 million rows. The usual fix is an **index**.
+
+  Interviewers ask about indexes to see if you think about **performance**, not just correctness:
+  - What is an index and how does it make search faster?
+  - Why not index every column?
+  - Why does `WHERE salary = 45000` not use an index on `(dept_id, salary)`?
+  - How do you check if a query uses an index? (**EXPLAIN**)
+
+  You don't need to be a database administrator. You need the right mental picture, and this lesson gives you one.
+analogy: |
+  Think of a **thick textbook**.
+
+  - To find "normalization" **without an index**, you turn every page from page 1. That's a **full table scan**.
+  - The **index at the back of the book** lists topics alphabetically with page numbers. You jump to "N", find "normalization: page 212", and open page 212 directly.
+  - The book index takes **extra pages**, and every time the author adds a new chapter, the index must be **updated** too. That's the cost of database indexes: more storage and slower inserts/updates.
+  - A **phone contacts list sorted by surname, then first name** is a **composite index**. Finding all "Sharma"s is easy. Finding everyone named "Rahul" (first name only) is not: you'd have to read the whole list.
+visual:
+  diagram: |
+    B-tree index on salary (simplified)
+
+                         [ 60000 | 80000 ]              root
+                        /        |        \
+         [45000 | 50000]   [60000 | 75000]   [80000 | 90000]  leaves
+            |      |          |       |         |       |
+          Arjun  Meena     Priya,   Ravi      Divya   Asha
+                           Kiran
+         leaves are sorted and linked: 45k -> 50k -> 60k -> ...
+
+    WHERE salary = 75000:
+      root: 75000 is between 60000 and 80000 -> go to middle child
+      leaf: find 75000 -> row pointer -> Ravi
+      ~3 steps instead of reading all rows (O(log n) vs O(n))
+  caption: "A B-tree keeps values sorted in a shallow tree. The database walks from the root to one leaf, then follows the pointer to the table row. Sorted, linked leaves also make range queries (BETWEEN, >, ORDER BY) fast."
+  visualizer: null
+explanation: |
+  ### What is an index?
+  An **index** is an extra data structure that the database keeps next to a table so it can **find rows without reading the whole table**. It stores the indexed column's values in sorted order, each with a **pointer** (address) to the full row.
+
+  ```sql
+  CREATE INDEX idx_emp_dept ON employees (dept_id);
+  DROP INDEX idx_emp_dept;                 -- PostgreSQL
+  -- MySQL: DROP INDEX idx_emp_dept ON employees;
+  ```
+  A **PRIMARY KEY** or **UNIQUE** constraint automatically creates an index (in PostgreSQL the primary key index is named like `employees_pkey`).
+
+  ### The B-tree idea
+  The default index type in PostgreSQL and MySQL is the **B-tree** (balanced tree). Each node holds many sorted keys, so the tree stays very **shallow**: even millions of rows need only 3 or 4 levels. Searching is **O(log n)** instead of **O(n)** for a full scan.
+
+  Because the leaves are **sorted and linked**, a B-tree helps with:
+  - equality: `WHERE emp_id = 500`
+  - ranges: `WHERE salary BETWEEN 60000 AND 80000`, `>`, `<`
+  - sorting: `ORDER BY salary` (rows can be read in index order)
+  - joins on the indexed column
+
+  (Other index types exist, like **hash** indexes for pure equality, and PostgreSQL's **GIN** for full-text search, but B-tree is what interviews mean by default.)
+
+  ### When indexes help
+  - Columns used often in **WHERE**, **JOIN ... ON**, and **ORDER BY**.
+  - **Selective** conditions: ones that match a **small fraction** of the rows (one email out of 200,000).
+  - Foreign key columns (like `orders.customer_id`), because they are joined all the time. PostgreSQL does **not** create these automatically; MySQL's InnoDB does.
+
+  ### When indexes hurt or don't help
+  | Situation | Why |
+  |---|---|
+  | Very small tables | Reading 7 rows directly is cheaper than walking an index |
+  | Condition matches a large part of the table | Jumping around via the index is slower than one sequential read |
+  | Low-variety columns (e.g. gender, a yes/no flag) | Each value matches huge numbers of rows |
+  | Heavy INSERT/UPDATE/DELETE tables | **Every** index must be updated on every write |
+  | Too many indexes | Extra disk space and slower writes |
+  | Function on the column: `WHERE UPPER(email) = '...'` | The index stores `email`, not `UPPER(email)` |
+  | Leading wildcard: `LIKE '%500@mail.com'` | Sorted order can't help when the start is unknown |
+  | Arithmetic on the column: `WHERE emp_id + 0 = 500` | Same reason as functions |
+
+  Fixes: write the condition on the bare column (`WHERE emp_id = 500`), or create an **expression index**: `CREATE INDEX ON big_employees (UPPER(email));`.
+
+  > PostgreSQL detail: a prefix pattern like `LIKE 'user500@%'` can use a B-tree only if the database uses the "C" collation or the index is created with `text_pattern_ops`. MySQL uses a normal index for prefix LIKE.
+
+  ### Composite indexes and the left-prefix rule
+  A **composite** (multi-column) index sorts by the first column, then by the second inside each first value, like a phone book sorted by (surname, first name).
+  ```sql
+  CREATE INDEX idx_dept_salary ON big_employees (dept_id, salary);
+  ```
+  | Query condition | Can the index be used to jump? |
+  |---|---|
+  | `dept_id = 7` | Yes (leftmost column) |
+  | `dept_id = 7 AND salary > 90000` | Yes, best case (both columns) |
+  | `salary BETWEEN 45000 AND 46000` | No: salary alone is not a left prefix |
+  | `dept_id = 7 ORDER BY salary` | Yes for the filter |
+
+  This is the **left-prefix rule**: an index on (A, B, C) supports searches on A, on (A, B) and on (A, B, C), but not on B alone or C alone. Put the column you filter by equality most often **first**.
+
+  (Sometimes PostgreSQL still *reads the whole* composite index for a very rare salary value, because the index is smaller than the table. That's a full index scan, not a jump, and it's not what the left-prefix question is about.)
+
+  ### Clustered vs non-clustered
+  - A **clustered** index decides the **physical order** of the table's rows; the table *is* the index. Only **one** per table. In MySQL InnoDB, the primary key is the clustered index. SQL Server lets you choose one.
+  - A **non-clustered** (secondary) index is a separate structure with pointers to rows. A table can have many.
+  - PostgreSQL tables are not kept clustered; every index is a separate structure (the one-time `CLUSTER` command can reorder a table once).
+
+  ### EXPLAIN: see the plan
+  `EXPLAIN` shows the **query plan**: how the database intends to run your query. `EXPLAIN ANALYZE` actually runs it and shows real timings. `COSTS OFF` hides cost numbers so the plan is easier to read.
+
+  On a test table with 200,000 rows and a primary key on emp_id:
+  ```sql
+  EXPLAIN (COSTS OFF) SELECT * FROM big_employees WHERE emp_id = 500;
+  ```
+  ```
+                        QUERY PLAN
+  ------------------------------------------------------
+   Index Scan using big_employees_pkey on big_employees
+     Index Cond: (emp_id = 500)
+  ```
+  Words to recognise:
+  - **Seq Scan**: reads the whole table (a full table scan).
+  - **Index Scan**: walks the index, then fetches matching rows.
+  - **Bitmap Index Scan + Bitmap Heap Scan**: collects matching row locations from the index first, then reads them in physical order (good for "medium" numbers of rows).
+  - **Index Only Scan**: all needed columns are in the index, so the table isn't touched.
+  - **Gather / Parallel Seq Scan**: several workers scan the table together.
+
+  > MySQL difference: MySQL also has `EXPLAIN`, but prints a table with columns like `type` (`ALL` = full scan, `ref`/`range`/`const` = index used), `key` (the index chosen) and `rows`.
+
+  Plans depend on data size and statistics, so the same query can get a different plan on your machine. Run `ANALYZE table_name` after loading lots of data so the planner has fresh statistics.
+tinyCode:
+  code: |
+    -- A test table with 200,000 rows
+    CREATE TABLE big_employees AS
+    SELECT g AS emp_id,
+           'emp' || g AS name,
+           (g % 50) + 1 AS dept_id,
+           30000 + (g * 37) % 70000 AS salary,
+           'user' || g || '@mail.com' AS email
+    FROM generate_series(1, 200000) AS g;
+    ANALYZE big_employees;
+
+    EXPLAIN (COSTS OFF)
+    SELECT * FROM big_employees WHERE email = 'user500@mail.com';
+    --  Seq Scan on big_employees
+    --    Filter: (email = 'user500@mail.com'::text)
+
+    CREATE INDEX idx_big_email ON big_employees (email);
+
+    EXPLAIN (COSTS OFF)
+    SELECT * FROM big_employees WHERE email = 'user500@mail.com';
+    --  Index Scan using idx_big_email on big_employees
+    --    Index Cond: (email = 'user500@mail.com'::text)
+  walkthrough: |
+    - `generate_series(1, 200000)` is a PostgreSQL function that produces numbers 1 to 200,000; we turn each into a fake employee row.
+    - `ANALYZE` collects statistics so the planner knows the table is big.
+    - The first EXPLAIN shows **Seq Scan**: without an index, PostgreSQL must check all 200,000 emails.
+    - `CREATE INDEX idx_big_email ON big_employees (email)` builds a B-tree on email.
+    - The second EXPLAIN shows **Index Scan using idx_big_email** with an **Index Cond**: the database now jumps straight to the one matching entry.
+    - `::text` is just PostgreSQL showing the value's type; ignore it.
+tryIt:
+  instructions: "Create the big_employees table from the tiny code first. Then type these, run EXPLAIN on each, and write down Seq Scan or Index/Bitmap scan before you look."
+  code: |
+    CREATE INDEX idx_dept_salary ON big_employees (dept_id, salary);
+
+    -- 1. Leftmost column: index used
+    EXPLAIN (COSTS OFF)
+    SELECT * FROM big_employees WHERE dept_id = 7;
+
+    -- 2. Both columns: index used
+    EXPLAIN (COSTS OFF)
+    SELECT * FROM big_employees
+    WHERE dept_id = 7 AND salary > 90000;
+
+    -- 3. Second column only: not a left prefix
+    EXPLAIN (COSTS OFF)
+    SELECT * FROM big_employees
+    WHERE salary BETWEEN 45000 AND 46000;
+
+    -- 4. Real timing
+    EXPLAIN ANALYZE
+    SELECT * FROM big_employees WHERE emp_id = 500;
+
+    DROP TABLE big_employees;
+predict:
+  code: |
+    -- The small 7-row employees table
+    CREATE INDEX idx_emp_dept ON employees (dept_id);
+
+    EXPLAIN (COSTS OFF)
+    SELECT name FROM employees WHERE dept_id = 10;
+  expectedOutput: |2
+            QUERY PLAN
+    --------------------------
+     Seq Scan on employees
+       Filter: (dept_id = 10)
+  explanation: |
+    Even though an index on dept_id exists, PostgreSQL chooses a **Seq Scan**. The table has only 7 rows, which fit in a single disk page. Reading that one page is cheaper than opening the index and then following pointers.
+
+    The **planner** (the part of the database that picks the plan) estimates costs and picks the cheapest. An index is an *option*, never a command. On the 200,000-row table, the same kind of query uses the index.
+commonMistakes:
+  - "Thinking an index is always used once it exists. The planner skips it for tiny tables or non-selective conditions."
+  - "Indexing every column. Each index slows down INSERT/UPDATE/DELETE and uses disk space."
+  - "Wrapping the indexed column in a function (UPPER(email), salary * 12) and expecting the plain index to help."
+  - "Creating a composite index (dept_id, salary) and expecting it to speed up searches on salary alone."
+  - "Forgetting to index foreign key columns used in joins (PostgreSQL does not do it automatically)."
+  - "Using LIKE '%text' and expecting an index to help with the leading wildcard."
+interviewBox:
+  why: "Why interviewers ask this: indexes show whether you understand how databases find data and the trade-off between read speed and write cost."
+  questions:
+    - q: "What is an index? How does it make queries faster?"
+      a: "An index is a separate sorted structure, usually a B-tree, that stores column values with pointers to the rows. Instead of scanning every row, the database walks down the tree in a few steps, so search becomes O(log n) instead of O(n). It's like the index at the back of a book."
+    - q: "What are the disadvantages of indexes?"
+      a: "They take extra storage, and every insert, update or delete must also update each index, so writes become slower. Too many indexes can hurt a write-heavy table. They also don't help on small tables or when a condition matches most of the rows."
+    - q: "What is the difference between a clustered and a non-clustered index?"
+      a: "A clustered index decides the physical order of the rows, so there can be only one per table; in MySQL InnoDB it's the primary key. A non-clustered index is a separate structure with pointers to the rows, and a table can have many. PostgreSQL stores all indexes separately from the table."
+    - q: "You have an index on (dept_id, salary). Will WHERE salary = 50000 use it efficiently?"
+      a: "Not efficiently. A composite index follows the left-prefix rule: it is sorted by dept_id first, so it helps queries on dept_id, or dept_id and salary together. For salary alone I'd need a separate index on salary, or a different column order."
+    - q: "How do you check whether a query uses an index?"
+      a: "I run EXPLAIN before the query, or EXPLAIN ANALYZE to also run it and see real times. In PostgreSQL, Index Scan or Bitmap Index Scan means the index is used, and Seq Scan means a full table scan."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "big_employees has 200,000 rows and a normal index on email. What scan does PostgreSQL choose?"
+    code: |
+      EXPLAIN (COSTS OFF)
+      SELECT * FROM big_employees
+      WHERE UPPER(email) = 'USER500@MAIL.COM';
+    options:
+      - "Index Scan using idx_big_email"
+      - "A (parallel) Seq Scan with Filter: (upper(email) = ...)"
+      - "Index Only Scan"
+      - "An error: UPPER is not allowed in WHERE"
+    answer: 1
+    explanation: "The index stores email, not UPPER(email), so it can't be searched for the uppercase value. The real plan was Gather -> Parallel Seq Scan. An expression index ON big_employees (UPPER(email)) fixes it."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "A developer created this index, but the report query is still slow. Why?"
+    code: |
+      CREATE INDEX idx_dept_salary ON big_employees (dept_id, salary);
+
+      SELECT * FROM big_employees
+      WHERE salary BETWEEN 45000 AND 46000;
+    options:
+      - "BETWEEN can never use an index"
+      - "The query filters only on salary, which is not the leftmost column of the composite index"
+      - "Indexes only work on primary keys"
+      - "The index name is too long"
+    answer: 1
+    explanation: "The index is sorted by dept_id first, so salary values are scattered across all departments. The plan shows Seq Scan. An index on (salary) or (salary, dept_id) would help. BETWEEN itself works fine with an index on salary."
+  - id: q3
+    type: MCQ
+    prompt: "Which column is the WORST candidate for a B-tree index in a 10-million-row users table?"
+    code: null
+    options:
+      - "email (unique per user), used in login lookups"
+      - "is_active (true/false)"
+      - "created_at, used for date-range reports"
+      - "country_id, a foreign key used in joins"
+    answer: 1
+    explanation: "is_active has only two values, so each matches millions of rows; scanning the table is usually cheaper. email is highly selective, created_at helps ranges, and foreign keys help joins."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Adding more indexes makes INSERT statements faster."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Every insert must also add an entry to every index on the table, so more indexes mean slower writes. Indexes speed up reads, not writes."
+  - id: q5
+    type: MATCH
+    prompt: "Match each EXPLAIN term to its meaning"
+    pairs:
+      - left: "Seq Scan"
+        right: "Reads every row of the table"
+      - left: "Index Scan"
+        right: "Walks the index, then fetches matching rows"
+      - left: "Index Only Scan"
+        right: "Answers from the index without touching the table"
+      - left: "EXPLAIN ANALYZE"
+        right: "Runs the query and shows real timings"
+    explanation: "Plain EXPLAIN only shows the plan; EXPLAIN ANALYZE executes the query too, so be careful with UPDATE/DELETE."
+  - id: q6
+    type: MCQ
+    prompt: "An index exists on (last_name, first_name, city). Which WHERE clause can use it to jump directly?"
+    code: null
+    options:
+      - "WHERE first_name = 'Rahul'"
+      - "WHERE city = 'Pune'"
+      - "WHERE last_name = 'Sharma' AND first_name = 'Rahul'"
+      - "WHERE first_name = 'Rahul' AND city = 'Pune'"
+    answer: 2
+    explanation: "Left-prefix rule: (last_name) or (last_name, first_name) or all three. Any condition that skips last_name can't use the sorted order, like finding first names in a phone book sorted by surname."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the command that shows the query plan without running the query."
+    code: |
+      ____ SELECT * FROM employees WHERE emp_id = 3;
+    acceptedAnswers: ["EXPLAIN", "explain"]
+    explanation: "EXPLAIN shows the plan only. EXPLAIN ANALYZE would actually execute the query and report real times."
+explainBack:
+  prompt: "Explain to a friend what a database index is, why we don't index every column, and the left-prefix rule."
+  rubric:
+    - "I used the book index or phone book analogy"
+    - "I said it is a sorted structure (B-tree) with pointers, so lookups take few steps"
+    - "I said indexes cost storage and slow down writes"
+    - "I explained the composite index left-prefix rule"
+    - "I mentioned EXPLAIN to check if an index is used"
+  modelAnswer: |
+    An index is like the index at the back of a textbook. Instead of reading every page, the database looks up the value in a sorted tree, usually a B-tree, and jumps straight to the row. That turns a full scan into a few steps. But indexes aren't free: they take space and every insert or update must change them too, so we only index columns we search, join or sort on a lot. For an index on two columns, like department then salary, it works like a phone book sorted by surname then first name: great for surname, useless for first name alone. I check with EXPLAIN.
+flashcards:
+  - front: "What is an index?"
+    back: "A separate sorted structure (usually a B-tree) of column values + row pointers, so lookups are O(log n) instead of a full scan."
+  - front: "Index trade-off"
+    back: "Faster reads (WHERE, JOIN, ORDER BY) vs extra storage and slower INSERT/UPDATE/DELETE."
+  - front: "Left-prefix rule"
+    back: "Index on (A, B, C) helps A, (A, B), (A, B, C) but not B or C alone."
+  - front: "Clustered vs non-clustered"
+    back: "Clustered = physical row order, one per table (InnoDB PK). Non-clustered = separate structure with pointers, many allowed."
+  - front: "Why might an index be ignored?"
+    back: "Tiny table, low selectivity, function/arithmetic on the column, or a leading-wildcard LIKE."
+  - front: "Seq Scan vs Index Scan in EXPLAIN"
+    back: "Seq Scan reads the whole table; Index Scan walks the index to find matching rows."
+keyTakeaways:
+  - "An index is a sorted B-tree with row pointers: O(log n) lookups instead of full scans."
+  - "Index columns used in WHERE, JOIN and ORDER BY with selective conditions."
+  - "Indexes cost storage and slow down every write; don't index everything."
+  - "Composite indexes follow the left-prefix rule."
+  - "Functions on columns and leading wildcards block normal index use."
+  - "Use EXPLAIN / EXPLAIN ANALYZE to see whether the index is really used."

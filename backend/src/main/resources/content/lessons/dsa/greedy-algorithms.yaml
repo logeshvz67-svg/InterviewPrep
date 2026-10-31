@@ -1,0 +1,370 @@
+slug: greedy-algorithms
+world: DSA
+section: DSA
+order: 13
+title: "Greedy algorithms"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: GREEDY
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Useful for SP and DSE preparation: scheduling, interval and 'minimum number of steps' problems often have a short greedy solution, and knowing when greedy FAILS saves you from wrong answers."
+otherCompanies: "Activity selection and coin change are common basic questions in TCS-style rounds; product companies ask jump game, meeting rooms, gas station and interval merging, and expect you to justify why greedy is correct."
+why: |
+  A **greedy algorithm** builds the answer step by step, and at each step it picks **what looks best right now**, without ever going back to change an earlier choice.
+
+  When greedy works, it is wonderful: the code is short, usually just **sort + one loop**, and runs in **O(n log n)** or **O(n)**.
+
+  The danger: greedy **looks** right far more often than it **is** right. A classic interview trap is coin change with unusual coins, where the greedy answer is wrong. So this lesson teaches two things:
+  - the common greedy problems and their exact rule (sort by **end** time, track the **farthest** reach, and so on),
+  - how to **check** whether greedy is safe, and what to use when it isn't (dynamic programming, next lesson).
+analogy: |
+  Think of a **Kabaddi or cricket team captain picking players** in the school playground. Each turn, the captain picks the **best player still available**. No planning, no going back.
+
+  For some goals (strongest team overall) that works fine. But imagine the rule is "the team needs exactly one wicketkeeper". Picking the best batsman every turn may leave you with no keeper at the end. The local best choice didn't lead to the global best answer.
+
+  Greedy algorithms are that captain. Your job is to know **when the captain's simple rule is guaranteed to work**.
+visual:
+  diagram: |
+    ACTIVITY SELECTION: max meetings in one room
+    meetings sorted by END time:
+    time:   0 1 2 3 4 5 6 7 8 9 10
+    [1,3]     |---|                    pick  (ends earliest)
+    [2,5]       |-----|                skip  (starts before 3)
+    [4,7]           |-----|            pick
+    [6,9]               |-----|        skip  (starts before 7)
+    [8,10]                  |---|      pick
+    answer = 3 meetings
+
+    COIN CHANGE, coins {4, 3, 1}, amount 6
+    greedy : 4 + 1 + 1 = 3 coins   (takes biggest first)
+    best   : 3 + 3     = 2 coins   -> greedy FAILS here
+  caption: "Choosing the meeting that ends earliest always leaves the most time for the rest, so greedy is correct. For coins {4, 3, 1}, taking the biggest coin first gives 3 coins when 2 are enough, so greedy is wrong there."
+  visualizer: null
+explanation: |
+  ### What makes a problem greedy-friendly?
+  Two properties (you don't need formal proofs, but you should be able to say them):
+  1. **Greedy choice property**: there is always a best answer that **includes** the greedy choice. ("Some optimal schedule contains the meeting that ends first.")
+  2. **Optimal substructure**: after making that choice, the rest is a **smaller version** of the same problem.
+
+  A quick way to argue it in an interview is an **exchange argument**: "Take any optimal answer. If it doesn't use my greedy choice, I can swap its first choice for mine without making it worse. So greedy is never worse."
+
+  And the quick way to **break** greedy: try **small counterexamples** (3 to 4 items) by hand before you code.
+
+  ### Pattern 1: activity selection (maximum non-overlapping meetings)
+  **Rule: sort by END time, then pick every meeting that starts after the last picked one ends.**
+  ```java
+  Arrays.sort(m, (a, b) -> Integer.compare(a[1], b[1]));   // earliest end first
+  int count = 0, lastEnd = Integer.MIN_VALUE;
+  for (int[] meet : m) {
+      if (meet[0] >= lastEnd) {     // use > if touching times count as a clash
+          count++;
+          lastEnd = meet[1];
+      }
+  }
+  ```
+  **Why end time?** Finishing earliest leaves the room free for the longest time. Sorting by **start** time fails: one long meeting starting at 0 can block many short ones. Sorting by **duration** also fails (a short meeting can overlap two others). Time **O(n log n)** for the sort.
+
+  The same idea gives: "minimum number of intervals to remove so the rest don't overlap" = n - (max non-overlapping).
+
+  ### Pattern 2: meeting rooms (minimum rooms needed)
+  Sort all start times and all end times separately. Walk through starts; before each new start, free every room whose meeting has already ended.
+  ```java
+  Arrays.sort(start); Arrays.sort(end);
+  int rooms = 0, maxRooms = 0, j = 0;
+  for (int i = 0; i < n; i++) {
+      while (j < n && end[j] <= start[i]) { rooms--; j++; }
+      rooms++;
+      maxRooms = Math.max(maxRooms, rooms);
+  }
+  ```
+  The answer is the **maximum number of meetings running at the same time**. (A min-heap of end times also works.) O(n log n).
+
+  ### Pattern 3: jump game (can you reach the end?)
+  `nums[i]` = maximum jump length from index i. Track the **farthest index reachable so far**.
+  ```java
+  int farthest = 0;
+  for (int i = 0; i < nums.length; i++) {
+      if (i > farthest) return false;            // can't even reach i
+      farthest = Math.max(farthest, i + nums[i]);
+  }
+  return true;
+  ```
+  One pass, **O(n)** time, O(1) space. Trying every jump with recursion would be exponential.
+
+  ### Pattern 4: coin change, and when greedy fails
+  "Pay an amount with the fewest coins": greedy takes the **largest coin that fits**, again and again.
+  - With Indian currency (2000, 500, 200, 100, 50, 20, 10, 5, 2, 1), greedy **is optimal**. These are called **canonical** coin systems.
+  - With coins **{4, 3, 1}** and amount 6, greedy gives 4 + 1 + 1 = **3 coins**, but 3 + 3 = **2 coins** is better. Greedy is **wrong**.
+  - For arbitrary coins, use **dynamic programming** (next lesson), which tries every last-coin option.
+
+  ### More greedy classics (recognise them)
+  | Problem | Greedy rule |
+  |---|---|
+  | Fractional knapsack (you may take part of an item) | sort by value/weight, take the best ratio first |
+  | Minimum platforms at a railway station | same as meeting rooms |
+  | Assign cookies / match small to small | sort both, two pointers |
+  | Gas station (circular route) | if the tank goes negative, restart from the next station |
+  | Huffman coding | always merge the two smallest frequencies (min-heap) |
+
+  Note: **0/1 knapsack** (take a whole item or nothing) is **not** greedy; it needs DP.
+
+  ### Greedy vs DP at a glance
+  | | Greedy | Dynamic programming |
+  |---|---|---|
+  | Decisions | one choice per step, never undone | tries all choices, keeps the best |
+  | Speed | usually O(n) or O(n log n) | usually O(n x something) |
+  | Correct when | greedy choice property holds | overlapping subproblems + optimal substructure |
+  | Example | activity selection, jump game | coin change (any coins), 0/1 knapsack |
+
+  ### Complexity summary
+  | Problem | Time | Space |
+  |---|---|---|
+  | Activity selection | O(n log n) | O(1) extra (sort aside) |
+  | Meeting rooms | O(n log n) | O(n) |
+  | Jump game | O(n) | O(1) |
+  | Greedy coin change (canonical coins) | O(number of coins + answer) | O(1) |
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Greedy {
+        // max number of non-overlapping meetings
+        static int maxMeetings(int[][] m) {
+            Arrays.sort(m, (a, b) -> Integer.compare(a[1], b[1]));   // earliest END first
+            int count = 0, lastEnd = Integer.MIN_VALUE;
+            for (int[] meet : m) {
+                if (meet[0] >= lastEnd) {        // starts after the last chosen one ends
+                    count++;
+                    lastEnd = meet[1];
+                }
+            }
+            return count;
+        }
+
+        // minimum rooms so that no meetings clash
+        static int minRooms(int[][] m) {
+            int n = m.length;
+            int[] start = new int[n], end = new int[n];
+            for (int i = 0; i < n; i++) { start[i] = m[i][0]; end[i] = m[i][1]; }
+            Arrays.sort(start);
+            Arrays.sort(end);
+            int rooms = 0, maxRooms = 0, j = 0;
+            for (int i = 0; i < n; i++) {
+                while (j < n && end[j] <= start[i]) { rooms--; j++; }   // free finished rooms
+                rooms++;
+                maxRooms = Math.max(maxRooms, rooms);
+            }
+            return maxRooms;
+        }
+
+        // can we reach the last index? nums[i] = max jump from i
+        static boolean canJump(int[] nums) {
+            int farthest = 0;
+            for (int i = 0; i < nums.length; i++) {
+                if (i > farthest) return false;  // stuck: i is unreachable
+                farthest = Math.max(farthest, i + nums[i]);
+            }
+            return true;
+        }
+
+        public static void main(String[] args) {
+            int[][] meetings = {{1, 3}, {2, 5}, {4, 7}, {6, 9}, {8, 10}};
+            System.out.println("max meetings = " + maxMeetings(meetings));
+            System.out.println("rooms needed = " + minRooms(meetings));
+            System.out.println(canJump(new int[]{2, 3, 1, 1, 4}) + " " + canJump(new int[]{3, 2, 1, 0, 4}));
+        }
+    }
+  walkthrough: |
+    - **maxMeetings** sorts by end time with a comparator on `a[1]`. It picks [1,3], skips [2,5] (starts at 2, before 3), picks [4,7], skips [6,9], picks [8,10]: **3** meetings.
+    - **minRooms** sorts starts `[1, 2, 4, 6, 8]` and ends `[3, 5, 7, 9, 10]`. At start 1: 1 room. At 2: nothing has ended, 2 rooms. At 4: the meeting ending at 3 is over, so we free one and use it again; still 2. The count never goes above **2**.
+    - **canJump**:
+      - `[2, 3, 1, 1, 4]`: from index 1 we can reach index 4, so `true`.
+      - `[3, 2, 1, 0, 4]`: every path lands on index 3, whose value is 0. `farthest` stays 3, so at i = 4 we have `4 > 3` and return `false`.
+
+    Output:
+    ```
+    max meetings = 3
+    rooms needed = 2
+    true false
+    ```
+tryIt:
+  instructions: "Type this greedy coin counter. It is correct for Indian notes but wrong for coins {4, 3, 1}. After running, try amount 10 with coins {6, 5, 1}: greedy gives 5 coins, but 5 + 5 needs only 2."
+  code: |
+    public class CoinGreedy {
+        static int greedyCoins(int[] coins, int amount) {   // coins sorted big to small
+            int count = 0;
+            for (int c : coins) {
+                while (amount >= c) {
+                    amount -= c;
+                    count++;
+                }
+            }
+            return amount == 0 ? count : -1;
+        }
+
+        public static void main(String[] args) {
+            int[] rupees = {2000, 500, 200, 100, 50, 20, 10, 5, 2, 1};
+            System.out.println("Rs 2789 -> " + greedyCoins(rupees, 2789) + " notes/coins");
+
+            int[] odd = {4, 3, 1};
+            System.out.println("6 with {4,3,1} -> " + greedyCoins(odd, 6) + " coins (best is 2: 3+3)");
+        }
+    }
+predict:
+  code: |
+    import java.util.Arrays;
+
+    public class Predict {
+        public static void main(String[] args) {
+            int[][] m = {{5, 9}, {1, 2}, {3, 4}, {0, 6}, {5, 7}, {8, 9}};
+            Arrays.sort(m, (a, b) -> Integer.compare(a[1], b[1]));
+            int count = 0, lastEnd = -1;
+            StringBuilder picked = new StringBuilder();
+            for (int[] x : m) {
+                if (x[0] > lastEnd) {
+                    count++;
+                    lastEnd = x[1];
+                    picked.append(Arrays.toString(x));
+                }
+            }
+            System.out.println(count + " " + picked);
+        }
+    }
+  expectedOutput: |
+    4 [1, 2][3, 4][5, 7][8, 9]
+  explanation: |
+    Sorted by end: [1,2], [3,4], [0,6], [5,7], [5,9], [8,9] (sorting objects is stable, so [5,9] stays before [8,9]). This version uses a strict `>`, so a meeting must start AFTER the last one ends. Picks: [1,2]; [3,4] (3 > 2); [0,6] skipped; [5,7] (5 > 4); [5,9] skipped (5 is not > 7); [8,9] (8 > 7). Total 4.
+commonMistakes:
+  - "Sorting meetings by start time or by duration for activity selection; the correct key is END time."
+  - "Assuming greedy coin change works for any coins; it fails for sets like {4, 3, 1}. Use DP for general coins."
+  - "Coding a greedy idea without testing a small counterexample by hand first."
+  - "Using greedy for 0/1 knapsack; only the fractional version is greedy."
+  - "Mixing up >= and > for touching intervals; read whether [1,3] and [3,5] clash in the problem."
+  - "Writing the comparator as (a, b) -> a[1] - b[1], which can overflow for very large or negative values; Integer.compare is safe."
+interviewBox:
+  why: "Why interviewers ask this: greedy problems test whether you can find a simple rule AND justify it; a confident but wrong greedy answer is a common failure."
+  questions:
+    - q: "What is a greedy algorithm?"
+      a: "A greedy algorithm builds the solution step by step and at every step takes the choice that looks best right now, without going back. It works when a locally best choice is always part of some globally best answer, like picking the meeting that ends first. It's usually fast, O(n) or O(n log n), but for some problems it gives a wrong answer, so I check small counterexamples."
+    - q: "How do you find the maximum number of non-overlapping meetings?"
+      a: "I sort the meetings by end time. Then I go through them and pick a meeting if it starts after the last picked meeting ends. Picking the earliest-ending meeting leaves the most time for the remaining ones, so it's never worse than any other choice. It's O(n log n) because of the sort."
+    - q: "Does greedy work for the coin change problem?"
+      a: "Only for special coin systems like Indian or US currency. For coins 4, 3 and 1 with amount 6, greedy takes 4, 1 and 1, which is three coins, but 3 plus 3 is only two. For general coins I use dynamic programming, where for every amount I try each coin as the last coin and take the minimum."
+    - q: "How do you solve the jump game?"
+      a: "I keep the farthest index I can reach so far. Going left to right, if the current index is beyond the farthest reach, I'm stuck and return false. Otherwise I update farthest with i plus nums[i]. If I finish the loop, the end is reachable. It's O(n) time and O(1) space."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Jump game trace. What is printed?"
+    code: |
+      int[] nums = {2, 0, 2, 0, 1};
+      int far = 0; boolean ok = true;
+      for (int i = 0; i < nums.length; i++) {
+          if (i > far) { ok = false; break; }
+          far = Math.max(far, i + nums[i]);
+      }
+      System.out.println(ok + " " + far);
+    options: ["true 5", "false 2", "true 4", "false 4"]
+    answer: 0
+    explanation: "i=0: far = 2. i=1: far stays 2. i=2: far = 4. i=3: far stays 4. i=4: far = max(4, 5) = 5. No index was beyond far, so ok is true and far is 5. \"false 2\" assumes the 0 at index 1 blocks us, but index 0 jumps straight over it to index 2."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "For meetings {0,10}, {1,2}, {3,4}, {5,6} this returns 1, but 3 meetings fit. What is the bug?"
+    code: |
+      Arrays.sort(m, (a, b) -> Integer.compare(a[0], b[0]));
+      int count = 0, lastEnd = Integer.MIN_VALUE;
+      for (int[] meet : m) {
+          if (meet[0] >= lastEnd) {
+              count++;
+              lastEnd = meet[1];
+          }
+      }
+      return count;
+    options:
+      - "lastEnd should start at 0"
+      - "It sorts by START time; the long meeting {0,10} is picked first and blocks the rest. Sort by END time (a[1]) instead"
+      - "The condition should be meet[0] > lastEnd"
+      - "count should start at 1"
+    answer: 1
+    explanation: "Sorted by start, {0,10} comes first and sets lastEnd = 10, so nothing else fits. Sorted by end, we pick {1,2}, {3,4}, {5,6} = 3. The >= vs > choice only matters for touching meetings, and lastEnd's start value is fine."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "Greedy coin change with coins {6, 5, 1} for amount 10. What does it print?"
+    code: |
+      int[] c = {6, 5, 1};
+      int amt = 10, cnt = 0;
+      for (int coin : c) {
+          while (amt >= coin) { amt -= coin; cnt++; }
+      }
+      System.out.println(cnt);
+    options: ["5", "2", "3", "10"]
+    answer: 0
+    explanation: "Greedy takes 6 (4 left), can't take 5, then takes 1 four times: 1 + 4 = 5 coins. The optimal answer is 2 (5 + 5), which is exactly why greedy is not safe for arbitrary coin sets. 2 is the DP answer, not what this code prints."
+  - id: q4
+    type: MCQ
+    prompt: "Which problem is NOT correctly solved by a simple greedy rule?"
+    code: null
+    options: ["Fractional knapsack", "Maximum non-overlapping intervals", "0/1 knapsack", "Minimum platforms at a railway station"]
+    answer: 2
+    explanation: "In 0/1 knapsack you must take an item fully or not at all, so taking the best value/weight ratio first can leave wasted capacity; it needs DP. Fractional knapsack can take part of an item, so the ratio rule is optimal. The other two are standard greedy problems."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "If a greedy algorithm gives the right answer on a few test cases, it is proven correct."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Greedy coin change works for amount 8 with {4, 3, 1} (4 + 4) but fails for 6. Correctness needs an argument (like an exchange argument), and testing small counterexamples is how you catch wrong greedy ideas."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Activity selection: fill in the comparator so meetings are sorted by end time."
+    code: |
+      Arrays.sort(m, (a, b) -> ____);
+    acceptedAnswers: ["Integer.compare(a[1], b[1])", "Integer.compare(a[1],b[1])", "a[1] - b[1]", "a[1]-b[1]"]
+    explanation: "a[1] is the end time. Integer.compare(a[1], b[1]) puts earlier ends first and never overflows; a[1] - b[1] also works for normal time values. Using a[0] would sort by start time, which gives wrong answers."
+  - id: q7
+    type: MATCH
+    prompt: "Match each problem to its greedy rule"
+    pairs:
+      - left: "Max meetings in one room"
+        right: "Sort by end time, pick if it starts after the last end"
+      - left: "Jump game"
+        right: "Track the farthest reachable index"
+      - left: "Fractional knapsack"
+        right: "Take the highest value per kg first"
+      - left: "Minimum meeting rooms"
+        right: "Sort starts and ends, count overlaps"
+    explanation: "Each greedy problem has one key rule. Remembering the rule and the reason behind it is the whole skill."
+  - id: q8
+    type: MCQ
+    prompt: "What is the time complexity of activity selection on n meetings?"
+    code: null
+    options: ["O(n)", "O(n log n)", "O(n^2)", "O(2^n)"]
+    answer: 1
+    explanation: "Sorting costs O(n log n); the selection loop is only O(n). O(2^n) would be trying every subset, which greedy avoids."
+explainBack:
+  prompt: "Explain what a greedy algorithm is to a friend, using the team captain example, and give one case where it works and one where it fails."
+  rubric:
+    - "I said greedy picks the best-looking option at each step and never goes back"
+    - "I explained activity selection: sort by end time and why"
+    - "I gave the coin {4, 3, 1} for 6 counterexample"
+    - "I said to test small counterexamples and use DP when greedy fails"
+    - "I mentioned greedy is usually O(n) or O(n log n)"
+  modelAnswer: |
+    A greedy algorithm is like a team captain who always picks the best available player right now and never changes a pick. It's fast, usually just sort plus one loop. It works for picking the maximum number of meetings in one room: sort by end time and always take the meeting that finishes first, because that leaves the most time for the rest. But it fails for coin change with coins 4, 3 and 1: for 6 rupees greedy takes 4, 1 and 1, three coins, while 3 plus 3 is just two. So before trusting greedy I try a few small examples by hand, and if it fails I switch to dynamic programming.
+flashcards:
+  - front: "Greedy algorithm in one line"
+    back: "Take the best-looking choice at each step and never undo it."
+  - front: "Activity selection rule"
+    back: "Sort by END time; pick a meeting if it starts after the last picked one ends. O(n log n)."
+  - front: "Greedy coin change counterexample"
+    back: "Coins {4, 3, 1}, amount 6: greedy 4+1+1 (3 coins), best 3+3 (2 coins)."
+  - front: "Jump game in O(n)"
+    back: "Track farthest = max(farthest, i + nums[i]); if i > farthest, return false."
+  - front: "Fractional vs 0/1 knapsack"
+    back: "Fractional: greedy by value/weight. 0/1: needs DP."
+keyTakeaways:
+  - "Greedy makes the locally best choice and never revisits it; it is fast but not always correct."
+  - "Activity selection: sort by end time. Meeting rooms: count maximum overlap."
+  - "Jump game: track the farthest reachable index in one pass."
+  - "Greedy coin change works for canonical coins (like Indian currency) but fails for sets like {4, 3, 1}."
+  - "Always test small counterexamples; when greedy fails, use dynamic programming."

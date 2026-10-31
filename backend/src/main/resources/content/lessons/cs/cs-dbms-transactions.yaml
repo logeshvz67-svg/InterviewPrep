@@ -1,0 +1,309 @@
+slug: cs-dbms-transactions
+world: CS_CORE
+section: CS
+order: 7
+title: "DBMS: transactions and concurrency"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "ACID, isolation levels and serializability are important DBMS theory for SP and DSE technical rounds and connect to Spring @Transactional questions."
+otherCompanies: "ACID properties are one of the most common DBMS questions at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies go deeper into isolation levels, locking and anomalies."
+why: |
+  When you transfer Rs 500 on UPI, two things must happen: your balance goes **down** and your friend's goes **up**. If the server crashes in the middle, money must not vanish. When lakhs of people pay at once, nobody's update should overwrite another's.
+
+  That is what **transactions** and **concurrency control** guarantee. Interviewers ask:
+  - **"Explain ACID with an example"** (very common),
+  - dirty read / non-repeatable read / phantom read and **isolation levels**,
+  - serializability, locking and **two-phase locking (2PL)**.
+
+  As a Java/Spring developer you will use `@Transactional` every day, so this is practical, not just theory.
+analogy: |
+  Think of **buying a train ticket at a counter**.
+
+  - **Atomicity**: either you pay AND get the ticket, or neither happens. You never pay without getting a ticket.
+  - **Consistency**: the number of seats sold plus seats left always equals total seats.
+  - **Isolation**: two people booking at two counters at the same moment can't both get seat 23. Each booking feels like it happened alone.
+  - **Durability**: once the ticket is printed, a power cut does not erase your booking.
+visual:
+  diagram: |
+    Transaction states
+
+               read/write ops
+    [ACTIVE] -----------------> [PARTIALLY COMMITTED] --> [COMMITTED]
+       |                               |
+       | error                         | failure while saving
+       v                               v
+    [FAILED] -------- rollback -----> [ABORTED]
+
+    Lost update (no locking), balance starts at 100
+    T1: read 100          write 100-30 = 70
+    T2:       read 100                       write 100+50 = 150
+    Final 150, but correct answer is 120: T1's update was lost.
+  caption: "A transaction either commits fully or is rolled back. Without proper concurrency control, interleaved transactions can lose updates."
+  visualizer: null
+explanation: |
+  ### What is a transaction?
+  A **transaction** is a group of database operations treated as **one unit of work**. Example: a bank transfer.
+  ```sql
+  BEGIN;
+  UPDATE account SET balance = balance - 500 WHERE id = 1;
+  UPDATE account SET balance = balance + 500 WHERE id = 2;
+  COMMIT;      -- make it permanent (or ROLLBACK to undo everything)
+  ```
+  - **COMMIT**: save all changes permanently.
+  - **ROLLBACK**: undo all changes since BEGIN.
+
+  ### ACID properties
+  | Property | Plain meaning | How the DBMS achieves it |
+  |---|---|---|
+  | **Atomicity** | All or nothing | Undo logs, rollback |
+  | **Consistency** | Data moves from one valid state to another; rules (constraints) always hold | Constraints + correct transactions |
+  | **Isolation** | Concurrent transactions don't see each other's half-done work | Locks, MVCC |
+  | **Durability** | After commit, data survives crashes | Write-ahead log (redo log) on disk |
+
+  **MVCC** (Multi-Version Concurrency Control): instead of blocking readers, the database keeps old versions of rows so each transaction reads a consistent snapshot. PostgreSQL and MySQL InnoDB use it.
+
+  ### Schedules
+  A **schedule** is the order in which operations of several transactions are executed.
+  - **Serial schedule**: one transaction finishes completely before the next starts. Always correct, but slow.
+  - **Concurrent schedule**: operations interleave. Fast, but may be incorrect.
+  - A concurrent schedule is **serializable** if its result equals the result of **some** serial schedule. That is the definition of correct concurrency.
+
+  ### Conflicts and conflict serializability
+  Two operations **conflict** if they are from **different transactions**, on the **same data item**, and **at least one is a write**: read-write, write-read, write-write. (Read-read never conflicts.)
+
+  **Precedence graph test**: draw a node per transaction. For each conflicting pair where Ti's operation comes before Tj's, draw Ti -> Tj. **No cycle = conflict serializable.**
+  Example: R1(A), W2(A), W1(A).
+  - R1(A) before W2(A): T1 -> T2.
+  - W2(A) before W1(A): T2 -> T1.
+  - Cycle, so **not** conflict serializable.
+
+  ### Concurrency problems (anomalies)
+  | Problem | What happens |
+  |---|---|
+  | **Lost update** | Two transactions read the same value and both write; one write is lost |
+  | **Dirty read** | T2 reads data written by T1 that is **not yet committed**; T1 then rolls back |
+  | **Non-repeatable read** | T1 reads a row twice and gets different values because T2 updated and committed in between |
+  | **Phantom read** | T1 runs the same query twice and gets **new rows** because T2 inserted matching rows |
+
+  ### Isolation levels (SQL standard)
+  | Level | Dirty read | Non-repeatable read | Phantom |
+  |---|---|---|---|
+  | READ UNCOMMITTED | Possible | Possible | Possible |
+  | READ COMMITTED | Prevented | Possible | Possible |
+  | REPEATABLE READ | Prevented | Prevented | Possible (standard) |
+  | SERIALIZABLE | Prevented | Prevented | Prevented |
+  Higher isolation = safer but slower (more waiting). Defaults: **PostgreSQL READ COMMITTED**, **MySQL InnoDB REPEATABLE READ** (InnoDB also blocks most phantoms using gap locks). In PostgreSQL, READ UNCOMMITTED behaves like READ COMMITTED.
+
+  ### Locking
+  - **Shared lock (S)**: for reading. Many transactions can hold S on the same item.
+  - **Exclusive lock (X)**: for writing. Only one transaction, and no S locks alongside it.
+  | | S held | X held |
+  |---|---|---|
+  | Request S | Granted | Wait |
+  | Request X | Wait | Wait |
+
+  ### Two-Phase Locking (2PL)
+  A transaction has two phases:
+  1. **Growing phase**: it may acquire locks but not release any.
+  2. **Shrinking phase**: it may release locks but not acquire any.
+
+  2PL **guarantees conflict serializability**. But it can still cause **deadlocks** and **cascading rollbacks**. **Strict 2PL** holds all exclusive locks until commit/abort, which prevents cascading rollbacks; most databases use it (or a variant).
+
+  ### Deadlock in databases
+  T1 locks row A and wants row B; T2 locks row B and wants row A. Databases **detect** this using a **wait-for graph** (cycle = deadlock) and **abort one transaction (the victim)**, which must retry. Prevention schemes using timestamps:
+  - **Wait-die**: an older transaction may wait for a younger one; a younger one requesting from an older one is aborted ("dies").
+  - **Wound-wait**: an older transaction aborts ("wounds") the younger holder; a younger one waits.
+  In code: keep transactions short and update rows in a consistent order.
+tinyCode:
+  code: |
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class MiniTransaction {
+        static Map<String, Integer> db = new HashMap<>(Map.of("asha", 1000, "ravi", 200));
+
+        static void transfer(String from, String to, int amount) {
+            Map<String, Integer> backup = new HashMap<>(db);   // undo log
+            try {
+                db.put(from, db.get(from) - amount);
+                if (db.get(from) < 0) throw new IllegalStateException("insufficient balance");
+                db.put(to, db.get(to) + amount);
+                System.out.println("COMMIT   " + from + " -> " + to + " " + amount);
+            } catch (RuntimeException e) {
+                db = backup;                                    // ROLLBACK: all or nothing
+                System.out.println("ROLLBACK " + e.getMessage());
+            }
+        }
+
+        public static void main(String[] args) {
+            transfer("asha", "ravi", 500);
+            transfer("ravi", "asha", 900);
+            System.out.println("asha=" + db.get("asha") + " ravi=" + db.get("ravi")
+                    + " total=" + (db.get("asha") + db.get("ravi")));
+        }
+    }
+  walkthrough: |
+    - `db` imitates two bank accounts. The total money is 1200 and must never change (**consistency**).
+    - Before changing anything, we copy the data into `backup`: a very simple **undo log**.
+    - First transfer: Asha 1000 -> 500, Ravi 200 -> 700. No error, so we print **COMMIT**.
+    - Second transfer: Ravi 700 - 900 = -200. The rule check throws an exception *after* the first write, so Ravi's balance is already changed in `db`.
+    - The `catch` restores `backup`: the half-done change disappears. That is **atomicity**.
+    - Output:
+    ```
+    COMMIT   asha -> ravi 500
+    ROLLBACK insufficient balance
+    asha=500 ravi=700 total=1200
+    ```
+    A real database does the same with BEGIN / COMMIT / ROLLBACK and its log files; in Spring, `@Transactional` rolls back on a RuntimeException.
+tryIt:
+  instructions: "Type this program, which replays a 'dirty read' step by step. T2 reads T1's uncommitted value, then T1 rolls back, so T2 used money that never existed. READ COMMITTED isolation stops this."
+  code: |
+    public class DirtyRead {
+        public static void main(String[] args) {
+            int committed = 1000;          // value on disk
+            int uncommitted;               // T1's private, not yet committed value
+
+            uncommitted = committed - 600; // T1: withdraw 600 (not committed)
+            System.out.println("T1 writes (uncommitted): " + uncommitted);
+
+            int seenByT2 = uncommitted;    // T2 under READ UNCOMMITTED
+            System.out.println("T2 reads: " + seenByT2 + " -> decides 'low balance'");
+
+            System.out.println("T1 ROLLBACK, real balance: " + committed);
+            int safeRead = committed;      // T2 under READ COMMITTED
+            System.out.println("With READ COMMITTED T2 would read: " + safeRead);
+        }
+    }
+predict:
+  code: |
+    public class LostUpdate {
+        public static void main(String[] args) {
+            int balance = 100;
+
+            int t1Read = balance;          // T1 reads
+            int t2Read = balance;          // T2 reads the same old value
+            balance = t1Read - 30;         // T1 writes (withdraw 30)
+            balance = t2Read + 50;         // T2 writes (deposit 50)
+            System.out.println("Interleaved: " + balance);
+
+            balance = 100;
+            balance = balance - 30;        // T1 fully, then
+            balance = balance + 50;        // T2 fully (serial)
+            System.out.println("Serial: " + balance);
+        }
+    }
+  expectedOutput: |
+    Interleaved: 150
+    Serial: 120
+  explanation: |
+    In the interleaved run both transactions read 100. T1 writes 70, then T2 writes 100 + 50 = 150, overwriting T1's work: the withdrawal of 30 is **lost**. The serial run gives the correct 120. Exclusive locks (or a higher isolation level / atomic `UPDATE ... SET balance = balance + 50`) prevent this lost update.
+commonMistakes:
+  - "Explaining consistency as 'all or nothing'. That's atomicity; consistency means constraints and rules hold before and after."
+  - "Saying isolation means transactions run one by one. They run concurrently; isolation means the RESULT looks as if they ran alone."
+  - "Mixing up non-repeatable read (same row, changed value) and phantom read (same query, new rows)."
+  - "Thinking 2PL prevents deadlocks. It guarantees serializability but deadlocks can still happen."
+  - "Counting two reads on the same item as a conflict. A conflict needs at least one write."
+  - "Assuming every database uses SERIALIZABLE by default. PostgreSQL defaults to READ COMMITTED, MySQL InnoDB to REPEATABLE READ."
+interviewBox:
+  why: "Why interviewers ask this: real apps handle money and bookings; they want to see you understand what can go wrong when many users write at once."
+  questions:
+    - q: "Explain ACID properties with an example."
+      a: "Take a bank transfer of 500 from A to B. Atomicity: both the debit and the credit happen or neither does. Consistency: the total money and all constraints stay valid. Isolation: another transaction running at the same time doesn't see the half-done transfer. Durability: once committed, the transfer survives a crash because it is written to the log on disk."
+    - q: "What are dirty read, non-repeatable read and phantom read?"
+      a: "A dirty read is reading data another transaction has not committed yet. A non-repeatable read is reading the same row twice and getting different values because someone committed an update in between. A phantom read is running the same query twice and getting extra rows because someone inserted matching rows."
+    - q: "What are the isolation levels?"
+      a: "Read uncommitted allows dirty reads. Read committed prevents dirty reads. Repeatable read also prevents non-repeatable reads. Serializable prevents phantoms too and makes transactions behave as if they ran one after another. Higher isolation is safer but has less concurrency."
+    - q: "What is two-phase locking?"
+      a: "A protocol where each transaction first only acquires locks, the growing phase, and then only releases locks, the shrinking phase. It guarantees conflict serializability. Strict 2PL keeps exclusive locks until commit to avoid cascading rollbacks. It can still cause deadlocks, which the database detects and resolves by aborting one transaction."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each ACID property to its meaning"
+    pairs:
+      - left: "Atomicity"
+        right: "All operations happen or none do"
+      - left: "Consistency"
+        right: "Constraints hold before and after"
+      - left: "Isolation"
+        right: "Concurrent transactions don't see half-done work"
+      - left: "Durability"
+        right: "Committed data survives a crash"
+    explanation: "Atomicity is about all-or-nothing, consistency about valid states, isolation about concurrency, durability about crashes."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Balance is 100. T1 and T2 both read it. T1 writes read - 30, then T2 writes read + 50. What is the final balance?"
+    code: |
+      t1Read = 100; t2Read = 100;
+      balance = t1Read - 30;
+      balance = t2Read + 50;
+    options: ["120", "70", "150", "100"]
+    answer: 2
+    explanation: "T2's write uses the stale value 100, so the final balance is 150 and T1's withdrawal is lost (a lost update). 120 is what a serial schedule would give."
+  - id: q3
+    type: MCQ
+    prompt: "Transaction T1 reads a row twice and gets different values because T2 updated and committed it in between. What is this?"
+    code: null
+    options: ["Dirty read", "Non-repeatable read", "Phantom read", "Lost update"]
+    answer: 1
+    explanation: "Same row, different value after a committed update = non-repeatable read. A dirty read would involve uncommitted data; a phantom involves new rows appearing."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "Schedule: R1(A), W2(A), W1(A). Is it conflict serializable?"
+    code: |
+      R1(A) ... W2(A)   -> edge T1 -> T2
+      W2(A) ... W1(A)   -> edge T2 -> T1
+    options: ["Yes, equivalent to T1 then T2", "Yes, equivalent to T2 then T1", "No, the precedence graph has a cycle", "No, because reads never conflict"]
+    answer: 2
+    explanation: "The edges T1 -> T2 and T2 -> T1 form a cycle, so no serial order matches. Option 4 is wrong: a read conflicts with a write on the same item by another transaction."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "Two-phase locking (2PL) guarantees conflict serializability but can still lead to deadlock."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. The growing/shrinking rule ensures a serializable order, but two transactions can still each hold a lock the other wants, so the DBMS needs deadlock detection or prevention."
+  - id: q6
+    type: MCQ
+    prompt: "Which isolation level is the lowest one that prevents dirty reads?"
+    code: null
+    options: ["READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"]
+    answer: 1
+    explanation: "READ COMMITTED only lets you read committed data. Repeatable read and serializable also prevent it but are higher (stricter) levels; read uncommitted allows dirty reads."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the SQL to undo every change made since BEGIN."
+    code: |
+      BEGIN;
+      UPDATE account SET balance = balance - 500 WHERE id = 1;
+      ____;
+    acceptedAnswers: ["ROLLBACK", "rollback"]
+    explanation: "ROLLBACK undoes all changes of the current transaction (atomicity). COMMIT would make them permanent."
+explainBack:
+  prompt: "Explain ACID and isolation levels to a friend using a bank transfer or ticket booking example."
+  rubric:
+    - "I explained what a transaction is with COMMIT and ROLLBACK"
+    - "I explained all four ACID properties with an example"
+    - "I described at least two anomalies (dirty read, lost update, etc.)"
+    - "I explained that higher isolation is safer but slower"
+    - "I mentioned locking or 2PL"
+  modelAnswer: |
+    A transaction is a group of database steps treated as one unit, like moving 500 rupees from A to B: subtract from A, add to B, then commit. ACID means: atomicity, all steps happen or none; consistency, rules like the total money stay valid; isolation, other transactions don't see the half-done transfer; durability, after commit it survives a crash. Without isolation we get problems like a lost update, where two people overwrite each other, or a dirty read, where someone reads data that later gets rolled back. Isolation levels go from read uncommitted to serializable: higher is safer but slower. Databases use locks and two-phase locking to enforce this.
+flashcards:
+  - front: "ACID"
+    back: "Atomicity (all or nothing), Consistency (rules hold), Isolation (no half-done visibility), Durability (survives crashes)."
+  - front: "Dirty vs non-repeatable vs phantom read"
+    back: "Dirty: read uncommitted data. Non-repeatable: same row, new value. Phantom: same query, new rows."
+  - front: "Isolation levels, low to high"
+    back: "Read uncommitted < read committed < repeatable read < serializable."
+  - front: "When do two operations conflict?"
+    back: "Different transactions, same data item, at least one write."
+  - front: "2PL phases"
+    back: "Growing (only acquire locks), shrinking (only release). Guarantees conflict serializability; strict 2PL holds X locks till commit."
+keyTakeaways:
+  - "A transaction is one unit of work ending in COMMIT or ROLLBACK."
+  - "ACID: atomicity, consistency, isolation, durability."
+  - "Serializable = same result as some serial order; test with a precedence graph (no cycle)."
+  - "Isolation levels trade safety for speed: dirty, non-repeatable and phantom reads."
+  - "Shared/exclusive locks and 2PL give serializability; databases detect deadlocks and abort a victim."

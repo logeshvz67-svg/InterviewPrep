@@ -1,0 +1,284 @@
+slug: sd-scalability
+world: SYSTEM_DESIGN
+section: SD
+order: 2
+title: "Scalability, latency and availability"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Core vocabulary for any SP design-basics discussion: vertical vs horizontal scaling and 'what is a single point of failure' are classic warm-up questions."
+otherCompanies: "Every product-company design round uses these words; service companies often ask the definitions in technical interviews."
+why: |
+  Every design discussion uses three words again and again: **scalability**, **latency** and **availability**. If you can explain them with numbers and examples, you sound like an engineer instead of a student reciting definitions.
+
+  - When IRCTC slows down at 10 am tatkal, that is a **scalability** and **latency** problem.
+  - When a UPI app shows "server unavailable, try later", that is an **availability** problem.
+  - When one crashed database takes the whole app down, that is a **single point of failure**.
+
+  This lesson gives you the words, the numbers (the famous "nines") and the one big trick that makes horizontal scaling possible: **stateless servers**.
+analogy: |
+  Think of a **railway ticket counter** at a busy station.
+
+  - **Vertical scaling** = making the one clerk faster: a better computer, a faster printer. It helps, but one human has a limit, and if he goes for lunch, the counter is closed.
+  - **Horizontal scaling** = opening **more counters** with more clerks. Ten counters serve ten queues at once, and if one clerk leaves, the others keep working.
+  - **Latency** = how long *one* passenger waits at the counter (say 2 minutes).
+  - **Throughput** = how many passengers *all counters together* serve per hour (say 300).
+  - **Stateless** = any clerk can serve any passenger because all bookings are in the central computer, not in one clerk's notebook. If a clerk kept your booking in his personal notebook (stateful), you would have to come back to *that exact* counter.
+visual:
+  diagram: |
+    VERTICAL (scale up)            HORIZONTAL (scale out)
+
+    +-----------------+                 +---------------+
+    |   ONE BIG BOX   |                 | Load Balancer |
+    | 64 CPU, 512 GB  |                 +---------------+
+    +-----------------+                  /      |      \
+            |                      +----+   +----+   +----+
+         +----+                    | S1 |   | S2 |   | S3 |  stateless
+         | DB |                    +----+   +----+   +----+
+         +----+                        \      |      /
+                                     +----------------+
+    limit: biggest machine           | Shared session |
+    SPOF: if it dies, all down       | store + DB     |
+                                     +----------------+
+                                     add S4 any time
+  caption: "Vertical scaling makes one machine bigger; horizontal scaling adds more machines behind a load balancer. Horizontal needs stateless servers so any server can handle any request."
+  visualizer: null
+explanation: |
+  ### Scalability
+  **Scalability** means the system keeps working well when load grows: more users, more data, more requests.
+
+  | | Vertical scaling (scale up) | Horizontal scaling (scale out) |
+  |---|---|---|
+  | How | Bigger machine: more CPU, RAM, faster disk | More machines of the same kind |
+  | Code changes | Usually none | Servers must be stateless; need a load balancer |
+  | Limit | The biggest machine you can buy | Practically very high |
+  | Failure | One machine = single point of failure | One machine dies, others continue |
+  | Good for | Small apps, databases at first | Web/app servers, large systems |
+
+  In interviews say: *"I'll scale the app tier horizontally because it is stateless, and scale the database vertically at first, then add read replicas and sharding when needed."*
+
+  ### Latency vs throughput
+  - **Latency** = time taken for **one** request, usually in **milliseconds (ms)**. "The UPI payment API responds in 150 ms."
+  - **Throughput** = number of requests handled **per second** (QPS or RPS). "The system handles 5,000 payments per second."
+
+  They are related but different. A highway with 8 lanes has high throughput (many cars per hour), but each car's travel time (latency) depends on the speed limit. Adding servers raises throughput; it does not automatically lower latency for one request.
+
+  Rough latencies worth remembering:
+  | Operation | Roughly |
+  |---|---|
+  | Read from RAM (memory) | ~100 nanoseconds |
+  | Read from SSD | ~100 microseconds |
+  | Round trip inside one data centre | ~0.5 ms |
+  | Round trip Mumbai -> US | ~200 ms |
+
+  Memory is about **1,000x faster** than SSD. That is why caches (Lesson 4) live in memory.
+
+  **p99 latency** means "99% of requests are faster than this". Averages hide slow users; interviewers like hearing "p99 under 300 ms".
+
+  ### Availability and the "nines"
+  **Availability** = percentage of time the system is up and answering. It is written as "nines":
+
+  | Availability | Downtime per year |
+  |---|---|
+  | 99% (two nines) | ~3.65 days |
+  | 99.9% (three nines) | ~8.76 hours |
+  | 99.99% (four nines) | ~52.6 minutes |
+  | 99.999% (five nines) | ~5.26 minutes |
+
+  Each extra nine is 10x less downtime and much more cost.
+
+  **Components in series** (a request needs *all* of them, like app server then database) multiply: 0.99 x 0.99 = **0.9801**. The chain is *weaker* than each part.
+
+  **Components in parallel** (any one is enough, like two app servers behind a load balancer): availability = 1 - (chance both fail) = 1 - 0.01 x 0.01 = **0.9999**. Redundancy makes it *stronger*.
+
+  ### Single point of failure (SPOF)
+  A **SPOF** is one component whose failure brings the whole system down. Examples: one database server, one load balancer, one data centre. Fix it with **redundancy**: two load balancers (active-passive), database replicas, servers in multiple **availability zones** (separate data centre buildings).
+
+  ### Stateless servers: the key to scaling out
+  **State** = data remembered between requests, like "who is logged in" or "what is in the cart".
+  - **Stateful server:** keeps that data in its own memory. The next request must reach the *same* server, or the data is "lost".
+  - **Stateless server:** keeps nothing between requests. Session data lives in a **shared store** (Redis, database) or inside a token (like a JWT, Lesson 7) sent with every request.
+
+  With stateless servers, the load balancer can send any request to any server, you can add or remove servers freely, and a crash loses nothing.
+
+  ### Interview structure for "How would you scale X?"
+  1. Find the bottleneck with numbers (CPU? DB reads? DB writes?).
+  2. Make app servers stateless, put them behind a load balancer, scale out.
+  3. Add a cache for hot reads.
+  4. Add read replicas, then sharding for the database.
+  5. Remove SPOFs with redundancy; mention the availability target.
+tinyCode:
+  code: |
+    public class Availability {
+        public static void main(String[] args) {
+            double minutesPerYear = 365 * 24 * 60;   // 525600
+            double[] levels = {0.99, 0.999, 0.9999, 0.99999};
+            for (double a : levels) {
+                double downMinutes = (1 - a) * minutesPerYear;
+                System.out.printf("%.3f%% -> %.2f minutes down per year%n", a * 100, downMinutes);
+            }
+            double app = 0.99, db = 0.99;
+            System.out.printf("Series (app then db): %.4f%n", app * db);
+            System.out.printf("Parallel (2 app servers): %.4f%n", 1 - (1 - app) * (1 - app));
+        }
+    }
+  walkthrough: |
+    - `minutesPerYear = 365 * 24 * 60` = 525,600 minutes in a year.
+    - For each availability level, the **unavailable** fraction is `1 - a`. Multiply by the minutes in a year to get downtime.
+    - `printf("%.3f%%", ...)` prints with 3 decimals; `%%` prints a literal `%`; `%n` is a newline.
+    - **Series:** a request needs the app *and* the database, so multiply: 0.99 x 0.99 = 0.9801. Worse than either part.
+    - **Parallel:** with two app servers, the system fails only if *both* fail: 0.01 x 0.01 = 0.0001, so availability is 0.9999. Better than either part.
+
+    Output:
+    ```
+    99.000% -> 5256.00 minutes down per year
+    99.900% -> 525.60 minutes down per year
+    99.990% -> 52.56 minutes down per year
+    99.999% -> 5.26 minutes down per year
+    Series (app then db): 0.9801
+    Parallel (2 app servers): 0.9999
+    ```
+    5,256 minutes is about 3.65 days; 525.6 minutes is about 8.76 hours. These are exactly the numbers in the table.
+tryIt:
+  instructions: "Type this stateless-server demo. Notice the session lives in a shared store, not inside any server, so every server 'sees' Ravi's cart no matter where the load balancer sends him."
+  code: |
+    import java.util.*;
+
+    public class Stateless {
+        // shared store (think Redis) outside the app servers
+        static Map<String, String> sessionStore = new HashMap<>();
+
+        static String handle(String server, String user) {
+            return server + " sees " + sessionStore.getOrDefault(user, "no session");
+        }
+
+        public static void main(String[] args) {
+            sessionStore.put("ravi", "cart=[biryani]");
+            String[] servers = {"S1", "S2", "S3"};
+            for (int i = 0; i < 4; i++) {
+                System.out.println(handle(servers[i % servers.length], "ravi"));
+            }
+        }
+    }
+predict:
+  code: |
+    public class SeriesParallel {
+        public static void main(String[] args) {
+            double lb = 0.999, server = 0.99;
+            double twoServers = 1 - (1 - server) * (1 - server);
+            System.out.printf("%.4f%n", lb * server);
+            System.out.printf("%.4f%n", lb * twoServers);
+        }
+    }
+  expectedOutput: |
+    0.9890
+    0.9989
+  explanation: |
+    - Line 1: load balancer (0.999) in series with **one** server (0.99): 0.999 x 0.99 = 0.98901, printed as **0.9890**.
+    - Line 2: two servers in parallel give 1 - 0.01 x 0.01 = 0.9999. In series with the load balancer: 0.999 x 0.9999 = 0.9989001, printed as **0.9989**.
+
+    Adding a second server raised availability from about 98.9% to about 99.89%. Now the load balancer (0.999) is the weakest link, which is why real systems run **two** load balancers too.
+commonMistakes:
+  - "Mixing up latency (time for one request) and throughput (requests per second)."
+  - "Saying horizontal scaling needs no changes. Servers must be stateless (or use sticky sessions) for it to work."
+  - "Adding up availabilities in series instead of multiplying them."
+  - "Forgetting that the load balancer or the single database can itself be a single point of failure."
+  - "Promising 'five nines' casually. Each extra nine costs a lot; pick a target that fits the business."
+interviewBox:
+  why: "Why interviewers ask this: these words appear in every design answer, and explaining them with numbers shows real understanding instead of memorised definitions."
+  questions:
+    - q: "Practice: What is the difference between vertical and horizontal scaling? Which would you choose?"
+      a: "Vertical scaling means a bigger machine, more CPU and RAM. It's simple but has a hard limit and the machine is a single point of failure. Horizontal scaling means adding more machines behind a load balancer. It scales much further and survives a machine dying, but the servers must be stateless. I'd scale app servers horizontally, and scale the database vertically at first, then add replicas and sharding."
+    - q: "Practice: Explain latency vs throughput with an example."
+      a: "Latency is how long one request takes, like a UPI payment finishing in 150 milliseconds. Throughput is how many requests the whole system handles per second, like 5,000 payments a second. More servers increase throughput, but one slow database query still keeps latency high."
+    - q: "Practice: What is a single point of failure and how do you remove it?"
+      a: "It's any one component that brings everything down when it fails, like a single database or one load balancer. You remove it with redundancy: two load balancers, a database replica that can take over, and servers spread across availability zones."
+    - q: "Practice: Why should app servers be stateless?"
+      a: "If a server keeps the user's session in its own memory, the next request must go to the same server, and if that server crashes the session is lost. If the session is in a shared store like Redis or inside a token, any server can handle any request, so I can add or remove servers freely."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Your app server is at 95% CPU. You add three more identical servers behind a load balancer. What did you do?"
+    code: null
+    options: ["Vertical scaling", "Horizontal scaling", "Sharding", "Caching"]
+    answer: 1
+    explanation: "Adding more machines is horizontal scaling (scale out). Vertical would be upgrading the one machine. Sharding splits data across databases; caching stores hot data in memory."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Ravi logged in through server S1, which stored his cart in its own memory. The load balancer sends his next request to S2. What prints?"
+    code: |
+      // class Server { String name; Map<String, String> sessions = new HashMap<>(); }
+      Server s1 = new Server("S1"), s2 = new Server("S2");
+      s1.sessions.put("ravi", "cart=[biryani]");
+      Server next = s2;
+      System.out.println(next.name + ": " + next.sessions.get("ravi"));
+    options: ["S2: cart=[biryani]", "S2: null", "S1: cart=[biryani]", "NullPointerException"]
+    answer: 1
+    explanation: "Each Server has its own HashMap. S2's map has no 'ravi' key, so get returns null, and string concatenation prints 'null' (no exception). This is the stateful-server problem: fix it with a shared session store or sticky sessions."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "Two components in series, each 99% available, give a combined availability of 99%."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. In series you multiply: 0.99 x 0.99 = 0.9801, about 98%. A chain is weaker than each link. Only parallel (redundant) components raise availability."
+  - id: q4
+    type: MATCH
+    prompt: "Match the availability to its approximate downtime per year"
+    pairs:
+      - left: "99%"
+        right: "About 3.65 days"
+      - left: "99.9%"
+        right: "About 8.76 hours"
+      - left: "99.99%"
+        right: "About 52.6 minutes"
+      - left: "99.999%"
+        right: "About 5.26 minutes"
+    explanation: "Downtime = (1 - availability) x 525,600 minutes. Each extra nine divides downtime by 10."
+  - id: q5
+    type: MCQ
+    prompt: "Which change improves THROUGHPUT the most for a stateless order API?"
+    options: ["Rewriting it in a faster language", "Adding more app servers behind the load balancer", "Using a bigger font in the app", "Reducing the log level"]
+    answer: 1
+    explanation: "Throughput is total requests per second. More servers handling requests in parallel raise it directly. A faster language might lower latency somewhat, but scaling out is the main lever for throughput."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the operator: availability of two servers in PARALLEL, each with availability a."
+    code: |
+      double parallel = 1 - (1 - a) ____ (1 - a);
+    acceptedAnswers: ["*"]
+    explanation: "The system fails only if both fail. The chance both fail is (1 - a) times (1 - a), so availability is 1 minus that product."
+  - id: q7
+    type: MCQ
+    prompt: "Which is a single point of failure in: Client -> one Load Balancer -> 3 App Servers -> one Database?"
+    options: ["Only the database", "Only the load balancer", "Both the load balancer and the database", "None, there are 3 app servers"]
+    answer: 2
+    explanation: "The three app servers are redundant, but there is only one load balancer and only one database. If either dies, every request fails, so both are SPOFs."
+explainBack:
+  prompt: "Explain scalability, latency, availability and stateless servers to a friend using the railway counter example."
+  rubric:
+    - "I explained vertical (faster clerk) vs horizontal (more counters) scaling"
+    - "I separated latency (one person's wait) from throughput (people served per hour)"
+    - "I mentioned availability as nines and at least one downtime number"
+    - "I explained why stateless servers make horizontal scaling easy"
+    - "I mentioned single point of failure and redundancy"
+  modelAnswer: |
+    Imagine a railway ticket counter. Making the one clerk faster is vertical scaling; opening ten counters is horizontal scaling, and it also means one clerk leaving doesn't close the station. Latency is how long one passenger waits, and throughput is how many passengers all counters serve per hour. Availability is how often the counters are open: 99.9% still means about 8.76 hours of downtime a year. For any counter to serve any passenger, bookings must be in the central computer, not in one clerk's notebook. That is a stateless server. And never have just one of anything critical, because it becomes a single point of failure.
+flashcards:
+  - front: "Vertical vs horizontal scaling"
+    back: "Vertical = bigger machine (simple, limited, SPOF). Horizontal = more machines behind a load balancer (needs stateless servers)."
+  - front: "Latency vs throughput"
+    back: "Latency = time for one request (ms). Throughput = requests handled per second."
+  - front: "Downtime per year at 99.9% and 99.99%"
+    back: "99.9% = about 8.76 hours. 99.99% = about 52.6 minutes."
+  - front: "Availability in series vs parallel"
+    back: "Series: multiply (a x b), gets worse. Parallel: 1 - (1-a)(1-b), gets better."
+  - front: "What is a stateless server?"
+    back: "A server that keeps no user data between requests; session data lives in a shared store or a token, so any server can serve any request."
+keyTakeaways:
+  - "Scale app servers horizontally; that requires them to be stateless."
+  - "Latency is per request; throughput is requests per second."
+  - "Each extra nine of availability means 10x less downtime and more cost."
+  - "Series components multiply availability down; parallel (redundant) ones push it up."
+  - "Find and remove single points of failure with redundancy."

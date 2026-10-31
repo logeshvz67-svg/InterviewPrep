@@ -1,0 +1,334 @@
+slug: cs-system-design
+world: CS_CORE
+section: CS
+order: 12
+title: "System design basics"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Basic system design (scaling, caching, load balancing, a simple URL shortener) is useful preparation for SP-level and product-style technical discussions."
+otherCompanies: "Product companies often ask freshers a simple design question like a URL shortener; service companies (TCS, Wipro, Cognizant, Accenture, Capgemini) may ask what a load balancer or cache is."
+why: |
+  Writing code that works for **one user** is a coding problem. Making it work for **one crore users** is a **system design** problem.
+
+  Freshers are not expected to design Netflix, but you are expected to know the **building blocks** and talk sensibly:
+  - client-server, **load balancer**, **cache**, **database replication and sharding**,
+  - **vertical vs horizontal scaling**,
+  - **CAP theorem** in simple words,
+  - a small end-to-end design like a **URL shortener**.
+
+  The interviewer mainly checks your **thinking process**: ask questions, estimate, draw boxes, explain trade-offs.
+analogy: |
+  Think of a **popular dosa restaurant growing up**.
+
+  - Day 1: one cook, one stove (**one server**). Customers order at the counter (**client-server**).
+  - More customers: buy a bigger stove and a faster cook (**vertical scaling**). There's a limit to how big a stove can be.
+  - Even more: hire 5 cooks with 5 stoves (**horizontal scaling**), and a **manager at the door** sends each customer to a free cook (**load balancer**).
+  - The most popular item (masala dosa batter) is kept **ready on the counter** instead of fetching from the store room each time (**cache**).
+  - The recipe book is **photocopied** for every cook to read (**replication**), and the store room is split: rice items in room A, wheat items in room B (**sharding**).
+visual:
+  diagram: |
+    URL shortener at fresher level
+
+     Users
+       |
+       v
+    +---------------+
+    | Load balancer |   (round robin / least connections)
+    +---------------+
+       |        |        |
+       v        v        v
+    [App 1]  [App 2]  [App 3]    stateless, scale horizontally
+       |   \    |     /  |
+       |    v   v    v   |
+       |   +---------+   |
+       |   |  Cache  |   |   short code -> long URL (hot links)
+       |   +---------+   |
+       v                 v
+    +---------------------------+
+    | DB primary (writes)       | --replicates--> [Replica] [Replica]
+    | id | code | long_url      |                 (reads)
+    +---------------------------+
+
+    POST /shorten {longUrl}   -> id = 125 -> base62 "21" -> sho.rt/21
+    GET  /21  -> cache/DB lookup -> 302 redirect to long URL
+  caption: "Users hit a load balancer, which spreads requests over stateless app servers. Reads go through a cache, writes go to the primary database, and replicas serve extra reads."
+  visualizer: null
+explanation: |
+  ### Client-server
+  - A **client** (browser, mobile app) sends requests.
+  - A **server** processes them and sends responses, usually over HTTP.
+  - Most backends are **3-tier**: presentation (UI) -> application (business logic, e.g. Spring Boot) -> data (database).
+
+  ### Scaling: vertical vs horizontal
+  | | Vertical scaling (scale up) | Horizontal scaling (scale out) |
+  |---|---|---|
+  | How | Bigger machine: more CPU, RAM | More machines |
+  | Limit | Hardware maximum, costly at the top | Almost unlimited |
+  | Failure | Single point of failure | One machine dies, others continue |
+  | Complexity | Simple, no code change | Needs load balancer, stateless apps |
+  To scale horizontally, app servers should be **stateless**: no user session stored in one server's memory (keep it in a shared cache/DB or a token).
+
+  ### Load balancer
+  A **load balancer** sits in front of servers and distributes incoming requests among them.
+  - Algorithms: **round robin** (one by one in turn), **least connections** (to the least busy server), **IP hash** (same client to same server).
+  - Does **health checks**: stops sending traffic to a dead server.
+  - Examples: Nginx, HAProxy, AWS Elastic Load Balancer.
+
+  ### Caching
+  A **cache** stores frequently used data in fast memory (RAM) so we don't hit the slow database every time. Examples: **Redis**, Memcached, browser cache, **CDN** for images/videos.
+  - **Cache hit**: found in cache. **Cache miss**: go to the DB, then store in cache.
+  - **Cache-aside** (most common): app checks cache -> on miss reads DB -> writes into cache.
+  - **Eviction**: when the cache is full, remove items, often by **LRU** (least recently used).
+  - **TTL** and **invalidation**: stale data is the main danger; update or delete the cache entry when the DB changes.
+
+  ### Database replication
+  **Replication** keeps copies of the same data on multiple servers.
+  - **Primary-replica** (master-slave): all **writes** go to the primary; it copies changes to **replicas**, which serve **reads**.
+  - Benefits: more read capacity, and if the primary dies a replica can be promoted (**high availability**).
+  - Cost: **replication lag**, a replica may be slightly behind (you might not see your own update for a moment).
+
+  ### Database sharding (partitioning)
+  **Sharding** splits data **across** multiple databases so each holds only a part.
+  - **Shard key**: decides where a row goes, e.g. `user_id % 4` -> shard 0..3, or by range (A-M, N-Z), or by region.
+  - Benefits: more write capacity and storage.
+  - Costs: queries across shards (joins) are hard; adding shards requires moving data (**consistent hashing** reduces this); a bad key creates a **hot shard**.
+  Replication = **copies** of the same data. Sharding = **pieces** of the data.
+
+  ### CAP theorem in simple words
+  In a distributed system (data on many machines), you'd like:
+  - **C (Consistency)**: every read gets the latest write.
+  - **A (Availability)**: every request gets a response (no errors), even if it might not be the latest.
+  - **P (Partition tolerance)**: the system keeps working even when the network between machines breaks.
+  Network partitions **will** happen, so P is a must. **During a partition, you choose between C and A.**
+  - **CP** (choose consistency): refuse or delay some requests rather than show wrong data. Example: bank balance, seat booking.
+  - **AP** (choose availability): always answer, maybe with slightly old data, and sync later (**eventual consistency**). Example: likes count, social feed.
+
+  ### Design a URL shortener (fresher level)
+  **1. Clarify requirements**
+  - Functional: given a long URL, return a short one; visiting the short URL redirects to the long one. Optional: custom alias, expiry, click count.
+  - Non-functional: very fast redirects, highly available, short codes should not be guessable easily.
+
+  **2. Estimate (back-of-the-envelope)**
+  - Assume 100 million new URLs per month -> about 100,000,000 / (30 x 24 x 3600) ≈ **40 writes/second**.
+  - Reads are much more common, say 100:1 -> about **4,000 redirects/second**. So it is **read-heavy**: caching matters.
+  - Storage: 100M x 12 months x 5 years = 6 billion URLs x ~500 bytes ≈ **3 TB**.
+  - Code length: **base62** (0-9, a-z, A-Z = 62 characters). 62^6 ≈ 56.8 billion and 62^7 ≈ 3.5 trillion, so **7 characters** is plenty.
+
+  **3. API**
+  - `POST /api/shorten` body `{"longUrl": "..."}` -> `201 Created` `{"shortUrl": "https://sho.rt/21"}`
+  - `GET /{code}` -> `302 Found` with `Location: <long URL>` (use 301 if you want browsers to cache it permanently, but then you can't count clicks).
+
+  **4. Data model**
+  `url(id BIGINT PK, code VARCHAR(7) UNIQUE, long_url TEXT, created_at, expires_at)`
+
+  **5. Generating the short code**
+  - **Counter + base62**: take a unique id (DB auto-increment or a distributed ID generator) and convert it to base62. id 125 -> "21". Unique by design, no collisions. Sequential codes are guessable; you can shuffle or add randomness.
+  - **Hash** (MD5 of the URL, take first 7 chars): may **collide**, so you must check and retry.
+
+  **6. High-level design**: load balancer -> stateless app servers -> cache (Redis: code -> long URL) -> database (primary for writes, replicas for reads; shard by code if it grows huge).
+
+  **7. Read flow**: `GET /21` -> check cache -> hit: redirect. Miss: read DB, store in cache, redirect.
+
+  **8. Extra points**: rate limiting (stop abuse), analytics (count clicks asynchronously via a queue), expiry cleanup job, and a CDN/edge for global speed.
+
+  ### How to approach any design question
+  1. Ask clarifying questions (features, scale).
+  2. Estimate traffic and storage.
+  3. Define APIs and data model.
+  4. Draw the high-level boxes.
+  5. Deep dive into one or two parts, and **say the trade-offs out loud**.
+tinyCode:
+  code: |
+    public class Base62 {
+        static final String ALPHABET =
+                "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        static String encode(long id) {
+            StringBuilder sb = new StringBuilder();
+            do {
+                sb.append(ALPHABET.charAt((int) (id % 62)));   // last digit
+                id /= 62;
+            } while (id > 0);
+            return sb.reverse().toString();
+        }
+
+        static long decode(String code) {
+            long id = 0;
+            for (char c : code.toCharArray()) id = id * 62 + ALPHABET.indexOf(c);
+            return id;
+        }
+
+        public static void main(String[] args) {
+            long[] ids = {125, 1_000_000, 3_521_614_606_207L};
+            for (long id : ids) {
+                String code = encode(id);
+                System.out.println(id + " -> " + code + " -> " + decode(code));
+            }
+        }
+    }
+  walkthrough: |
+    - Base62 works like converting a number to binary or decimal, but with **62 digits**: 0-9, then a-z (10 to 35), then A-Z (36 to 61).
+    - `encode`: repeatedly take `id % 62` (the last base-62 digit) and divide by 62. Digits come out last-first, so we reverse at the end. `do-while` makes sure id 0 gives "0".
+    - `decode` does the reverse: multiply by 62 and add each digit's value.
+    - 125 = 2 x 62 + 1, so it becomes **"21"**.
+    - 3,521,614,606,207 is 62^7 - 1, the largest number that fits in **7 characters**: "ZZZZZZZ". That's 3.5 trillion short URLs.
+    - Output:
+    ```
+    125 -> 21 -> 125
+    1000000 -> 4c92 -> 1000000
+    3521614606207 -> ZZZZZZZ -> 3521614606207
+    ```
+tryIt:
+  instructions: "Type this round-robin load balancer. Each request goes to the next server in turn, and a server marked down is skipped (a failed health check). Try marking a different server down."
+  code: |
+    import java.util.List;
+    import java.util.Set;
+
+    public class RoundRobin {
+        public static void main(String[] args) {
+            List<String> servers = List.of("app-1", "app-2", "app-3");
+            Set<String> down = Set.of("app-2");          // failed health check
+            int next = 0;
+
+            for (int request = 1; request <= 5; request++) {
+                String chosen;
+                do {
+                    chosen = servers.get(next);
+                    next = (next + 1) % servers.size();
+                } while (down.contains(chosen));
+                System.out.println("Request " + request + " -> " + chosen);
+            }
+        }
+    }
+predict:
+  code: |
+    public class ShardPredict {
+        static final String A = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        static String encode(long id) {
+            String s = "";
+            do { s = A.charAt((int) (id % 62)) + s; id /= 62; } while (id > 0);
+            return s;
+        }
+
+        public static void main(String[] args) {
+            long[] ids = {61, 62, 3844};
+            for (long id : ids)
+                System.out.println(id + " code=" + encode(id) + " shard=" + (id % 3));
+        }
+    }
+  expectedOutput: |
+    61 code=Z shard=1
+    62 code=10 shard=2
+    3844 code=100 shard=1
+  explanation: |
+    61 is the last single base62 digit, which is 'Z' (0-9 are 0-9, a-z are 10-35, A-Z are 36-61). 62 is "10" in base 62, just like 10 in decimal. 3844 = 62 x 62, so it is "100". For sharding with `id % 3`: 61 % 3 = 1, 62 % 3 = 2, 3844 % 3 = 1 (3843 is divisible by 3).
+commonMistakes:
+  - "Jumping into boxes without asking about requirements and scale. Always clarify and estimate first."
+  - "Mixing up replication (copies of the same data, for reads and availability) and sharding (pieces of the data, for write scale and storage)."
+  - "Saying CAP means 'pick any two' freely. Partitions happen, so the real choice is C or A during a partition."
+  - "Storing user sessions in one app server's memory and then adding a load balancer. Apps must be stateless to scale horizontally."
+  - "Forgetting cache invalidation. A cache without a TTL or update strategy serves stale data."
+  - "Using a hash for short codes without handling collisions."
+interviewBox:
+  why: "Why interviewers ask this: it shows whether you can think beyond one program to real systems with many users, and whether you can explain trade-offs."
+  questions:
+    - q: "What is the difference between vertical and horizontal scaling?"
+      a: "Vertical scaling means making one machine bigger with more CPU and RAM; it's simple but has a hardware limit and is a single point of failure. Horizontal scaling means adding more machines behind a load balancer; it can grow much further and survives one machine failing, but the app must be stateless and it's more complex."
+    - q: "What does a load balancer do?"
+      a: "It sits in front of multiple servers and distributes incoming requests among them using an algorithm like round robin or least connections. It also does health checks and stops sending traffic to a server that is down, which improves availability and lets us scale horizontally."
+    - q: "Explain the CAP theorem simply."
+      a: "In a distributed system we want consistency, meaning every read sees the latest write, availability, meaning every request gets a response, and partition tolerance, meaning it works even when the network between nodes breaks. Since network partitions can always happen, during a partition we must choose: either stay consistent and reject some requests, like a banking system, or stay available and possibly return slightly old data, like a social media feed."
+    - q: "How would you design a URL shortener?"
+      a: "I'd first clarify features and scale. The API is POST to create a short URL and GET on the code to redirect with a 302. I'd store id, code and long URL in a database. To generate the code, I'd take a unique id and convert it to base62; seven characters give about 3.5 trillion codes. Since it's read-heavy, I'd put a Redis cache in front of the database, run stateless app servers behind a load balancer, and use read replicas, sharding later if data grows."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each building block to its purpose"
+    pairs:
+      - left: "Load balancer"
+        right: "Spreads requests across servers"
+      - left: "Cache"
+        right: "Keeps hot data in fast memory"
+      - left: "Replication"
+        right: "Copies of the same data on many servers"
+      - left: "Sharding"
+        right: "Splits data into pieces across databases"
+    explanation: "Replication copies (for reads and availability); sharding splits (for write capacity and storage). Load balancers and caches help handle more traffic faster."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Using the alphabet 0-9, a-z, A-Z, what is 125 in base62?"
+    code: |
+      125 / 62 = 2, remainder 1
+      digits (most significant first): 2, 1
+    options: ["1z", "21", "2b", "cb"]
+    answer: 1
+    explanation: "125 = 2 x 62 + 1, so the digits are 2 and 1, written '21'. Reading the digits in reverse order ('12') or treating it as base 36 are the usual slips."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "In the CAP theorem, during a network partition a system must choose between consistency and availability."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Partition tolerance is not optional in real networks, so when a partition happens you either refuse some requests (CP) or answer with possibly stale data (AP)."
+  - id: q4
+    type: MCQ
+    prompt: "A URL shortener gets 4,000 redirects per second and 40 new URLs per second. What is the most useful first optimisation?"
+    code: null
+    options: ["Shard the database by user", "Add a cache for code -> long URL lookups", "Vertical scaling of the client", "Switch from HTTP to UDP"]
+    answer: 1
+    explanation: "The system is about 100:1 read-heavy, so caching hot short codes in memory (e.g. Redis) removes most database reads. Sharding helps write scale and storage, which isn't the bottleneck yet."
+  - id: q5
+    type: MCQ
+    prompt: "Why should app servers be stateless when scaling horizontally?"
+    code: null
+    options: ["Stateless servers use less disk", "Any server can handle any request, so the load balancer can send users anywhere", "Stateless servers do not need a database", "It makes vertical scaling cheaper"]
+    answer: 1
+    explanation: "If session data lives in one server's memory, the user breaks when routed elsewhere. Keeping state in a shared store or a token lets any server handle any request."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Complete the redirect status code commonly used by a URL shortener that wants to count every click."
+    code: |
+      HTTP/1.1 ____ Found
+      Location: https://example.com/very/long/path
+    acceptedAnswers: ["302"]
+    explanation: "302 Found is a temporary redirect, so browsers come back to the shortener each time and clicks can be counted. 301 Moved Permanently gets cached by browsers."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "Rows are sharded with shard = id % 4. Which shards do ids 10, 13 and 16 go to?"
+    code: |
+      for (int id : new int[]{10, 13, 16})
+          System.out.print(id % 4 + " ");
+    options: ["2 1 0", "2 3 0", "1 1 0", "2 1 4"]
+    answer: 0
+    explanation: "10 % 4 = 2, 13 % 4 = 1, 16 % 4 = 0. Shard 4 doesn't exist: with 4 shards the results are always 0 to 3."
+explainBack:
+  prompt: "Explain how you would design a URL shortener, using load balancer, cache, database and base62, as if to an interviewer."
+  rubric:
+    - "I started with requirements and a rough traffic estimate"
+    - "I described the API (POST to create, GET to redirect with 302)"
+    - "I explained base62 code generation from a unique id"
+    - "I placed a load balancer, stateless app servers, cache and database with replicas"
+    - "I mentioned at least one trade-off (CAP, 301 vs 302, replication lag)"
+  modelAnswer: |
+    First I'd confirm the features: make a short link and redirect to the long one, maybe with expiry. If we get 100 million new links a month, that's about 40 writes a second, and maybe 4,000 redirects a second, so it's read-heavy. The API is a POST to create, returning 201 with the short URL, and a GET on the code that returns a 302 redirect. I store id, code and long URL in a database. The code is the id converted to base62, so seven characters give 3.5 trillion links with no collisions. Requests go through a load balancer to stateless app servers, a Redis cache serves hot codes, and read replicas handle extra reads.
+flashcards:
+  - front: "Vertical vs horizontal scaling"
+    back: "Vertical: bigger machine (simple, limited, single point of failure). Horizontal: more machines + load balancer (needs stateless apps)."
+  - front: "Replication vs sharding"
+    back: "Replication: copies of the same data (reads, availability). Sharding: pieces of data on different DBs (writes, storage)."
+  - front: "CAP in one line"
+    back: "During a network partition, choose Consistency (CP) or Availability (AP); P is mandatory."
+  - front: "Base62 and 7 characters"
+    back: "Digits 0-9, a-z, A-Z. 62^7 ≈ 3.5 trillion codes. 125 -> '21'."
+  - front: "Cache-aside pattern"
+    back: "Read cache; on miss read DB and put it in cache; invalidate/update on writes; evict with LRU/TTL."
+keyTakeaways:
+  - "Start every design with requirements and estimates, then APIs, data model and boxes."
+  - "Scale horizontally with stateless servers behind a load balancer."
+  - "Caches speed up read-heavy systems; watch out for stale data."
+  - "Replication copies data for reads and availability; sharding splits data for scale."
+  - "CAP: during a partition, choose consistency or availability."
+  - "URL shortener: unique id -> base62 code, 302 redirect, cache + DB with replicas."

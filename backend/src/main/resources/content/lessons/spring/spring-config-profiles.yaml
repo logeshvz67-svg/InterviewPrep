@@ -1,0 +1,373 @@
+slug: spring-config-profiles
+world: SPRING
+section: SPRING
+order: 2
+title: "Configuration, properties and profiles"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+infosysRelevance: "Common SP and DSE practice topic: @Configuration vs @Component, @Value vs @ConfigurationProperties, and 'how do you keep dev and prod settings separate?' are typical follow-ups after IoC."
+otherCompanies: "Asked as a practical Spring Boot question at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies expect you to explain secrets in environment variables and property precedence."
+why: |
+  Real apps run in many places: your laptop, a test server, production. Each place has a different **database URL**, **password**, **port** and **feature switches**. If these values are written inside Java code, you must change code and rebuild for every place. That is slow and dangerous (passwords end up in Git).
+
+  Spring Boot solves this with **external configuration**: values live in `application.yml`, environment variables or command-line arguments, and your code just reads them.
+
+  In interviews you will hear: "What is the difference between `@Value` and `@ConfigurationProperties`?", "What are profiles?", "Where do you keep secrets?". Your own project in `backend/` answers all three, so you can speak from real experience.
+analogy: |
+  Think of a **mobile phone and its SIM card**.
+
+  - The **phone** (your compiled app) is the same everywhere.
+  - The **SIM card** (configuration) decides the network, number and plan. Swap the SIM, and the same phone works with Jio in Chennai or Airtel in Delhi. No need to rebuild the phone.
+  - **Profiles** are like a **dual-SIM switch**: "use SIM 1 (dev) now" or "use SIM 2 (prod) now".
+  - **Environment variables** are like the operator settings pushed by the network: they override whatever default the SIM came with.
+  - `@ConfigurationProperties` is a neat **contacts list** with names and numbers in one place; `@Value` is like writing one number on your palm. Fine for one, messy for twenty.
+visual:
+  diagram: |
+    Where a value comes from (higher row WINS)
+    +---------------------------------------------+
+    | 1. Command-line args   --app.jwt.secret=... |
+    | 2. Java system props   -Dapp.jwt.secret=... |
+    | 3. OS env variables    APP_JWT_SECRET=...   |
+    | 4. application-dev.yml (active profile)     |
+    | 5. application.yml     (defaults)           |
+    +---------------------------------------------+
+                        |
+                        v
+            Spring "Environment" (one big map)
+               |                       |
+     @Value("${app.x:def}")   @ConfigurationProperties("app")
+     one value, one field      whole group -> one typed record
+  caption: "All configuration sources merge into one Environment; the higher source wins, and your code reads from it with @Value or @ConfigurationProperties."
+  visualizer: null
+explanation: |
+  ### @Configuration and @Bean
+  A **@Configuration class** is a Java class whose job is to create beans. Each method marked **@Bean** returns an object, and Spring stores that object as a bean (the method name becomes the bean name).
+
+  Use `@Bean` when you cannot put `@Component` on the class, usually because you did not write it (`Clock`, `PasswordEncoder`, `ObjectMapper`). In your app:
+  - `backend/src/main/java/com/codequest/config/ClockConfig.java` creates a `Clock` bean.
+  - `backend/src/main/java/com/codequest/config/SecurityConfig.java` creates `PasswordEncoder`, `SecurityFilterChain` and CORS beans.
+
+  `@Configuration` vs `@Component` with `@Bean` methods: in a `@Configuration` class, Spring wraps the class in a proxy so that if one `@Bean` method calls another, you still get the **same singleton** instead of a new object.
+
+  ### application.yml
+  `src/main/resources/application.yml` is the main settings file. **YAML** (YAML Ain't Markup Language) uses indentation to nest keys:
+  ```yaml
+  app:
+    jwt:
+      access-token-minutes: ${JWT_ACCESS_MINUTES:15}
+  ```
+  This defines the key `app.jwt.access-token-minutes`. `${JWT_ACCESS_MINUTES:15}` is a **placeholder**: "use the environment variable JWT_ACCESS_MINUTES if it exists, otherwise 15". Open `backend/src/main/resources/application.yml`: the very first line says *all secrets come from environment variables*. The database password and JWT secret are only placeholders with dev defaults.
+
+  ### Reading values: @Value
+  `@Value("${shop.opening-hour:9}")` injects one value. The part after `:` is a **default**. Without a default, a missing key stops the app at startup with *Could not resolve placeholder*. Your app uses `@Value` in `backend/src/main/java/com/codequest/service/CodeRunnerService.java` for three small optional settings.
+
+  Two traps:
+  - `@Value` on a **static** field is ignored. The field stays `null`.
+  - `@Value` works only inside beans (Spring has to create the object).
+
+  ### Reading groups: @ConfigurationProperties
+  For a group of related settings, bind them to one typed class or **record**:
+  ```java
+  @ConfigurationProperties(prefix = "shop")
+  record ShopProperties(String name, int maxCartItems, Delivery delivery) {
+      record Delivery(String city, int freeAbove) {}
+  }
+  ```
+  Register it with `@ConfigurationPropertiesScan` on the main class (your `CodeQuestApplication` has it) or `@EnableConfigurationProperties(ShopProperties.class)`.
+
+  Your project's `backend/src/main/java/com/codequest/config/AppProperties.java` is a great example: a record with a nested `Jwt` record, plus `@Validated` and `@NotBlank` / `@Size(min = 32)`. If `JWT_SECRET` is too short, **the app refuses to start**. Failing early is much better than failing at 2 a.m. in production.
+
+  | | `@Value` | `@ConfigurationProperties` |
+  |---|---|---|
+  | Best for | One or two values | A group of related values |
+  | Type safety | String to type conversion per field | Whole typed object, nested records |
+  | Validation | No | Yes, with `@Validated` |
+  | Relaxed binding | Limited | Full (see below) |
+  | Easy to test | Harder | Just `new AppProperties(...)` |
+
+  ### Relaxed binding and environment variables
+  **Relaxed binding** means Spring accepts several spellings of the same key. `max-cart-items` in YAML binds to the record field `maxCartItems`. An environment variable `SHOP_DELIVERY_CITY` (uppercase, dots and dashes become `_`) overrides `shop.delivery.city`. So in production you can override any setting without touching files.
+
+  ### Property precedence
+  When the same key is set in many places, the **higher** source wins (simplified):
+  1. Command-line arguments (`--shop.opening-hour=8`)
+  2. Java system properties (`-Dshop.opening-hour=8`)
+  3. OS environment variables (`SHOP_OPENING_HOUR=8`)
+  4. Profile-specific files (`application-dev.yml`)
+  5. `application.yml`
+
+  ### Profiles
+  A **profile** is a named set of configuration, like `dev`, `test` or `prod`. Activate one with `spring.profiles.active=dev` (property, env var `SPRING_PROFILES_ACTIVE=dev`, or `--spring.profiles.active=dev`).
+  - Spring then also loads `application-dev.yml`, whose values **override** `application.yml`.
+  - `@Profile("dev")` on a bean means "create this bean only when dev is active". `@Profile("!dev")` means "when dev is NOT active".
+
+  Your app takes a simpler route that also works well on free hosting: one `application.yml` where every environment-specific value is a placeholder, and Render's environment variables fill them in. Both approaches are valid; profiles shine when whole beans differ between environments (for example a fake email sender in dev).
+
+  ### Secrets rule
+  Never commit passwords, API keys or JWT secrets. Put them in environment variables, and keep only harmless dev defaults in the file.
+tinyCode:
+  code: |
+    // src/main/resources/application.yml
+    // shop:
+    //   name: "Chai Point"
+    //   max-cart-items: ${MAX_CART:10}
+    //   delivery:
+    //     city: Chennai
+    //     free-above: 499
+    package demo.shop;
+
+    import org.springframework.beans.factory.annotation.Value;
+    import org.springframework.boot.CommandLineRunner;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.boot.context.properties.ConfigurationProperties;
+    import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+    import org.springframework.context.annotation.Bean;
+    import org.springframework.context.annotation.Configuration;
+
+    import java.time.Clock;
+
+    @ConfigurationProperties(prefix = "shop")
+    record ShopProperties(String name, int maxCartItems, Delivery delivery) {
+        record Delivery(String city, int freeAbove) {}
+    }
+
+    @Configuration
+    class TimeConfig {
+        @Bean
+        Clock clock() { return Clock.systemUTC(); }
+    }
+
+    @SpringBootApplication
+    @ConfigurationPropertiesScan
+    public class ShopApp implements CommandLineRunner {
+        private final ShopProperties shop;
+        private final Clock clock;
+        private final int openingHour;
+
+        ShopApp(ShopProperties shop, Clock clock, @Value("${shop.opening-hour:9}") int openingHour) {
+            this.shop = shop;
+            this.clock = clock;
+            this.openingHour = openingHour;
+        }
+
+        @Override
+        public void run(String... args) {
+            System.out.println(shop.name() + " | max " + shop.maxCartItems() + " items");
+            System.out.println("Free delivery in " + shop.delivery().city() + " above Rs " + shop.delivery().freeAbove());
+            System.out.println("Opens at " + openingHour + ", clock zone " + clock.getZone());
+        }
+
+        public static void main(String[] args) {
+            SpringApplication.run(ShopApp.class, args);
+        }
+    }
+    // Output (plus Spring's log lines):
+    // Chai Point | max 10 items
+    // Free delivery in Chennai above Rs 499
+    // Opens at 9, clock zone Z
+  walkthrough: |
+    - The YAML at the top defines keys under `shop`. `max-cart-items: ${MAX_CART:10}` reads the environment variable `MAX_CART`, or uses 10.
+    - `@ConfigurationProperties(prefix = "shop") record ShopProperties(...)`: Spring builds this record from every key under `shop`. `max-cart-items` binds to `maxCartItems` and `free-above` to `freeAbove` (relaxed binding). The nested `delivery` block becomes the nested `Delivery` record.
+    - `@ConfigurationPropertiesScan` on the main class finds and registers `ShopProperties` as a bean.
+    - `@Configuration class TimeConfig` with `@Bean Clock clock()`: creates a `Clock` bean. We could not add `@Component` to `java.time.Clock`, so `@Bean` is the way.
+    - The constructor of `ShopApp` receives three things: the properties record, the clock bean, and one single value through `@Value("${shop.opening-hour:9}")`. That key is not in the YAML, so the default 9 is used.
+    - `CommandLineRunner.run` runs once after the app has started; we print what was bound. `Clock.systemUTC()` has zone `Z` (UTC).
+    - Try: `MAX_CART=25 SHOP_DELIVERY_CITY=Pune java -jar app.jar --shop.opening-hour=8` prints `max 25 items`, `Pune` and `Opens at 8`. Env vars and arguments override the file.
+tryIt:
+  instructions: "Type this profile demo. Add application.yml with app.greeting: \"Hello from default\" and application-dev.yml with app.greeting: \"Hello from dev\". Run it once with no arguments and once with --spring.profiles.active=dev, and compare."
+  code: |
+    package demo.profile;
+
+    import org.springframework.beans.factory.annotation.Value;
+    import org.springframework.boot.CommandLineRunner;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.context.annotation.Profile;
+    import org.springframework.stereotype.Component;
+
+    interface FileStore { String name(); }
+
+    @Component @Profile("dev")
+    class LocalDiskStore implements FileStore { public String name() { return "LOCAL DISK"; } }
+
+    @Component @Profile("!dev")
+    class CloudStore implements FileStore { public String name() { return "CLOUD"; } }
+
+    @SpringBootApplication
+    public class ProfileDemo implements CommandLineRunner {
+        @Value("${app.greeting}") String greeting;
+        private final FileStore store;
+        ProfileDemo(FileStore store) { this.store = store; }
+
+        public void run(String... args) { System.out.println(greeting + " -> " + store.name()); }
+
+        public static void main(String[] args) { SpringApplication.run(ProfileDemo.class, args); }
+    }
+predict:
+  code: |
+    // application.yml       ->  app.greeting: "Hello from default"
+    // application-dev.yml   ->  app.greeting: "Hello from dev"
+    // Same ProfileDemo as in "Try it". It is started with:
+    //   java -jar app.jar --spring.profiles.active=dev
+    // What line does run() print? (Ignore Spring's own log lines.)
+
+    @Component @Profile("dev")
+    class LocalDiskStore implements FileStore { public String name() { return "LOCAL DISK"; } }
+
+    @Component @Profile("!dev")
+    class CloudStore implements FileStore { public String name() { return "CLOUD"; } }
+
+    public void run(String... args) {
+        System.out.println(greeting + " -> " + store.name());
+    }
+  expectedOutput: |
+    Hello from dev -> LOCAL DISK
+  explanation: |
+    With the `dev` profile active, Spring loads `application.yml` **and then** `application-dev.yml`, and the profile file overrides the same key, so `greeting` is "Hello from dev". `@Profile("dev")` makes `LocalDiskStore` a bean, and `@Profile("!dev")` removes `CloudStore`, so exactly one `FileStore` exists and it is injected. Without the argument you would get `Hello from default -> CLOUD`.
+commonMistakes:
+  - "Committing real passwords or JWT secrets in application.yml. Use placeholders like ${JWT_SECRET} and set real values as environment variables."
+  - "Putting @Value on a static field. Spring ignores it and the field stays null."
+  - "Using @Value with no default for an optional setting. If the key is missing, the app fails at startup with 'Could not resolve placeholder'."
+  - "Writing many @Value annotations for one group of settings instead of one validated @ConfigurationProperties record."
+  - "Forgetting @ConfigurationPropertiesScan or @EnableConfigurationProperties, so the properties record is never created as a bean."
+  - "Wrong YAML indentation (or tabs). YAML nesting is based on spaces, so one wrong space changes the key."
+interviewBox:
+  why: "Why interviewers ask this: every real project runs in several environments. They want to know you can keep settings and secrets out of code."
+  questions:
+    - q: "What is the difference between @Value and @ConfigurationProperties?"
+      a: "@Value injects one property into one field or parameter, and I can give a default after a colon. @ConfigurationProperties binds a whole group with a common prefix into one typed class or record, supports nested objects, relaxed binding and validation with @Validated. For more than two related settings I use @ConfigurationProperties. In my project, AppProperties holds all the app and JWT settings and the app won't start if the JWT secret is shorter than 32 characters."
+    - q: "What are Spring profiles?"
+      a: "Profiles are named environments like dev, test and prod. When I activate one with spring.profiles.active, Spring also loads application-dev.yml, which overrides the default file, and beans marked @Profile(\"dev\") are created only in that profile. For example, a fake email sender in dev and a real one in prod."
+    - q: "Where do you store secrets like the database password?"
+      a: "In environment variables, never in Git. application.yml only has a placeholder like ${DATABASE_PASSWORD:postgres} with a harmless local default. On the server, the hosting platform sets the real value."
+    - q: "If the same property is in application.yml and an environment variable, which wins?"
+      a: "The environment variable. Roughly, command-line arguments win over system properties, which win over environment variables, which win over profile-specific files, which win over application.yml."
+    - q: "@Configuration vs @Component?"
+      a: "Both are beans. @Configuration is meant for classes full of @Bean methods. Spring proxies it, so if one @Bean method calls another, you still get the same singleton bean instead of a new object."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "application.yml has no 'shop.opening-hour' key and nothing else sets it. What is printed?"
+    code: |
+      @Component
+      class Banner {
+          private final int openingHour;
+          Banner(@Value("${shop.opening-hour:9}") int openingHour) {
+              this.openingHour = openingHour;
+          }
+          void show() { System.out.println("Opens at " + openingHour); }
+      }
+    options:
+      - "Opens at 0"
+      - "Opens at 9"
+      - "Opens at null"
+      - "The app fails: Could not resolve placeholder"
+    answer: 1
+    explanation: "The text after the colon is a default value, so the missing key becomes 9. Without ':9' the tempting answer D would be right: Spring stops at startup with 'Could not resolve placeholder'. It never silently uses 0 or null."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "shop.name is set to \"Chai Point\" in application.yml, but Banner.shopName prints null. What is wrong?"
+    code: |
+      @Component
+      class Banner {
+          @Value("${shop.name}")
+          static String shopName;
+      }
+    options:
+      - "@Value needs a default value"
+      - "Spring does not inject @Value into static fields, so the field stays null"
+      - "The key should be written as shopName"
+      - "Banner must be a @Configuration class"
+    answer: 1
+    explanation: "Injection works on objects (instances), and a static field belongs to the class, so Spring skips it (it only logs a warning). Make the field non-static, or better, use constructor injection. The key 'shop.name' is correct, and a default is optional."
+  - id: q3
+    type: MCQ
+    prompt: "application.yml contains the line registration-enabled: ${REGISTRATION_ENABLED:true} under app. The server has the environment variable REGISTRATION_ENABLED=false. What value does the app see for app.registration-enabled?"
+    code: null
+    options:
+      - "true, because the YAML file always wins"
+      - "false, because the placeholder reads the environment variable first and only uses true if it is missing"
+      - "The app fails because the value is set twice"
+      - "Both values are joined into a list"
+    answer: 1
+    explanation: "${REGISTRATION_ENABLED:true} means 'take the environment variable REGISTRATION_ENABLED; if it does not exist, use true'. It exists with false, so false wins. This is exactly how your backend's application.yml is written. Setting a value in two places is normal and never an error."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "With @ConfigurationProperties(prefix = \"shop\"), the environment variable SHOP_DELIVERY_CITY=Pune overrides shop.delivery.city from application.yml."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Relaxed binding maps uppercase, underscore-separated environment variables to dotted keys, and environment variables have higher priority than application.yml."
+  - id: q5
+    type: MATCH
+    prompt: "Match each tool to its job"
+    pairs:
+      - left: "@Configuration + @Bean"
+        right: "Create beans from classes you did not write, like Clock"
+      - left: "@Value"
+        right: "Inject one property value, with an optional default"
+      - left: "@ConfigurationProperties"
+        right: "Bind a group of properties into one typed record"
+      - left: "@Profile(\"dev\")"
+        right: "Create this bean only when the dev profile is active"
+      - left: "application-prod.yml"
+        right: "Values that override application.yml when prod is active"
+    explanation: "Each tool has a clear job. Your project uses @Bean (ClockConfig, SecurityConfig), @Value (CodeRunnerService) and @ConfigurationProperties (AppProperties)."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Bind every key under app.jwt (secret, access-token-minutes, refresh-token-days) into this record."
+    code: |
+      @ConfigurationProperties(____ = "app.jwt")
+      public record JwtProperties(String secret, int accessTokenMinutes, int refreshTokenDays) {}
+    acceptedAnswers: ["prefix", "value"]
+    explanation: "prefix tells Spring which part of the configuration tree to bind (value is an alias of prefix, so it also works). access-token-minutes binds to accessTokenMinutes by relaxed binding."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "Same ProfileDemo (dev profile -> LocalDiskStore and 'Hello from dev'). It is now started with NO arguments and no SPRING_PROFILES_ACTIVE. What does run() print?"
+    code: |
+      @Component @Profile("dev")
+      class LocalDiskStore implements FileStore { public String name() { return "LOCAL DISK"; } }
+
+      @Component @Profile("!dev")
+      class CloudStore implements FileStore { public String name() { return "CLOUD"; } }
+
+      // application.yml:      app.greeting: "Hello from default"
+      // application-dev.yml:  app.greeting: "Hello from dev"
+      System.out.println(greeting + " -> " + store.name());
+    options:
+      - "Hello from dev -> LOCAL DISK"
+      - "Hello from default -> CLOUD"
+      - "Hello from default -> LOCAL DISK"
+      - "The app fails: no FileStore bean"
+    answer: 1
+    explanation: "With no active profile, only application.yml is loaded and only the '!dev' bean (CloudStore) exists. Option D is tempting, but '!dev' matches whenever dev is not active, so there is always exactly one FileStore."
+explainBack:
+  prompt: "Explain to a friend how a Spring Boot app gets different settings on a laptop and on a production server, without changing code."
+  rubric:
+    - "I said settings live in application.yml, environment variables or command-line arguments, not in code"
+    - "I explained placeholders with defaults like ${JWT_SECRET:...}"
+    - "I compared @Value and @ConfigurationProperties"
+    - "I explained profiles and application-dev.yml"
+    - "I said secrets must never be committed to Git"
+  modelAnswer: |
+    The compiled app is the same everywhere; only the configuration changes, like one phone with different SIM cards. Defaults live in application.yml, but anything environment-specific is a placeholder, for example ${DATABASE_URL:localhost...}. On the server, environment variables fill in the real values, and they win over the file. Command-line arguments win over everything. In code, I use @Value for a single value and @ConfigurationProperties to bind a whole group into a typed, validated record, like AppProperties in my project. Profiles like dev and prod load extra files such as application-dev.yml and can switch beans on or off with @Profile. Secrets always stay in environment variables, never in Git.
+flashcards:
+  - front: "@Value vs @ConfigurationProperties"
+    back: "@Value: one value, optional default ${key:default}. @ConfigurationProperties: whole prefix into a typed record, nested, validated, relaxed binding."
+  - front: "What does ${JWT_SECRET:abc} mean?"
+    back: "Use the property/env var JWT_SECRET; if it is missing, use abc."
+  - front: "Property precedence (high to low, simplified)"
+    back: "Command-line args > Java system props > OS env vars > application-{profile}.yml > application.yml"
+  - front: "How do you activate a profile?"
+    back: "spring.profiles.active=dev (in a file, as SPRING_PROFILES_ACTIVE env var, or --spring.profiles.active=dev)."
+  - front: "@Value on a static field?"
+    back: "Ignored. The field stays null. Use an instance field or constructor parameter."
+keyTakeaways:
+  - "Keep configuration outside code: application.yml for defaults, environment variables for real and secret values."
+  - "@Bean methods in a @Configuration class create beans from classes you did not write."
+  - "Use @Value for one value; use a validated @ConfigurationProperties record for groups (see AppProperties)."
+  - "Profiles (dev, prod) load application-{profile}.yml and turn @Profile beans on or off."
+  - "Higher sources win: command line > env vars > profile file > application.yml."

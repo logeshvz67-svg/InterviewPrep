@@ -1,0 +1,311 @@
+slug: cs-synchronization
+world: CS_CORE
+section: CS
+order: 5
+title: "OS: synchronization"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Critical section, race condition and mutex vs semaphore are core OS questions for SP and DSE, and they connect directly to Java multithreading questions."
+otherCompanies: "Mutex vs semaphore and producer-consumer are common in TCS, Wipro, Cognizant, Accenture and Capgemini interviews; product companies often ask you to code producer-consumer in Java."
+why: |
+  The moment two threads share data, bugs can appear that happen **once in a thousand runs**. These are race conditions, and **synchronization** is how we stop them.
+
+  This lesson is high value because:
+  - **"Mutex vs semaphore"** is one of the most asked OS questions,
+  - **producer-consumer** is a classic you may be asked to explain or code,
+  - it is the theory behind Java's `synchronized`, `Semaphore`, `BlockingQueue` and `AtomicInteger`.
+analogy: |
+  Think of a **single-seat public washroom at a railway station**.
+
+  - The washroom is the **critical section**: only one person should be inside.
+  - The **lock on the door** is a **mutex**: whoever locks it must be the one who unlocks it.
+  - Now think of a **parking lot with 5 spaces and a counter board** showing free spaces. That board is a **counting semaphore**: up to 5 cars can be inside; car number 6 waits until someone leaves and the count goes up.
+  - Two people pushing the washroom door at the same moment and both getting in is a **race condition**.
+visual:
+  diagram: |
+    Race condition: count++ is really 3 steps
+
+    Thread A               Thread B              count (memory)
+    read count  (0)                                   0
+                           read count  (0)            0
+    add 1 -> 1                                        0
+                           add 1 -> 1                 0
+    write 1                                           1
+                           write 1                    1   <- lost update!
+
+    With a lock:
+    A: [lock] read 0, add, write 1 [unlock]           1
+    B:        waits ...   [lock] read 1, write 2      2   correct
+  caption: "count++ is read, add, write. If two threads interleave those steps, one update is lost. A lock makes the three steps happen as one unit."
+  visualizer: null
+explanation: |
+  ### Key terms
+  - **Shared resource**: data or a device used by more than one thread/process (a variable, a file, a bank balance).
+  - **Race condition**: the result depends on the unpredictable **timing** of threads. Example: two threads doing `count++` on the same variable.
+  - **Critical section**: the part of code that touches the shared resource. Only one thread should be inside it at a time.
+  - **Atomic operation**: an operation that happens completely or not at all, with no thread able to see it half-done.
+
+  ### Why is count++ not safe?
+  `count++` looks like one step, but the CPU does three: **read** count, **add** 1, **write** it back. If two threads read the same old value, both write the same new value, and one increment is lost (see the diagram).
+
+  ### Requirements of a good critical-section solution
+  | Requirement | Plain meaning |
+  |---|---|
+  | **Mutual exclusion** | At most one thread inside the critical section |
+  | **Progress** | If nobody is inside, a waiting thread must be allowed in soon (no pointless blocking) |
+  | **Bounded waiting** | A thread will not wait forever; there is a limit on how many others go before it |
+
+  ### Tools for synchronization
+  **1. Mutex (mutual exclusion lock)**
+  - A lock with two states: locked / unlocked.
+  - `lock()` before the critical section, `unlock()` after.
+  - **Ownership**: only the thread that locked it should unlock it.
+  - Java: `synchronized` blocks, `ReentrantLock`.
+
+  **2. Semaphore**
+  A semaphore is an **integer counter** with two atomic operations:
+  - `wait()` (also called **P** or `acquire`): decrease the counter; if it becomes negative / is zero, the thread blocks.
+  - `signal()` (also called **V** or `release`): increase the counter and wake a waiting thread.
+
+  Types:
+  - **Binary semaphore**: value 0 or 1, works like a lock.
+  - **Counting semaphore**: value 0..N, allows up to N threads at once (e.g. 5 DB connections).
+
+  **3. Monitor**: a higher-level construct where the language handles locking for you. Java objects with `synchronized` methods plus `wait()` / `notify()` are monitors.
+
+  **4. Spinlock**: a lock where the waiting thread loops ("spins") checking again and again instead of sleeping. Good only for very short waits on multi-core CPUs, because spinning wastes CPU (**busy waiting**).
+
+  ### Mutex vs semaphore
+  | Point | Mutex | Semaphore |
+  |---|---|---|
+  | What it is | A lock | An integer counter |
+  | Threads allowed | 1 | Up to N (counting) |
+  | Ownership | Yes, the locker must unlock | No owner; any thread can signal |
+  | Typical use | Protect a critical section | Limit access to N resources, or signal between threads |
+  | Java | `synchronized`, `ReentrantLock` | `java.util.concurrent.Semaphore` |
+
+  A binary semaphore behaves like a mutex, but it has no ownership: one thread can `wait` and a different thread can `signal`. That is why semaphores are also used for **signalling** ("data is ready").
+
+  ### The producer-consumer (bounded buffer) problem
+  A **producer** puts items into a buffer of fixed size N; a **consumer** takes them out. Rules:
+  - Producer must wait if the buffer is **full**.
+  - Consumer must wait if the buffer is **empty**.
+  - Both must not change the buffer at the same time.
+
+  Classic solution with three semaphores:
+  ```
+  mutex = 1     // protects the buffer
+  empty = N     // free slots
+  full  = 0     // filled slots
+
+  Producer:                 Consumer:
+    wait(empty)               wait(full)
+    wait(mutex)               wait(mutex)
+      add item                  remove item
+    signal(mutex)             signal(mutex)
+    signal(full)              signal(empty)
+  ```
+  Order matters: if the producer did `wait(mutex)` **before** `wait(empty)` on a full buffer, it would sleep holding the mutex, the consumer could never enter, and you get a **deadlock**.
+
+  In Java, `BlockingQueue` (e.g. `ArrayBlockingQueue`) already implements all of this: `put()` blocks when full and `take()` blocks when empty.
+
+  ### Other classic problems (names to know)
+  - **Readers-writers**: many readers may read together, but a writer needs exclusive access.
+  - **Dining philosophers**: five philosophers, five forks; a model of deadlock and starvation.
+
+  ### Java mapping
+  | OS idea | Java tool |
+  |---|---|
+  | Mutex | `synchronized`, `ReentrantLock` |
+  | Counting semaphore | `Semaphore(n)` |
+  | Monitor + condition | `synchronized` + `wait()`/`notifyAll()` |
+  | Atomic operation | `AtomicInteger.incrementAndGet()` |
+  | Bounded buffer | `ArrayBlockingQueue` |
+tinyCode:
+  code: |
+    public class RaceDemo {
+        static int unsafeCount = 0;
+        static int safeCount = 0;
+        static final Object lock = new Object();
+
+        public static void main(String[] args) throws InterruptedException {
+            Runnable job = () -> {
+                for (int i = 0; i < 100_000; i++) {
+                    unsafeCount++;                 // read-add-write, not atomic
+                    synchronized (lock) {          // critical section
+                        safeCount++;
+                    }
+                }
+            };
+            Thread a = new Thread(job);
+            Thread b = new Thread(job);
+            a.start(); b.start();
+            a.join();  b.join();
+            System.out.println("Expected: 200000");
+            System.out.println("Unsafe:   " + unsafeCount + "  (often less, changes every run)");
+            System.out.println("Safe:     " + safeCount);
+        }
+    }
+  walkthrough: |
+    - Two threads run the same `job`, each adding 1 a hundred thousand times to two counters.
+    - `unsafeCount++` is not protected. Its read-add-write steps interleave, so updates get lost. On most machines you will see a number below 200000, and it changes from run to run: that is a **race condition**.
+    - `synchronized (lock) { safeCount++; }` is a **mutex**: only one thread can hold `lock` at a time, so the three steps of `safeCount++` happen as one unit.
+    - `join()` makes `main` wait for both threads before printing.
+    - The safe line always prints `Safe:     200000`. The unsafe line varies, which is exactly the bug we're learning to avoid.
+tryIt:
+  instructions: "Type this producer-consumer using ArrayBlockingQueue (a bounded buffer of size 2). put() blocks when the buffer is full and take() blocks when it is empty, so you never write the semaphores yourself. Only the consumer prints, so the output is always Consumed 1 to 5 in order."
+  code: |
+    import java.util.concurrent.ArrayBlockingQueue;
+    import java.util.concurrent.BlockingQueue;
+
+    public class ProducerConsumer {
+        public static void main(String[] args) throws InterruptedException {
+            BlockingQueue<Integer> buffer = new ArrayBlockingQueue<>(2);
+
+            Thread producer = new Thread(() -> {
+                try {
+                    for (int i = 1; i <= 5; i++) buffer.put(i);    // waits if full
+                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            });
+            Thread consumer = new Thread(() -> {
+                try {
+                    for (int i = 1; i <= 5; i++)
+                        System.out.println("Consumed " + buffer.take()); // waits if empty
+                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            });
+            producer.start(); consumer.start();
+            producer.join();  consumer.join();
+            System.out.println("Done");
+        }
+    }
+predict:
+  code: |
+    import java.util.concurrent.Semaphore;
+
+    public class SemaphorePredict {
+        public static void main(String[] args) throws InterruptedException {
+            Semaphore parking = new Semaphore(2);   // 2 free spaces
+            parking.acquire();                      // car 1 enters
+            parking.acquire();                      // car 2 enters
+            System.out.println(parking.availablePermits());
+            System.out.println(parking.tryAcquire()); // car 3 tries, does not wait
+            parking.release();                      // one car leaves
+            System.out.println(parking.tryAcquire());
+            System.out.println(parking.availablePermits());
+        }
+    }
+  expectedOutput: |
+    0
+    false
+    true
+    0
+  explanation: |
+    A counting semaphore starts at 2. Two `acquire()` calls bring it to **0**. `tryAcquire()` does not block; with no permits it returns **false**. `release()` adds one permit back (to 1), so the next `tryAcquire()` succeeds (**true**) and the count is **0** again.
+commonMistakes:
+  - "Thinking count++ is atomic. It is read, add, write: three steps that can interleave."
+  - "Saying a binary semaphore and a mutex are exactly the same. A mutex has ownership (the locker unlocks); a semaphore has none and can be signalled by another thread."
+  - "In producer-consumer, taking the mutex before waiting on empty/full. A producer sleeping on a full buffer while holding the mutex causes deadlock."
+  - "Using different lock objects in different threads for the same data. All threads must synchronize on the SAME lock."
+  - "Using busy waiting (while(!ready){}) for long waits. It burns CPU; use blocking tools instead."
+interviewBox:
+  why: "Why interviewers ask this: almost every real backend is multithreaded; they want to know you can spot shared-data bugs and pick the right tool."
+  questions:
+    - q: "What is a race condition?"
+      a: "A race condition is when the result of a program depends on the timing of threads accessing shared data. For example, two threads doing count++ together can lose an update because count++ is really read, add and write. We fix it by making the critical section mutually exclusive with a lock or by using atomic operations."
+    - q: "What is the difference between a mutex and a semaphore?"
+      a: "A mutex is a lock that allows only one thread at a time and has ownership, so the thread that locks it must unlock it. A semaphore is a counter that can allow up to N threads, and it has no owner, so one thread can wait and another can signal. Mutexes protect critical sections; counting semaphores limit access to a pool of resources or are used for signalling."
+    - q: "Explain the producer-consumer problem."
+      a: "A producer adds items to a fixed-size buffer and a consumer removes them. The producer must wait when the buffer is full, the consumer must wait when it is empty, and they must not modify the buffer at the same time. The classic solution uses three semaphores: empty starting at N, full starting at 0, and a mutex. In Java I would use an ArrayBlockingQueue with put and take."
+    - q: "What are the requirements of a critical section solution?"
+      a: "Mutual exclusion, so only one thread is inside; progress, so if nobody is inside a waiting thread can enter; and bounded waiting, so no thread waits forever."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Two threads each run count++ 1000 times on a shared int without synchronization. What can the final value be?"
+    code: null
+    options: ["Always exactly 2000", "2000 or less, depending on timing", "Always 1000", "More than 2000"]
+    answer: 1
+    explanation: "Lost updates can only reduce the total, and how many are lost depends on timing, so the result is 2000 or less. 'Always 2000' assumes count++ is atomic, which it is not."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "A mutex can be unlocked by a different thread than the one that locked it, just like a semaphore can be signalled by any thread."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A mutex has ownership: only the locking thread should unlock it (Java's ReentrantLock throws IllegalMonitorStateException otherwise). A semaphore has no owner."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      Semaphore s = new Semaphore(3);
+      s.acquire();
+      s.acquire();
+      s.release();
+      System.out.println(s.availablePermits() + " " + s.tryAcquire());
+    options: ["1 true", "2 true", "2 false", "3 true"]
+    answer: 1
+    explanation: "3 - 1 - 1 + 1 = 2 permits are available, and tryAcquire succeeds because 2 > 0. The value is read before tryAcquire runs, so it prints 2, not 1."
+  - id: q4
+    type: MATCH
+    prompt: "Match the OS idea to the Java tool"
+    pairs:
+      - left: "Mutex"
+        right: "synchronized block or ReentrantLock"
+      - left: "Counting semaphore"
+        right: "java.util.concurrent.Semaphore"
+      - left: "Bounded buffer"
+        right: "ArrayBlockingQueue"
+      - left: "Atomic increment"
+        right: "AtomicInteger.incrementAndGet()"
+    explanation: "Java provides ready-made versions of each OS synchronization idea; knowing the mapping helps you answer both OS and Java questions."
+  - id: q5
+    type: MCQ
+    prompt: "In the semaphore solution to producer-consumer with buffer size N, what are the initial values of empty and full?"
+    code: null
+    options: ["empty = 0, full = N", "empty = N, full = 0", "empty = 1, full = 1", "empty = N, full = N"]
+    answer: 1
+    explanation: "At the start all N slots are empty and none are full. The producer waits on empty and the consumer waits on full."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Make the increment thread-safe using Java's built-in mutex keyword."
+    code: |
+      ____ (lock) {
+          count++;
+      }
+    acceptedAnswers: ["synchronized"]
+    explanation: "A synchronized block lets only one thread at a time hold the lock object's monitor, making the read-add-write steps happen as one unit."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "Busy waiting (a spinlock) wastes CPU time while the thread waits."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. A spinning thread keeps checking in a loop, using the CPU. That's acceptable only for very short waits on multi-core machines; otherwise blocking locks are better."
+explainBack:
+  prompt: "Explain to a friend what a race condition is and how a mutex and a semaphore solve different problems."
+  rubric:
+    - "I explained why count++ is not atomic"
+    - "I defined critical section and race condition"
+    - "I compared mutex (one, ownership) with semaphore (counter, N, no owner)"
+    - "I described producer-consumer and its waiting rules"
+    - "I used an analogy like a washroom lock and a parking board"
+  modelAnswer: |
+    When two threads change the same data at the same time, the result can depend on timing. That is a race condition. Even count++ is three steps: read, add, write, so one thread's update can be lost. The code that touches shared data is the critical section, and only one thread should be inside. A mutex is like a washroom door lock: one person at a time, and whoever locks it unlocks it. A semaphore is like a parking board with a count: up to N cars can be inside, and anyone leaving increases the count. In producer-consumer, the producer waits when the buffer is full, the consumer waits when it is empty, and a lock protects the buffer.
+flashcards:
+  - front: "Race condition"
+    back: "Result depends on the timing of threads accessing shared data, e.g. lost updates from count++."
+  - front: "Critical section requirements"
+    back: "Mutual exclusion, progress, bounded waiting."
+  - front: "Mutex vs semaphore"
+    back: "Mutex: lock, 1 thread, has ownership. Semaphore: counter, up to N threads, no ownership, also used for signalling."
+  - front: "Producer-consumer semaphores"
+    back: "mutex = 1, empty = N, full = 0. Producer: wait(empty), wait(mutex) ... signal(mutex), signal(full)."
+  - front: "Java bounded buffer"
+    back: "ArrayBlockingQueue: put() blocks when full, take() blocks when empty."
+keyTakeaways:
+  - "Shared data + unsynchronized access = race condition; count++ is not atomic."
+  - "A critical section needs mutual exclusion, progress and bounded waiting."
+  - "Mutex = one owner at a time; semaphore = counter for N resources or signalling."
+  - "Producer-consumer uses empty, full and mutex; wait on the counter before the mutex."
+  - "Java gives you synchronized, ReentrantLock, Semaphore, AtomicInteger and BlockingQueue."

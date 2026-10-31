@@ -1,0 +1,327 @@
+slug: cs-http-https
+world: CS_CORE
+section: CS
+order: 9
+title: "Networks: HTTP and HTTPS"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "HTTP methods, status codes and HTTPS basics are essential for SP and DSE web/backend discussions, and they are the base for Spring REST APIs."
+otherCompanies: "GET vs POST, status codes and HTTP vs HTTPS are common at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies go into idempotency, cookies vs tokens and TLS."
+why: |
+  Every website, every mobile app, every Spring Boot REST API you will build talks using **HTTP**. If you know HTTP well, backend interviews suddenly feel familiar.
+
+  Typical questions:
+  - **GET vs POST**, **PUT vs PATCH**, what is **idempotent**?
+  - What do **200, 201, 301, 401, 403, 404, 500** mean?
+  - **HTTP vs HTTPS**, and how does the TLS handshake work (in simple words)?
+  - **Cookies vs tokens (JWT)** for login.
+analogy: |
+  Think of **ordering food at a restaurant**.
+
+  - You (the **client**) give the waiter an order slip: "GET one masala dosa, table 7". That slip is the **request**: a method (GET), a path (masala dosa), and extra notes like "less spicy" (**headers**).
+  - The kitchen (the **server**) sends back the plate with a note: "200 OK, here is your dosa" or "404, dosa is not on the menu" or "500, the stove broke". That is the **response** with a **status code**.
+  - The waiter doesn't remember you between orders (**stateless**). So the restaurant gives you a **token number** to show every time: that's a **cookie or token**.
+  - **HTTPS** is the same conversation, but inside a **sealed envelope** that only you and the kitchen can open.
+visual:
+  diagram: |
+    CLIENT (browser / app)                    SERVER
+         |  ---------- HTTP request ---------->  |
+         |  POST /api/orders HTTP/1.1            |
+         |  Host: food.in                        |
+         |  Content-Type: application/json       |
+         |  Authorization: Bearer eyJhbGci...    |
+         |  (blank line)                         |
+         |  {"item":"dosa","qty":1}              |
+         |                                       |
+         |  <--------- HTTP response ----------  |
+         |  HTTP/1.1 201 Created                 |
+         |  Content-Type: application/json       |
+         |  (blank line)                         |
+         |  {"orderId":42}                       |
+
+    HTTPS = same messages, encrypted by TLS:
+    HTTP -> TLS (encrypt) -> TCP -> IP
+  caption: "An HTTP request has a request line, headers, a blank line and an optional body. The response has a status line, headers and a body. HTTPS wraps it all in TLS encryption."
+  visualizer: null
+explanation: |
+  ### What is HTTP?
+  **HTTP (HyperText Transfer Protocol)** is an **application-layer** protocol for clients and servers to exchange data (HTML, JSON, images). It runs on top of TCP (port **80**); HTTPS uses port **443**.
+  - **Client-server**: the client always sends a request, the server sends a response.
+  - **Stateless**: each request is independent; the server does not remember earlier requests by itself. We add memory using cookies, sessions or tokens.
+
+  ### Structure of a request
+  1. **Request line**: `METHOD path version`, e.g. `GET /products?id=5 HTTP/1.1`
+  2. **Headers**: key-value metadata (`Host`, `Content-Type`, `Authorization`, `Cookie`)
+  3. **Blank line**
+  4. **Body** (optional): data, usually JSON, for POST/PUT/PATCH
+
+  ### Structure of a response
+  1. **Status line**: `HTTP/1.1 200 OK`
+  2. **Headers**: `Content-Type`, `Set-Cookie`, `Cache-Control`
+  3. **Blank line**
+  4. **Body**: the HTML/JSON/image
+
+  ### HTTP methods
+  | Method | Purpose | Has body? | Safe? | Idempotent? |
+  |---|---|---|---|---|
+  | GET | Read a resource | No | Yes | Yes |
+  | POST | Create / submit data | Yes | No | No |
+  | PUT | Replace a resource fully | Yes | No | Yes |
+  | PATCH | Update part of a resource | Yes | No | Not guaranteed |
+  | DELETE | Delete a resource | Usually no | No | Yes |
+  | HEAD | Like GET but headers only | No | Yes | Yes |
+  | OPTIONS | Ask which methods are allowed (used in CORS) | No | Yes | Yes |
+
+  - **Safe**: does not change data on the server.
+  - **Idempotent**: doing it once or many times has the **same effect** on the server. Deleting order 42 twice still leaves order 42 deleted. Sending POST "create order" twice creates two orders, so POST is not idempotent.
+
+  **GET vs POST**: GET sends data in the URL (query string), is cached and bookmarked, has URL length limits and should never be used for passwords. POST sends data in the body, is not cached by default, and is used to create or submit.
+
+  **PUT vs PATCH**: PUT replaces the whole resource (missing fields may be cleared); PATCH changes only the given fields.
+
+  ### Status codes
+  | Range | Meaning | Common codes |
+  |---|---|---|
+  | 1xx | Informational | 100 Continue, 101 Switching Protocols |
+  | 2xx | Success | **200 OK**, **201 Created**, **204 No Content** |
+  | 3xx | Redirection | **301 Moved Permanently**, **302 Found**, **304 Not Modified** |
+  | 4xx | Client error | **400 Bad Request**, **401 Unauthorized** (not logged in), **403 Forbidden** (logged in, no permission), **404 Not Found**, 405 Method Not Allowed, 409 Conflict, 429 Too Many Requests |
+  | 5xx | Server error | **500 Internal Server Error**, 502 Bad Gateway, **503 Service Unavailable**, 504 Gateway Timeout |
+  Trick: **4xx = you (client) did something wrong; 5xx = the server failed.**
+
+  ### Useful headers
+  - `Host`: which website (one server can host many sites).
+  - `Content-Type`: format of the body (`application/json`, `text/html`).
+  - `Accept`: formats the client wants back.
+  - `Authorization`: credentials, e.g. `Bearer <token>`.
+  - `Cookie` / `Set-Cookie`: send / store cookies.
+  - `Cache-Control`: caching rules.
+  - `User-Agent`: which browser or app.
+
+  ### Cookies, sessions and tokens
+  HTTP is stateless, so how does the server know you are logged in?
+  - **Session + cookie**: after login, the server stores your session in memory/DB and sends `Set-Cookie: SESSIONID=abc`. The browser automatically sends that cookie with every request. State lives **on the server**.
+  - **Token (e.g. JWT, JSON Web Token)**: after login, the server gives a **signed token** containing your user id and expiry. The client sends it in `Authorization: Bearer <token>`. The server only **verifies the signature**; no session storage needed, so it scales easily across many servers. Harder to revoke before expiry.
+  | | Session cookie | JWT token |
+  |---|---|---|
+  | State stored | Server | Inside the token (client side) |
+  | Sent how | Automatically by browser (Cookie header) | Usually by code (Authorization header) |
+  | Scaling | Needs shared session store | Stateless, easy |
+  | Logout / revoke | Easy (delete session) | Hard until expiry |
+  | Main risk | CSRF (use SameSite, CSRF tokens) | Token theft (XSS); keep expiry short |
+
+  ### HTTPS and the TLS handshake (simple version)
+  **HTTPS = HTTP + TLS (Transport Layer Security)**. It gives:
+  - **Encryption**: nobody in between (public Wi-Fi) can read the data.
+  - **Integrity**: data cannot be changed silently.
+  - **Authentication**: you are really talking to `bank.com`, proved by a **certificate** signed by a trusted **Certificate Authority (CA)**.
+
+  Two kinds of encryption:
+  - **Asymmetric** (public key + private key): slow, used only at the start to agree on a key safely.
+  - **Symmetric** (one shared key): fast, used for all the actual data.
+
+  Handshake, simplified:
+  1. **Client Hello**: "Hi, I support these TLS versions and ciphers", plus a random value and key-share.
+  2. **Server Hello + certificate**: server picks the cipher, sends its certificate (containing its public key) and its key-share.
+  3. **Verify**: the browser checks the certificate: signed by a trusted CA? right domain? not expired?
+  4. **Key exchange**: both sides compute the same **session key** (using Diffie-Hellman key exchange) without ever sending it directly.
+  5. **Finished**: both confirm, and from now on all HTTP data is encrypted with the fast symmetric session key.
+
+  ### HTTP versions (one line each)
+  - **HTTP/1.1**: persistent (keep-alive) connections; one request at a time per connection.
+  - **HTTP/2**: binary, **multiplexing** many requests on one connection, header compression.
+  - **HTTP/3**: runs over **QUIC** (built on UDP) for faster connection setup and less blocking.
+
+  ### Link to REST
+  **REST** is a style for designing APIs over HTTP: URLs name **resources** (nouns like `/orders/42`), HTTP **methods** are the actions, responses use **status codes**, and each request is **stateless**. Example: `GET /orders/42` reads, `POST /orders` creates (201), `PUT /orders/42` replaces, `DELETE /orders/42` deletes (204). You'll build exactly this with Spring Boot `@RestController`.
+tinyCode:
+  code: |
+    public class ParseRequest {
+        public static void main(String[] args) {
+            String raw = "POST /api/orders HTTP/1.1\r\n"
+                       + "Host: food.in\r\n"
+                       + "Content-Type: application/json\r\n"
+                       + "Cookie: SESSIONID=abc123\r\n"
+                       + "\r\n"
+                       + "{\"item\":\"dosa\",\"qty\":1}";
+
+            String[] parts = raw.split("\r\n\r\n", 2);       // headers | body
+            String[] lines = parts[0].split("\r\n");
+            String[] requestLine = lines[0].split(" ");
+
+            System.out.println("Method:  " + requestLine[0]);
+            System.out.println("Path:    " + requestLine[1]);
+            System.out.println("Version: " + requestLine[2]);
+            for (int i = 1; i < lines.length; i++) {
+                String[] kv = lines[i].split(": ", 2);
+                System.out.println("Header " + kv[0] + " = " + kv[1]);
+            }
+            System.out.println("Body:    " + parts[1]);
+        }
+    }
+  walkthrough: |
+    - `raw` is a real-looking HTTP request as plain text. HTTP/1.1 lines end with `\r\n` (carriage return + new line).
+    - An empty line (`\r\n\r\n`) separates the **headers** from the **body**, so we split on it once.
+    - The first line is the **request line**: method, path, version separated by spaces.
+    - Each remaining line is a **header** in `Name: value` form.
+    - Output:
+    ```
+    Method:  POST
+    Path:    /api/orders
+    Version: HTTP/1.1
+    Header Host = food.in
+    Header Content-Type = application/json
+    Header Cookie = SESSIONID=abc123
+    Body:    {"item":"dosa","qty":1}
+    ```
+    Web servers like Tomcat (inside Spring Boot) do this parsing for you, then hand your controller the method, path, headers and body.
+tryIt:
+  instructions: "Type this tiny 'response builder'. It creates the text a server sends back for a created order, using the correct status line, headers, blank line and body. Change the status to 404 Not Found and the body to an error message."
+  code: |
+    public class BuildResponse {
+        public static void main(String[] args) {
+            String body = "{\"orderId\":42}";
+            String response = "HTTP/1.1 201 Created\r\n"
+                    + "Content-Type: application/json\r\n"
+                    + "Content-Length: " + body.length() + "\r\n"
+                    + "Location: /api/orders/42\r\n"
+                    + "\r\n"
+                    + body;
+            System.out.println(response);
+        }
+    }
+predict:
+  code: |
+    public class StatusPredict {
+        static String kind(int code) {
+            return switch (code / 100) {
+                case 2 -> "success";
+                case 3 -> "redirect";
+                case 4 -> "client error";
+                case 5 -> "server error";
+                default -> "info";
+            };
+        }
+
+        public static void main(String[] args) {
+            int[] codes = {201, 304, 403, 503};
+            for (int c : codes) System.out.println(c + " " + kind(c));
+        }
+    }
+  expectedOutput: |
+    201 success
+    304 redirect
+    403 client error
+    503 server error
+  explanation: |
+    Integer division by 100 gives the first digit, which is the status class. 201 Created is a 2xx success; 304 Not Modified is in the 3xx redirection class (it tells the browser to use its cached copy); 403 Forbidden is a 4xx client error; 503 Service Unavailable is a 5xx server error.
+commonMistakes:
+  - "Saying 401 and 403 are the same. 401 = not authenticated (who are you?); 403 = authenticated but not allowed."
+  - "Saying POST is idempotent. Repeating a POST can create duplicates; PUT and DELETE are idempotent."
+  - "Thinking GET is secure for passwords because the URL is hidden in HTTPS. URLs get stored in logs and history; send secrets in the body or headers."
+  - "Saying HTTPS encrypts using only the public key. Public-key crypto is used to agree on a key; the data is encrypted with a fast symmetric session key."
+  - "Thinking HTTP remembers the user. It is stateless; cookies, sessions or tokens add state."
+  - "Returning 200 for everything in a REST API. Use 201 for created, 204 for no content, 4xx for client mistakes."
+interviewBox:
+  why: "Why interviewers ask this: any backend or full-stack role builds HTTP APIs, so they check that you know the vocabulary and can design endpoints properly."
+  questions:
+    - q: "What is the difference between GET and POST?"
+      a: "GET is used to read data; parameters go in the URL, it is safe and idempotent, and responses can be cached and bookmarked. POST is used to create or submit data; the data goes in the request body, it is not idempotent, and it is not cached by default."
+    - q: "What is the difference between HTTP and HTTPS?"
+      a: "HTTPS is HTTP running over TLS. It encrypts the data, protects it from being changed, and proves the server's identity with a certificate signed by a trusted authority. HTTP uses port 80 and sends plain text; HTTPS uses port 443."
+    - q: "Explain the TLS handshake simply."
+      a: "The client says hello with the TLS versions and ciphers it supports. The server replies with its choice and its certificate. The client checks the certificate is valid for that domain and signed by a trusted CA. Then both sides use a key exchange like Diffie-Hellman to compute the same session key, and all further data is encrypted with that fast symmetric key."
+    - q: "What does idempotent mean? Which methods are idempotent?"
+      a: "Idempotent means calling it once or many times has the same effect on the server. GET, PUT, DELETE, HEAD and OPTIONS are idempotent. POST is not, because each call can create a new resource."
+    - q: "Cookies vs JWT tokens for authentication?"
+      a: "With session cookies, the server stores the session and the browser sends a session id cookie automatically. With JWT, the server issues a signed token holding the user info and expiry, and the client sends it in the Authorization header; the server just verifies the signature, so it's stateless and scales easily, but it's harder to revoke before expiry."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each status code to its meaning"
+    pairs:
+      - left: "201"
+        right: "Resource created"
+      - left: "301"
+        right: "Moved permanently"
+      - left: "401"
+        right: "Not authenticated"
+      - left: "403"
+        right: "Authenticated but not allowed"
+      - left: "500"
+        right: "Server crashed or failed"
+    explanation: "2xx success, 3xx redirection, 4xx client errors (401 vs 403 is a favourite trap), 5xx server errors."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int[] codes = {204, 404, 502};
+      for (int c : codes)
+          System.out.print((c / 100 == 4 ? "client" : c / 100 == 5 ? "server" : "ok") + " ");
+    options: ["ok client server ", "ok ok server ", "client client server ", "ok client client "]
+    answer: 0
+    explanation: "204 / 100 = 2, so 'ok'. 404 / 100 = 4, so 'client'. 502 / 100 = 5, so 'server'. Each word is followed by a space."
+  - id: q3
+    type: MCQ
+    prompt: "Which HTTP method is NOT idempotent?"
+    code: null
+    options: ["GET", "PUT", "DELETE", "POST"]
+    answer: 3
+    explanation: "Sending the same POST twice can create two orders. PUT replaces with the same data each time, and DELETE leaves the resource deleted no matter how many times you call it."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In HTTPS, after the handshake, the actual page data is encrypted with a symmetric session key."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Asymmetric (public-key) cryptography is slow, so it's used only during the handshake to authenticate and agree on keys; the bulk data uses fast symmetric encryption."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the header that sends a JWT token to a REST API."
+    code: |
+      Authorization: ____ eyJhbGciOiJIUzI1NiJ9...
+    acceptedAnswers: ["Bearer", "bearer"]
+    explanation: "The common scheme is 'Authorization: Bearer <token>'. 'Basic' would mean a base64 username:password instead."
+  - id: q6
+    type: MCQ
+    prompt: "HTTP is called 'stateless'. What does that mean?"
+    code: null
+    options: ["It cannot send data", "Each request is independent; the server doesn't remember previous requests by itself", "It only works without TCP", "It cannot use cookies"]
+    answer: 1
+    explanation: "Stateless means no built-in memory between requests. Cookies, sessions and tokens are added ON TOP of HTTP to remember a logged-in user."
+  - id: q7
+    type: MCQ
+    prompt: "A client sends PATCH /users/7 with body {\"city\":\"Pune\"}. What should happen?"
+    code: null
+    options: ["User 7 is replaced fully with only a city field", "Only user 7's city is updated", "A new user is created", "User 7 is deleted"]
+    answer: 1
+    explanation: "PATCH is a partial update: only the sent fields change. A PUT with that body would replace the whole resource, which could clear the other fields."
+explainBack:
+  prompt: "Explain to a friend what happens in an HTTP request and response, and what the S in HTTPS adds."
+  rubric:
+    - "I described request line, headers and body, and status line in the response"
+    - "I explained GET vs POST and at least three status code ranges"
+    - "I said HTTP is stateless and cookies or tokens add state"
+    - "I explained HTTPS as HTTP over TLS with encryption, integrity and certificates"
+    - "I used the restaurant order analogy or another example"
+  modelAnswer: |
+    HTTP is how a client and server talk. The client sends a request: a method like GET or POST, a path like /orders, headers with extra info like the content type or a token, and sometimes a JSON body. The server replies with a status code, like 200 OK, 201 Created, 404 Not Found or 500 server error, plus headers and a body. HTTP doesn't remember you between requests, so we use cookies or tokens to stay logged in. HTTPS is the same conversation inside a sealed envelope: TLS checks the server's certificate, both sides agree on a secret key, and then everything is encrypted so nobody on the Wi-Fi can read or change it.
+flashcards:
+  - front: "Parts of an HTTP request"
+    back: "Request line (method, path, version), headers, blank line, optional body."
+  - front: "Idempotent methods"
+    back: "GET, PUT, DELETE, HEAD, OPTIONS. POST is not; PATCH not guaranteed."
+  - front: "401 vs 403"
+    back: "401 Unauthorized = not authenticated. 403 Forbidden = authenticated but no permission."
+  - front: "What does HTTPS add?"
+    back: "TLS: encryption, integrity and server authentication via a CA-signed certificate. Port 443."
+  - front: "Session cookie vs JWT"
+    back: "Cookie: server stores session, browser sends id automatically. JWT: signed token with user info, stateless, sent in Authorization: Bearer."
+keyTakeaways:
+  - "HTTP is a stateless, client-server, application-layer protocol over TCP (ports 80/443)."
+  - "Methods: GET read, POST create, PUT replace, PATCH partial update, DELETE remove; know which are idempotent."
+  - "Status classes: 2xx success, 3xx redirect, 4xx client error, 5xx server error."
+  - "Cookies/sessions keep state on the server; JWT tokens keep it in a signed token."
+  - "HTTPS = HTTP + TLS: certificate check, key exchange, then fast symmetric encryption."

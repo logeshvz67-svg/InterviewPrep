@@ -1,0 +1,345 @@
+slug: spring-auto-config
+world: SPRING
+section: SPRING
+order: 3
+title: "Spring Boot auto-configuration"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+infosysRelevance: "Frequent SP and DSE practice question: 'Spring vs Spring Boot', 'what does @SpringBootApplication do' and 'how does auto-configuration work' are classic Spring Boot theory questions."
+otherCompanies: "Very common at TCS, Wipro, Cognizant, Accenture and Capgemini as 'difference between Spring and Spring Boot'; product companies ask about conditional beans and how to override or exclude an auto-configuration."
+why: |
+  With old-style Spring, starting a web app meant writing many lines of setup: a web server, a JSON converter, a database connection pool, a transaction manager... Spring Boot does almost all of that **for you**, and the feature that does it is called **auto-configuration**.
+
+  Understanding it helps you:
+  - answer **"What is the difference between Spring and Spring Boot?"** and **"What does @SpringBootApplication do?"** with confidence,
+  - know **how to replace** a default (define your own bean) or **switch one off** (exclude),
+  - debug "why is this bean here?" or "why is this bean missing?" instead of guessing.
+
+  Your own app uses this: `CodeQuestApplication` switches off one auto-configuration on purpose. By the end of this lesson you will be able to explain exactly why.
+analogy: |
+  Think of a **furnished flat** versus an **empty flat**.
+
+  - Plain Spring is an empty flat: you buy and fit every fan, light and gas connection yourself.
+  - Spring Boot is a **furnished flat**. When you move in, the owner checks what you brought:
+    - "Did they bring a gas cylinder? Yes. Then I'll fit the stove." (**@ConditionalOnClass**: the library is on the classpath, so configure it.)
+    - "Did they bring their own fridge? Yes. Then I won't put mine." (**@ConditionalOnMissingBean**: you defined your own bean, so Boot steps back.)
+    - "Did they ask for an AC in the form? Only then fit one." (**@ConditionalOnProperty**: a setting turns it on.)
+  - **Starters** are the moving-in packages, like a "kitchen kit" that brings stove, vessels and gas pipe together.
+  - **exclude** is telling the owner: "please remove your TV, I don't want it."
+visual:
+  diagram: |
+    @SpringBootApplication
+       = @SpringBootConfiguration   (it is a @Configuration)
+       + @ComponentScan             (find YOUR beans in this package)
+       + @EnableAutoConfiguration   (add Boot's DEFAULT beans)
+                     |
+                     v
+    AutoConfiguration.imports  (list of ~150 config classes)
+      JacksonAutoConfiguration      DataSourceAutoConfiguration ...
+                     |
+          for each class, check its conditions:
+     +------------------------+-------------------------+
+     | class on classpath?    | jackson jar present? YES |
+     | bean already defined?  | your ObjectMapper?  NO   |
+     | property set?          | (none needed)            |
+     +------------------------+-------------------------+
+            all YES -> create default ObjectMapper bean
+            any NO  -> skip ("back off")
+  caption: "Auto-configuration is a list of normal @Configuration classes guarded by conditions; Boot only adds a default bean when the conditions say it is needed."
+  visualizer: null
+explanation: |
+  ### Spring vs Spring Boot
+  **Spring Framework** gives the building blocks: the IoC container, Spring MVC for web, transactions, and more. **Spring Boot** is built on top of it and adds:
+  1. **Starters**: one dependency that pulls in a tested set of libraries.
+  2. **Auto-configuration**: sensible default beans based on what is on your classpath.
+  3. **Embedded server**: Tomcat runs *inside* your app, so `java -jar app.jar` is enough (no separate server install).
+  4. **Production features**: health checks and metrics with Actuator, external configuration.
+
+  ### Starters
+  A **starter** is a dependency that groups other dependencies. Open `backend/pom.xml`:
+
+  | Starter | What it brings |
+  |---|---|
+  | `spring-boot-starter-web` | Spring MVC, embedded Tomcat, Jackson (JSON) |
+  | `spring-boot-starter-data-jpa` | Spring Data JPA, Hibernate, HikariCP connection pool |
+  | `spring-boot-starter-validation` | Hibernate Validator (`@NotBlank`, `@Email`...) |
+  | `spring-boot-starter-security` | Spring Security filter chain |
+  | `spring-boot-starter-actuator` | `/health` and other ops endpoints |
+  | `spring-boot-starter-test` | JUnit 5, Mockito, AssertJ, Spring Test |
+
+  You don't write version numbers for them: the parent `spring-boot-starter-parent` (3.5.x in your project) picks versions that work together.
+
+  ### What @SpringBootApplication does
+  It is three annotations in one:
+  - `@SpringBootConfiguration`: this class is a `@Configuration` (it can have `@Bean` methods).
+  - `@ComponentScan`: scan **this package and its sub-packages** for your `@Component`s. That is why the main class sits at the top package, `com.codequest`.
+  - `@EnableAutoConfiguration`: switch on auto-configuration.
+
+  ### How auto-configuration works
+  In Spring Boot 3, the file `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` inside the autoconfigure jar lists many **auto-configuration classes** (in Boot 2 this list lived in `spring.factories`). Each one is an ordinary configuration class with `@Bean` methods, but guarded by **conditions**:
+
+  | Condition | Creates the bean only if... |
+  |---|---|
+  | `@ConditionalOnClass(X.class)` | class X is on the classpath (the library is present) |
+  | `@ConditionalOnMissingBean` | you have NOT defined that bean yourself |
+  | `@ConditionalOnBean(X.class)` | some bean X already exists |
+  | `@ConditionalOnProperty(name="a.b", havingValue="true")` | a property has that value |
+  | `@ConditionalOnWebApplication` | the app is a web app |
+
+  Examples you already use:
+  - Jackson is on the classpath, so `JacksonAutoConfiguration` creates an `ObjectMapper` bean. Your `SecurityConfig` simply asks for an `ObjectMapper` parameter and gets that one.
+  - The PostgreSQL driver and `spring.datasource.url` are present, so `DataSourceAutoConfiguration` creates a **HikariDataSource** (a connection pool), using `spring.datasource.hikari.maximum-pool-size` from your `application.yml`.
+  - Flyway is on the classpath, so `FlywayAutoConfiguration` runs your `db/migration` scripts at startup.
+
+  ### Overriding: your bean wins
+  Most auto-configured beans use `@ConditionalOnMissingBean`. So if **you** define a bean of the same type, Boot **backs off** and uses yours. Example: your `SecurityConfig` defines a `PasswordEncoder` and a `SecurityFilterChain`; Boot's default security chain is then not created.
+
+  You can also tune defaults without code, through properties: `server.port`, `spring.jpa.open-in-view`, `spring.jackson.time-zone`... all in your `application.yml`.
+
+  ### Excluding an auto-configuration
+  Sometimes you want a default gone completely:
+  ```java
+  @SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
+  ```
+  This is in `backend/src/main/java/com/codequest/CodeQuestApplication.java`. Without it, Spring Security creates an in-memory user and prints *"Using generated security password"* at startup. Your app logs users in with its own JWT flow, so that default user is useless and confusing. The same can be done with the property `spring.autoconfigure.exclude`.
+
+  ### Debugging: "why is this bean here (or missing)?"
+  - Start the app with `--debug` (or `debug: true`). Boot prints a **CONDITIONS EVALUATION REPORT**: "Positive matches" (applied) and "Negative matches" (skipped, with the reason).
+  - With Actuator, the `/actuator/conditions` endpoint shows the same (your app only exposes `/health`).
+
+  ### Making your own conditional beans
+  You can use conditions in your own code. A common one is a **feature flag**:
+  ```java
+  @Component
+  @ConditionalOnProperty(name = "feature.mentor.enabled", havingValue = "true")
+  class MentorBot { }
+  ```
+  The bean exists only when the property is exactly `true`. (`@ConditionalOnMissingBean` is meant for auto-configuration classes; in your own `@Configuration` classes its result depends on the order beans are registered, so avoid it there.)
+tinyCode:
+  code: |
+    // application.yml contains spring.datasource.url / username / password
+    // pom.xml has spring-boot-starter-web and spring-boot-starter-data-jpa + postgresql
+    package demo.auto;
+
+    import com.fasterxml.jackson.databind.ObjectMapper;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.context.ConfigurableApplicationContext;
+
+    import javax.sql.DataSource;
+
+    @SpringBootApplication
+    public class AutoDemo {
+        public static void main(String[] args) {
+            ConfigurableApplicationContext ctx = SpringApplication.run(AutoDemo.class, args);
+            System.out.println("ObjectMapper beans: " + ctx.getBeansOfType(ObjectMapper.class).keySet());
+            System.out.println("DataSource: " + ctx.getBean(DataSource.class).getClass().getSimpleName());
+            ctx.close();
+        }
+    }
+    // Output (plus log lines):
+    // ObjectMapper beans: [jacksonObjectMapper]
+    // DataSource: HikariDataSource
+  walkthrough: |
+    - We wrote **no** `@Bean` method for `ObjectMapper` or `DataSource`. Yet both exist.
+    - `@SpringBootApplication` turns on auto-configuration.
+    - Jackson is on the classpath (it comes with `spring-boot-starter-web`), so `JacksonAutoConfiguration` creates a bean named `jacksonObjectMapper`.
+    - The PostgreSQL driver is on the classpath and `spring.datasource.url` is set, so `DataSourceAutoConfiguration` creates a `HikariDataSource`, the default connection pool in Boot.
+    - `ctx.getBeansOfType(ObjectMapper.class).keySet()` prints the **names** of all `ObjectMapper` beans: just the one Boot made.
+    - `ctx.getBean(DataSource.class).getClass().getSimpleName()` shows which implementation was chosen.
+    - Run it with `--debug` to see the full report of which auto-configurations matched and which were skipped.
+tryIt:
+  instructions: "Type this feature-flag demo. Run it three times: with no arguments, with --feature.mentor.enabled=true, and with --feature.mentor.enabled=yes. Write down the result each time before you run it."
+  code: |
+    package demo.flag;
+
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+    import org.springframework.context.ConfigurableApplicationContext;
+    import org.springframework.stereotype.Component;
+
+    @Component
+    @ConditionalOnProperty(name = "feature.mentor.enabled", havingValue = "true")
+    class MentorBot { }
+
+    @SpringBootApplication
+    public class FlagDemo {
+        public static void main(String[] args) {
+            ConfigurableApplicationContext ctx = SpringApplication.run(FlagDemo.class, args);
+            System.out.println("MentorBot loaded? " + ctx.containsBean("mentorBot"));
+            ctx.close();
+        }
+    }
+predict:
+  code: |
+    package demo.ownmapper;
+
+    import com.fasterxml.jackson.databind.ObjectMapper;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.context.ConfigurableApplicationContext;
+    import org.springframework.context.annotation.Bean;
+
+    @SpringBootApplication
+    public class OwnMapperDemo {
+        @Bean
+        ObjectMapper myMapper() {
+            return new ObjectMapper();
+        }
+
+        public static void main(String[] args) {
+            ConfigurableApplicationContext ctx = SpringApplication.run(OwnMapperDemo.class, args);
+            System.out.println(ctx.getBeansOfType(ObjectMapper.class).keySet());
+            ctx.close();
+        }
+    }
+  expectedOutput: |
+    [myMapper]
+  explanation: |
+    Boot's `JacksonAutoConfiguration` creates `jacksonObjectMapper` only under `@ConditionalOnMissingBean`. Here **we** defined an `ObjectMapper` bean called `myMapper` (the `@Bean` method name), so Boot backs off and there is exactly one bean. This "your bean wins" rule is how you customise almost anything in Spring Boot. (Note: your own plain `ObjectMapper` also loses Boot's Jackson settings from application.yml, so in real apps you usually tweak Jackson through properties instead.)
+commonMistakes:
+  - "Saying Spring Boot 'replaces' Spring. Boot is built on top of the Spring Framework; it adds starters, auto-configuration and an embedded server."
+  - "Putting the main class in a sub-package (com.shop.app) while controllers are in com.shop.web. Component scanning only looks downwards, so the controllers are never found and every URL returns 404."
+  - "Defining your own bean and expecting Boot's default to still exist. Most auto-configured beans back off when you define one of the same type."
+  - "Guessing why a bean is missing instead of running with --debug and reading the conditions report."
+  - "Adding a starter (like data-jpa) without configuring it. With no datasource URL the app fails at startup with 'Failed to configure a DataSource'."
+interviewBox:
+  why: "Why interviewers ask this: it separates people who only used Spring Boot from people who understand what it does for them."
+  questions:
+    - q: "What is the difference between Spring and Spring Boot?"
+      a: "Spring is the framework: the IoC container, MVC, transactions and so on. Spring Boot sits on top of it and removes setup work. It gives starters that bring compatible libraries, auto-configuration that creates sensible default beans, an embedded Tomcat so I can run a jar directly, and production features like Actuator health checks."
+    - q: "What does @SpringBootApplication do?"
+      a: "It combines three annotations: @SpringBootConfiguration, which makes it a configuration class; @ComponentScan, which finds my beans in this package and below; and @EnableAutoConfiguration, which adds Spring Boot's default beans based on the classpath and properties."
+    - q: "How does auto-configuration work internally?"
+      a: "Spring Boot has a list of auto-configuration classes in a file called AutoConfiguration.imports. Each is a normal configuration class with conditions like @ConditionalOnClass, @ConditionalOnMissingBean and @ConditionalOnProperty. If Jackson is on the classpath and I haven't defined an ObjectMapper, it creates one. If I define my own, it backs off."
+    - q: "How do you disable a specific auto-configuration?"
+      a: "With exclude on @SpringBootApplication or the spring.autoconfigure.exclude property. In my project I exclude UserDetailsServiceAutoConfiguration, because we log in with our own JWT flow and don't want Spring's generated default user and password."
+    - q: "What is a starter?"
+      a: "A single dependency that pulls in a tested group of libraries for one job. For example spring-boot-starter-web brings Spring MVC, embedded Tomcat and Jackson, with versions managed by the Spring Boot parent."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "@SpringBootApplication is a shortcut for which three annotations?"
+    code: null
+    options:
+      - "@Configuration, @Bean, @Autowired"
+      - "@SpringBootConfiguration, @ComponentScan, @EnableAutoConfiguration"
+      - "@RestController, @Service, @Repository"
+      - "@EnableWebMvc, @EnableJpa, @EnableSecurity"
+    answer: 1
+    explanation: "It marks the class as a configuration, scans its package for components, and turns on auto-configuration. @Bean and @Autowired are used inside beans, and the stereotypes in option C are what scanning finds."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "The app is started with --feature.mentor.enabled=yes. What is printed?"
+    code: |
+      @Component
+      @ConditionalOnProperty(name = "feature.mentor.enabled", havingValue = "true")
+      class MentorBot { }
+
+      // in main, after SpringApplication.run:
+      System.out.println("MentorBot loaded? " + ctx.containsBean("mentorBot"));
+    options:
+      - "MentorBot loaded? true"
+      - "MentorBot loaded? false"
+      - "The app fails: 'yes' is not a boolean"
+      - "MentorBot loaded? yes"
+    answer: 1
+    explanation: "havingValue = \"true\" means the property must equal the text 'true' (case is ignored). 'yes' is a different value, so the condition fails and the bean is skipped. Nothing crashes; the bean simply does not exist. With --feature.mentor.enabled=true it would print true."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "The app starts fine, but GET /products returns 404. Why?"
+    code: |
+      // file: src/main/java/com/shop/app/ShopApplication.java
+      package com.shop.app;
+
+      @SpringBootApplication
+      public class ShopApplication {
+          public static void main(String[] args) {
+              SpringApplication.run(ShopApplication.class, args);
+          }
+      }
+
+      // file: src/main/java/com/shop/web/ProductController.java
+      package com.shop.web;
+
+      @RestController
+      public class ProductController {
+          @GetMapping("/products")
+          public String list() { return "[]"; }
+      }
+    options:
+      - "@GetMapping needs a leading /api"
+      - "com.shop.web is not inside com.shop.app, so component scanning never finds ProductController"
+      - "ProductController must be annotated with @Component as well"
+      - "The return type must be ResponseEntity"
+    answer: 1
+    explanation: "@SpringBootApplication scans its own package and sub-packages only. com.shop.web is a sibling, not a child, of com.shop.app, so the controller is never a bean and no URL is mapped. Move the main class up to com.shop (like com.codequest in your app). @RestController already includes @Component."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "If you define your own ObjectMapper @Bean, Spring Boot still creates its own jacksonObjectMapper as well, so you end up with two."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The auto-configured ObjectMapper is guarded by @ConditionalOnMissingBean, so Boot backs off and only your bean exists. This is the standard way to override a default."
+  - id: q5
+    type: MATCH
+    prompt: "Match each condition to when the bean is created"
+    pairs:
+      - left: "@ConditionalOnClass"
+        right: "A certain library class is on the classpath"
+      - left: "@ConditionalOnMissingBean"
+        right: "You have not defined a bean of that type yourself"
+      - left: "@ConditionalOnProperty"
+        right: "A configuration property has the expected value"
+      - left: "@ConditionalOnWebApplication"
+        right: "The app is running as a web application"
+    explanation: "These conditions are what make auto-configuration 'smart': it reacts to your dependencies, your own beans and your settings."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Your app logs in with JWT and does not want Spring Security's generated in-memory user. Complete the annotation (as in CodeQuestApplication)."
+    code: |
+      @SpringBootApplication(____ = UserDetailsServiceAutoConfiguration.class)
+      public class CodeQuestApplication { ... }
+    acceptedAnswers: ["exclude"]
+    explanation: "exclude removes one auto-configuration class. The property spring.autoconfigure.exclude does the same from configuration."
+  - id: q7
+    type: MCQ
+    prompt: "A bean you expected from auto-configuration is missing. What is the quickest way to find out why?"
+    code: null
+    options:
+      - "Delete the target folder and rebuild"
+      - "Start the app with --debug and read the CONDITIONS EVALUATION REPORT"
+      - "Add @Autowired(required = false) everywhere"
+      - "Downgrade to Spring Boot 2"
+    answer: 1
+    explanation: "The conditions report lists every auto-configuration with 'matched' or 'did not match' and the exact reason (for example 'did not find property'). Rebuilding or hiding the dependency does not explain anything."
+explainBack:
+  prompt: "Explain to a friend what Spring Boot auto-configuration is and how you can change its decisions."
+  rubric:
+    - "I said Boot creates default beans based on the classpath, existing beans and properties"
+    - "I named at least two conditions like @ConditionalOnClass and @ConditionalOnMissingBean"
+    - "I said defining my own bean makes Boot back off"
+    - "I explained exclude (with the UserDetailsServiceAutoConfiguration example)"
+    - "I explained what a starter is"
+  modelAnswer: |
+    Spring Boot looks at what I put in my project and sets up sensible defaults, like a furnished flat. Starters bring groups of libraries, for example starter-web brings Spring MVC, Tomcat and Jackson. Then auto-configuration classes check conditions: is this library on the classpath, did I already define this bean, is a property set? If the conditions pass, Boot creates the bean, like an ObjectMapper or a Hikari connection pool. If I define my own bean of the same type, Boot backs off. If I don't want a default at all, I exclude it; my project excludes UserDetailsServiceAutoConfiguration because we use our own JWT login. Running with --debug shows the full report.
+flashcards:
+  - front: "@SpringBootApplication ="
+    back: "@SpringBootConfiguration + @ComponentScan (this package and below) + @EnableAutoConfiguration"
+  - front: "Spring vs Spring Boot"
+    back: "Spring = framework (IoC, MVC, tx). Boot = Spring + starters + auto-configuration + embedded server + Actuator."
+  - front: "Where does Boot 3 list auto-configuration classes?"
+    back: "META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports (Boot 2 used spring.factories)."
+  - front: "How to override an auto-configured bean?"
+    back: "Define your own bean of the same type; @ConditionalOnMissingBean makes Boot back off."
+  - front: "How to see why auto-config did or didn't apply?"
+    back: "Run with --debug: CONDITIONS EVALUATION REPORT (positive and negative matches)."
+keyTakeaways:
+  - "Spring Boot = Spring + starters + auto-configuration + embedded server + production features."
+  - "@SpringBootApplication = configuration + component scan (package and below) + auto-configuration."
+  - "Auto-configuration classes are guarded by conditions: on class, on missing bean, on property."
+  - "Define your own bean to override a default; use exclude to remove one completely."
+  - "Run with --debug to read the conditions evaluation report."

@@ -1,0 +1,336 @@
+slug: sd-caching
+world: SYSTEM_DESIGN
+section: SD
+order: 4
+title: "Caching"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Very relevant for SP: 'implement an LRU cache' is a classic coding-plus-design practice problem, and cache strategies are standard design-round talk."
+otherCompanies: "LRU cache is one of the most common product-company coding questions; caching strategies and CDNs come up in nearly every HLD round."
+why: |
+  In Lesson 1, our food delivery app had about **500 reads for every write**. Hitting the database for every single read is slow and expensive. A **cache** keeps hot data in fast memory so most reads never reach the database.
+
+  Caching is the **number one tool** for making read-heavy systems fast. But it brings its own hard questions, and interviewers love them:
+  - Where do you put the cache?
+  - What happens when the data changes (stale data)?
+  - What do you throw away when the cache is full (eviction)?
+  - What happens when a hot key expires and 10,000 requests hit the database at once (stampede)?
+
+  And as a coding bonus: **"Implement an LRU cache"** is one of the most popular interview programs. You'll write it in about 10 lines using `LinkedHashMap`.
+analogy: |
+  Think of a **chai stall owner** near a railway station.
+
+  - The big **godown** (warehouse) across the road has all the milk, sugar and tea. That is the **database**: complete but far away.
+  - On his counter he keeps a small tray with the **most used items**. That tray is the **cache**: tiny but instant.
+  - When a customer asks for something on the tray: **cache hit**, served in seconds. If not: **cache miss**, he walks to the godown, brings it, and also puts some on the tray for next time (**cache-aside**).
+  - The tray is small, so when it's full he removes the item **nobody has asked for in the longest time** (**LRU eviction**).
+  - Milk on the tray goes bad after a few hours, so he throws it out on schedule (**TTL, time to live**).
+visual:
+  diagram: |
+    CACHE-ASIDE READ PATH
+
+     App --1. get(key)--> +-------+
+      |                   | Cache |  hit? return it (fast, ~1 ms)
+      |<--- hit ----------+-------+
+      |
+      |  miss
+      +--2. SELECT ...--> +----------+
+      |                   | Database |  (slower, ~10-50 ms)
+      |<--- row ----------+----------+
+      |
+      +--3. put(key, row, TTL 60s)--> Cache
+
+    LRU with capacity 3 (left = least recent, right = most recent)
+     put IND, AUS, ENG   [IND, AUS, ENG]
+     get IND             [AUS, ENG, IND]
+     put PAK (full!)     [ENG, IND, PAK]   AUS evicted
+  caption: "Cache-aside: read the cache first; on a miss read the database and fill the cache. LRU throws out the entry used longest ago when the cache is full."
+  visualizer: null
+explanation: |
+  ### What is a cache?
+  A **cache** is a small, fast store (usually in RAM) that keeps copies of frequently used data. Reading RAM is roughly 1,000x faster than reading from disk, and skipping a network trip to the database saves even more.
+  - **Cache hit:** the data is in the cache.
+  - **Cache miss:** it isn't; go to the source.
+  - **Hit ratio:** hits / total reads. A 90% hit ratio means the database sees only 10% of reads.
+
+  ### Where can you cache?
+  | Layer | Example | What it holds |
+  |---|---|---|
+  | Browser / app | HTTP cache, app memory | Images, the user's profile |
+  | **CDN** (Content Delivery Network) | Servers in many cities | Images, videos, JS/CSS files |
+  | Application (in-process) | A `HashMap` / Caffeine inside the server | Small config, very hot data |
+  | **Distributed cache** | Redis, Memcached cluster | Sessions, menus, PNR status, scores |
+  | Database | Its own buffer cache | Recently read pages |
+
+  ### Caching strategies (how reads and writes flow)
+  **1. Cache-aside (lazy loading)**: the most common.
+  - Read: check cache -> on miss, read DB -> store in cache.
+  - Write: update the DB, then **delete** (invalidate) the cache key so the next read reloads fresh data.
+  - Pros: only requested data is cached; cache failure is not fatal. Cons: first read is always a miss; data can be stale until TTL or invalidation.
+
+  **2. Write-through**: every write goes to the cache **and** the DB together (synchronously).
+  - Pros: cache is always fresh. Cons: writes are slower; you cache data nobody may read.
+
+  **3. Write-back (write-behind)**: write only to the cache, which flushes to the DB later in batches.
+  - Pros: very fast writes. Cons: if the cache crashes before flushing, **data is lost**. Fine for view counters or likes, never for payments.
+
+  | Strategy | Write speed | Freshness | Risk |
+  |---|---|---|---|
+  | Cache-aside | Normal | May be stale briefly | Low |
+  | Write-through | Slower | Fresh | Low |
+  | Write-back | Fastest | Fresh in cache | Data loss on crash |
+
+  ### TTL (time to live)
+  **TTL** = how long an entry may live before it expires automatically. Cricket score: TTL 2 seconds. Restaurant menu: 10 minutes. User profile: 1 hour. A shorter TTL means fresher data but more misses.
+
+  ### Eviction policies (when the cache is full)
+  - **LRU (Least Recently Used):** remove the entry not *used* for the longest time. Best general choice.
+  - **LFU (Least Frequently Used):** remove the entry used the *fewest times*. Good when popularity is stable, but old popular items can stick around.
+  - **FIFO:** remove the oldest *inserted* entry, even if it's still hot. Simple but often worse.
+
+  ### LRU in Java with LinkedHashMap
+  `LinkedHashMap` remembers order. With the constructor flag `accessOrder = true`, every `get` or `put` moves that entry to the **end** (most recent). Override `removeEldestEntry` to return `true` when size exceeds capacity, and Java removes the **first** entry (least recent) automatically. Both operations are O(1).
+
+  In an interview, they may ask you to build it **without** LinkedHashMap: use a `HashMap<key, Node>` plus a **doubly linked list** (move node to the head on access, remove from the tail when full). Same idea, more code.
+
+  ### Cache stampede (thundering herd)
+  A very hot key (say, the India vs Pakistan live score) expires. In that instant, thousands of requests miss together and all hit the database. Fixes:
+  - **Locking / request coalescing:** only the first request reloads; the others wait for it.
+  - **Early refresh:** refresh popular keys slightly *before* they expire.
+  - **Jittered TTLs:** add a random few seconds so many keys don't expire at the same moment.
+
+  ### CDN
+  A **CDN** is a network of cache servers in many cities. A user in Chennai downloads the IPL highlights video from a Chennai server, not from the origin server in Mumbai. Great for **static content**: images, videos, CSS and JS.
+
+  ### What NOT to cache (or cache carefully)
+  Data that must always be exactly right, like a bank balance during payment or the last available seat during tatkal. Read those from the database (inside a transaction).
+
+  ### How to talk about caching in an answer
+  1. "Reads are X times writes, so I'll add a Redis cache."
+  2. "Cache-aside, TTL of N seconds, invalidate on write."
+  3. "LRU eviction."
+  4. "Watch out for stampede on hot keys: use a lock or early refresh."
+  5. "Static files go on a CDN."
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class LRUCache<K, V> extends LinkedHashMap<K, V> {
+        private final int capacity;
+
+        public LRUCache(int capacity) {
+            super(16, 0.75f, true);          // true = access order (get moves to the end)
+            this.capacity = capacity;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            return size() > capacity;        // evict the least recently used entry
+        }
+
+        public static void main(String[] args) {
+            LRUCache<String, Integer> score = new LRUCache<>(3);
+            score.put("IND", 287);
+            score.put("AUS", 245);
+            score.put("ENG", 301);
+            System.out.println(score);       // oldest -> newest
+            score.get("IND");                // IND becomes most recently used
+            score.put("PAK", 199);           // cache full: evicts AUS
+            System.out.println(score);
+            System.out.println(score.containsKey("AUS"));
+        }
+    }
+  walkthrough: |
+    - `extends LinkedHashMap<K, V>`: we reuse Java's map that remembers order.
+    - `super(16, 0.75f, true)`: initial capacity 16, load factor 0.75 (normal HashMap settings), and **`true` = access order**. Without `true`, it keeps insertion order instead.
+    - `removeEldestEntry`: Java calls this after every `put`. Returning `true` removes the eldest entry (the first one = least recently used).
+    - After three puts the order is `IND, AUS, ENG`.
+    - `get("IND")` moves IND to the end: `AUS, ENG, IND`.
+    - `put("PAK")` makes size 4 > 3, so the eldest, **AUS**, is removed: `ENG, IND, PAK`.
+
+    Output:
+    ```
+    {IND=287, AUS=245, ENG=301}
+    {ENG=301, IND=287, PAK=199}
+    false
+    ```
+    `get` and `put` are both O(1), which is what the interviewer wants to hear.
+tryIt:
+  instructions: "Type this cache-aside demo for PNR status. Predict which calls say (db) and which say (cache) before you run it, then count the database calls."
+  code: |
+    import java.util.*;
+
+    public class CacheAside {
+        static Map<String, String> db = Map.of("PNR123", "CONFIRMED", "PNR456", "WL 12");
+        static Map<String, String> cache = new HashMap<>();
+        static int dbCalls = 0;
+
+        static String getStatus(String pnr) {
+            String v = cache.get(pnr);           // 1. try the cache
+            if (v != null) return v + " (cache)";
+            dbCalls++;
+            v = db.get(pnr);                     // 2. miss: go to the database
+            cache.put(pnr, v);                   // 3. fill the cache for next time
+            return v + " (db)";
+        }
+
+        public static void main(String[] args) {
+            System.out.println(getStatus("PNR123"));
+            System.out.println(getStatus("PNR123"));
+            System.out.println(getStatus("PNR456"));
+            System.out.println(getStatus("PNR123"));
+            System.out.println("DB calls: " + dbCalls);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Lru2 {
+        public static void main(String[] args) {
+            Map<Integer, String> cache = new LinkedHashMap<>(16, 0.75f, true) {
+                protected boolean removeEldestEntry(Map.Entry<Integer, String> e) {
+                    return size() > 2;
+                }
+            };
+            cache.put(1, "a");
+            cache.put(2, "b");
+            cache.get(1);
+            cache.put(3, "c");
+            System.out.println(cache.keySet());
+        }
+    }
+  expectedOutput: |
+    [1, 3]
+  explanation: |
+    Capacity is 2 and the map is in **access order**.
+    - put 1, put 2 -> order `[1, 2]`.
+    - get 1 -> 1 moves to the end: `[2, 1]`.
+    - put 3 -> size 3 > 2, so the eldest (**2**) is evicted: `[1, 3]`.
+
+    Key 2 was inserted after key 1, but key 1 was *used* more recently, so LRU keeps 1.
+commonMistakes:
+  - "Forgetting accessOrder = true in the LinkedHashMap constructor; you get FIFO eviction instead of LRU."
+  - "Updating the database but not invalidating the cache, so users see stale data until the TTL expires."
+  - "Using write-back caching for critical data like payments; a crash before the flush loses data."
+  - "Caching everything with no TTL; memory fills up and data goes stale forever."
+  - "Ignoring the cache stampede when a very hot key expires."
+  - "Thinking a CDN is for API responses like 'my order status'; it is mainly for static content."
+interviewBox:
+  why: "Why interviewers ask this: caching is the main lever for performance, and the LRU cache question checks both data-structure skill and design thinking."
+  questions:
+    - q: "Practice: Implement an LRU cache. What are the time complexities?"
+      a: "The quick way in Java is to extend LinkedHashMap with accessOrder true and override removeEldestEntry to return size greater than capacity. Without library help, I'd use a HashMap from key to node plus a doubly linked list: on every access I move the node to the front, and when the cache is full I remove the node at the tail. Both get and put are O(1)."
+    - q: "Practice: Explain cache-aside, write-through and write-back."
+      a: "In cache-aside, the app reads the cache first, and on a miss reads the database and fills the cache; on writes it updates the database and deletes the cache key. In write-through, every write updates the cache and database together, so the cache is always fresh but writes are slower. In write-back, writes go only to the cache and are flushed to the database later, which is very fast but can lose data if the cache crashes."
+    - q: "Practice: You cache restaurant menus. A restaurant changes a price. How do users see the new price?"
+      a: "When the restaurant updates the menu, the service writes to the database and then deletes that restaurant's menu key from the cache. The next read misses, loads the new menu and caches it. I'd also keep a TTL, say 10 minutes, as a safety net in case an invalidation is missed."
+    - q: "Practice: What is a cache stampede and how do you prevent it?"
+      a: "It happens when a very hot key expires and thousands of requests miss at the same moment and all hit the database. I'd prevent it by letting only one request rebuild the value while others wait or get the old value, by refreshing hot keys a little before they expire, and by adding random jitter to TTLs."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "LRU cache with capacity 3 (accessOrder = true). What prints?"
+    code: |
+      Map<Integer, String> cache = new LinkedHashMap<>(16, 0.75f, true) {
+          protected boolean removeEldestEntry(Map.Entry<Integer, String> e) {
+              return size() > 3;
+          }
+      };
+      cache.put(1, "a"); cache.put(2, "b"); cache.put(3, "c");
+      cache.get(1); cache.get(2);
+      cache.put(4, "d");
+      cache.put(5, "e");
+      System.out.println(cache.keySet());
+    options: ["[3, 4, 5]", "[1, 2, 5]", "[2, 4, 5]", "[1, 4, 5]"]
+    answer: 2
+    explanation: "After puts: [1,2,3]. get 1 -> [2,3,1]. get 2 -> [3,1,2]. put 4 evicts 3 -> [1,2,4]. put 5 evicts 1 -> [2,4,5]. [3,4,5] is what FIFO (insertion order) would give."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This is meant to be an LRU cache of size 2. After put 1, put 2, get 1, put 3 it prints [2, 3] instead of [1, 3]. What is the bug?"
+    code: |
+      Map<Integer, String> cache = new LinkedHashMap<>(16, 0.75f, false) {
+          protected boolean removeEldestEntry(Map.Entry<Integer, String> e) {
+              return size() > 2;
+          }
+      };
+    options:
+      - "removeEldestEntry should return size() >= 2"
+      - "The third constructor argument must be true for access order; false keeps insertion order (FIFO)"
+      - "LinkedHashMap cannot be used as a cache"
+      - "The load factor 0.75f must be 1.0f"
+    answer: 1
+    explanation: "With accessOrder = false, get does not move entries, so the oldest INSERTED key (1) is evicted: FIFO. Setting it to true makes get move 1 to the end, so 2 is evicted. Changing to >= 2 would wrongly keep only one entry."
+  - id: q3
+    type: MCQ
+    prompt: "Which caching strategy risks LOSING data if the cache server crashes?"
+    options: ["Cache-aside", "Write-through", "Write-back", "Read-through"]
+    answer: 2
+    explanation: "Write-back writes only to the cache and flushes to the database later, so unflushed writes are lost in a crash. Cache-aside and write-through always write to the database first or together."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In cache-aside, after updating a row in the database, a common approach is to delete that key from the cache."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Deleting (invalidating) the key forces the next read to load the fresh value. Updating the cache directly can race with other writers and leave old data behind, so deletion is the safer default."
+  - id: q5
+    type: MATCH
+    prompt: "Match each term to its meaning"
+    pairs:
+      - left: "TTL"
+        right: "How long an entry lives before it expires"
+      - left: "LRU"
+        right: "Evict the entry not used for the longest time"
+      - left: "LFU"
+        right: "Evict the entry used the fewest times"
+      - left: "CDN"
+        right: "Cache servers in many cities for static files"
+      - left: "Cache stampede"
+        right: "Many requests miss together and flood the database"
+    explanation: "These five terms cover expiry, two eviction policies, edge caching and the main failure mode of hot keys."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the method name you override so LinkedHashMap evicts automatically when full."
+    code: |
+      protected boolean ____(Map.Entry<K, V> eldest) {
+          return size() > capacity;
+      }
+    acceptedAnswers: ["removeEldestEntry"]
+    explanation: "LinkedHashMap calls removeEldestEntry after each put; returning true removes the eldest entry, which is the least recently used one in access-order mode."
+  - id: q7
+    type: MCQ
+    prompt: "Which data should you NOT serve from a cache with a 60-second TTL?"
+    options: ["Restaurant menu", "Cricket team squad list", "Seats left during tatkal booking at the moment of payment", "A user's profile photo"]
+    answer: 2
+    explanation: "The final seat check must be exactly correct, so read it from the database inside a transaction. A 60-second-old seat count could sell the same seat twice. The others tolerate slight staleness."
+explainBack:
+  prompt: "Explain caching to a friend using the chai stall tray and the godown."
+  rubric:
+    - "I explained cache hit vs miss"
+    - "I described cache-aside (check cache, else DB, then fill cache)"
+    - "I mentioned TTL and invalidation for stale data"
+    - "I explained LRU eviction"
+    - "I mentioned one risk: stale data, write-back loss, or stampede"
+  modelAnswer: |
+    A cache is like the small tray on a chai stall counter, while the database is the godown across the road. If the item is on the tray, that's a hit and it's instant. If not, it's a miss: he walks to the godown, brings it, and keeps some on the tray for next time; that's cache-aside. Items have an expiry, called TTL, and when the real data changes we remove it from the tray so nobody gets old data. When the tray is full, he removes what nobody asked for in the longest time; that's LRU. One danger: if a very popular item expires, everyone runs to the godown at once.
+flashcards:
+  - front: "Cache-aside in 3 steps"
+    back: "1) Read cache. 2) On miss, read DB. 3) Put the value in the cache (with TTL). On write: update DB, delete cache key."
+  - front: "Write-through vs write-back"
+    back: "Write-through: write cache and DB together (fresh, slower). Write-back: write cache now, DB later (fast, can lose data)."
+  - front: "LRU with LinkedHashMap"
+    back: "new LinkedHashMap<>(16, 0.75f, true) + override removeEldestEntry to return size() > capacity."
+  - front: "LRU without library"
+    back: "HashMap<key, node> + doubly linked list; move to head on access, remove tail when full. O(1) get/put."
+  - front: "Cache stampede fixes"
+    back: "Single rebuild with a lock, early refresh of hot keys, random jitter on TTLs."
+keyTakeaways:
+  - "Caches keep hot data in memory so most reads skip the database."
+  - "Cache-aside is the default: read cache, on miss read DB and fill; on write update DB and invalidate."
+  - "Write-through is fresh but slower; write-back is fast but can lose data."
+  - "Use TTLs, and pick an eviction policy (usually LRU)."
+  - "LRU in Java: LinkedHashMap with accessOrder true plus removeEldestEntry; O(1) operations."
+  - "Protect hot keys from stampedes, and serve static files from a CDN."

@@ -1,0 +1,289 @@
+slug: apt-number-system
+world: APTITUDE
+section: APT
+order: 1
+title: "Number system and simplification"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI, ALL]
+infosysRelevance: "Infosys-style basics practice: number properties (divisibility, HCF/LCM, remainders, unit digits) are the foundation for most quantitative aptitude questions and many coding problems."
+otherCompanies: "Number system and simplification are common practice topics for the online tests of TCS, Wipro, Cognizant, Accenture and Capgemini."
+why: |
+  Almost every aptitude topic stands on numbers: percentages, ratios, time and work, all need fast and correct calculation.
+
+  The number system also gives you **shortcuts** that save minutes in a timed test:
+  - check if 7425 is divisible by 9 in two seconds,
+  - find the last digit of 7^95 without calculating a huge number,
+  - count trailing zeros of 100! without multiplying.
+
+  And these ideas appear in **coding rounds** too: `%` (remainder), GCD with Euclid's algorithm, and digit sums are classic programming questions. In this lesson you learn each shortcut **and why it works**, and you write tiny Java programs that check the answers.
+analogy: |
+  Think of **numbers as people with ID cards**.
+
+  - Divisibility rules are like **checking the PIN code** on an address: you look at one small part (the last digits, or the digit sum) and you already know a lot about the whole address.
+  - HCF is the **biggest common group size**: if 36 boys and 84 girls must stand in equal rows with only boys or only girls in each row, the biggest row size is the HCF.
+  - LCM is **when everyone meets again**: three buses leave every 6, 8 and 12 minutes; the LCM tells you when all three leave together again.
+visual:
+  diagram: |
+    TYPES OF NUMBERS
+    Natural  1, 2, 3 ...
+    Whole    0, 1, 2, 3 ...
+    Integers ... -2, -1, 0, 1, 2 ...
+    Prime    2, 3, 5, 7, 11 ...   (exactly 2 factors)
+    Composite 4, 6, 8, 9 ...      (more than 2 factors)
+    1 is neither prime nor composite.
+
+    UNIT DIGIT CYCLES (last digit of powers)
+    2: 2 4 8 6 | 3: 3 9 7 1 | 7: 7 9 3 1 | 8: 8 4 2 6
+    4: 4 6     | 9: 9 1     | 0,1,5,6: always same
+
+    EUCLID HCF(84, 36)
+    84 = 2 x 36 + 12
+    36 = 3 x 12 + 0   --> HCF = 12
+  caption: "Number types, the unit-digit cycles of powers, and Euclid's method for HCF: divide, keep the remainder, repeat until the remainder is 0."
+  visualizer: null
+explanation: |
+  ### 1. Divisibility rules, and WHY they work
+  | Divisor | Rule | Why it works |
+  |---|---|---|
+  | 2 | last digit even | 10 is divisible by 2, so only the last digit matters |
+  | 4 | last two digits divisible by 4 | 100 is divisible by 4 |
+  | 8 | last three digits divisible by 8 | 1000 is divisible by 8 |
+  | 5 | last digit 0 or 5 | 10 is divisible by 5 |
+  | 3 | digit sum divisible by 3 | 10 leaves remainder 1 when divided by 3 (and 9), so each digit counts only as itself |
+  | 9 | digit sum divisible by 9 | same reason as 3 |
+  | 11 | (sum of digits at odd places) - (sum at even places) is 0 or divisible by 11 | 10 leaves remainder -1 when divided by 11, so the signs alternate |
+  | 6 | divisible by 2 **and** 3 | 6 = 2 x 3, and 2 and 3 share no factor |
+
+  **Worked**: Is 7425 divisible by 9? 7+4+2+5 = 18, and 18 is divisible by 9. **Yes** (7425 / 9 = 825).
+  **Worked**: Is 918082 divisible by 11? From the right: 2 - 8 + 0 - 8 + 1 - 9 = -22, divisible by 11. **Yes** (918082 / 11 = 83462).
+
+  ### 2. HCF and LCM
+  - **HCF** (Highest Common Factor, also called GCD) = the biggest number that divides all the given numbers.
+  - **LCM** (Least Common Multiple) = the smallest number that all the given numbers divide.
+  - **Key fact for two numbers**: `HCF x LCM = first number x second number`.
+
+  **Euclid's method** for HCF: replace (a, b) with (b, a mod b) until the remainder is 0. **Why?** Any number dividing both a and b also divides a - (multiple of b), which is the remainder. So the common divisors never change, but the numbers get smaller fast.
+
+  **Worked**: HCF(36, 84): 84 mod 36 = 12; 36 mod 12 = 0 -> HCF = **12**. LCM = 36 x 84 / 12 = **252**.
+  **Worked (bells)**: Three bells ring every 6, 8 and 12 minutes. They ring together now. Next time together? LCM(6, 8, 12) = **24 minutes**.
+  **Worked (same remainder)**: Largest number that divides 43, 91 and 183 leaving the **same remainder**? If they leave the same remainder, the **differences** are exactly divisible: 91-43 = 48, 183-91 = 92, 183-43 = 140. HCF(48, 92, 140) = **4**.
+
+  ### 3. Unit digit of big powers
+  The **last digit** of powers repeats in a cycle of length at most 4 (see the diagram). **Why?** The last digit of a product depends only on the last digits, and there are only 10 possible last digits, so a pattern must repeat.
+  **Method**: find the power's remainder when divided by 4. Remainder 1, 2, 3 -> 1st, 2nd, 3rd number in the cycle; remainder 0 -> 4th.
+  **Worked**: unit digit of 7^95. 95 mod 4 = 3 -> third in the cycle (7, 9, **3**, 1) -> **3**.
+
+  ### 4. Remainders: work with small numbers
+  **Rule**: (a x b) mod n = ((a mod n) x (b mod n)) mod n. Same for + and -.
+  **Worked**: (17 x 23) mod 5 = (2 x 3) mod 5 = 6 mod 5 = **1**. Check: 391 = 78 x 5 + 1.
+
+  ### 5. Trailing zeros of n!
+  A trailing zero comes from a factor 10 = 2 x 5. In n! there are always more 2s than 5s, so **count the 5s**:
+  `n/5 + n/25 + n/125 + ...` (whole-number division). Numbers like 25 give **two** 5s, which is why we add n/25.
+  **Worked**: 100! -> 100/5 + 100/25 = 20 + 4 = **24** zeros.
+
+  ### 6. Simplification with BODMAS
+  **BODMAS** = Brackets, Orders (powers/roots), Division and Multiplication (left to right), Addition and Subtraction (left to right).
+  **Worked**: 18 + 6 / 3 x 2 - 4 -> 6/3 = 2 -> 2 x 2 = 4 -> 18 + 4 - 4 = **18**.
+  Java follows the same precedence for `+ - * / %`, but integer `/` drops the decimal part: `7 / 2` is `3` in Java.
+
+  ### 7. Two useful sums
+  - 1 + 2 + ... + n = **n(n+1)/2**. Why: pair the first and last (1+n), second and second-last (2+(n-1)), ... there are n/2 such pairs. 1 to 50 -> 50 x 51 / 2 = **1275**.
+  - 1^2 + 2^2 + ... + n^2 = n(n+1)(2n+1)/6.
+tinyCode:
+  code: |
+    public class NumberShortcuts {
+        static int hcf(int a, int b) {
+            while (b != 0) {
+                int r = a % b;
+                a = b;
+                b = r;
+            }
+            return a;
+        }
+
+        static int trailingZeros(int n) {
+            int count = 0;
+            for (int p = 5; p <= n; p *= 5) {
+                count += n / p;
+            }
+            return count;
+        }
+
+        public static void main(String[] args) {
+            int h = hcf(84, 36);
+            System.out.println("HCF(84,36) = " + h);
+            System.out.println("LCM(84,36) = " + (84 * 36 / h));
+            System.out.println("7425 % 9 = " + (7425 % 9));
+            System.out.println("918082 % 11 = " + (918082 % 11));
+            System.out.println("Zeros in 100! = " + trailingZeros(100));
+            System.out.println("Remainder (17*23)%5 = " + (17 * 23) % 5);
+        }
+    }
+  walkthrough: |
+    - `hcf` is **Euclid's method**: keep replacing (a, b) with (b, a % b). When `b` becomes 0, `a` holds the HCF. For (84, 36): r = 12 -> (36, 12) -> r = 0 -> (12, 0) -> returns 12.
+    - LCM uses the fact `HCF x LCM = a x b`, so `LCM = a x b / HCF` = 3024 / 12 = 252.
+    - `7425 % 9` prints 0, confirming the digit-sum rule. `918082 % 11` prints 0, confirming the alternating-sum rule.
+    - `trailingZeros` adds n/5 + n/25 + n/125 ... For 100: 20 + 4 = 24 (125 is bigger than 100, so the loop stops).
+    - Output:
+    ```
+    HCF(84,36) = 12
+    LCM(84,36) = 252
+    7425 % 9 = 0
+    918082 % 11 = 0
+    Zeros in 100! = 24
+    Remainder (17*23)%5 = 1
+    ```
+tryIt:
+  instructions: "Type this program (no pasting). It checks the bells problem and the unit digit of 7^95 by brute force. Run it and match the answers with the shortcuts from the lesson."
+  code: |
+    public class BellsAndDigits {
+        public static void main(String[] args) {
+            int t = 1;
+            while (!(t % 6 == 0 && t % 8 == 0 && t % 12 == 0)) {
+                t++;
+            }
+            System.out.println("Bells ring together after " + t + " min");
+
+            int last = 1;
+            for (int i = 1; i <= 95; i++) {
+                last = (last * 7) % 10;
+            }
+            System.out.println("Unit digit of 7^95 = " + last);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int last = 1;
+            for (int i = 1; i <= 65; i++) {
+                last = (last * 3) % 10;
+            }
+            int zeros = 50 / 5 + 50 / 25;
+            System.out.println(last);
+            System.out.println(zeros);
+            System.out.println(18 + 6 / 3 * 2 - 4);
+        }
+    }
+  expectedOutput: |
+    3
+    12
+    18
+  explanation: |
+    - The loop keeps only the last digit of 3^65. Cycle of 3 is 3, 9, 7, 1; 65 mod 4 = 1, so the first in the cycle: **3**.
+    - Trailing zeros of 50!: 50/5 + 50/25 = 10 + 2 = **12**.
+    - BODMAS: 6 / 3 = 2, 2 * 2 = 4, 18 + 4 - 4 = **18**.
+commonMistakes:
+  - "Using the digit-sum rule for 4 or 8. Those use the last two / last three digits instead."
+  - "For the 11 rule, adding all digits instead of alternating plus and minus."
+  - "Using HCF x LCM = product for THREE numbers. It is only true for two numbers."
+  - "Unit digits: when the power mod 4 is 0, taking the 'zeroth' term. It means the 4th term of the cycle."
+  - "Trailing zeros: forgetting n/25, n/125. Numbers like 25 and 50 give two 5s each."
+  - "BODMAS: doing addition before division, or doing multiplication before a division that comes first from the left."
+interviewBox:
+  why: "Why this is practised: number sense shows up in aptitude tests and in coding questions (GCD, digit sums, modulo). Explaining WHY a shortcut works shows real understanding."
+  questions:
+    - q: "How do you find the GCD of two numbers efficiently? (practice question)"
+      a: "I use Euclid's algorithm. I replace the pair (a, b) with (b, a mod b) and repeat until b becomes zero; then a is the GCD. It works because any common divisor of a and b also divides the remainder. It is very fast, about O(log of the smaller number)."
+    - q: "Why does the digit-sum rule work for 9? (practice question)"
+      a: "Because 10 divided by 9 leaves remainder 1, so 100, 1000 and every power of 10 also leave remainder 1. So each digit contributes just its own value to the remainder. That means the number and its digit sum have the same remainder when divided by 9."
+    - q: "How many trailing zeros does 100 factorial have? (practice question)"
+      a: "24. A zero needs a 2 and a 5, and there are more 2s than 5s, so I count 5s: 100 divided by 5 is 20, and 100 divided by 25 is 4, because 25, 50, 75 and 100 have an extra 5. 20 plus 4 is 24."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "The HCF of two numbers is 12 and their LCM is 360. One number is 72. What is the other?"
+    code: null
+    options: ["48", "60", "30", "90"]
+    answer: 1
+    explanation: "HCF x LCM = product of the two numbers: 12 x 360 = 4320, and 4320 / 72 = 60. Check: HCF(72, 60) = 12 and LCM = 360. 48 gives LCM 144, so it is wrong."
+  - id: q2
+    type: MCQ
+    prompt: "What is the unit digit of 2^43?"
+    code: null
+    options: ["2", "4", "8", "6"]
+    answer: 2
+    explanation: "The cycle of 2 is 2, 4, 8, 6. 43 mod 4 = 3, so the third value: 8. Picking 6 is the common mistake of using the last cycle value without checking the remainder."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "5432184 is divisible by 8."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. For 8, check the last three digits: 184 / 8 = 23 exactly. The digit sum is not used for 8, because 10 does not leave remainder 1 when divided by 8."
+  - id: q4
+    type: MCQ
+    prompt: "How many trailing zeros does 125! have?"
+    code: null
+    options: ["25", "30", "31", "24"]
+    answer: 2
+    explanation: "125/5 + 125/25 + 125/125 = 25 + 5 + 1 = 31. Stopping at 125/5 gives 25, and stopping at 125/25 gives 30; both forget numbers with extra 5s."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Simplify using BODMAS and fill in the result."
+    code: |
+      36 + 24 / 4 * 3 - 10 = ____
+    acceptedAnswers: ["44"]
+    explanation: "Division and multiplication first, left to right: 24 / 4 = 6, 6 x 3 = 18. Then 36 + 18 - 10 = 44. Doing 4 x 3 first gives 24 / 12 = 2 and a wrong answer of 28."
+  - id: q6
+    type: MATCH
+    prompt: "Match each divisor to its quick test"
+    pairs:
+      - left: "4"
+        right: "Last two digits divisible by 4"
+      - left: "8"
+        right: "Last three digits divisible by 8"
+      - left: "9"
+        right: "Digit sum divisible by 9"
+      - left: "11"
+        right: "Alternating digit sum is 0 or divisible by 11"
+    explanation: "4 and 8 depend on the last digits because 100 and 1000 are multiples of them. 9 uses the digit sum because 10 leaves remainder 1; 11 alternates because 10 leaves remainder -1."
+  - id: q7
+    type: MCQ
+    prompt: "What is the largest number that divides 34, 62 and 118 leaving the same remainder in each case?"
+    code: null
+    options: ["14", "28", "4", "56"]
+    answer: 1
+    explanation: "Same remainder means the differences divide exactly: 62-34 = 28, 118-62 = 56, 118-34 = 84. HCF(28, 56, 84) = 28. Check: each number leaves remainder 6. 14 also works but is not the largest; 56 does not divide 28."
+  - id: q8
+    type: PREDICT_OUTPUT
+    prompt: "What does this Java program print?"
+    code: |
+      public class Q8 {
+          public static void main(String[] args) {
+              System.out.println(17 % 5 + 23 / 4);
+          }
+      }
+    options: ["7", "7.75", "8", "2"]
+    answer: 0
+    explanation: "17 % 5 = 2 (remainder). 23 / 4 with integers = 5 (the decimal part is dropped). 2 + 5 = 7. 7.75 would need double division; 8 comes from rounding 5.75 up, which Java does not do."
+explainBack:
+  prompt: "Explain to a friend how to find the unit digit of 7^95 and the HCF of 84 and 36, and why each method works."
+  rubric:
+    - "I explained that unit digits repeat in a cycle, and used power mod 4"
+    - "I explained Euclid's method with remainders"
+    - "I said WHY the methods work, not only the steps"
+    - "I got the answers 3 and 12"
+  modelAnswer: |
+    For the last digit of 7 to the power 95, I don't calculate the big number. The last digit of a product only depends on last digits, so powers of 7 end in a repeating cycle: 7, 9, 3, 1. The cycle length is 4, and 95 divided by 4 leaves 3, so I take the third value, which is 3. For the HCF of 84 and 36, I use Euclid: 84 divided by 36 leaves 12, then 36 divided by 12 leaves 0, so the HCF is 12. It works because any common divisor of two numbers also divides their remainder.
+flashcards:
+  - front: "HCF x LCM = ? (two numbers)"
+    back: "The product of the two numbers. Only for two numbers."
+  - front: "Unit digit cycles of 2, 3, 7, 8"
+    back: "2: 2,4,8,6. 3: 3,9,7,1. 7: 7,9,3,1. 8: 8,4,2,6. Use power mod 4 (0 means 4th)."
+  - front: "Trailing zeros of n!"
+    back: "n/5 + n/25 + n/125 + ... (count the 5s)."
+  - front: "Same remainder when dividing a, b, c?"
+    back: "Largest such divisor = HCF of the differences (b-a, c-b, c-a)."
+  - front: "Why the digit-sum rule works for 3 and 9"
+    back: "10 leaves remainder 1, so every digit counts only as its own value."
+keyTakeaways:
+  - "Divisibility rules come from what 10, 100, 1000 leave as remainders."
+  - "Euclid's method finds HCF fast; LCM = a x b / HCF for two numbers."
+  - "Unit digits of powers repeat in cycles of at most 4."
+  - "Work with small remainders: (a x b) mod n = ((a mod n)(b mod n)) mod n."
+  - "Trailing zeros of n! = count of 5s: n/5 + n/25 + ..."
+  - "Follow BODMAS; in Java, integer division drops decimals."

@@ -1,0 +1,355 @@
+slug: bit-manipulation
+world: DSA
+section: DSA
+order: 15
+title: "Bit manipulation"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: BIT_MANIPULATION
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Useful for SP and DSE preparation: XOR tricks, power-of-two checks, counting set bits and bitmask subsets appear in coding questions and in output-prediction MCQs on operators."
+otherCompanies: "Operator output questions (&, |, ^, ~, shifts) are common in service-company MCQ rounds; product companies ask single number, counting bits, power of two and subsets with bitmasks."
+why: |
+  Inside the computer, every `int` is just **32 bits** (32 zeros and ones). **Bit manipulation** means working on those bits directly with operators like `&`, `|`, `^`, `~`, `<<`, `>>`.
+
+  Why bother?
+  - Some problems have a **magic one-line answer** with bits: find the number that appears once when all others appear twice (XOR), check if a number is a power of two (`n & (n - 1)`), count the 1-bits.
+  - Bit operations are **very fast** and use **O(1) extra space**, which interviewers love as an optimisation.
+  - **Output-prediction questions** on `~`, `>>` and `>>>` with negative numbers are a common MCQ trap.
+  - Bitmasks let you represent a **set** of up to 32 (or 64) items in one number, which is used to list all subsets.
+
+  You only need a handful of tricks, and each one is easy once you can see the bits.
+analogy: |
+  Think of a row of **light switches in your hostel room**, numbered from the right: switch 0, switch 1, switch 2, and so on. Each switch is ON (1) or OFF (0). The whole row read together is a number.
+
+  - **Check** a switch: look at just that one (`&` with a mask).
+  - **Turn ON** a switch: flick it up without touching others (`|`).
+  - **Turn OFF** a switch: flick it down (`& ~mask`).
+  - **Toggle** a switch: flip whatever it is (`^`).
+  - **Shift left** (`<<`): every switch's state moves one place to the left, which doubles the number, like adding a 0 at the end of a decimal number multiplies it by 10.
+visual:
+  diagram: |
+    13 in binary (8-bit view)
+    bit index:   7 6 5 4 3 2 1 0
+    13       =   0 0 0 0 1 1 0 1      = 8 + 4 + 1
+
+    12 & 10   1100 & 1010 = 1000  = 8    (1 only if BOTH are 1)
+    12 | 10   1100 | 1010 = 1110  = 14   (1 if EITHER is 1)
+    12 ^ 10   1100 ^ 1010 = 0110  = 6    (1 if they DIFFER)
+    12 << 2   1100 -> 110000      = 48   (x 4)
+    12 >> 2   1100 -> 11          = 3    (/ 4)
+
+    n & (n - 1) removes the LOWEST set bit
+    n     = 40 = 101000
+    n - 1 = 39 = 100111
+    AND        = 100000 = 32
+  caption: "Each bit is a power of two. & keeps common 1s, | combines 1s, ^ marks differences, shifts multiply or divide by powers of two, and n & (n - 1) clears the rightmost 1."
+  visualizer: null
+explanation: |
+  ### Binary in one minute
+  **Binary** is base 2: each position is a power of two, counted from the right starting at **bit 0**.
+  `13 = 8 + 4 + 1 = 1101`. In Java: `Integer.toBinaryString(13)` gives `"1101"`, and `0b1101` is a binary literal equal to 13.
+
+  Java `int` is **32 bits** and **signed**. Negative numbers use **two's complement**: to get `-x`, flip all bits of x and add 1. The leftmost bit (bit 31) is the **sign bit**: 1 means negative. That's why `-1` is 32 ones.
+
+  ### The operators
+  | Operator | Name | Rule per bit | Example (12 = 1100, 10 = 1010) |
+  |---|---|---|---|
+  | `&` | AND | 1 if both are 1 | `12 & 10 = 8` (1000) |
+  | `\|` | OR | 1 if at least one is 1 | `12 \| 10 = 14` (1110) |
+  | `^` | XOR | 1 if they are different | `12 ^ 10 = 6` (0110) |
+  | `~` | NOT | flip every bit | `~12 = -13` |
+  | `<<` | left shift | move bits left, fill 0s | `12 << 2 = 48` |
+  | `>>` | signed right shift | move right, copy the sign bit | `-8 >> 1 = -4` |
+  | `>>>` | unsigned right shift | move right, fill 0s | `-8 >>> 28 = 15` |
+
+  Handy facts:
+  - `~x == -x - 1` (so `~12 == -13`, `~0 == -1`).
+  - `x << k` = x times 2^k (until it overflows); `x >> k` = x divided by 2^k, rounded **down** (towards minus infinity for negatives).
+  - `>>>` is the only one that treats the number as unsigned; for negative numbers it gives big positive results.
+  - **Precedence trap**: `==` binds tighter than `&`, so always write `(n & 1) == 0` with brackets.
+
+  ### XOR superpowers
+  - `a ^ a = 0` (a number cancels itself)
+  - `a ^ 0 = a`
+  - Order doesn't matter: `a ^ b ^ a = b`
+
+  ### The bit toolkit (bit i, counted from 0 on the right)
+  ```java
+  boolean isSet = (n & (1 << i)) != 0;   // check bit i
+  n = n | (1 << i);                      // set bit i to 1
+  n = n & ~(1 << i);                     // clear bit i to 0
+  n = n ^ (1 << i);                      // toggle bit i
+  boolean odd = (n & 1) == 1;            // last bit = odd/even (works for negatives too)
+  ```
+  `1 << i` is a **mask**: a number with only bit i set.
+
+  ### Trick: n & (n - 1)
+  Subtracting 1 flips the **lowest set bit** to 0 and all bits to its right to 1. ANDing with n then **removes the lowest set bit**.
+  - **Power of two**: a power of two has exactly one 1-bit, so `n > 0 && (n & (n - 1)) == 0`.
+  - **Count set bits (Brian Kernighan's algorithm)**: keep doing `n &= n - 1` and count the steps. Runs once per 1-bit, not once per bit.
+  ```java
+  int count = 0;
+  while (n != 0) { n &= (n - 1); count++; }
+  ```
+  Java also has `Integer.bitCount(n)`.
+
+  Related: `n & -n` keeps **only** the lowest set bit (40 = 101000 gives 8).
+
+  ### Single number (XOR)
+  Every number appears twice except one. Find it in O(n) time and **O(1) space**.
+  ```java
+  int x = 0;
+  for (int v : nums) x ^= v;   // pairs cancel to 0, the single one remains
+  return x;
+  ```
+  A HashMap of counts also works but needs O(n) space.
+
+  ### Counting bits for 0..n
+  `bits[i] = bits[i >> 1] + (i & 1)`: i without its last bit has already been counted, then add the last bit. This is a small DP, O(n).
+
+  ### Subsets with a bitmask (preview)
+  For n items, every number from `0` to `(1 << n) - 1` is a subset: bit j = 1 means "item j is included".
+  ```java
+  for (int mask = 0; mask < (1 << n); mask++) {
+      for (int j = 0; j < n; j++) {
+          if ((mask & (1 << j)) != 0) { /* item j is in this subset */ }
+      }
+  }
+  ```
+  That's 2^n subsets, so only for small n (about 20 or less).
+
+  ### Complexity summary
+  | Task | Time | Space |
+  |---|---|---|
+  | Check / set / clear / toggle a bit | O(1) | O(1) |
+  | Power of two | O(1) | O(1) |
+  | Count set bits (Kernighan) | O(number of 1-bits) | O(1) |
+  | Single number (XOR) | O(n) | O(1) |
+  | Counting bits 0..n | O(n) | O(n) |
+  | All subsets via bitmask | O(2^n x n) | O(1) extra |
+tinyCode:
+  code: |
+    public class Bits {
+        static boolean isSet(int n, int i)  { return (n & (1 << i)) != 0; }
+        static int setBit(int n, int i)     { return n | (1 << i); }
+        static int clearBit(int n, int i)   { return n & ~(1 << i); }
+        static int toggleBit(int n, int i)  { return n ^ (1 << i); }
+
+        static boolean isPowerOfTwo(int n)  { return n > 0 && (n & (n - 1)) == 0; }
+
+        static int countBits(int n) {        // Brian Kernighan: one loop per set bit
+            int count = 0;
+            while (n != 0) {
+                n &= (n - 1);                // removes the lowest set bit
+                count++;
+            }
+            return count;
+        }
+
+        static int singleNumber(int[] nums) {
+            int x = 0;
+            for (int v : nums) x ^= v;       // pairs cancel: a ^ a = 0
+            return x;
+        }
+
+        public static void main(String[] args) {
+            int n = 13;                                    // 1101
+            System.out.println(Integer.toBinaryString(n));
+            System.out.println(isSet(n, 2) + " " + isSet(n, 1));
+            System.out.println(setBit(n, 1) + " " + clearBit(n, 2) + " " + toggleBit(n, 0));
+            System.out.println(isPowerOfTwo(16) + " " + isPowerOfTwo(18));
+            System.out.println(countBits(13) + " " + Integer.bitCount(13));
+            System.out.println(singleNumber(new int[]{4, 1, 2, 1, 2}));
+        }
+    }
+  walkthrough: |
+    - 13 is `1101`: bits 0, 2 and 3 are on.
+    - `isSet(13, 2)`: mask `0100`, `1101 & 0100 = 0100`, not zero, so `true`. Bit 1 is off, so `false`.
+    - `setBit(13, 1)`: `1101 | 0010 = 1111` = **15**. `clearBit(13, 2)`: `1101 & 1011 = 1001` = **9**. `toggleBit(13, 0)`: `1101 ^ 0001 = 1100` = **12**.
+    - `isPowerOfTwo(16)`: `10000 & 01111 = 0`, so `true`. 18 is `10010`, which has two 1-bits, so `false`.
+    - `countBits(13)`: 1101 -> 1100 -> 1000 -> 0, three steps, so **3**, same as `Integer.bitCount`.
+    - `singleNumber`: 4 ^ 1 ^ 2 ^ 1 ^ 2. The 1s cancel and the 2s cancel, leaving **4**.
+
+    Output:
+    ```
+    1101
+    true false
+    15 9 12
+    true false
+    3 3
+    4
+    ```
+tryIt:
+  instructions: "Type this 'counting bits' program, which reuses the answer for i >> 1 (a tiny DP). Compare each line with the binary string printed next to it. Then change n to 16 and check that every power of two has exactly one 1-bit."
+  code: |
+    import java.util.Arrays;
+
+    public class CountingBits {
+        public static void main(String[] args) {
+            int n = 8;
+            int[] bits = new int[n + 1];
+            for (int i = 1; i <= n; i++) {
+                // i >> 1 drops the last bit; (i & 1) adds it back if it was 1
+                bits[i] = bits[i >> 1] + (i & 1);
+            }
+            System.out.println(Arrays.toString(bits));
+
+            for (int i = 0; i <= n; i++) {
+                String b = Integer.toBinaryString(i);
+                System.out.println(i + " = " + b + " -> set bits: " + bits[i]);
+            }
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int a = 12, b = 10;              // 1100 and 1010
+            System.out.println(a & b);
+            System.out.println(a | b);
+            System.out.println(a ^ b);
+            System.out.println(~a);
+            System.out.println(a << 2);
+            System.out.println(a >> 2);
+        }
+    }
+  expectedOutput: |
+    8
+    14
+    6
+    -13
+    48
+    3
+  explanation: |
+    `1100 & 1010 = 1000` = 8 (only bit 3 is common). `1100 | 1010 = 1110` = 14. `1100 ^ 1010 = 0110` = 6 (the bits that differ). `~12` flips all 32 bits, and in two's complement `~x = -x - 1`, so -13 (not -12, a common wrong guess). `12 << 2` = 12 x 4 = 48. `12 >> 2` = 12 / 4 = 3.
+commonMistakes:
+  - "Writing n & 1 == 0 without brackets; == runs first, so it doesn't compile in Java. Use (n & 1) == 0."
+  - "Thinking ~x equals -x; it is -x - 1."
+  - "Mixing up >> (keeps the sign) and >>> (fills with zeros); they differ only for negative numbers."
+  - "Forgetting n > 0 in the power-of-two check; 0 & (0 - 1) is 0, so 0 would wrongly pass."
+  - "Shifting 1 << 31 and expecting a big positive number; it sets the sign bit and gives Integer.MIN_VALUE. Use 1L << k for bits above 30."
+  - "Using n % 2 == 1 to test odd numbers; for negative odd numbers n % 2 is -1. (n & 1) == 1 works for all."
+interviewBox:
+  why: "Why interviewers ask this: bit tricks test low-level understanding of how numbers are stored and give elegant O(1)-space solutions; operator output questions catch careless reading."
+  questions:
+    - q: "How do you check whether a number is a power of two?"
+      a: "A power of two has exactly one bit set. n minus 1 flips that bit to 0 and all lower bits to 1, so n AND n minus 1 is zero only for powers of two. I also check n is greater than zero, because zero would pass otherwise. It's O(1)."
+    - q: "Every element appears twice except one. How do you find the single one?"
+      a: "I XOR all the numbers together. XOR of a number with itself is zero and XOR with zero gives the number back, and order doesn't matter. So every pair cancels out and only the single number remains. It's O(n) time and O(1) extra space, better than a HashMap which needs O(n) space."
+    - q: "What is the difference between >> and >>> in Java?"
+      a: "Both shift bits to the right. The signed shift, >>, copies the sign bit into the empty places, so negative numbers stay negative; minus 8 shifted right by 1 is minus 4. The unsigned shift, >>>, always fills with zeros, so a negative number becomes a large positive number. For positive numbers they give the same result."
+    - q: "How do you count the number of 1 bits in an integer?"
+      a: "I use Brian Kernighan's trick: while n is not zero, I do n equals n AND n minus 1, which removes the lowest set bit, and I count how many times the loop runs. It runs once per set bit instead of 32 times. In Java I can also use Integer.bitCount."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      System.out.println((-8 >> 1) + " " + (-8 >>> 28));
+    options: ["-4 15", "-4 -1", "4 15", "-4 0"]
+    answer: 0
+    explanation: "-8 >> 1 keeps the sign: -8 / 2 = -4. -8 is 1111...1000 (32 bits); >>> 28 shifts in zeros and keeps only the top 4 bits, 1111 = 15. \"-4 -1\" is what -8 >> 28 (signed) would give for the second part."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "XOR of all elements. What is printed?"
+    code: |
+      int[] nums = {7, 3, 5, 3, 7};
+      int r = 0;
+      for (int v : nums) r ^= v;
+      System.out.println(r);
+    options: ["5", "0", "25", "7"]
+    answer: 0
+    explanation: "7 ^ 7 = 0 and 3 ^ 3 = 0 regardless of order, leaving 0 ^ 5 = 5. 25 is the plain sum, which is a different operation."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This even-number check does not compile. Why?"
+    code: |
+      int n = 6;
+      if (n & 1 == 0) {
+          System.out.println("even");
+      }
+    options:
+      - "& cannot be used on int values"
+      - "== has higher precedence than &, so it becomes n & (1 == 0), which mixes int and boolean; write (n & 1) == 0"
+      - "It should be n && 1"
+      - "1 must be written as 0b1"
+    answer: 1
+    explanation: "Java evaluates 1 == 0 first (false), then tries int & boolean: 'bad operand types for binary operator &'. Brackets fix it. && only works on booleans, and the literal format makes no difference."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "n = 40 (binary 101000). What is printed?"
+    code: |
+      int n = 40;
+      System.out.println((n & (n - 1)) + " " + (n & -n));
+    options: ["32 8", "8 32", "39 8", "32 40"]
+    answer: 0
+    explanation: "n & (n - 1) removes the lowest set bit: 101000 -> 100000 = 32. n & -n keeps only the lowest set bit: 001000 = 8. They are opposite tricks, so \"8 32\" swaps them."
+  - id: q5
+    type: MCQ
+    prompt: "Which expression clears bit i (sets it to 0) of n and leaves all other bits unchanged?"
+    code: null
+    options: ["n | (1 << i)", "n ^ (1 << i)", "n & ~(1 << i)", "n & (1 << i)"]
+    answer: 2
+    explanation: "~(1 << i) has every bit 1 except bit i, so AND keeps all other bits and forces bit i to 0. | sets the bit, ^ toggles it (it would turn a 0 into 1), and n & (1 << i) keeps ONLY bit i."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "For any int x in Java, ~x == -x - 1."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. In two's complement, -x = ~x + 1, so ~x = -x - 1. Example: ~12 = -13, ~0 = -1, ~(-1) = 0. It even holds for Integer.MIN_VALUE because int arithmetic wraps around."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Brian Kernighan's set-bit counter: fill the line that removes the lowest set bit."
+    code: |
+      int count = 0;
+      while (n != 0) {
+          ____;
+          count++;
+      }
+    acceptedAnswers: ["n &= (n - 1)", "n &= n - 1", "n = n & (n - 1)", "n&=(n-1)", "n&=n-1", "n=n&(n-1)"]
+    explanation: "n - 1 flips the lowest 1-bit and everything below it, so ANDing with n wipes out exactly that bit. The loop runs once per 1-bit. n >>= 1 would also terminate for positive numbers but needs a separate check of the last bit and runs once per bit position."
+  - id: q8
+    type: MATCH
+    prompt: "Match each operator to what it does"
+    pairs:
+      - left: "a & b"
+        right: "1 only where both bits are 1"
+      - left: "a ^ b"
+        right: "1 where the bits differ"
+      - left: "a << 1"
+        right: "Doubles the value (bits move left)"
+      - left: "a >>> 1"
+        right: "Shifts right, filling with 0 even for negatives"
+    explanation: "AND keeps common bits, XOR marks differences, left shift multiplies by 2, and unsigned right shift ignores the sign."
+explainBack:
+  prompt: "Explain to a friend how XOR finds the single number and how n & (n - 1) checks for a power of two, using the light switches idea."
+  rubric:
+    - "I explained that an int is a row of 32 bits, each a power of two"
+    - "I said a ^ a = 0 and a ^ 0 = a, so pairs cancel"
+    - "I explained that n & (n - 1) removes the lowest set bit"
+    - "I said a power of two has exactly one bit set and n must be > 0"
+    - "I mentioned the bracket/precedence trap or the >> vs >>> difference"
+  modelAnswer: |
+    A number in the computer is a row of 32 light switches, each switch worth a power of two. XOR compares two rows and turns a switch on only where they differ, so a number XOR itself is all off, zero. If every number appears twice except one, I XOR them all, the pairs cancel, and only the single number is left, with O(1) extra space. For powers of two: a power of two has exactly one switch on. Subtracting one turns that switch off and all the lower ones on, so n AND n minus 1 becomes zero only for powers of two. I also check n is positive. And I always use brackets, like (n & 1) == 0, because == runs before &.
+flashcards:
+  - front: "Check / set / clear / toggle bit i"
+    back: "(n & (1<<i)) != 0 ; n | (1<<i) ; n & ~(1<<i) ; n ^ (1<<i)"
+  - front: "n & (n - 1)"
+    back: "Removes the lowest set bit. Power of two: n > 0 && (n & (n-1)) == 0."
+  - front: "XOR rules"
+    back: "a ^ a = 0, a ^ 0 = a, order doesn't matter. Single number = XOR of all."
+  - front: ">> vs >>>"
+    back: ">> copies the sign bit (-8 >> 1 = -4); >>> fills with 0 (-8 >>> 28 = 15)."
+  - front: "~x equals"
+    back: "-x - 1 (so ~12 = -13)."
+  - front: "Precedence trap"
+    back: "== binds tighter than &: write (n & 1) == 0."
+keyTakeaways:
+  - "An int is 32 bits in two's complement; bit i is worth 2^i and bit 31 is the sign."
+  - "&, |, ^, ~, <<, >>, >>>: know each rule and the >> vs >>> difference for negatives."
+  - "Masks with 1 << i check, set, clear and toggle individual bits."
+  - "n & (n - 1) removes the lowest set bit: power-of-two check and Kernighan's bit count."
+  - "XOR cancels pairs: single number in O(n) time and O(1) space."
+  - "Always bracket bit expressions in comparisons: (n & 1) == 0."

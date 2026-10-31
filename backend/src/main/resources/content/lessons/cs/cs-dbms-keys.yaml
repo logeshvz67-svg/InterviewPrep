@@ -1,0 +1,322 @@
+slug: cs-dbms-keys
+world: CS_CORE
+section: CS
+order: 6
+title: "DBMS: keys and relationships"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Keys (primary, candidate, foreign, super) and ER-to-table mapping are core DBMS theory for SP and DSE technical rounds, and they support every SQL question."
+otherCompanies: "Types of keys and ER diagrams are very common basic DBMS questions at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies ask you to design tables for a small app."
+why: |
+  Before you write any SQL, you must decide **what tables exist and how they connect**. That is database design, and it rests on two ideas: the **ER model** and **keys**.
+
+  Interviewers ask this because:
+  - **"Types of keys"** (super, candidate, primary, alternate, foreign, composite) is a classic question,
+  - **"Design tables for a library / college / shop"** is a common practical question,
+  - wrong keys cause duplicate data and broken links, which every real company has suffered from.
+analogy: |
+  Think of **your college**.
+
+  - **Students, courses and departments** are things the college keeps records about: these are **entities**.
+  - Your **roll number** uniquely identifies you: that is a **primary key**. Your **email** and **Aadhaar number** are also unique: they could have been the key, so they are **candidate keys**.
+  - Your record says "Department: CSE (dept id 10)". That dept id points to the department register: it is a **foreign key**, a link to another table.
+  - "A student **enrols in** a course" is a **relationship**. Many students take many courses: **M:N**. So the college keeps a separate **enrollment register** with (roll number, course code) pairs.
+visual:
+  diagram: |
+    ER diagram (college)
+
+    +------------+  1      N +-------------+  M      N +-----------+
+    | DEPARTMENT |----<has>---| STUDENT     |--<enrols>--| COURSE    |
+    | dept_id PK |            | roll_no PK  |            | code PK   |
+    | name       |            | email UNIQ  |            | title     |
+    +------------+            | dept_id FK  |            +-----------+
+                              +-------------+
+
+    Tables after mapping:
+    department(dept_id PK, name)
+    student(roll_no PK, email UNIQUE, name, dept_id FK -> department)
+    enrollment(roll_no FK, code FK, PK = (roll_no, code))  <- M:N table
+  caption: "1:N is stored as a foreign key on the 'many' side. M:N needs a separate junction table whose primary key combines both foreign keys."
+  visualizer: null
+explanation: |
+  ### Basic words
+  - **Database**: an organised collection of data. **DBMS** (Database Management System): software that stores and manages it, like MySQL, PostgreSQL, Oracle.
+  - **Relation / table**: rows and columns. A **row (tuple)** is one record; a **column (attribute)** is one property.
+  - **Schema**: the design (table names, columns, types, keys).
+
+  ### The ER (Entity-Relationship) model
+  The ER model is a **drawing of the data** before you create tables.
+  - **Entity**: a real-world thing we store data about (Student). Drawn as a rectangle.
+  - **Entity set**: all entities of one type (all students).
+  - **Attribute**: a property (name, roll_no). Drawn as an oval.
+    - **Simple** (age) vs **composite** (name = first + last).
+    - **Single-valued** (roll_no) vs **multi-valued** (phone numbers, double oval).
+    - **Derived** (age, computed from date of birth, dashed oval).
+    - **Key attribute** (underlined).
+  - **Relationship**: an association between entities (Student *enrols in* Course). Drawn as a diamond.
+  - **Weak entity**: cannot be identified by its own attributes alone and depends on an owner entity (e.g. Dependent of an Employee, identified by employee id + dependent name). Drawn as a double rectangle.
+
+  ### Cardinality (how many?)
+  | Type | Meaning | Example |
+  |---|---|---|
+  | **1:1** | One A relates to at most one B | Person - Passport |
+  | **1:N** | One A relates to many B; each B to one A | Department - Students |
+  | **M:N** | Many A relate to many B | Students - Courses |
+
+  **Participation**: **total** (every entity must take part, e.g. every student must belong to a department, double line) or **partial** (some may not, e.g. not every student has a hostel room).
+
+  ### Types of keys (the classic question)
+  Take `student(roll_no, email, aadhaar, name, dept_id)`.
+  | Key | Meaning | Example |
+  |---|---|---|
+  | **Super key** | Any set of columns that uniquely identifies a row (may have extra columns) | {roll_no}, {roll_no, name}, {email, dept_id} |
+  | **Candidate key** | A **minimal** super key: remove any column and it stops being unique | {roll_no}, {email}, {aadhaar} |
+  | **Primary key (PK)** | The ONE candidate key chosen to identify rows. **Unique and NOT NULL**. One per table | roll_no |
+  | **Alternate key** | Candidate keys not chosen as primary | email, aadhaar |
+  | **Foreign key (FK)** | Column(s) referring to the primary key (or a unique key) of another table; keeps links valid | dept_id -> department.dept_id |
+  | **Composite key** | A key made of two or more columns | (roll_no, course_code) in enrollment |
+  | **Unique key** | Must be unique but (in most databases) may contain NULL | email |
+
+  Relation: every candidate key is a super key, but not every super key is a candidate key. **Primary key ⊂ candidate keys ⊂ super keys**.
+
+  Also know: a **surrogate key** is an artificial id (auto-increment number or UUID) with no business meaning; a **natural key** comes from real data (Aadhaar, email).
+
+  ### Referential integrity
+  A foreign key enforces **referential integrity**: you cannot insert a student with dept_id 99 if department 99 does not exist, and you cannot delete a department that students still refer to (unless you choose `ON DELETE CASCADE` or `SET NULL`).
+
+  ### Mapping ER to tables (rules)
+  1. **Strong entity** -> its own table; key attribute -> primary key.
+  2. **Composite attribute** -> separate columns (first_name, last_name).
+  3. **Multi-valued attribute** -> a separate table (student_phone(roll_no, phone)).
+  4. **1:1 relationship** -> put a foreign key (with UNIQUE) on either side, usually the side with total participation.
+  5. **1:N relationship** -> put the foreign key on the **N (many) side** (student.dept_id).
+  6. **M:N relationship** -> a new **junction table** with both foreign keys; together they form the composite primary key (enrollment).
+  7. **Weak entity** -> table whose primary key = owner's key + its partial key.
+
+  ### The SQL for our college
+  ```sql
+  CREATE TABLE department (
+    dept_id INT PRIMARY KEY,
+    name    VARCHAR(50) NOT NULL
+  );
+  CREATE TABLE student (
+    roll_no INT PRIMARY KEY,
+    email   VARCHAR(100) UNIQUE NOT NULL,
+    name    VARCHAR(50),
+    dept_id INT REFERENCES department(dept_id)
+  );
+  CREATE TABLE course (
+    code  VARCHAR(10) PRIMARY KEY,
+    title VARCHAR(100)
+  );
+  CREATE TABLE enrollment (
+    roll_no INT REFERENCES student(roll_no),
+    code    VARCHAR(10) REFERENCES course(code),
+    PRIMARY KEY (roll_no, code)
+  );
+  ```
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class KeysDemo {
+        record Student(int rollNo, String email, String name, int deptId) {}
+
+        static Set<Integer> departments = Set.of(10, 20);          // department PKs
+        static Map<Integer, Student> students = new LinkedHashMap<>();
+        static Set<String> emails = new HashSet<>();               // UNIQUE column
+
+        static void insert(Student s) {
+            if (students.containsKey(s.rollNo()))
+                System.out.println("REJECT " + s.name() + ": duplicate primary key");
+            else if (!departments.contains(s.deptId()))
+                System.out.println("REJECT " + s.name() + ": foreign key, no dept " + s.deptId());
+            else if (emails.contains(s.email()))
+                System.out.println("REJECT " + s.name() + ": email must be unique");
+            else {
+                students.put(s.rollNo(), s);
+                emails.add(s.email());
+                System.out.println("OK     " + s.name());
+            }
+        }
+
+        public static void main(String[] args) {
+            insert(new Student(1, "asha@clg.in", "Asha", 10));
+            insert(new Student(1, "ravi@clg.in", "Ravi", 10));
+            insert(new Student(2, "ravi@clg.in", "Ravi", 99));
+            insert(new Student(3, "asha@clg.in", "Meena", 20));
+            insert(new Student(4, "meena@clg.in", "Meena", 20));
+            System.out.println("Rows: " + students.size());
+        }
+    }
+  walkthrough: |
+    - This Java program **imitates** what a database does with keys, so you can see each rule fire.
+    - `students` is a map from roll number to row: a map cannot hold two equal keys, just like a **primary key**.
+    - `departments` holds the valid department ids. Checking `departments.contains(deptId)` is the **foreign key** check (referential integrity).
+    - `emails` imitates a **UNIQUE** constraint on the email column (an alternate key).
+    - Output:
+    ```
+    OK     Asha
+    REJECT Ravi: duplicate primary key
+    REJECT Ravi: foreign key, no dept 99
+    REJECT Meena: email must be unique
+    OK     Meena
+    Rows: 2
+    ```
+    A real DBMS gives errors like "duplicate key value violates unique constraint" or "violates foreign key constraint" for the same three cases.
+tryIt:
+  instructions: "Type this M:N demo. The enrollment 'table' uses a composite key (roll number + course code), stored as a string pair in a Set. The same student can take many courses and a course can have many students, but the same pair cannot repeat."
+  code: |
+    import java.util.LinkedHashSet;
+    import java.util.Set;
+
+    public class Enrollment {
+        static Set<String> enrollment = new LinkedHashSet<>();   // PK = (rollNo, code)
+
+        static void enrol(int rollNo, String code) {
+            boolean added = enrollment.add(rollNo + "|" + code);
+            System.out.println(rollNo + " -> " + code + (added ? " enrolled" : " DUPLICATE"));
+        }
+
+        public static void main(String[] args) {
+            enrol(1, "DBMS");
+            enrol(1, "OS");      // same student, another course: fine
+            enrol(2, "DBMS");    // another student, same course: fine
+            enrol(1, "DBMS");    // same pair again: rejected
+            System.out.println("Rows: " + enrollment);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class FkPredict {
+        public static void main(String[] args) {
+            Map<Integer, String> dept = new HashMap<>(Map.of(10, "CSE", 20, "ECE"));
+            Map<Integer, Integer> studentDept = new LinkedHashMap<>();
+            int[][] rows = {{1, 10}, {2, 30}, {3, 20}, {1, 20}};
+            int ok = 0, fail = 0;
+            for (int[] r : rows) {
+                if (dept.containsKey(r[1]) && !studentDept.containsKey(r[0])) {
+                    studentDept.put(r[0], r[1]);
+                    ok++;
+                } else {
+                    fail++;
+                }
+            }
+            System.out.println(ok + " inserted, " + fail + " rejected");
+            System.out.println(studentDept);
+        }
+    }
+  expectedOutput: |
+    2 inserted, 2 rejected
+    {1=10, 3=20}
+  explanation: |
+    Row (1,10): dept 10 exists, roll 1 is new: inserted. Row (2,30): dept 30 does not exist: **foreign key** failure. Row (3,20): inserted. Row (1,20): roll 1 already exists: **primary key** failure. So 2 inserted, 2 rejected, and the map keeps insertion order: {1=10, 3=20}.
+commonMistakes:
+  - "Saying a primary key can be NULL. A primary key is always UNIQUE and NOT NULL."
+  - "Saying a table can have many primary keys. It has exactly one primary key, which may be composite (many columns)."
+  - "Mixing up super key and candidate key. A candidate key is a MINIMAL super key."
+  - "Putting the foreign key on the 'one' side of a 1:N relationship. It goes on the 'many' side."
+  - "Trying to store an M:N relationship with a foreign key in one table. M:N always needs a junction table."
+  - "Thinking a foreign key must point to a primary key only. It can also reference a UNIQUE column."
+interviewBox:
+  why: "Why interviewers ask this: good table design prevents duplicate and broken data, and keys are the vocabulary of every SQL discussion."
+  questions:
+    - q: "What is the difference between a primary key and a unique key?"
+      a: "Both stop duplicates. A primary key cannot be NULL and a table has only one primary key. A unique key can usually allow NULL values, and a table can have many unique keys. The primary key is the main identity of a row."
+    - q: "What is the difference between a super key and a candidate key?"
+      a: "A super key is any set of columns that uniquely identifies a row, even with extra columns. A candidate key is a minimal super key: if you remove any column it is no longer unique. From the candidate keys we choose one as the primary key; the others are alternate keys."
+    - q: "What is a foreign key?"
+      a: "A foreign key is a column in one table that refers to the primary key or a unique key of another table. It maintains referential integrity: you cannot insert a value that does not exist in the parent table, and you cannot delete a parent row that is still referenced unless you set a rule like ON DELETE CASCADE."
+    - q: "How do you convert an M:N relationship into tables?"
+      a: "Create a separate junction table that has foreign keys to both tables, and make the pair of foreign keys its composite primary key. For students and courses, an enrollment table with roll number and course code."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each key to its definition"
+    pairs:
+      - left: "Super key"
+        right: "Any set of columns that uniquely identifies a row"
+      - left: "Candidate key"
+        right: "A minimal super key"
+      - left: "Primary key"
+        right: "The chosen candidate key, unique and not null"
+      - left: "Foreign key"
+        right: "Refers to a key in another table"
+      - left: "Alternate key"
+        right: "A candidate key that was not chosen"
+    explanation: "Primary key is one of the candidate keys, and candidate keys are the minimal super keys. A foreign key links tables."
+  - id: q2
+    type: MCQ
+    prompt: "Students and Courses have an M:N relationship. What is the minimum number of tables needed?"
+    code: null
+    options: ["1", "2", "3", "4"]
+    answer: 2
+    explanation: "Two entity tables plus one junction table (enrollment) = 3. With only 2 tables you would have to store lists inside a column, which breaks the design."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "A primary key column can contain one NULL value."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A primary key must be UNIQUE and NOT NULL. A UNIQUE key (not primary) may allow NULLs in most databases, which is the tempting confusion."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "Relation R(A, B, C) has only one candidate key: {A}. How many super keys does R have?"
+    code: |
+      Super key = {A} plus any combination of the other columns
+      Other columns: B, C
+    options: ["1", "3", "4", "8"]
+    answer: 2
+    explanation: "Any set that contains A is a super key: {A}, {A,B}, {A,C}, {A,B,C} = 4 (that is 2^(3-1)). 8 counts all subsets including those without A, which are not unique."
+  - id: q5
+    type: MCQ
+    prompt: "Department and Employee have a 1:N relationship (one department, many employees). Where does the foreign key go?"
+    code: null
+    options: ["In Department, pointing to Employee", "In Employee, pointing to Department", "In a separate junction table only", "Nowhere; 1:N needs no key"]
+    answer: 1
+    explanation: "The foreign key goes on the many side: each employee row stores its one dept_id. Putting it in Department would need many employee ids in one cell. A junction table is needed only for M:N."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Complete the column so dept_id must refer to an existing department."
+    code: |
+      dept_id INT ____ department(dept_id)
+    acceptedAnswers: ["REFERENCES", "references"]
+    explanation: "REFERENCES creates a foreign key constraint, enforcing referential integrity. You can also write it as a table constraint: FOREIGN KEY (dept_id) REFERENCES department(dept_id)."
+  - id: q7
+    type: MCQ
+    prompt: "Which of these is a weak entity?"
+    code: null
+    options: ["Student identified by roll number", "Dependent identified only by employee id + dependent name", "Course identified by course code", "Department identified by dept id"]
+    answer: 1
+    explanation: "A weak entity cannot be identified by its own attributes alone; a dependent's name is not unique, so it needs the owner employee's id. The others have their own keys."
+explainBack:
+  prompt: "Explain to a friend the types of keys and how you would turn a college ER diagram (departments, students, courses) into tables."
+  rubric:
+    - "I explained entity, attribute and relationship"
+    - "I explained super, candidate, primary, alternate and foreign keys"
+    - "I said 1:N puts the foreign key on the many side"
+    - "I said M:N needs a junction table with a composite key"
+    - "I gave an example with real columns"
+  modelAnswer: |
+    In an ER diagram, entities are things like Student, Course and Department, attributes are their properties, and relationships connect them. A super key is any set of columns that identifies a row; a candidate key is a minimal one; the primary key is the candidate we choose, and it can't be null or repeated. Other candidates like email become alternate keys. A foreign key links tables, like student.dept_id pointing to department. One department has many students, so dept_id goes in the student table. Students and courses are many-to-many, so I make an enrollment table with roll number and course code, and that pair is its composite primary key.
+flashcards:
+  - front: "Super vs candidate vs primary key"
+    back: "Super: any unique column set. Candidate: minimal super key. Primary: the chosen candidate key (unique + not null, one per table)."
+  - front: "Primary key vs unique key"
+    back: "PK: one per table, NOT NULL. Unique: many allowed, usually allows NULL."
+  - front: "Where does the FK go in 1:N?"
+    back: "On the N (many) side."
+  - front: "How to map M:N?"
+    back: "Junction table with both foreign keys; together they form the composite primary key."
+  - front: "Weak entity"
+    back: "Cannot be identified by its own attributes; key = owner's key + partial key. Double rectangle in ER."
+keyTakeaways:
+  - "The ER model shows entities, attributes and relationships before you build tables."
+  - "Primary key ⊂ candidate keys ⊂ super keys; candidate keys not chosen are alternate keys."
+  - "A primary key is unique and not null; a table has exactly one (possibly composite)."
+  - "Foreign keys enforce referential integrity between tables."
+  - "1:N: FK on the many side. M:N: junction table with a composite key."

@@ -1,0 +1,455 @@
+slug: trees-bst
+world: DSA
+section: DSA
+order: 10
+title: "Trees and BST"
+version: 1
+estimatedMinutes: 45
+rebuild: false
+patternCode: TREES
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE preparation: traversals, height, BST insert/search/validate and lowest common ancestor are standard recursion-on-trees questions in coding and technical rounds."
+otherCompanies: "Tree traversals and BST properties are common basic questions in TCS-style technical rounds; product companies build on them with LCA, level order variants, diameter and serialisation."
+why: |
+  A **tree** stores data in a hierarchy: one item at the top, each item connected to items below it. You already use trees every day: folders on your laptop, the HTML of a web page, a company org chart, and Java's `TreeMap`.
+
+  Trees are also the **best practice ground for recursion**. Almost every tree problem has the same shape: "solve it for the left subtree, solve it for the right subtree, combine the answers". Once that clicks, height, size, sum, mirror, path and LCA problems all look alike.
+
+  A **Binary Search Tree (BST)** adds one rule (left side smaller, right side bigger), which lets you search, insert and delete in **O(log n)** when the tree is balanced, like binary search but on a structure that can grow.
+analogy: |
+  Think of a **family tree** drawn on a wedding invitation backdrop: grandparents at the top, their children below, grandchildren below them.
+
+  - The grandparent at the very top is the **root**.
+  - People with no children are **leaves**.
+  - "Who is the closest common elder of these two cousins?" is exactly the **lowest common ancestor** question.
+
+  A **BST** is like a well-organised **library shelf guide**: at each signboard, "books numbered less than 500: go left; 500 or more: go right". At every sign you skip half of the library, so you reach your book in a few turns.
+visual:
+  diagram: |
+    BST built from 8, 3, 10, 1, 6, 14, 4
+                    8            <- root (level 0)
+                  /   \
+                 3     10        <- level 1
+                / \      \
+               1   6      14     <- level 2
+                  /
+                 4               <- level 3 (leaf)
+
+    preorder  (Node, L, R): 8 3 1 6 4 10 14
+    inorder   (L, Node, R): 1 3 4 6 8 10 14   <- sorted for a BST!
+    postorder (L, R, Node): 1 4 6 3 14 10 8
+    level order (queue)   : [8] [3,10] [1,6,14] [4]
+
+    search 6: 6<8 go left -> 6>3 go right -> found (3 checks)
+  caption: "Every node's left subtree holds smaller values and right subtree bigger values. The four traversals visit the same nodes in different orders; inorder of a BST is sorted."
+  visualizer: null
+explanation: |
+  ### Terminology (in plain words)
+  | Term | Meaning |
+  |---|---|
+  | Node | one box holding a value and links to its children |
+  | Root | the top node (no parent) |
+  | Child / parent | a node directly below / directly above |
+  | Leaf | a node with no children |
+  | Subtree | a node plus everything below it |
+  | Depth of a node | number of edges from the root to it |
+  | Height of a tree | number of levels (nodes on the longest root-to-leaf path) |
+  | Binary tree | every node has at most 2 children: left and right |
+  | Balanced | left and right heights differ by at most 1 everywhere, so height is about log n |
+
+  Note: some books count height in **edges** (a single node has height 0). In this lesson, height = number of **nodes** on the longest path, so an empty tree is 0 and a single node is 1. Say which one you use in an interview.
+
+  ```java
+  class Node {
+      int val;
+      Node left, right;
+      Node(int val) { this.val = val; }
+  }
+  ```
+
+  ### The recursive template
+  ```java
+  int solve(Node n) {
+      if (n == null) return BASE;        // empty tree answer
+      int l = solve(n.left);             // trust recursion for the left subtree
+      int r = solve(n.right);            // ...and for the right subtree
+      return combine(n.val, l, r);
+  }
+  ```
+  **Height**: `if (n == null) return 0; return 1 + Math.max(height(n.left), height(n.right));`
+  **Count nodes**: `return 1 + count(n.left) + count(n.right);`
+
+  ### Depth-first traversals (DFS)
+  "Traversal" means visiting every node once. The name tells you **when the node itself** is visited:
+  | Traversal | Order | Typical use |
+  |---|---|---|
+  | Preorder | Node, Left, Right | copy a tree, print structure |
+  | Inorder | Left, Node, Right | BST in **sorted order** |
+  | Postorder | Left, Right, Node | delete a tree, compute height/size (children first) |
+  ```java
+  void inorder(Node n) {
+      if (n == null) return;
+      inorder(n.left);
+      System.out.print(n.val + " ");
+      inorder(n.right);
+  }
+  ```
+  Move the print line up (preorder) or down (postorder) for the others.
+
+  ### Breadth-first traversal (level order)
+  Visit level by level using a **queue**. The trick `int size = q.size()` tells you how many nodes belong to the current level.
+  ```java
+  Queue<Node> q = new ArrayDeque<>();
+  q.offer(root);
+  while (!q.isEmpty()) {
+      int size = q.size();
+      for (int i = 0; i < size; i++) {
+          Node cur = q.poll();
+          // process cur
+          if (cur.left != null) q.offer(cur.left);
+          if (cur.right != null) q.offer(cur.right);
+      }
+      // one level finished
+  }
+  ```
+
+  ### Binary Search Tree (BST)
+  **Rule**: for every node, **all** values in its left subtree are smaller and **all** values in its right subtree are bigger.
+
+  **Search**: compare and go one way only.
+  ```java
+  while (n != null) {
+      if (target == n.val) return true;
+      n = (target < n.val) ? n.left : n.right;
+  }
+  return false;
+  ```
+  **Insert**: walk like search, and attach the new node where you fall off.
+  ```java
+  Node insert(Node root, int val) {
+      if (root == null) return new Node(val);
+      if (val < root.val) root.left = insert(root.left, val);
+      else root.right = insert(root.right, val);
+      return root;
+  }
+  ```
+
+  **Validate a BST**: checking only "left child < node < right child" is **wrong**. A node deep in the right subtree must still be bigger than the root. Pass down an allowed range `(min, max)`:
+  ```java
+  boolean isBST(Node n, long min, long max) {
+      if (n == null) return true;
+      if (n.val <= min || n.val >= max) return false;
+      return isBST(n.left, min, n.val) && isBST(n.right, n.val, max);
+  }
+  // call: isBST(root, Long.MIN_VALUE, Long.MAX_VALUE)
+  ```
+  We use `long` bounds so a node holding `Integer.MIN_VALUE` or `Integer.MAX_VALUE` is still allowed. Another way: do an inorder traversal and check it is strictly increasing.
+
+  ### Lowest Common Ancestor (LCA)
+  The **LCA** of two nodes p and q is the deepest node that has both of them below it (a node counts as its own descendant).
+  - **In a BST**: if both values are smaller than the current node, go left; if both are bigger, go right; otherwise the paths split here, so this node is the LCA. O(h).
+  - **In a general binary tree**:
+  ```java
+  Node lca(Node n, Node p, Node q) {
+      if (n == null || n == p || n == q) return n;
+      Node l = lca(n.left, p, q), r = lca(n.right, p, q);
+      if (l != null && r != null) return n;   // one found on each side
+      return (l != null) ? l : r;
+  }
+  ```
+
+  ### Complexity
+  | Operation | Balanced BST | Skewed BST (worst) | Any binary tree |
+  |---|---|---|---|
+  | Search / insert | O(log n) | O(n) | O(n) |
+  | Traversal (any) | O(n) | O(n) | O(n) |
+  | Height, validate, LCA (general) | O(n) | O(n) | O(n) |
+  | Recursion stack space | O(log n) | O(n) | O(h) |
+
+  A **skewed** tree is one long chain (insert 1, 2, 3, 4, 5 in order: each goes to the right). Then BST search is no better than a linked list. **Self-balancing** trees (Red-Black, AVL) fix this; Java's `TreeMap` and `TreeSet` use a Red-Black tree, so they guarantee O(log n).
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class TreeBasics {
+        static class Node {
+            int val;
+            Node left, right;
+            Node(int val) { this.val = val; }
+        }
+
+        static Node insert(Node root, int val) {
+            if (root == null) return new Node(val);
+            if (val < root.val) root.left = insert(root.left, val);
+            else root.right = insert(root.right, val);
+            return root;
+        }
+
+        static void preorder(Node n, List<Integer> out) {
+            if (n == null) return;
+            out.add(n.val); preorder(n.left, out); preorder(n.right, out);
+        }
+
+        static void inorder(Node n, List<Integer> out) {
+            if (n == null) return;
+            inorder(n.left, out); out.add(n.val); inorder(n.right, out);
+        }
+
+        static void postorder(Node n, List<Integer> out) {
+            if (n == null) return;
+            postorder(n.left, out); postorder(n.right, out); out.add(n.val);
+        }
+
+        static List<List<Integer>> levelOrder(Node root) {
+            List<List<Integer>> levels = new ArrayList<>();
+            Queue<Node> q = new ArrayDeque<>();
+            if (root != null) q.offer(root);
+            while (!q.isEmpty()) {
+                int size = q.size();                 // nodes on this level
+                List<Integer> level = new ArrayList<>();
+                for (int i = 0; i < size; i++) {
+                    Node cur = q.poll();
+                    level.add(cur.val);
+                    if (cur.left != null) q.offer(cur.left);
+                    if (cur.right != null) q.offer(cur.right);
+                }
+                levels.add(level);
+            }
+            return levels;
+        }
+
+        static int height(Node n) {
+            if (n == null) return 0;
+            return 1 + Math.max(height(n.left), height(n.right));
+        }
+
+        static boolean search(Node n, int target) {
+            while (n != null) {
+                if (target == n.val) return true;
+                n = (target < n.val) ? n.left : n.right;
+            }
+            return false;
+        }
+
+        public static void main(String[] args) {
+            Node root = null;
+            for (int v : new int[]{8, 3, 10, 1, 6, 14, 4}) root = insert(root, v);
+
+            List<Integer> pre = new ArrayList<>(), in = new ArrayList<>(), post = new ArrayList<>();
+            preorder(root, pre); inorder(root, in); postorder(root, post);
+            System.out.println("pre   " + pre);
+            System.out.println("in    " + in);
+            System.out.println("post  " + post);
+            System.out.println("level " + levelOrder(root));
+            System.out.println("height " + height(root) + ", has 6? " + search(root, 6) + ", has 7? " + search(root, 7));
+        }
+    }
+  walkthrough: |
+    - **insert** builds the BST from the diagram: 8 is the root; 3 goes left; 10 goes right; 1 goes left of 3; 6 right of 3; 14 right of 10; 4 left of 6.
+    - The three DFS methods are identical except **where** `out.add(n.val)` sits: before the children (pre), between them (in), after them (post).
+    - **Inorder** gives `[1, 3, 4, 6, 8, 10, 14]`: sorted, because of the BST rule.
+    - **levelOrder** uses a queue and `size` to group nodes level by level.
+    - **height** is 4 because the longest path 8 -> 3 -> 6 -> 4 has 4 nodes.
+    - **search** walks one path only: 6 is found in 3 steps; 7 falls off after 8 -> 3 -> 6 (7 > 6, right child is null).
+
+    Output:
+    ```
+    pre   [8, 3, 1, 6, 4, 10, 14]
+    in    [1, 3, 4, 6, 8, 10, 14]
+    post  [1, 4, 6, 3, 14, 10, 8]
+    level [[8], [3, 10], [1, 6, 14], [4]]
+    height 4, has 6? true, has 7? false
+    ```
+tryIt:
+  instructions: "Type this BST validator that passes an allowed (min, max) range down the tree. The 'bad' tree has 4 hidden in the right subtree of 5. Then change 4 to 6 and run again: it should print true twice."
+  code: |
+    public class ValidateBST {
+        static class Node {
+            int val; Node left, right;
+            Node(int val, Node left, Node right) { this.val = val; this.left = left; this.right = right; }
+        }
+
+        static boolean isBST(Node n, long min, long max) {
+            if (n == null) return true;
+            if (n.val <= min || n.val >= max) return false;
+            return isBST(n.left, min, n.val) && isBST(n.right, n.val, max);
+        }
+
+        public static void main(String[] args) {
+            Node good = new Node(5, new Node(3, null, null), new Node(8, null, null));
+            //      5
+            //     / \
+            //    3   8
+            //       /
+            //      4      <- 4 is smaller than 5 but sits in the right subtree
+            Node bad = new Node(5, new Node(3, null, null), new Node(8, new Node(4, null, null), null));
+            System.out.println(isBST(good, Long.MIN_VALUE, Long.MAX_VALUE));
+            System.out.println(isBST(bad, Long.MIN_VALUE, Long.MAX_VALUE));
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static class Node {
+            int val; Node left, right;
+            Node(int val, Node left, Node right) { this.val = val; this.left = left; this.right = right; }
+        }
+
+        static void walk(Node n) {
+            if (n == null) return;
+            walk(n.left);
+            walk(n.right);
+            System.out.print(n.val + " ");
+        }
+
+        public static void main(String[] args) {
+            Node root = new Node(1,
+                    new Node(2, new Node(4, null, null), new Node(5, null, null)),
+                    new Node(3, null, null));
+            walk(root);
+            System.out.println();
+        }
+    }
+  expectedOutput: |
+    4 5 2 3 1
+  explanation: |
+    The tree is 1 at the root, 2 and 3 as its children, and 4 and 5 under 2. `walk` prints a node only AFTER both its subtrees: that is **postorder** (Left, Right, Node). So the leaves 4 and 5 come first, then their parent 2, then 3, and the root 1 is printed last. Each value is followed by a space.
+commonMistakes:
+  - "Validating a BST by checking only each node's direct children; a deeper node can still break the rule. Pass a (min, max) range."
+  - "Forgetting the base case if (n == null) in recursive tree methods, causing NullPointerException."
+  - "Assuming BST operations are always O(log n); a skewed tree (sorted inserts) makes them O(n)."
+  - "Mixing up traversal names: the name says when the NODE is visited (pre = before children, in = between, post = after)."
+  - "In level order, not storing q.size() before the inner loop, so nodes from the next level get mixed in."
+  - "Using int bounds Integer.MIN_VALUE/MAX_VALUE in validation, which wrongly rejects nodes holding exactly those values."
+interviewBox:
+  why: "Why interviewers ask this: trees test whether you truly understand recursion (base case, trust the subproblem, combine) and whether you can reason about complexity in balanced vs skewed cases."
+  questions:
+    - q: "What are the different tree traversals?"
+      a: "Depth-first ones are preorder, inorder and postorder. The name tells when the node itself is visited: preorder visits the node before its children, inorder between the left and right subtrees, and postorder after both. Breadth-first is level order, which uses a queue to visit level by level. All are O(n)."
+    - q: "How do you check if a binary tree is a valid BST?"
+      a: "I pass an allowed range down the tree. The root can be anything. When I go left, the maximum becomes the parent's value; when I go right, the minimum becomes the parent's value. If any node is outside its range, it's not a BST. Checking only direct children is not enough, because a node deep in the right subtree must still be bigger than the root. It's O(n)."
+    - q: "What is the time complexity of searching in a BST?"
+      a: "It's O(h), where h is the height. For a balanced tree the height is about log n, so search is O(log n). But if values are inserted in sorted order, the tree becomes a chain and search is O(n). Self-balancing trees like Red-Black trees, used by TreeMap, keep it O(log n)."
+    - q: "How do you find the lowest common ancestor in a BST?"
+      a: "I start at the root. If both values are smaller than the current node, I go left. If both are bigger, I go right. Otherwise one is on each side, or one equals the current node, so the current node is the LCA. It's O(h) time and O(1) space if done with a loop."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Values 50, 30, 70, 20, 40, 60 are inserted into an empty BST in that order. What does the preorder traversal print?"
+    code: |
+      void pre(Node n) {
+          if (n == null) return;
+          System.out.print(n.val + " ");
+          pre(n.left);
+          pre(n.right);
+      }
+    options: ["50 30 20 40 70 60", "20 30 40 50 60 70", "20 40 30 60 70 50", "50 30 70 20 40 60"]
+    answer: 0
+    explanation: "The tree: 50 root, 30 and 70 children, 20 and 40 under 30, 60 left of 70. Preorder prints the node, then the whole left subtree, then the right: 50, 30, 20, 40, 70, 60. The sorted list is the inorder traversal; \"50 30 70 20 40 60\" is level order."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This BST validator returns true for the tree 5 -> (left 3, right 8 -> (left 4)). Why is that wrong?"
+    code: |
+      boolean isBST(Node n) {
+          if (n == null) return true;
+          if (n.left != null && n.left.val >= n.val) return false;
+          if (n.right != null && n.right.val <= n.val) return false;
+          return isBST(n.left) && isBST(n.right);
+      }
+    options:
+      - "It should use > instead of >="
+      - "It only compares each node with its direct children; 4 is in the right subtree of 5 but smaller than 5, which it never checks"
+      - "The base case should return false for null"
+      - "It must use an inorder traversal; recursion can't validate a BST"
+    answer: 1
+    explanation: "Locally, 4 < 8 looks fine, so the code says true. But every node in 5's right subtree must be greater than 5. Fix: pass (min, max) bounds down the recursion. Recursion works fine; it just needs the bounds."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "The BST is built from 6, 2, 8, 0, 4, 7, 9, 3, 5. What does this print?"
+    code: |
+      static Node lca(Node root, int p, int q) {
+          Node cur = root;
+          while (cur != null) {
+              if (p < cur.val && q < cur.val) cur = cur.left;
+              else if (p > cur.val && q > cur.val) cur = cur.right;
+              else return cur;
+          }
+          return null;
+      }
+      // in main:
+      System.out.println(lca(root, 3, 5).val + " " + lca(root, 2, 8).val + " " + lca(root, 0, 5).val);
+    options: ["4 6 2", "2 6 2", "4 6 0", "4 2 2"]
+    answer: 0
+    explanation: "3 and 5: both < 6, go to 2; both > 2, go to 4; 3 < 4 < 5 split, so 4. 2 and 8 split at the root: 6. 0 and 5: both < 6, go to 2; 0 < 2 < 5 split: 2. \"2 6 2\" stops one level too early for (3, 5)."
+  - id: q4
+    type: MCQ
+    prompt: "Values 1, 2, 3, 4, 5 are inserted into an empty BST in that order (no balancing). What is the height (counting nodes) and the search cost?"
+    code: null
+    options: ["Height 3, O(log n) search", "Height 5, O(n) search", "Height 1, O(1) search", "Height 2, O(log n) search"]
+    answer: 1
+    explanation: "Each new value is bigger, so it always goes right: the tree is a chain of 5 nodes, height 5. Searching it is like walking a linked list: O(n). Height 3 would need a balanced tree, which plain BST insertion doesn't guarantee."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "An inorder traversal of a valid BST visits the values in ascending sorted order."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Inorder visits the left subtree (all smaller), then the node, then the right subtree (all bigger), at every level. That is also a simple way to validate a BST: check the inorder sequence is strictly increasing."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Complete the height method (height = number of nodes on the longest root-to-leaf path)."
+    code: |
+      int height(Node n) {
+          if (n == null) return 0;
+          return ____;
+      }
+    acceptedAnswers: ["1 + Math.max(height(n.left), height(n.right))", "1+Math.max(height(n.left),height(n.right))", "Math.max(height(n.left), height(n.right)) + 1", "Math.max(height(n.left),height(n.right))+1"]
+    explanation: "The height of a tree is this node (1) plus the taller of its two subtrees. Using + instead of Math.max would count all nodes (size), not the height."
+  - id: q7
+    type: MATCH
+    prompt: "Match each traversal to its visiting order or tool"
+    pairs:
+      - left: "Preorder"
+        right: "Node, Left, Right"
+      - left: "Inorder"
+        right: "Left, Node, Right"
+      - left: "Postorder"
+        right: "Left, Right, Node"
+      - left: "Level order"
+        right: "Queue, level by level"
+    explanation: "The DFS names tell when the node is visited relative to its children. Level order is breadth-first and needs a queue."
+  - id: q8
+    type: MCQ
+    prompt: "What is the worst-case extra space (call stack) of a recursive traversal on a tree with n nodes and height h?"
+    code: null
+    options: ["O(1)", "O(h), which is O(n) for a skewed tree and O(log n) for a balanced one", "O(n^2)", "Always O(log n)"]
+    answer: 1
+    explanation: "Each recursive call waits on the stack until its subtree finishes, so the stack is as deep as the tree. A chain-shaped tree needs n frames. 'Always O(log n)' is only true for balanced trees."
+explainBack:
+  prompt: "Explain to a friend what a BST is, how searching works, and why a BST can become slow, using the library signboard idea."
+  rubric:
+    - "I defined root, leaf and left/right subtree in simple words"
+    - "I stated the BST rule for the whole subtree, not just children"
+    - "I explained search as going left or right at each node"
+    - "I said O(log n) when balanced and O(n) when skewed"
+    - "I mentioned inorder traversal gives sorted order"
+  modelAnswer: |
+    A tree is a hierarchy: the top node is the root, nodes with no children are leaves. In a binary search tree, every value in a node's left subtree is smaller and every value in its right subtree is bigger. It's like library signboards: at each sign, smaller numbers go left, bigger go right. To search, I compare at each node and go only one way, so in a balanced tree I check about log n nodes. But if I insert values in sorted order, every node goes to the right and the tree becomes a chain, so search becomes O(n). Self-balancing trees like the one inside TreeMap prevent that. Also, an inorder traversal of a BST gives values in sorted order.
+flashcards:
+  - front: "BST rule"
+    back: "All values in the left subtree < node < all values in the right subtree, for EVERY node."
+  - front: "Pre / in / post order"
+    back: "Pre: Node L R. In: L Node R (sorted for BST). Post: L R Node."
+  - front: "Level order traversal needs..."
+    back: "A queue, plus size = q.size() to separate levels."
+  - front: "Validate BST correctly"
+    back: "Pass (min, max) bounds down: left gets (min, node), right gets (node, max). Or check inorder is strictly increasing."
+  - front: "BST search complexity"
+    back: "O(h): O(log n) balanced, O(n) skewed."
+  - front: "LCA in a BST"
+    back: "Both smaller: go left. Both bigger: go right. Otherwise current node is the LCA."
+keyTakeaways:
+  - "Tree problems follow one recursive shape: base case for null, solve left, solve right, combine."
+  - "Pre/in/post order differ only in when the node is visited; level order uses a queue."
+  - "BST: smaller left, bigger right, for whole subtrees; inorder gives sorted output."
+  - "Validate a BST with (min, max) bounds, not just child checks."
+  - "BST operations are O(h): O(log n) if balanced, O(n) if skewed; TreeMap uses a Red-Black tree to stay balanced."

@@ -1,0 +1,287 @@
+slug: cs-process-thread
+world: CS_CORE
+section: CS
+order: 1
+title: "OS: process vs thread"
+version: 1
+estimatedMinutes: 25
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Core OS theory for SP and DSE technical rounds; process vs thread is one of the most common CS fundamentals questions to prepare."
+otherCompanies: "A standard basic question for TCS, Wipro, Cognizant, Accenture, Capgemini and product companies, and it connects directly to Java multithreading."
+why: |
+  **"What is the difference between a process and a thread?"** is probably the most common operating system (OS) question in fresher interviews.
+
+  It is also the foundation for many other topics:
+  - **CPU scheduling** decides which process or thread runs next.
+  - **Synchronization** and **deadlock** happen *because* threads share memory.
+  - **Java multithreading** (`Thread`, `ExecutorService`) is built on OS threads.
+
+  If you can draw the memory picture of a process with two threads, you can answer most follow-up questions calmly.
+analogy: |
+  Think of a **restaurant kitchen**.
+
+  - A **process** is a whole **kitchen**: it has its own room, its own fridge, its own gas connection and its own stock of rice and vegetables. One kitchen cannot open another kitchen's fridge.
+  - A **thread** is a **cook** inside that kitchen. All cooks share the same fridge and stock (shared memory), but each cook has their **own cutting board and own recipe page** they are currently following (their own stack and program counter).
+  - Hiring a new cook (new thread) is quick and cheap. Building a new kitchen (new process) is slow and expensive.
+  - If one cook spills oil and the kitchen catches fire, **all cooks in that kitchen** are affected, but the kitchen next door is safe. That is why a crashing thread can kill its process, but one process crashing does not kill another.
+visual:
+  diagram: |
+    PROCESS A (own address space)        PROCESS B (separate)
+    +----------------------------------+  +-------------------+
+    | Code (text)   -- shared --       |  | Code              |
+    | Data/globals  -- shared --       |  | Data              |
+    | Heap (objects)-- shared --       |  | Heap              |
+    | Open files    -- shared --       |  | Open files        |
+    |                                  |  |                   |
+    | Thread 1        Thread 2         |  | Thread 1          |
+    | +-----------+   +-----------+    |  | +-----------+     |
+    | | Stack     |   | Stack     |    |  | | Stack     |     |
+    | | PC, regs  |   | PC, regs  |    |  | | PC, regs  |     |
+    | +-----------+   +-----------+    |  | +-----------+     |
+    +----------------------------------+  +-------------------+
+          ^ threads share A's memory        ^ cannot see A's memory
+  caption: "Threads of one process share code, data, heap and files, but each thread has its own stack, program counter and registers. Different processes are isolated."
+  visualizer: null
+explanation: |
+  ### What is a program, a process and a thread?
+  - A **program** is a file on disk, for example `chrome.exe` or `Hello.class`. It is passive: it just sits there.
+  - A **process** is a program **in execution**. When you run a program, the OS loads it into memory and gives it resources. Running the same program twice gives **two processes**.
+  - A **thread** is the smallest unit of execution **inside a process**. It is one path of instructions being followed. Every process has at least one thread (in Java, the `main` thread).
+
+  ### What does a process own?
+  The OS gives each process its own **address space** (its own private range of memory addresses). It contains:
+  - **Code (text) section**: the compiled instructions.
+  - **Data section**: global and static variables.
+  - **Heap**: memory created at run time (in Java, all objects created with `new`).
+  - **Stack**: local variables and method calls (one stack per thread).
+  - Plus OS resources: open files, network sockets, etc.
+
+  ### The PCB (Process Control Block)
+  The OS keeps a record for every process called the **PCB (Process Control Block)**. Think of it as the process's ID card plus a bookmark. It stores:
+  | PCB field | Plain meaning |
+  |---|---|
+  | Process ID (PID) | Unique number for the process |
+  | Process state | New, Ready, Running, Waiting, Terminated |
+  | Program counter (PC) | Address of the next instruction to run |
+  | CPU registers | Values the CPU was working with |
+  | Scheduling info | Priority, queue pointers |
+  | Memory info | Page table / base and limit registers |
+  | I/O info | List of open files and devices |
+
+  Threads have a smaller record called a **TCB (Thread Control Block)**: thread ID, program counter, registers, stack pointer, state.
+
+  ### Process states (quick recap)
+  **New** (being created) -> **Ready** (waiting for the CPU) -> **Running** (on the CPU) -> **Waiting** (waiting for I/O, like reading a file) -> back to **Ready** -> finally **Terminated**.
+
+  ### Context switch
+  A **context switch** is when the CPU stops running one process (or thread) and starts another. The OS must:
+  1. **Save** the current one's state (PC, registers) into its PCB/TCB.
+  2. **Load** the saved state of the next one from its PCB/TCB.
+
+  During a context switch, no useful user work happens, so it is **pure overhead**. Switching between **processes** is costlier than between **threads** of the same process, because a process switch also changes the memory map (page tables) and often flushes the **TLB** (a small cache of address translations, covered in the memory lesson). Threads of the same process share memory, so that part is skipped.
+
+  ### Memory sharing: the big difference
+  - **Threads of the same process share** the code, data, heap and open files. So communication between threads is easy: just read and write the same object. The risk: two threads changing the same data at once causes a **race condition** (see the synchronization lesson).
+  - **Processes do not share memory** by default. To talk, they need **IPC (Inter-Process Communication)**: pipes, message queues, shared memory segments or sockets. This is slower but safer.
+
+  ### Process vs thread table
+  | Point | Process | Thread |
+  |---|---|---|
+  | Meaning | Program in execution | Unit of execution inside a process |
+  | Memory | Own separate address space | Shares the process's memory |
+  | Own stack? | Yes (one per thread inside) | Yes, each thread has its own stack |
+  | Creation cost | Heavy (slow) | Light (fast) |
+  | Context switch | Slower | Faster |
+  | Communication | Needs IPC | Shared variables directly |
+  | Crash impact | Other processes are safe | Can crash the whole process |
+  | Example | Two Chrome windows as separate processes | Tabs' rendering, network and UI threads |
+
+  ### Multitasking, multiprocessing, multithreading
+  - **Multitasking**: the OS runs many processes by switching quickly between them.
+  - **Multiprocessing**: the computer has multiple CPUs/cores, so processes truly run at the same time.
+  - **Multithreading**: one process has many threads, for example a Java web server using one thread per request.
+
+  ### In Java
+  When you run `java Hello`, the OS creates **one JVM process**. Inside it, `main` is a thread, and the JVM also runs helper threads such as the garbage collector. Each `new Thread(...).start()` creates another thread **in the same process**, sharing the same heap.
+tinyCode:
+  code: |
+    public class SharedHeap {
+        static int[] box = new int[1];   // an object on the heap: shared by all threads
+
+        public static void main(String[] args) throws InterruptedException {
+            Thread cook1 = new Thread(() -> {
+                box[0] += 10;
+                System.out.println(Thread.currentThread().getName() + " sees " + box[0]);
+            }, "cook-1");
+            Thread cook2 = new Thread(() -> {
+                box[0] += 5;
+                System.out.println(Thread.currentThread().getName() + " sees " + box[0]);
+            }, "cook-2");
+
+            cook1.start();
+            cook1.join();          // wait for cook-1 to finish
+            cook2.start();
+            cook2.join();          // wait for cook-2 to finish
+            System.out.println(Thread.currentThread().getName() + " sees " + box[0]);
+        }
+    }
+  walkthrough: |
+    - `static int[] box` is an array object on the **heap**. Every thread in this process can see it.
+    - `new Thread(() -> {...}, "cook-1")` creates a thread with a name. The lambda is the work it will do.
+    - `cook1.start()` asks the OS/JVM to start a **new thread** that runs the lambda. (Calling `run()` directly would NOT create a thread.)
+    - `cook1.join()` makes `main` wait until `cook-1` finishes. We use `join` so the output order is fixed and easy to read.
+    - cook-1 adds 10, so it prints `cook-1 sees 10`. cook-2 adds 5 to the **same** box, so it prints `cook-2 sees 15`.
+    - Finally the `main` thread prints `main sees 15`: all three threads shared one heap. Two separate processes could never do this without IPC.
+tryIt:
+  instructions: "Type this program. It shows the PID of the JVM process and the names of threads running inside it. Run it twice: the PID changes (a new process each time), but there is still one main thread."
+  code: |
+    public class WhoAmI {
+        public static void main(String[] args) throws InterruptedException {
+            long pid = ProcessHandle.current().pid();
+            System.out.println("Process ID: " + pid);
+            System.out.println("Thread: " + Thread.currentThread().getName());
+
+            Thread worker = new Thread(() ->
+                System.out.println("Worker thread, same process " + pid), "worker");
+            worker.start();
+            worker.join();
+
+            int cores = Runtime.getRuntime().availableProcessors();
+            System.out.println("CPU cores available: " + cores);
+        }
+    }
+predict:
+  code: |
+    public class StackVsHeap {
+        static int shared = 0;
+
+        public static void main(String[] args) throws Exception {
+            Runnable job = () -> {
+                int local = 0;      // lives on THIS thread's own stack
+                local++;
+                shared++;           // lives in shared memory
+                System.out.println(Thread.currentThread().getName()
+                        + " local=" + local + " shared=" + shared);
+            };
+            Thread a = new Thread(job, "A");
+            Thread b = new Thread(job, "B");
+            a.start(); a.join();
+            b.start(); b.join();
+            System.out.println("main shared=" + shared);
+        }
+    }
+  expectedOutput: |
+    A local=1 shared=1
+    B local=1 shared=2
+    main shared=2
+  explanation: |
+    `local` is a local variable, so each thread gets a **fresh copy on its own stack**: it is 1 for both A and B. `shared` is a static field in **shared memory**, so B sees A's change and makes it 2. `join()` makes the threads run one after another, so the order is fixed.
+commonMistakes:
+  - "Saying threads have no memory of their own. Each thread has its own stack, program counter and registers; they share code, data, heap and files."
+  - "Saying a process and a program are the same. A program is a passive file; a process is that program running, with its own PCB and memory."
+  - "Thinking a context switch does useful work. It is pure overhead: saving and loading state."
+  - "Calling thread.run() and thinking a new thread started. Only start() creates a new thread."
+  - "Saying processes share memory by default. They are isolated and need IPC (pipes, sockets, shared memory) to communicate."
+interviewBox:
+  why: "Why interviewers ask this: it checks if you understand how programs actually run, and it opens the door to scheduling, synchronization and Java threads."
+  questions:
+    - q: "What is the difference between a process and a thread?"
+      a: "A process is a program in execution with its own separate memory. A thread is a unit of execution inside a process. Threads of the same process share the code, data and heap, but each thread has its own stack and program counter. So threads are lighter and faster to create and switch, but they need synchronization when they share data."
+    - q: "What is a PCB?"
+      a: "PCB means Process Control Block. It is the record the OS keeps for every process: the process ID, state, program counter, CPU registers, scheduling priority, memory information and open files. During a context switch the OS saves and loads this information."
+    - q: "What is a context switch and why is a thread switch cheaper?"
+      a: "A context switch is when the CPU saves the state of the running process or thread and loads the state of another one. It is overhead. Switching between threads of the same process is cheaper because they share the same memory, so the OS does not need to change the page tables or flush the TLB."
+    - q: "How do two processes communicate?"
+      a: "Through IPC, inter-process communication, for example pipes, message queues, shared memory or sockets. Threads do not need this because they already share memory."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which of these is NOT shared between threads of the same process?"
+    code: null
+    options: ["Heap", "Code section", "Stack", "Open files"]
+    answer: 2
+    explanation: "Each thread has its own stack (local variables and method calls) plus its own program counter and registers. Heap, code, global data and open files are shared, which is why threads can talk easily but need synchronization."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "A context switch between two threads of the same process is usually cheaper than a switch between two processes."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Threads share the address space, so the OS does not need to switch page tables or flush the TLB. It only saves and loads the thread's registers, program counter and stack pointer."
+  - id: q3
+    type: MATCH
+    prompt: "Match each PCB field to what it stores"
+    pairs:
+      - left: "Program counter"
+        right: "Address of the next instruction to run"
+      - left: "Process state"
+        right: "Ready, running, waiting and so on"
+      - left: "PID"
+        right: "Unique number of the process"
+      - left: "Memory info"
+        right: "Page table or base and limit registers"
+    explanation: "The PCB is the OS's record of a process. The program counter is the bookmark for where to continue; memory info tells the OS where the process lives in RAM."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      static int count = 0;
+      public static void main(String[] args) throws Exception {
+          Runnable r = () -> { int x = 5; x++; count += x; };
+          Thread t1 = new Thread(r), t2 = new Thread(r);
+          t1.start(); t1.join();
+          t2.start(); t2.join();
+          System.out.println(count);
+      }
+    options: ["6", "12", "11", "10"]
+    answer: 1
+    explanation: "Each thread has its own x on its own stack: 5 becomes 6 in each thread. Both add 6 to the shared static count, so 6 + 6 = 12. The tempting answer 6 forgets that count is shared; 11 wrongly assumes x is shared."
+  - id: q5
+    type: MCQ
+    prompt: "Two processes need to exchange data. Which option is a valid way?"
+    code: null
+    options: ["Read each other's local variables directly", "Use a pipe or a socket (IPC)", "Share one stack", "Use the same program counter"]
+    answer: 1
+    explanation: "Processes are isolated, so they need IPC: pipes, message queues, shared memory segments or sockets. They cannot directly read each other's variables."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that actually creates a new thread (not just a normal method call)."
+    code: |
+      Thread t = new Thread(() -> System.out.println("hi"));
+      t.____();
+    acceptedAnswers: ["start"]
+    explanation: "start() asks the JVM/OS to create a new thread that then calls run(). Calling run() directly just runs the code on the current thread."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "If one thread in a process causes a fatal crash, other processes on the computer also crash."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A fatal crash can bring down its own process (and all its threads), but other processes are isolated in their own address spaces and keep running."
+explainBack:
+  prompt: "Explain to a friend who doesn't code what a process and a thread are, and why threads are 'lighter'."
+  rubric:
+    - "I said a process is a program in execution with its own memory"
+    - "I said threads live inside a process and share its memory but have their own stack"
+    - "I explained a context switch and why thread switches are cheaper"
+    - "I used an analogy like a kitchen and cooks"
+    - "I mentioned that shared memory needs synchronization"
+  modelAnswer: |
+    A process is a program that is running, like a kitchen with its own room, fridge and stock. The operating system keeps a record of it called the PCB. A thread is like a cook inside that kitchen. All cooks share the fridge, which is the heap and global data, but each cook has his own cutting board and recipe page, which is his stack and program counter. Hiring a cook is cheaper than building a new kitchen, and switching between cooks is faster than switching kitchens, because the memory stays the same. The catch is that cooks sharing the fridge must coordinate, or they will spoil each other's work.
+flashcards:
+  - front: "Process vs thread in one line"
+    back: "Process = program in execution with its own address space. Thread = unit of execution inside a process, sharing its memory but with its own stack, PC and registers."
+  - front: "What does the PCB contain?"
+    back: "PID, state, program counter, CPU registers, scheduling info, memory info, open files/I/O info."
+  - front: "What is a context switch?"
+    back: "Saving the state of the running process/thread into its PCB/TCB and loading another's state. Pure overhead."
+  - front: "What do threads share and not share?"
+    back: "Share: code, data (globals/static), heap, open files. Own: stack, program counter, registers."
+  - front: "How do processes communicate?"
+    back: "IPC: pipes, message queues, shared memory, sockets."
+keyTakeaways:
+  - "A program is a file; a process is a running program; a thread is a path of execution inside a process."
+  - "The OS tracks each process in a PCB: PID, state, PC, registers, memory and I/O info."
+  - "Threads share code, data, heap and files; each has its own stack, PC and registers."
+  - "Context switches are overhead; thread switches are cheaper than process switches."
+  - "Processes need IPC to talk; threads share memory directly but need synchronization."

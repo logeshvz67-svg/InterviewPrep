@@ -1,0 +1,397 @@
+slug: spring-testing-ops
+world: SPRING
+section: SPRING
+order: 10
+title: "Testing, Flyway, Docker and microservices"
+version: 1
+estimatedMinutes: 50
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+infosysRelevance: "Good SP and DSE project-round material: how you tested your project (JUnit 5, Mockito, MockMvc), how the database schema changes (Flyway), how it is deployed (Docker), and monolith vs microservices are common practice discussion topics."
+otherCompanies: "Unit testing with Mockito and microservices basics are frequent at TCS, Wipro, Cognizant, Accenture and Capgemini. Product companies go deeper: test strategy, migrations in production, Docker image design and microservice trade-offs."
+why: |
+  Writing the code is only half of a real project. Interviewers also want to know:
+  - **How do you know it works?** Unit tests with **JUnit 5 + Mockito**, and integration tests with **@SpringBootTest + MockMvc**.
+  - **How does the database change safely over time?** **Flyway** versioned migrations.
+  - **How is it shipped?** A **Docker** image.
+  - **How would it grow?** **Monolith vs microservices**.
+
+  Your `backend` has all four: `XpServiceTest`, `ApiFlowIntegrationTest`, eight Flyway migrations and a multi-stage `Dockerfile`. If you can explain these from your own repo, you will sound like someone who has shipped software, not just followed a tutorial.
+analogy: |
+  Think of a **car factory**.
+
+  - **Unit tests** are like testing **one part on a bench**: the brake pad is tested with a fake wheel (a **mock**), no full car needed. Fast and precise.
+  - **Integration tests** are the **test drive**: the whole car on a real track (the real Spring context, a real database). Slower, but proves the parts work together.
+  - **Flyway migrations** are the **numbered modification log** of the factory floor: "Change 1: add paint booth. Change 2: add a second line." You never rewrite an old entry; you add a new numbered one.
+  - **Docker** is a **shipping container**: the car plus everything it needs, packed the same way, so it runs the same at any port in the world.
+  - **Monolith vs microservices**: one big factory under one roof, versus many small specialised factories (engine plant, paint plant) that send parts to each other by truck. More flexible, but now you need roads, schedules and tracking.
+visual:
+  diagram: |
+    TEST PYRAMID                         FLYWAY (db/migration)
+          /\     few, slow               V1__core_auth_profile_xp.sql  applied
+         /E2E\                           V2__content_curriculum...sql  applied
+        /------\  @SpringBootTest        ...
+       / integr. \ + MockMvc + real DB   V8__interview_spring...sql    applied
+      /------------\                     V9__add_badges.sql   <- NEW, runs
+     /  unit tests  \ JUnit 5 + Mockito  on next startup, once, in order
+    /----------------\ many, fast        (history in flyway_schema_history)
+
+    DOCKER multi-stage build (backend/Dockerfile)
+    stage 1: maven:3.9-eclipse-temurin-21   COPY pom.xml -> go-offline
+                                            COPY src -> mvn package
+                                            => target/app.jar
+    stage 2: eclipse-temurin:21-jre-alpine  COPY app.jar, USER app
+                                            ENTRYPOINT java $JAVA_OPTS -jar
+  caption: "Many fast unit tests, fewer integration tests; Flyway applies new numbered migrations once and in order; Docker builds with Maven but ships only a small JRE image."
+  visualizer: null
+explanation: |
+  ### Unit tests: JUnit 5 + Mockito
+  A **unit test** checks one class alone. Its dependencies are replaced with **mocks**: fake objects whose answers you program. No Spring context, no database, so it runs in milliseconds.
+  - **JUnit 5**: the test framework. `@Test` marks a test method, `@BeforeEach` runs before each test.
+  - **Mockito**: creates mocks. `@ExtendWith(MockitoExtension.class)` + `@Mock` creates them; `when(...).thenReturn(...)` programs an answer; `verify(...)` checks that a method was called (or `never()` called).
+  - **AssertJ**: readable checks like `assertThat(total).isEqualTo(70)`.
+
+  Open `backend/src/test/java/com/codequest/service/XpServiceTest.java`. It builds `new XpService(events, profiles, streaks, time, achievements)` with mocks; this is easy only because of **constructor injection**. It tests the rules: XP is awarded once, the daily cap stops farming, totals update, and `verify(events, never()).save(any())` proves nothing was saved when it should not be.
+
+  Unprogrammed mock methods return **defaults**: `null` for objects, `0` / `false` for primitives, **empty** `Optional`, `List` and other collections. Mockito's strict stubs also **fail a test** if you program an answer that the test never uses (`UnnecessaryStubbingException`), which keeps tests honest.
+
+  ### Integration tests: @SpringBootTest + MockMvc
+  An **integration test** starts the real Spring application context and checks that layers work together: security filter, controller, validation, service, repository, database.
+  - `@SpringBootTest` starts the whole app context.
+  - `@AutoConfigureMockMvc` + `@Autowired MockMvc mvc` sends fake HTTP requests through the real filter chain, without opening a port.
+  - `mvc.perform(get("/health")).andExpect(status().isOk())` and `jsonPath("$.errors.email").exists()` check the response.
+
+  Your `IntegrationTestBase` starts a **real embedded PostgreSQL** (no Docker needed), runs the Flyway migrations on it and adds a movable test clock with `@TestConfiguration` + `@Primary`. `ApiFlowIntegrationTest` then tests real flows: login required (401), validation (400 with field errors), users cannot see each other's data (404), and streaks following Indian midnight.
+
+  Lighter **test slices** also exist: `@WebMvcTest` (only the web layer) and `@DataJpaTest` (only JPA). To replace a bean with a mock inside a Spring test, Boot 3.4+ uses `@MockitoBean` (the older `@MockBean` is deprecated).
+
+  ### Flyway: versioned database migrations
+  **Flyway** manages the database schema with numbered SQL files in `src/main/resources/db/migration`. The name format is `V<version>__<description>.sql` (two underscores). Look at your `V1__core_auth_profile_xp.sql` up to `V8__interview_spring_reports.sql`.
+  - At startup, Flyway reads its table `flyway_schema_history`, sees which versions were applied, and runs only the **new** ones, **in version order**, each **exactly once**.
+  - It stores a **checksum** of each applied file. If someone edits an applied file, the next startup fails with *Migration checksum mismatch*. Rule: **never edit an applied migration; add a new one** (`V9__...`).
+  - A new file with a **lower** version than the current one (like `V7_1__...` when the database is at V8) is refused by default (*Detected resolved migration not applied to database*) unless `outOfOrder` is enabled.
+  - With `spring.jpa.hibernate.ddl-auto: validate` (your setting), Flyway owns the schema and Hibernate only checks that entities match it.
+
+  Why not `ddl-auto=update`? It cannot rename or drop safely, keeps no history, and behaves differently on each machine. Migrations are reviewable code.
+
+  ### Docker basics
+  - **Image**: a read-only package with your app and everything it needs (OS files, JRE, the jar).
+  - **Container**: a running instance of an image. Many containers can run from one image.
+  - **Dockerfile**: the recipe that builds an image, step by step. Each instruction creates a cached **layer**.
+
+  Read `backend/Dockerfile`:
+  | Line | Why |
+  |---|---|
+  | `FROM maven:3.9-eclipse-temurin-21 AS build` | Stage 1 has Maven and a full JDK to compile |
+  | `COPY pom.xml .` then `RUN mvn ... dependency:go-offline` | Dependencies download in their own layer, so code changes don't re-download them |
+  | `COPY src ./src` then `RUN mvn ... package` | Build `app.jar` |
+  | `FROM eclipse-temurin:21-jre-alpine` | Stage 2: a small JRE-only image to run (no Maven, no source code) |
+  | `adduser ... USER app` | Don't run as root |
+  | `ENV JAVA_OPTS="-Xmx256m ..."` | Fit the JVM into 512 MB of RAM on the free host |
+  | `EXPOSE 8080` | Documents the port (does not publish it by itself) |
+  | `ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]` | Start the app; `exec` lets Java receive stop signals for graceful shutdown |
+
+  Commands: `docker build -t codequest-api .` then `docker run -p 8080:8080 -e DATABASE_URL=... codequest-api` (`-p` publishes the port, `-e` passes environment variables, which `application.yml` reads).
+
+  ### Monolith vs microservices
+  | | Monolith | Microservices |
+  |---|---|---|
+  | Shape | One deployable app | Many small apps, one per business capability |
+  | Deploy | Everything together | Each service separately |
+  | Scale | Whole app | Only the busy service |
+  | Data | One database | Usually a database per service |
+  | Calls between parts | Method calls (fast, transactional) | Network calls (slow, can fail) |
+  | Complexity | Low | High: discovery, tracing, retries, eventual consistency |
+
+  Microservice building blocks you should be able to name: **API gateway** (one entry point, e.g. Spring Cloud Gateway), **service discovery** (e.g. Eureka), **config server**, REST clients (OpenFeign / RestClient) or **messaging** (Kafka, RabbitMQ), **circuit breaker** (Resilience4j: stop calling a failing service), **distributed tracing**, and the **saga** pattern for multi-service transactions.
+
+  Honest answer for interviews: Code Quest is a **well-layered monolith**, which is the right choice for a small team and one database. Start with a modular monolith; split into microservices only when teams, scale or deployment speed really need it.
+tinyCode:
+  code: |
+    // RewardService.java (src/main/java) and RewardServiceTest.java (src/test/java)
+    package demo.mock;
+
+    import org.junit.jupiter.api.BeforeEach;
+    import org.junit.jupiter.api.Test;
+    import org.junit.jupiter.api.extension.ExtendWith;
+    import org.mockito.Mock;
+    import org.mockito.junit.jupiter.MockitoExtension;
+
+    import java.util.List;
+    import java.util.Optional;
+
+    import static org.assertj.core.api.Assertions.assertThat;
+    import static org.assertj.core.api.Assertions.assertThatThrownBy;
+    import static org.mockito.ArgumentMatchers.any;
+    import static org.mockito.Mockito.*;
+
+    record Wallet(Long userId, int coins) {}
+
+    interface WalletRepository {
+        Optional<Wallet> findByUserId(Long userId);
+        Wallet save(Wallet w);
+        List<Wallet> findAll();
+        int count();
+    }
+
+    class RewardService {
+        private final WalletRepository wallets;
+        RewardService(WalletRepository wallets) { this.wallets = wallets; }
+
+        int reward(Long userId, int coins) {
+            if (coins <= 0) throw new IllegalArgumentException("coins must be positive");
+            Wallet w = wallets.findByUserId(userId).orElseThrow(() -> new IllegalStateException("no wallet"));
+            Wallet updated = new Wallet(userId, w.coins() + coins);
+            wallets.save(updated);
+            return updated.coins();
+        }
+    }
+
+    @ExtendWith(MockitoExtension.class)
+    class RewardServiceTest {
+        @Mock WalletRepository wallets;
+        RewardService service;
+
+        @BeforeEach
+        void setUp() { service = new RewardService(wallets); }
+
+        @Test
+        void addsCoinsAndSaves() {
+            when(wallets.findByUserId(1L)).thenReturn(Optional.of(new Wallet(1L, 50)));
+            int total = service.reward(1L, 20);
+            assertThat(total).isEqualTo(70);
+            verify(wallets).save(new Wallet(1L, 70));
+        }
+
+        @Test
+        void rejectsZeroCoinsWithoutTouchingTheDb() {
+            assertThatThrownBy(() -> service.reward(1L, 0)).isInstanceOf(IllegalArgumentException.class);
+            verifyNoInteractions(wallets);
+        }
+
+        @Test
+        void failsWhenWalletMissing() {
+            when(wallets.findByUserId(2L)).thenReturn(Optional.empty());
+            assertThatThrownBy(() -> service.reward(2L, 5)).hasMessage("no wallet");
+            verify(wallets, never()).save(any());
+        }
+    }
+    // mvn test -> Tests run: 3, Failures: 0, Errors: 0
+  walkthrough: |
+    - `RewardService` gets its `WalletRepository` through the **constructor**, so the test can pass a mock with plain `new`. No Spring needed.
+    - `@ExtendWith(MockitoExtension.class)` lets Mockito create the `@Mock WalletRepository wallets` before each test (and enables strict stubbing checks).
+    - `@BeforeEach setUp()` builds a fresh service for every test, so tests don't affect each other.
+    - **Test 1** (happy path): `when(...).thenReturn(...)` programs the mock to return a wallet with 50 coins. After `reward(1L, 20)`, we check the result is 70 and `verify(wallets).save(new Wallet(1L, 70))` proves the right object was saved. Records have `equals`, so comparing by value works.
+    - **Test 2** (invalid input): the exception is thrown **before** any repository call, and `verifyNoInteractions(wallets)` proves the database was never touched.
+    - **Test 3** (missing data): the mock returns an empty `Optional`, the service throws "no wallet", and `verify(wallets, never()).save(any())` confirms nothing was saved.
+    - Pattern for every test: **Arrange** (set up mocks), **Act** (call the method), **Assert** (check result and interactions). Compare with `XpServiceTest` in your project: same style.
+tryIt:
+  instructions: "Type this integration test into backend/src/test/java/com/codequest/integration/ (it reuses your IntegrationTestBase with the embedded PostgreSQL). Run it with: mvn test -Dtest=MyFirstApiTest. All 3 tests should pass."
+  code: |
+    package com.codequest.integration;
+
+    import org.junit.jupiter.api.Test;
+    import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+    import org.springframework.http.MediaType;
+    import org.springframework.test.web.servlet.MockMvc;
+
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+    import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+    @AutoConfigureMockMvc
+    class MyFirstApiTest extends IntegrationTestBase {
+        @Autowired MockMvc mvc;
+
+        @Test
+        void healthIsPublic() throws Exception {
+            mvc.perform(get("/health")).andExpect(status().isOk());
+        }
+
+        @Test
+        void protectedUrlNeedsLogin() throws Exception {
+            mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void badLoginBodyIs400WithFieldErrors() throws Exception {
+            mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"not-an-email\",\"password\":\"\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.email").exists());
+        }
+    }
+predict:
+  code: |
+    // Same WalletRepository interface as in Tiny code:
+    //   Optional<Wallet> findByUserId(Long userId);
+    //   Wallet save(Wallet w);
+    //   List<Wallet> findAll();
+    //   int count();
+    WalletRepository repo = mock(WalletRepository.class);   // nothing stubbed with when(...)
+    System.out.println(repo.findByUserId(1L) + " " + repo.findAll() + " " + repo.count() + " " + repo.save(null));
+  expectedOutput: |
+    Optional.empty [] 0 null
+  explanation: |
+    A Mockito mock returns **default values** for every method you did not program: an **empty `Optional`** (not null), an **empty list**, **0** for an `int`, and **null** for other objects like `Wallet`. That is why, in a test, forgetting a `when(...)` for `findByUserId` usually leads to your "not found" branch rather than a NullPointerException.
+commonMistakes:
+  - "Starting the whole Spring context (@SpringBootTest) for every small logic test. Use plain JUnit + Mockito for unit tests; they run in milliseconds."
+  - "Only testing the happy path. Test invalid input, missing data and limits too (like XpServiceTest's daily cap test)."
+  - "Stubbing answers the test never uses. Mockito's strict stubs fail the test with UnnecessaryStubbingException."
+  - "Editing a Flyway migration that already ran. The checksum changes and the app refuses to start; add a new V<n+1> file instead."
+  - "Building the jar inside a JRE-only image, or copying all source before the pom in a Dockerfile, which re-downloads dependencies on every code change."
+  - "Saying microservices are always better. They add network failures, distributed data and operational cost; a well-structured monolith is often the right start."
+interviewBox:
+  why: "Why interviewers ask this: it shows whether you can deliver and maintain software, not just write features. Your own project gives you concrete, honest answers."
+  questions:
+    - q: "How did you test your Spring Boot project?"
+      a: "Two levels. Unit tests with JUnit 5 and Mockito for business rules: for example XpServiceTest creates XpService with mock repositories and checks that XP is given once and daily caps work, and verifies nothing is saved when it shouldn't be. Then integration tests with @SpringBootTest and MockMvc that go through the real security filter, controllers and an embedded PostgreSQL with the Flyway migrations: checking 401 without login, 400 for invalid input and that users can't see each other's data."
+    - q: "What is the difference between @Mock and @MockitoBean (or @MockBean)?"
+      a: "@Mock is plain Mockito: it creates a mock for a unit test without Spring. @MockitoBean, which replaced @MockBean in Spring Boot 3.4, puts a mock into the Spring application context, replacing the real bean, in tests like @WebMvcTest or @SpringBootTest."
+    - q: "What is Flyway and why use it?"
+      a: "Flyway runs versioned SQL migration files, like V1__init.sql and V2__add_table.sql, in order and only once per database, tracking them in flyway_schema_history. It also stores checksums, so changed old files are detected. This gives every environment the same schema with a reviewable history. Hibernate is set to validate, so it only checks the entities match."
+    - q: "Explain your Dockerfile."
+      a: "It is a multi-stage build. Stage one uses a Maven image with JDK 21: it copies pom.xml first and downloads dependencies, so that layer is cached, then copies the source and builds the jar. Stage two starts from a small JRE 21 Alpine image, copies only the jar, creates a non-root user, sets memory-friendly JVM options for a 512 MB server, and starts with java -jar. The final image has no Maven and no source code."
+    - q: "Monolith or microservices? What would you choose?"
+      a: "For a small team or a new product, a well-layered monolith: simpler to build, test, deploy and keep consistent, which is why my project is a monolith. Microservices make sense when different parts need to scale or deploy independently or many teams work in parallel. Then you need an API gateway, service discovery, a database per service, circuit breakers and tracing, so the operational cost is much higher."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which test is a UNIT test?"
+    code: null
+    options:
+      - "Start the app with @SpringBootTest and call POST /api/problems through MockMvc"
+      - "Create XpService with Mockito mocks and check award() returns the right XP"
+      - "Open the deployed website and click through the login page"
+      - "Run the Flyway migrations on an embedded PostgreSQL"
+    answer: 1
+    explanation: "A unit test checks one class in isolation with mocked dependencies, like XpServiceTest. Option A is an integration test (whole context), C is an end-to-end test, and D is part of the integration setup."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This test fails with UnnecessaryStubbingException even though the service is correct. Why?"
+    code: |
+      @ExtendWith(MockitoExtension.class)
+      class RewardServiceTest {
+          @Mock WalletRepository wallets;
+
+          @Test
+          void rejectsZeroCoins() {
+              when(wallets.findByUserId(1L)).thenReturn(Optional.of(new Wallet(1L, 50)));
+              RewardService service = new RewardService(wallets);
+              assertThatThrownBy(() -> service.reward(1L, 0))
+                      .isInstanceOf(IllegalArgumentException.class);
+          }
+      }
+    options:
+      - "assertThatThrownBy cannot be used with Mockito"
+      - "reward(1L, 0) throws before calling findByUserId, so the stub is never used, and MockitoExtension's strict stubs fail the test"
+      - "@Mock fields must be static"
+      - "Optional.of cannot be returned from a mock"
+    answer: 1
+    explanation: "MockitoExtension uses strict stubs: a when(...) that the test never triggers is reported as UnnecessaryStubbingException. Remove the stub (and add verifyNoInteractions(wallets) to prove the repository is untouched)."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "V1__users.sql was applied to the production database last month. A developer adds a column directly inside V1__users.sql and redeploys. What happens?"
+    code: |
+      -- db/migration/V1__users.sql  (edited after it was applied)
+      CREATE TABLE users (
+          id    BIGSERIAL PRIMARY KEY,
+          email VARCHAR(255),
+          phone TEXT              -- newly added line
+      );
+    options:
+      - "Flyway re-runs V1 and adds the phone column"
+      - "Nothing; Flyway ignores old files"
+      - "Startup fails: Flyway validation reports a checksum mismatch for version 1; the change must go in a new file like V9__add_phone.sql"
+      - "Hibernate adds the column automatically"
+    answer: 2
+    explanation: "Flyway stores each applied file's checksum. An edited applied file fails validation ('Migration checksum mismatch for migration version 1') and the app does not start. Applied migrations are history: never edit, always add a new version. Hibernate with ddl-auto=validate never changes the schema."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "The database is at version 3 (V1, V2, V3 applied). A developer adds V2_1__logs.sql and starts the app with default Flyway settings. What happens?"
+    code: |
+      db/migration/
+        V1__users.sql        (applied)
+        V2__badges.sql       (applied)
+        V2_1__logs.sql       (NEW)
+        V3__user_city.sql    (applied)
+    options:
+      - "V2_1 runs and the database is at version 3"
+      - "Validation fails: 'Detected resolved migration not applied to database: 2.1' (outOfOrder is false by default)"
+      - "V2_1 is silently skipped forever"
+      - "All four migrations run again"
+    answer: 1
+    explanation: "By default Flyway only applies versions higher than the current one, and validation complains about a lower, unapplied version. You can allow it with outOfOrder=true, but the usual fix is to rename it to the next version, V4__logs.sql."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "In a microservices architecture, it is generally recommended that each service owns its own database instead of sharing one database with other services."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. 'Database per service' keeps services independently deployable; others access the data through the owning service's API or events. Sharing one database couples the services tightly again."
+  - id: q6
+    type: MATCH
+    prompt: "Match each tool or annotation to its job"
+    pairs:
+      - left: "@ExtendWith(MockitoExtension.class) + @Mock"
+        right: "Plain unit test with fake dependencies, no Spring context"
+      - left: "@SpringBootTest + @AutoConfigureMockMvc"
+        right: "Full app context, HTTP requests through the real filter chain"
+      - left: "@MockitoBean"
+        right: "Replace a bean in the Spring context with a mock"
+      - left: "V9__add_badges.sql"
+        right: "A new Flyway migration that runs once on next startup"
+      - left: "Multi-stage Dockerfile"
+        right: "Build with Maven, ship only a small JRE image with the jar"
+    explanation: "These are the tools behind 'how did you test and deploy your project?'. @MockitoBean replaced @MockBean in Spring Boot 3.4+."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Enable Mockito's JUnit 5 extension so the @Mock fields are created automatically."
+    code: |
+      @ExtendWith(____.class)
+      class XpServiceTest {
+          @Mock XpEventRepository events;
+          @Mock ProfileRepository profiles;
+      }
+    acceptedAnswers: ["MockitoExtension"]
+    explanation: "MockitoExtension (from mockito-junit-jupiter) initialises @Mock fields before each test and enables strict stubbing. XpServiceTest uses exactly this."
+  - id: q8
+    type: MCQ
+    prompt: "Why does backend/Dockerfile copy pom.xml and run dependency:go-offline BEFORE copying src?"
+    code: null
+    options:
+      - "Maven requires the pom to be alone in the folder"
+      - "So the dependency layer is cached: changing Java code does not re-download all libraries on the next build"
+      - "To make the final image smaller"
+      - "Docker cannot copy folders and files in one step"
+    answer: 1
+    explanation: "Docker caches each layer and rebuilds from the first changed instruction. The pom rarely changes, so the slow download layer is reused; only the source copy and package steps rerun. The final image size comes from the second stage, not from this order."
+explainBack:
+  prompt: "Explain to a friend how your project is tested, how its database schema changes, and how it is deployed."
+  rubric:
+    - "I explained unit tests with JUnit 5 + Mockito (mocks, when, verify)"
+    - "I explained integration tests with @SpringBootTest + MockMvc and a real database"
+    - "I explained Flyway versioned migrations and why old files are never edited"
+    - "I explained the multi-stage Dockerfile"
+    - "I compared monolith and microservices honestly"
+  modelAnswer: |
+    For business rules I write unit tests with JUnit 5 and Mockito. For example, XpServiceTest builds the service with mock repositories, programs answers with when, and checks with verify that XP is saved once and never twice. Then integration tests start the whole app with @SpringBootTest, use MockMvc to send requests through the real security and controllers, on an embedded PostgreSQL. The schema is managed by Flyway: numbered files like V1 to V8 run once, in order, and I never edit an applied file; I add a new one. For deployment, a multi-stage Dockerfile builds the jar with Maven and ships it on a small JRE image. The app is a layered monolith, which is right for one team; microservices would add a lot of complexity.
+flashcards:
+  - front: "Unit vs integration test"
+    back: "Unit: one class, mocked dependencies, no Spring, fast. Integration: real context (+ DB), layers together, slower."
+  - front: "Mockito core trio"
+    back: "@Mock (create), when(...).thenReturn(...) (program), verify(...)/never() (check calls)."
+  - front: "Default return values of an unstubbed mock"
+    back: "null for objects, 0/false for primitives, empty Optional/List/collections."
+  - front: "Flyway rules"
+    back: "V<n>__desc.sql runs once, in order, tracked in flyway_schema_history with checksums. Never edit applied files; add a new version."
+  - front: "Docker image vs container"
+    back: "Image: read-only package (built from a Dockerfile). Container: a running instance of an image."
+  - front: "Microservices building blocks"
+    back: "API gateway, service discovery, config server, DB per service, REST/messaging, circuit breaker, tracing, saga."
+keyTakeaways:
+  - "Unit tests (JUnit 5 + Mockito) check one class fast; integration tests (@SpringBootTest + MockMvc) check the layers together."
+  - "Constructor injection makes unit testing easy: just new the class with mocks."
+  - "Flyway runs numbered migrations once and in order; never edit an applied migration."
+  - "A multi-stage Dockerfile builds with Maven and ships a small, non-root JRE image."
+  - "Start with a well-layered monolith; microservices trade simplicity for independent scaling and deployment."

@@ -16,7 +16,7 @@ class ContentFilesTest {
     @Test
     void allLessonFilesAreValidAndSlugsAreUnique() throws Exception {
         Resource[] files = new PathMatchingResourcePatternResolver().getResources("classpath*:content/lessons/**/*.yaml");
-        assertThat(files.length).isGreaterThanOrEqualTo(84);
+        assertThat(files.length).isGreaterThanOrEqualTo(153);
         LessonContentValidator v = new LessonContentValidator();
         Set<String> slugs = new HashSet<>();
         for (Resource r : files) {

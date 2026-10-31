@@ -1,8 +1,8 @@
 # Phases 2-4 test checklist
 
 ## Automated
-- [ ] `cd backend && mvn test` → all tests pass (84+)
-- [ ] `python3 scripts/validate_content.py` → 84/84 valid; `python3 scripts/validate_banks.py` → all banks valid
+- [ ] `cd backend && mvn test` → all tests pass (84)
+- [ ] `python3 scripts/validate_content.py` → 153/153 valid; `python3 scripts/validate_banks.py` → all banks valid
 - [ ] `cd frontend && npm run build` → no errors
 
 ## Learning (Phase 2)
@@ -18,6 +18,8 @@
 - [ ] Visualizers: each of the 6 plays/pauses/steps with captions; "predict the next step" counts correct guesses
 - [ ] Quests: weekly + story progress updates; badges unlock (First Blood after logging a problem)
 - [ ] Hall of Records: heatmap, charts, weekly report, JSON/CSV export download
+
+- [ ] Every world (SQL, CS Core, Spring, Interview, Aptitude, System Design) opens its first lesson; SQL lessons say "Predict the result", Aptitude/Interview/CS say "Predict the answer"
 
 ## Problems
 - [ ] Gym → Suggested shows 3 problems with reasons; "I solved it: log it" pre-fills the form; it then shows as solved in the Problem bank

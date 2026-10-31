@@ -54,7 +54,7 @@ class LearningFlowIntegrationTest extends IntegrationTestBase {
 
     @Test
     void contentIsSeeded() {
-        assertThat(jdbc.queryForObject("select count(*) from lessons", Integer.class)).isGreaterThanOrEqualTo(84);
+        assertThat(jdbc.queryForObject("select count(*) from lessons", Integer.class)).isGreaterThanOrEqualTo(153);
         assertThat(jdbc.queryForObject("select count(*) from problem_bank", Integer.class)).isGreaterThan(100);
         assertThat(jdbc.queryForObject("select count(*) from question_bank", Integer.class)).isGreaterThanOrEqualTo(250);
     }

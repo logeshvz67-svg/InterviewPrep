@@ -137,13 +137,15 @@ public class MentorService {
         List<Lesson> matches = lessons.findAllByOrderByWorldCodeAscSectionAscSortOrderAsc().stream()
                 .filter(l -> words.stream().anyMatch(w -> l.getTitle().toLowerCase().contains(w)))
                 .limit(3).toList();
-        for (Lesson l : matches) sb.append("📖 **").append(l.getTitle()).append("** (open it from Learn → ").append(l.getWorldCode().replace('_', ' ')).append(")\n");
+        for (Lesson l : matches) {
+            sb.append("- 📖 [").append(l.getTitle()).append("](/lesson/").append(l.getSlug()).append(")\n");
+        }
         Optional<QuestionBankItem> qa = bank.findAll().stream()
                 .max(Comparator.comparingLong(q -> words.stream().filter(w -> (q.getQuestion() + " " + q.getTopic()).toLowerCase().contains(w)).count()))
                 .filter(q -> words.stream().anyMatch(w -> (q.getQuestion() + " " + q.getTopic()).toLowerCase().contains(w)));
-        qa.ifPresent(q -> sb.append("\n**Practice answer: ").append(q.getQuestion()).append("**\n").append(q.getAnswer()).append('\n'));
+        qa.ifPresent(q -> sb.append("\n**Practice answer: ").append(q.getQuestion()).append("**\n\n").append(q.getAnswer()).append('\n'));
         if (matches.isEmpty() && qa.isEmpty()) sb.append("I couldn't find a matching lesson. Try different keywords, or check the Java Core Island map.");
-        sb.append("\n_Check question: can you explain the main idea in one sentence of your own?_");
+        sb.append("\n\n_Check question: can you explain the main idea in one sentence of your own?_");
         return sb.toString();
     }
 

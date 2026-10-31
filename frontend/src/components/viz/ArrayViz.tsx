@@ -103,7 +103,9 @@ function deleteSteps(a: number[], k: number): ArrStep[] {
     values: cur,
     tones: cur.map((_, j) => (j === k ? 'bad' : 'normal')),
     pointers: [{ index: k, label: 'delete', tone: 'bad' }],
-    caption: `We want to remove ${a[k]} at index ${k}. The values after it must move one box LEFT to fill the gap.`,
+    caption: k === n - 1
+      ? `We want to remove ${a[k]} at index ${k}. It is the last box, so nothing needs to move.`
+      : `We want to remove ${a[k]} at index ${k}. The values after it must move one box LEFT to fill the gap.`,
   }]
   // Shift left, starting right after the deleted box.
   for (let j = k; j < n - 1; j++) {

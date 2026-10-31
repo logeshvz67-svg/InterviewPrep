@@ -87,7 +87,7 @@ function stackSteps(ops: Op[]): SQStep[] {
       steps.push({
         items: [...st], tones: st.map((_, j) => (j === st.length - 1 ? 'bad' : 'normal')), opIndex: i, result: String(top),
         caption: `pop(): take ${top} off the top. It is removed and returned.`,
-        predict: mcq('pop(): which value comes out?', String(top), st.slice(0, -1).reverse().map(String).concat(String(st[0])),
+        predict: mcq('pop(): which value comes out?', String(top), [...st.slice(0, -1).reverse().map(String), 'Nothing: the stack is empty'],
           'Only the top can come out. The last one in is the first one out.'),
       })
       st.pop()
@@ -129,7 +129,7 @@ function queueSteps(ops: Op[]): SQStep[] {
       steps.push({
         items: [...q], tones: q.map((_, j) => (j === 0 ? 'bad' : 'normal')), opIndex: i, result: String(front),
         caption: `dequeue(): ${front} leaves from the front. It was waiting the longest.`,
-        predict: mcq('dequeue(): which value leaves?', String(front), [String(q[q.length - 1]), ...q.slice(1).map(String)],
+        predict: mcq('dequeue(): which value leaves?', String(front), [String(q[q.length - 1]), ...q.slice(1).map(String), 'Nothing: the queue is empty'],
           'The front leaves first. First in, first out.'),
       })
       q.shift()
@@ -137,7 +137,7 @@ function queueSteps(ops: Op[]): SQStep[] {
       steps.push({
         items: [...q], tones: q.map((_, j) => (j === 0 ? 'gold' : 'normal')), opIndex: i, result: String(q[0]),
         caption: `peek(): look at the front value, ${q[0]}. It stays in the queue.`,
-        predict: mcq('peek(): which value do we see?', String(q[0]), [String(q[q.length - 1]), ...q.map(String)], 'peek looks at the FRONT.'),
+        predict: mcq('peek(): which value do we see?', String(q[0]), [String(q[q.length - 1]), ...q.map(String), 'Nothing: the queue is empty'], 'peek looks at the FRONT.'),
       })
     }
   })

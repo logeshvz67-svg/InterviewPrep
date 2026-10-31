@@ -7,6 +7,8 @@ ROOT = os.path.join(os.path.dirname(__file__), "..", "backend", "src", "main", "
 TYPES = {"MCQ", "TRUE_FALSE", "PREDICT_OUTPUT", "SPOT_THE_BUG", "FILL_THE_CODE", "MATCH"}
 OPTION_TYPES = {"MCQ", "TRUE_FALSE", "PREDICT_OUTPUT", "SPOT_THE_BUG"}
 COMPANIES = {"INFOSYS_SP", "INFOSYS_DSE", "TCS", "WIPRO", "COGNIZANT", "ACCENTURE", "CAPGEMINI", "PRODUCT", "ALL"}
+WORLDS = {"JAVA_CORE": None, "DSA": "DSA", "SQL": "SQL", "CS_CORE": "CS", "SPRING": "SPRING", "INTERVIEW": "INTERVIEW", "APTITUDE": "APT", "SYSTEM_DESIGN": "SD"}
+CODE_WORLDS = {"JAVA_CORE", "DSA", "SQL", "SPRING"}   # these need a PREDICT_OUTPUT or SPOT_THE_BUG question
 VISUALIZERS = {None, "array", "two-pointers", "sliding-window", "linked-list", "stack-queue", "recursion"}
 BANNED = re.compile(r"(actually asked|was asked (at|in|by) (infosys|tcs|wipro|cognizant|accenture|capgemini))", re.I)
 
@@ -32,7 +34,10 @@ def check(path):
     slug = d.get("slug")
     need(text(slug) and re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", slug or ""), errs, "slug must be kebab-case")
     need(os.path.basename(path) == f"{slug}.yaml", errs, "file name must be <slug>.yaml")
-    need(d.get("world") in {"JAVA_CORE", "DSA"}, errs, "world must be JAVA_CORE or DSA")
+    world = d.get("world")
+    need(world in WORLDS, errs, f"world must be one of {sorted(WORLDS)}")
+    if world in WORLDS and WORLDS[world]:
+        need(d.get("section") == WORLDS[world], errs, f"section for {world} must be {WORLDS[world]}")
     need(isinstance(d.get("order"), int) and d["order"] >= 1, errs, "order must be int >= 1")
     need(isinstance(d.get("version"), int) and d["version"] >= 1, errs, "version must be int >= 1")
     need(isinstance(d.get("estimatedMinutes"), int), errs, "estimatedMinutes must be int")
@@ -90,7 +95,8 @@ def check(path):
             need(3 <= len(pairs) <= 6 and all(text(x.get("left")) and text(x.get("right")) for x in pairs), errs, f"{where}: 3-6 pairs with left/right")
             need(len({x.get("right") for x in pairs}) == len(pairs), errs, f"{where}: rights must be unique")
     need(len(types) >= 3, errs, "quiz should use at least 3 different question types")
-    need(types & {"PREDICT_OUTPUT", "SPOT_THE_BUG"}, errs, "quiz needs a PREDICT_OUTPUT or SPOT_THE_BUG question")
+    if world in CODE_WORLDS:
+        need(types & {"PREDICT_OUTPUT", "SPOT_THE_BUG"}, errs, "quiz needs a PREDICT_OUTPUT or SPOT_THE_BUG question")
     eb = d.get("explainBack") or {}
     need(text(eb.get("prompt")) and text(eb.get("modelAnswer")) and 3 <= len(eb.get("rubric") or []) <= 6, errs, "explainBack: prompt, 3-6 rubric items, modelAnswer")
     fc = d.get("flashcards") or []

@@ -53,4 +53,5 @@ const EXTRA_LINKS: Record<string, [string, string][]> = {
   SPRING: [['/spring', '🔥 Spring Boot track']],
   INTERVIEW: [['/interview', '🏟️ Colosseum'], ['/interview/mock', '🐉 Boss fight']],
   APTITUDE: [['/interview?tab=aptitude', '🎯 Aptitude Arena']],
+  SYSTEM_DESIGN: [['/mentor', '🧙 Practise a design with the mentor']],
 }

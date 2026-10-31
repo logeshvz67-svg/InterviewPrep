@@ -108,7 +108,9 @@ public class LessonService {
         // Planned lessons that aren't written yet are shown as an outline, so the whole map is visible.
         List<LessonCard> outline = new ArrayList<>();
         int i = 1;
+        Set<String> written = all.stream().map(l -> l.getTitle().toLowerCase()).collect(Collectors.toSet());
         for (JsonNode o : catalog.outlineFor(code)) {
+            if (written.contains(o.path("title").asText().toLowerCase())) continue;
             outline.add(new LessonCard(null, o.path("title").asText(), "OUTLINE", i++, 0, "OUTLINE", BigDecimal.ZERO, false,
                     List.of(), o.path("summary").asText(), true));
         }
@@ -412,6 +414,12 @@ public class LessonService {
         Map<String, String> m = new HashMap<>();
         topics.findAllByOrderBySectionAscSortOrderAsc().forEach(t -> m.putIfAbsent(t.getSection(), t.getSectionName()));
         m.put("DSA", "Patterns");
+        m.put("SQL", "SQL Caves");
+        m.put("CS", "OS, DBMS, Networks, Design");
+        m.put("SPRING", "Spring Boot Forge");
+        m.put("INTERVIEW", "Interview skills");
+        m.put("APT", "Quant, logical and verbal");
+        m.put("SD", "High-level and low-level design");
         return m;
     }
 }

@@ -20,8 +20,8 @@ Predict the output → Quiz (≥5 questions, 80% to pass) → Explain it back �
 
 ```yaml
 slug: how-java-works          # unique, kebab-case. Java lessons: SAME as the java_topics slug
-world: JAVA_CORE              # JAVA_CORE | DSA
-section: A                    # Java: A..J. DSA: "DSA"
+world: JAVA_CORE              # JAVA_CORE | DSA | SQL | CS_CORE | SPRING | INTERVIEW | APTITUDE | SYSTEM_DESIGN
+section: A                    # Java: A..J. Others: DSA | SQL | CS | SPRING | INTERVIEW | APT | SD
 order: 1                      # order inside the section (lessons unlock in this order)
 title: "How Java works: JDK, JRE, JVM"
 version: 1
@@ -100,6 +100,8 @@ keyTakeaways:                 # 3-6 bullets
 
 - Simple language. Every technical term gets a one-line plain explanation the first time.
 - Code must compile and the stated output must be exactly right. Use Java 17+.
-- At least one PREDICT_OUTPUT or SPOT_THE_BUG question per lesson, and at least 3 different types.
+- At least 3 different question types. Code worlds (JAVA_CORE, DSA, SQL, SPRING) also need a PREDICT_OUTPUT or SPOT_THE_BUG question.
+- Non-Java worlds: `code` fields hold SQL (SQL world), Java/Spring code (SPRING), a small Java program that computes
+  the answer (APTITUDE), or an answer template/script (INTERVIEW). `predict` then means "predict the result/answer".
 - Never say a question was "asked at Infosys/TCS/...". Use "practice question" / "common in interviews".
 - Never state the current Infosys test pattern.

@@ -72,6 +72,7 @@ export const worlds: Record<string, { icon: string }> = {
   SPRING: { icon: '🔥' },
   INTERVIEW: { icon: '🏟️' },
   APTITUDE: { icon: '🎯' },
+  SYSTEM_DESIGN: { icon: '🗼' },
 }
 
 export const avatars = [

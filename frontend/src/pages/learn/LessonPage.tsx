@@ -21,6 +21,12 @@ const STEPS = [
   { id: 'explainBack', label: 'Explain back' }, { id: 'summary', label: 'Summary' },
 ] as const
 type StepId = (typeof STEPS)[number]['id']
+const WORLD_NAMES: Record<string, string> = {
+  JAVA_CORE: 'Java Core Island', DSA: 'DSA Kingdom', SQL: 'SQL Caves', CS_CORE: 'CS Core Temple', SPRING: 'Spring Boot Forge',
+  INTERVIEW: 'Interview Colosseum', APTITUDE: 'Aptitude Arena', SYSTEM_DESIGN: 'System Design Tower',
+}
+/** Worlds where "code" means a query, a worked answer or an answer template rather than a Java program. */
+const NON_CODE_WORLDS = new Set(['INTERVIEW', 'APTITUDE', 'CS_CORE'])
 const SERVER_STEPS = new Set(['why', 'analogy', 'visual', 'explanation', 'tinyCode', 'tryIt', 'predict'])
 
 export default function LessonPage() {
@@ -66,11 +72,12 @@ export default function LessonPage() {
     <article className="space-y-4 max-w-3xl">
       <header className="space-y-2">
         <div className="flex justify-between items-center text-sm">
-          <Link to={`/learn/${data.world}`} className="text-primary">← {data.world === 'JAVA_CORE' ? 'Java Core Island' : 'DSA Kingdom'}</Link>
+          <Link to={`/learn/${data.world}`} className="text-primary">← {WORLD_NAMES[data.world] ?? 'World'}</Link>
           <Link to={`/lesson/${slug}/prove-it`} className="chip px-3 py-1">🎖️ Prove it</Link>
         </div>
         <h1 className="text-2xl font-bold">{data.title} {c.rebuild && <span className="chip align-middle">Rebuild</span>}</h1>
         <p className="text-xs text-muted">🎯 Infosys: {c.infosysRelevance} · Other companies: {c.otherCompanies}</p>
+        {data.world === 'SYSTEM_DESIGN' && <p className="text-xs text-muted">System design answers have no single "right" design: interviewers judge your reasoning and trade-offs.</p>}
         <nav aria-label="Lesson steps" className="flex gap-1 overflow-x-auto pb-1">
           {STEPS.map((s, i) => {
             const done = data.stepsDone.includes(s.id) || (s.id === 'quiz' && data.quizPassed) || (s.id === 'explainBack' && !!data.explainBack)
@@ -100,8 +107,9 @@ export default function LessonPage() {
         {current === 'tinyCode' && (
           <><h2 className="text-xl font-semibold">🧪 Tiny code</h2><CodeBlock code={c.tinyCode.code} /><Markdown text={c.tinyCode.walkthrough} /></>
         )}
-        {current === 'tryIt' && <TryIt instructions={c.tryIt.instructions} code={c.tryIt.code} done={data.stepsDone.includes('tryIt')} onDone={() => markStep('tryIt')} />}
-        {current === 'predict' && <Predict code={c.predict.code} expected={c.predict.expectedOutput} explanation={c.predict.explanation} onDone={() => markStep('predict')} />}
+        {current === 'tryIt' && <TryIt instructions={c.tryIt.instructions} code={c.tryIt.code} done={data.stepsDone.includes('tryIt')} onDone={() => markStep('tryIt')} sql={data.world === 'SQL'} />}
+        {current === 'predict' && <Predict code={c.predict.code} expected={c.predict.expectedOutput} explanation={c.predict.explanation} onDone={() => markStep('predict')}
+          kind={data.world === 'SQL' ? 'result' : NON_CODE_WORLDS.has(data.world) ? 'answer' : 'output'} />}
         {current === 'traps' && (
           <>
             <h2 className="text-xl font-semibold">⚠️ Common mistakes</h2>
@@ -142,7 +150,7 @@ export default function LessonPage() {
 }
 
 /** Type the code yourself. Paste is blocked on purpose: typing builds memory (and breaks the copy-paste habit). */
-function TryIt({ instructions, code, done, onDone }: { instructions: string; code: string; done: boolean; onDone: () => void }) {
+function TryIt({ instructions, code, done, onDone, sql }: { instructions: string; code: string; done: boolean; onDone: () => void; sql?: boolean }) {
   const [typed, setTyped] = useState('')
   const [warn, setWarn] = useState<string | null>(null)
   const score = useMemo(() => similarity(typed, code), [typed, code])
@@ -170,28 +178,30 @@ function TryIt({ instructions, code, done, onDone }: { instructions: string; cod
         <div className="flex-1 h-2 rounded bg-raised"><div className={`h-full rounded ${ok ? 'bg-good' : 'bg-primary'}`} style={{ width: `${Math.round(score * 100)}%` }} /></div>
         <span className="text-sm text-muted">{Math.round(score * 100)}% match</span>
       </div>
-      {(ok || done) && <p className="text-good text-sm">✅ Nice typing! Now run it on your computer (or an online Java compiler) and check the output.</p>}
+      {(ok || done) && <p className="text-good text-sm">✅ Nice typing! {sql ? 'Now run it in a free online SQL playground (or your local MySQL/PostgreSQL) and compare the result.' : 'Now run it on your computer (or an online Java compiler) and check the output.'}</p>}
     </>
   )
 }
 
-function Predict({ code, expected, explanation, onDone }: { code: string; expected: string; explanation: string; onDone: () => void }) {
+function Predict({ code, expected, explanation, onDone, kind = 'output' }: { code: string; expected: string; explanation: string; onDone: () => void; kind?: 'output' | 'result' | 'answer' }) {
   const [guess, setGuess] = useState('')
   const [shown, setShown] = useState(false)
   const norm = (s: string) => s.replace(/\r/g, '').split('\n').map((l) => l.trimEnd()).join('\n').trim()
   const right = norm(guess) === norm(expected)
   return (
     <>
-      <h2 className="text-xl font-semibold">🔮 Predict the output</h2>
-      <p className="text-muted text-sm">Read the code line by line, like the computer. Write exactly what it prints.</p>
+      <h2 className="text-xl font-semibold">🔮 Predict the {kind}</h2>
+      <p className="text-muted text-sm">{kind === 'output' ? 'Read the code line by line, like the computer. Write exactly what it prints.'
+        : kind === 'result' ? 'Work out the result table in your head (or on paper) before revealing it.'
+        : 'Think it through and write your answer before revealing the real one.'}</p>
       <CodeBlock code={code} />
       <textarea className="input font-mono text-sm min-h-24" value={guess} onChange={(e) => setGuess(e.target.value)} disabled={shown}
         placeholder="Your predicted output" aria-label="Your predicted output" spellCheck={false} />
       {!shown ? (
-        <button className="btn-primary" disabled={!guess.trim()} onClick={() => { setShown(true); onDone() }}>Reveal the real output</button>
+        <button className="btn-primary" disabled={!guess.trim()} onClick={() => { setShown(true); onDone() }}>Reveal the real {kind}</button>
       ) : (
         <div className={`rounded-xl p-3 ${right ? 'bg-good/10' : 'bg-warn/10'}`}>
-          <p className="font-semibold">{right ? '🎯 Exactly right!' : 'Compare with the real output:'}</p>
+          <p className="font-semibold">{right ? '🎯 Exactly right!' : `Compare with the real ${kind}:`}</p>
           <CodeBlock code={expected} />
           <Markdown text={explanation} />
         </div>

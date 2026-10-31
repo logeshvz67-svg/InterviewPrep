@@ -14,7 +14,7 @@ public class LessonContentValidator {
         List<String> e = new ArrayList<>();
         if (d == null || !d.isObject()) return List.of("lesson must be an object");
         if (!d.path("slug").asText("").matches("[a-z0-9]+(-[a-z0-9]+)*")) e.add("slug must be kebab-case");
-        if (!Set.of("JAVA_CORE", "DSA").contains(d.path("world").asText())) e.add("world must be JAVA_CORE or DSA");
+        if (!Set.of("JAVA_CORE", "DSA", "SQL", "CS_CORE", "SPRING", "INTERVIEW", "APTITUDE", "SYSTEM_DESIGN").contains(d.path("world").asText())) e.add("unknown world");
         if (d.path("order").asInt(0) < 1) e.add("order must be >= 1");
         for (String k : List.of("section", "title", "why", "analogy", "explanation", "infosysRelevance")) {
             if (d.path(k).asText("").isBlank()) e.add(k + " is required");

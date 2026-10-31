@@ -32,18 +32,18 @@ visual:
          +--------------------+
          | + pay(amt): String |
          +--------------------+
-            ^             ^          ^ (dashed in UML) = implements
-            :             :
+            ^             ^
+            :             :      (dotted arrow = implements)
     +---------------+ +---------------+
     |  UpiPayment   | |  CardPayment  |
     +---------------+ +---------------+
     | - upiId:String| |               |
     +---------------+ +---------------+
 
-    +---------------------+  uses   +---------------+
-    |      Checkout       |<>------>| PaymentMethod |   <>-> has-a
+    +---------------------+  has-a  +---------------+
+    |      Checkout       |<>------>| PaymentMethod |
     +---------------------+         +---------------+
-    | - payment           |  uses   +---------------+
+    | - payment           |  has-a  +---------------+
     | - notifier          |<>------>|   Notifier    |
     +---------------------+         +---------------+
     | + placeOrder(amt)   |

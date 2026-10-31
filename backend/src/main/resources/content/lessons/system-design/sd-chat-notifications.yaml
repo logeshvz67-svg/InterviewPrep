@@ -31,6 +31,7 @@ analogy: |
   **Fan-out** is like a wedding invitation: one invitation is designed, but a copy is delivered to every guest.
 visual:
   diagram: |
+    CHAT ARCHITECTURE
          Asha's phone                           Ravi's phone (online)
              |  WebSocket                          ^  WebSocket
              v                                     |
@@ -41,11 +42,11 @@ visual:
              | 1. save message (seq no.)
              v
      +------------------------+      Meena offline?
-     | Message store          |      +---------------------+
+     | Message store          |      +----------------------+
      | (Cassandra, by chatId) |      | Queue -> Notification|
      +------------------------+      | service -> FCM/APNs  |
-                                     |  -> push to Meena   |
-                                     +---------------------+
+                                     | -> push to Meena     |
+                                     +----------------------+
      Status: SENT (saved) -> DELIVERED (on device) -> READ (opened)
   caption: "Each online user keeps a WebSocket to some chat server. A message is saved first, then delivered to online recipients through their server, while offline recipients get a push notification and sync later."
   visualizer: null

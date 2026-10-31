@@ -1,0 +1,386 @@
+slug: abstraction-interfaces
+world: JAVA_CORE
+section: C
+order: 10
+title: "Abstraction: abstract class vs interface"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A top OOP comparison for SP and DSE rounds; modern interface features (default, static, private methods) are good depth questions for SP."
+otherCompanies: "Abstract class vs interface is a very common question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  "**What is the difference between an abstract class and an interface?**" is one of the most-asked Java questions. Older answers ("interfaces can't have method bodies") are **wrong** since Java 8, and interviewers like to check if you know that.
+
+  You'll be asked:
+  - What is abstraction?
+  - Can an abstract class have a constructor?
+  - What are default, static and private methods in interfaces?
+  - How does Java solve the diamond problem with interfaces?
+  - When would you pick one over the other?
+
+  This is also how real projects are designed: Spring, JDBC and Collections are all built on interfaces.
+analogy: |
+  **Abstraction** is your car's dashboard. You press the accelerator and the car moves. You don't need to know about fuel injection or gear ratios. You see **what** it does, not **how**.
+
+  - An **interface** is like the rule "every vehicle sold in India must have brakes, headlights and a horn". It's a **contract**: a list of abilities. Any company (Tata, Maruti, Honda) can sign it in its own way.
+  - An **abstract class** is like a **half-built car** from a factory: the chassis and engine mounting are done (shared code and fields), but the body design is left for each model to finish. You can't drive a half-built car (you can't create an object of it), but every finished model starts from it.
+visual:
+  diagram: |2
+    ABSTRACT CLASS (IS-A, partial code)    INTERFACE (CAN-DO, contract)
+    +---------------------------+         +---------------------------+
+    | abstract class Vehicle    |         | interface Chargeable      |
+    |  int speed;      (state)  |         |  int MAX = 100; (constant)|
+    |  Vehicle() {..} (ctor)    |         |  void charge(); (abstract)|
+    |  void stop() {..} (code)  |         |  default void info() {..} |
+    |  abstract void start();   |         |  static void help() {..}  |
+    +-------------+-------------+         +-------------+-------------+
+                  ^                                     ^
+                  | extends (only ONE)                  | implements (MANY)
+                  +------------------+------------------+
+                                     |
+          class ElectricCar extends Vehicle implements Chargeable
+  caption: "A class extends at most one abstract class (shared state and code) but can implement many interfaces (abilities)."
+  visualizer: null
+explanation: |
+  ### What is abstraction?
+  **Abstraction** means showing **what** an object does and hiding **how** it does it. The user of your class only needs the method names, not the details inside.
+
+  Java gives two tools for abstraction: **abstract classes** and **interfaces**.
+
+  ### Abstract class
+  An **abstract method** has no body, just a signature ending with `;`. Child classes must provide the body.
+  An **abstract class** is a class marked `abstract`. It **cannot be instantiated** (no `new Vehicle()`), but it can have:
+  - abstract methods **and** normal methods with code,
+  - fields (instance variables) of any kind,
+  - **constructors** (they run when a child object is built, via `super(...)`),
+  - static methods, final methods, any access modifier.
+
+  ```java
+  abstract class Vehicle {
+      protected int speed;
+      Vehicle() { System.out.println("Vehicle ready"); }
+      abstract void start();                 // no body
+      void stop() { speed = 0; System.out.println("Stopped"); }
+  }
+
+  class Bike extends Vehicle {
+      void start() { System.out.println("Kick start"); }   // must implement
+  }
+  ```
+  Rules:
+  - If a class has **even one** abstract method, the class must be abstract.
+  - An abstract class may have **zero** abstract methods (just to stop people creating objects).
+  - A child that doesn't implement all abstract methods must itself be abstract.
+  - `abstract` can't be combined with `final`, `static` or `private` on a method, because those methods can't be overridden.
+
+  ### Interface
+  An **interface** is a **contract**: a list of methods a class promises to provide. A class uses `implements`.
+  ```java
+  interface Chargeable {
+      int MAX_PERCENT = 100;          // always public static final
+      void charge();                  // always public abstract
+  }
+  class Phone implements Chargeable {
+      public void charge() { System.out.println("Charging phone"); }
+  }
+  ```
+  - Variables in an interface are automatically **`public static final`** (constants).
+  - Abstract methods are automatically **`public abstract`**. So the implementing method must be **`public`** (overriding can't reduce access).
+  - No constructors, no instance fields.
+  - A class can implement **many** interfaces. An interface can **extend** many interfaces.
+
+  ### Modern interface methods
+  | Kind | Since | Has a body? | Purpose |
+  |---|---|---|---|
+  | `abstract` | always | No | The contract |
+  | `default` | Java 8 | Yes | Add new methods to an interface without breaking old classes; classes may override |
+  | `static` | Java 8 | Yes | Helper methods; call as `Chargeable.help()`, **not inherited** by classes |
+  | `private` | Java 9 | Yes | Share code between default/static methods inside the interface; hidden from outside |
+
+  ```java
+  interface Greeter {
+      void name();
+      default void greet() { log(); System.out.println("Hello!"); }
+      static Greeter simple() { return () -> System.out.println("Simple"); }
+      private void log() { System.out.println("[log]"); }
+  }
+  ```
+
+  ### The diamond problem with default methods
+  If a class implements two interfaces that both have a `default` method with the same signature, the compiler doesn't guess. **The class must override it**, and it can choose a parent with `InterfaceName.super.method()`:
+  ```java
+  interface A { default void hello() { System.out.println("A"); } }
+  interface B { default void hello() { System.out.println("B"); } }
+  class C implements A, B {
+      public void hello() { A.super.hello(); }   // must override; picks A
+  }
+  ```
+  Other rules: **a class method always wins** over an interface default, and a more specific (child) interface wins over its parent interface.
+
+  ### Abstract class vs interface
+  | | Abstract class | Interface |
+  |---|---|---|
+  | Keyword to use it | `extends` (only **one**) | `implements` (**many**) |
+  | Methods | abstract + concrete | abstract, default, static, private |
+  | Variables | any kind (instance, static, final or not) | only `public static final` constants |
+  | Constructor | Yes | No |
+  | Access of methods | any | public (private allowed for helpers) |
+  | State (instance fields) | Yes | No |
+  | Relationship | IS-A ("Bike is a Vehicle") | CAN-DO ("Phone can be charged") |
+  | Abstraction level | 0% to 100% | mostly 100% contract |
+
+  ### When to choose which
+  - Pick an **abstract class** when related classes share **state and code** (fields, constructors) and have a clear IS-A family.
+  - Pick an **interface** when unrelated classes should share an **ability**, or when you need **multiple inheritance of type**. (Comparable, Runnable, List are interfaces.)
+  - Many designs use both: an interface for the contract, an abstract class for shared code.
+
+  Bonus: an interface with exactly one abstract method is a **functional interface**, and can be implemented with a **lambda** (like `Greeter.simple()` above).
+tinyCode:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            ElectricCar car = new ElectricCar();
+            car.start();
+            car.charge();
+            car.info();
+            car.stop();
+            Chargeable.help();
+        }
+    }
+
+    abstract class Vehicle {
+        Vehicle() { System.out.println("Vehicle built"); }
+        abstract void start();
+        void stop() { System.out.println("Stopped"); }
+    }
+
+    interface Chargeable {
+        void charge();
+        default void info() { System.out.println("Battery max " + MAX + "%"); }
+        static void help() { System.out.println("Plug in for 1 hour"); }
+        int MAX = 100;
+    }
+
+    class ElectricCar extends Vehicle implements Chargeable {
+        void start() { System.out.println("Silent start"); }
+        public void charge() { System.out.println("Charging car"); }
+    }
+  walkthrough: |
+    - `Vehicle` is abstract: it can't be created with `new`, but its constructor still runs when an `ElectricCar` is built, so "Vehicle built" prints first.
+    - `ElectricCar` **extends** one abstract class and **implements** an interface. It must give bodies for `start()` and `charge()`.
+    - `charge()` is `public` because interface methods are public, and we can't reduce access.
+    - `car.info()` uses the interface's **default** method; `ElectricCar` didn't write it.
+    - `Chargeable.help()` is a **static** interface method, called with the interface name.
+    - `MAX` is automatically `public static final`.
+
+    Output:
+    ```
+    Vehicle built
+    Silent start
+    Charging car
+    Battery max 100%
+    Stopped
+    Plug in for 1 hour
+    ```
+tryIt:
+  instructions: "Type this diamond example. Run it, then delete the hello() method in class C and read the compile error: Java refuses to guess between A and B."
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            new C().hello();
+        }
+    }
+
+    interface A {
+        default void hello() { System.out.println("Hello from A"); }
+    }
+
+    interface B {
+        default void hello() { System.out.println("Hello from B"); }
+    }
+
+    class C implements A, B {
+        public void hello() {
+            A.super.hello();
+            B.super.hello();
+            System.out.println("Hello from C");
+        }
+    }
+predict:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Shape s = new Circle(2);
+            System.out.println(s.describe());
+        }
+    }
+
+    abstract class Shape {
+        String label;
+        Shape(String label) {
+            this.label = label;
+            System.out.println("Shape constructor: " + label);
+        }
+        abstract double area();
+        String describe() { return label + " area=" + area(); }
+    }
+
+    class Circle extends Shape {
+        double r;
+        Circle(double r) {
+            super("circle");
+            this.r = r;
+        }
+        double area() { return 3 * r * r; }
+    }
+  expectedOutput: |
+    Shape constructor: circle
+    circle area=12.0
+  explanation: |
+    An abstract class can have a constructor; it runs through `super("circle")`. `describe()` is concrete code in the abstract class, but it calls the abstract `area()`, which runs Circle's version: 3 * 2 * 2 = 12, and since `r` is a double, the result is printed as 12.0.
+commonMistakes:
+  - "Saying interfaces can't have method bodies. Since Java 8 they can have default and static methods, and since Java 9 private methods."
+  - "Saying abstract classes can't have constructors. They can; the constructor runs when a child object is created."
+  - "Implementing an interface method without public (void charge() {...}). Interface methods are public, so a weaker access is a compile error."
+  - "Trying new on an abstract class or interface. Neither can be instantiated directly (an anonymous class or lambda is a different thing)."
+  - "Expecting interface static methods to be inherited. Call them as InterfaceName.method()."
+  - "Thinking interface variables can be changed. They are public static final constants."
+interviewBox:
+  why: "Why interviewers ask this: it tests design thinking (when to use which) and whether your Java knowledge is up to date with Java 8+ interfaces."
+  questions:
+    - q: "What is abstraction and how is it achieved in Java?"
+      a: "Abstraction means showing only what an object does and hiding how it does it. In Java we achieve it with abstract classes and interfaces. Callers use the method names; the implementation details stay inside the classes."
+    - q: "What is the difference between an abstract class and an interface?"
+      a: "A class can extend only one abstract class but implement many interfaces. An abstract class can have instance fields, constructors and methods of any access; an interface has only public static final constants, no constructors, and abstract, default, static or private methods. I use an abstract class for an IS-A family that shares state and code, and an interface for a CAN-DO ability shared by unrelated classes."
+    - q: "Why were default methods added to interfaces?"
+      a: "To add new methods to existing interfaces without breaking every class that already implements them. For example Java 8 added forEach and stream-related methods to collection interfaces. Old classes get the default body automatically."
+    - q: "How does Java handle the diamond problem with default methods?"
+      a: "If a class implements two interfaces with the same default method, it's a compile error unless the class overrides the method. Inside, it can call a specific one with A.super.hello(). Also, a method defined in a class always wins over an interface default."
+    - q: "Can an abstract class have no abstract methods?"
+      a: "Yes. It's legal, and it's useful when you just want to stop people creating objects of that class while still sharing code with child classes."
+quiz:
+  - id: q1
+    type: SPOT_THE_BUG
+    prompt: "Why does this code fail to compile?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              new Fan().turnOn();
+          }
+      }
+      interface Switchable {
+          void turnOn();
+      }
+      class Fan implements Switchable {
+          void turnOn() { System.out.println("Fan on"); }
+      }
+    options:
+      - "Interfaces can't have methods"
+      - "Fan's turnOn() has default access, weaker than the interface's public"
+      - "Fan must be declared abstract"
+      - "main can't call turnOn() on a new object"
+    answer: 1
+    explanation: "Interface methods are implicitly public. Fan's turnOn() has no modifier (default/package access), which is weaker, so it's an invalid override. Adding public fixes it. Fan doesn't need to be abstract because it does implement turnOn()."
+  - id: q2
+    type: MCQ
+    prompt: "Which of these can an INTERFACE have?"
+    options:
+      - "A constructor"
+      - "A non-final instance variable"
+      - "A private helper method with a body"
+      - "A protected abstract method"
+    answer: 2
+    explanation: "Since Java 9 interfaces may have private methods to share code between default/static methods. Interfaces never have constructors or instance variables (fields are public static final), and abstract methods are always public, not protected."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "An abstract class can have a constructor."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. You can't call new on it directly, but its constructor runs whenever a child object is created (through super(...)), usually to set up shared fields."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              new Robot().work();
+          }
+      }
+      interface Worker {
+          default void work() { System.out.println("Worker works"); }
+      }
+      class Machine {
+          public void work() { System.out.println("Machine works"); }
+      }
+      class Robot extends Machine implements Worker { }
+    options: ["Worker works", "Machine works", "Compile error: diamond problem", "Both lines"]
+    answer: 1
+    explanation: "'Class wins': a method inherited from a class beats an interface default method, so no conflict and no error. 'Compile error' is tempting, but the diamond error only happens when two interface defaults clash and no class method exists."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "C implements A and B, which both have default void hello(). Fill the blank to call A's version."
+    code: |
+      public class Main {
+          public static void main(String[] args) { new C().hello(); }
+      }
+      interface A { default void hello() { System.out.println("A"); } }
+      interface B { default void hello() { System.out.println("B"); } }
+      class C implements A, B {
+          public void hello() { ____.hello(); }
+      }
+    acceptedAnswers: ["A.super"]
+    explanation: "InterfaceName.super.method() calls a specific interface's default method. Plain super.hello() would refer to C's parent class (Object), which has no hello()."
+  - id: q6
+    type: MATCH
+    prompt: "Match each interface method kind to its rule"
+    pairs:
+      - left: "abstract method"
+        right: "No body; implementing class must provide it"
+      - left: "default method"
+        right: "Has a body; classes inherit it and may override"
+      - left: "static method"
+        right: "Called as InterfaceName.method(); not inherited"
+      - left: "private method"
+        right: "Helper used only inside the interface"
+    explanation: "abstract = contract; default (Java 8) = inherited body; static (Java 8) = utility on the interface itself; private (Java 9) = internal shared code."
+  - id: q7
+    type: MCQ
+    prompt: "Dog, Cat and Cow share fields (name, age) and a constructor. Robot, Phone and Car must all be 'Chargeable'. What fits best?"
+    options:
+      - "Animal as interface, Chargeable as abstract class"
+      - "Animal as abstract class, Chargeable as interface"
+      - "Both as abstract classes"
+      - "Both as final classes"
+    answer: 1
+    explanation: "Animals form an IS-A family sharing state and a constructor: abstract class. Robot, Phone and Car are unrelated but share an ability: interface. Making Chargeable a class would stop Car from also extending Vehicle."
+explainBack:
+  prompt: "Explain abstraction and the difference between an abstract class and an interface, and when you'd use each."
+  rubric:
+    - "I defined abstraction as hiding how and showing what"
+    - "I said one abstract class (extends) vs many interfaces (implements)"
+    - "I mentioned constructors/fields in abstract classes and constants-only in interfaces"
+    - "I mentioned default/static/private interface methods and the diamond rule"
+    - "I gave a when-to-use rule (IS-A with shared state vs CAN-DO ability)"
+  modelAnswer: |
+    Abstraction means I show what something does and hide how, like a car's dashboard. Java does this with abstract classes and interfaces. An abstract class is a half-built class: it can have fields, a constructor, normal methods and abstract methods, but no objects, and a class can extend only one. An interface is a contract of abilities: only constants, and methods that are abstract, default, static or private. A class can implement many interfaces. If two defaults clash, the class must override and can pick one with A.super.hello(). I use an abstract class for a family sharing code, and an interface for an ability that unrelated classes share.
+flashcards:
+  - front: "Can an abstract class have a constructor? Can an interface?"
+    back: "Abstract class: yes (runs via super). Interface: no."
+  - front: "Interface variables are implicitly..."
+    back: "public static final (constants)."
+  - front: "Interface method kinds and versions"
+    back: "abstract (always), default and static (Java 8), private (Java 9)."
+  - front: "Two interfaces have the same default method. What must the class do?"
+    back: "Override it; optionally call one with A.super.method()."
+  - front: "Class method vs interface default: who wins?"
+    back: "The class method always wins."
+  - front: "Abstract class vs interface: when to use?"
+    back: "Abstract class: IS-A family sharing state/code. Interface: CAN-DO ability for unrelated classes, multiple inheritance of type."
+keyTakeaways:
+  - "Abstraction = show what, hide how; Java uses abstract classes and interfaces."
+  - "Abstract classes: can't be instantiated, but can have fields, constructors, concrete and abstract methods."
+  - "Interfaces: constants plus abstract, default, static and private methods; a class can implement many."
+  - "Implementing interface methods must be public."
+  - "Default-method diamond: the class must override; use A.super.m() to pick. A class method beats an interface default."

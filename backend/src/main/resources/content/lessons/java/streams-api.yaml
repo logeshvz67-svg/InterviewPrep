@@ -1,0 +1,382 @@
+slug: streams-api
+world: JAVA_CORE
+section: F
+order: 3
+title: "Stream API"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Frequently asked in SP and DSE rounds, both as theory (intermediate vs terminal, laziness) and as 'write this with streams' coding questions."
+otherCompanies: "Stream coding questions (group by, count frequency, second highest, filter and collect) are common at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  Interviewers love questions like:
+  - "Find the frequency of each character using streams."
+  - "Get the names of employees with salary > 50,000, sorted."
+  - "Group employees by department."
+  - "Find the second highest number."
+
+  With loops, each one is 10-15 lines with temporary lists and maps. With the **Stream API** (Java 8), each is a short, readable **pipeline** of 2-4 steps. Streams are also everywhere in real Spring Boot code.
+
+  You also need the theory: **intermediate vs terminal** operations and **lazy evaluation**. These are favourite follow-up questions, and they explain some surprising outputs you will see in this lesson.
+analogy: |
+  Think of a **juice shop assembly line**.
+
+  - The **source** is the crate of fruits (your list).
+  - **Intermediate operations** are the workers on the line: one throws away bad fruits (`filter`), one peels and cuts them (`map`), one sorts by size (`sorted`).
+  - The **terminal operation** is the final step that produces something: pouring juice into a glass (`collect`), counting glasses (`count`), or mixing all into one jug (`reduce`).
+
+  The key point: **the workers don't start until someone orders juice**. If nobody places an order (no terminal operation), nothing happens. And fruits go down the line **one at a time**: fruit 1 is filtered and cut before fruit 2 is even picked up. That is **lazy evaluation**.
+visual:
+  diagram: |
+    List.of("asha","ravi","anu","kiran")
+            |
+            v   source: .stream()
+    +-------------------+
+    | filter(startsWith | intermediate (lazy, returns a Stream)
+    |   "a")            |   asha  ravi x  anu  kiran x
+    +-------------------+
+            v
+    +-------------------+
+    | map(toUpperCase)  | intermediate (lazy)
+    +-------------------+   ASHA        ANU
+            v
+    +-------------------+
+    | collect(toList()) | terminal (starts the work, ends the stream)
+    +-------------------+
+            v
+       [ASHA, ANU]
+
+    Each element travels the WHOLE pipe before the next one starts:
+    asha: filter -> map -> collect,  ravi: filter (dropped),  anu: ...
+  caption: "A stream pipeline: a source, zero or more lazy intermediate operations, and one terminal operation that triggers the work. Elements flow through one at a time."
+  visualizer: null
+explanation: |
+  ### What is a stream?
+  A **stream** is a sequence of elements that you process with a **pipeline** of operations. It is **not** a data structure: it doesn't store anything. It reads from a **source** (a list, an array, a range of numbers), processes, and produces a result.
+  ```java
+  List<String> result = names.stream()          // 1. source
+      .filter(n -> n.startsWith("a"))           // 2. intermediate
+      .map(String::toUpperCase)                 // 2. intermediate
+      .collect(Collectors.toList());            // 3. terminal
+  ```
+  Important properties:
+  - Streams **don't change the source** list.
+  - A stream can be **used only once**. Reusing it throws `IllegalStateException`.
+  - Streams are **lazy**: nothing runs until a terminal operation is called.
+
+  ### Creating streams
+  | Source | Code |
+  |---|---|
+  | collection | `list.stream()` |
+  | values | `Stream.of("a", "b", "c")` |
+  | array | `Arrays.stream(arr)` |
+  | number range | `IntStream.range(0, 5)` (0..4), `IntStream.rangeClosed(1, 5)` (1..5) |
+  | characters of a String | `str.chars()` (an `IntStream` of char codes) |
+
+  ### Intermediate operations (return a new Stream, lazy)
+  | Operation | What it does |
+  |---|---|
+  | `filter(predicate)` | keep elements that match |
+  | `map(function)` | convert each element |
+  | `mapToInt(fn)` | convert to an `IntStream` (gives `sum()`, `average()`, `max()`) |
+  | `flatMap(fn)` | turn each element into a stream and **flatten** them into one |
+  | `distinct()` | remove duplicates (uses `equals`) |
+  | `sorted()` / `sorted(cmp)` | sort |
+  | `limit(n)` / `skip(n)` | keep first n / skip first n |
+  | `peek(consumer)` | look at each element (debugging) |
+
+  ### Terminal operations (produce a result, start the work)
+  | Operation | Result |
+  |---|---|
+  | `collect(...)` | a List, Set, Map, String... |
+  | `toList()` (Java 16) | an unmodifiable List |
+  | `forEach(consumer)` | nothing (side effect, e.g. printing) |
+  | `count()` | number of elements (`long`) |
+  | `reduce(...)` | combine all into one value |
+  | `min(cmp)` / `max(cmp)` | an `Optional` |
+  | `findFirst()` / `findAny()` | an `Optional` |
+  | `anyMatch` / `allMatch` / `noneMatch` | `boolean` |
+
+  ### map vs flatMap
+  `map` is **one in, one out**. `flatMap` is **one in, many out**, then everything is flattened into a single stream.
+  ```java
+  List<List<Integer>> nested = List.of(List.of(1, 2), List.of(3), List.of(4, 5));
+  nested.stream().flatMap(List::stream).toList();   // [1, 2, 3, 4, 5]
+  ```
+  With `map(List::stream)` you'd get a stream of streams instead, which is rarely what you want.
+
+  ### reduce
+  `reduce` combines elements step by step into one value:
+  ```java
+  int sum = Stream.of(1, 2, 3, 4).reduce(0, (a, b) -> a + b);   // 10
+  // 0+1=1, 1+2=3, 3+3=6, 6+4=10
+  Optional<Integer> max = Stream.of(5, 9, 2).reduce(Integer::max); // Optional[9]
+  ```
+  With a starting value (**identity**, here 0) you get a plain value; without one you get an `Optional` because the stream could be empty.
+
+  ### Collectors: the power tools
+  | Collector | Result |
+  |---|---|
+  | `Collectors.toList()`, `toSet()` | List / Set |
+  | `Collectors.toMap(keyFn, valueFn)` | Map (throws on duplicate keys unless you pass a merge function) |
+  | `Collectors.joining(", ")` | one String |
+  | `Collectors.groupingBy(fn)` | `Map<key, List<element>>` |
+  | `Collectors.groupingBy(fn, Collectors.counting())` | `Map<key, Long>` counts |
+  | `Collectors.partitioningBy(pred)` | `Map<Boolean, List>`: true group and false group |
+  | `Collectors.averagingInt(fn)`, `summingInt(fn)` | numbers |
+
+  ```java
+  Map<Integer, List<String>> byLen = names.stream()
+      .collect(Collectors.groupingBy(String::length));
+  Map<Character, Long> freq = "banana".chars()
+      .mapToObj(c -> (char) c)
+      .collect(Collectors.groupingBy(c -> c, Collectors.counting()));
+  ```
+  `groupingBy` returns a `HashMap` by default, so the key order isn't promised. Pass `TreeMap::new` as the second argument for sorted keys: `groupingBy(fn, TreeMap::new, Collectors.counting())`.
+
+  ### Laziness and short-circuiting
+  Because streams are lazy, each element goes through the **whole pipeline** before the next one starts, and **short-circuiting** terminals like `findFirst`, `anyMatch` and `limit` stop as soon as they have the answer. So a stream can even process an **infinite** source: `Stream.iterate(1, x -> x * 2).limit(5)` gives 1, 2, 4, 8, 16.
+
+  ### Common interview patterns
+  ```java
+  // second highest distinct number
+  nums.stream().distinct().sorted(Comparator.reverseOrder()).skip(1).findFirst();
+  // sum of squares of even numbers
+  nums.stream().filter(n -> n % 2 == 0).mapToInt(n -> n * n).sum();
+  // names joined
+  names.stream().map(String::toUpperCase).collect(Collectors.joining(", "));
+  ```
+
+  ### Parallel streams (one line)
+  `list.parallelStream()` splits work across CPU cores. Useful only for big, CPU-heavy work with no shared mutable state; for small lists it is often **slower**. Mention it, but don't overuse it.
+tinyCode:
+  code: |
+    import java.util.*;
+    import java.util.stream.*;
+
+    public class StreamTour {
+        public static void main(String[] args) {
+            List<Integer> nums = List.of(4, 7, 2, 9, 4, 6);
+
+            List<Integer> evenSquares = nums.stream()
+                .filter(n -> n % 2 == 0)
+                .map(n -> n * n)
+                .collect(Collectors.toList());
+            System.out.println(evenSquares);
+
+            int sum = nums.stream().reduce(0, Integer::sum);
+            System.out.println(sum);
+
+            Optional<Integer> secondHighest = nums.stream()
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .skip(1)
+                .findFirst();
+            System.out.println(secondHighest.get());
+
+            List<String> names = List.of("Asha", "Ravi", "Anu", "Kiran", "Raj");
+            Map<Character, List<String>> byFirst = names.stream()
+                .collect(Collectors.groupingBy(s -> s.charAt(0), TreeMap::new, Collectors.toList()));
+            System.out.println(byFirst);
+        }
+    }
+  walkthrough: |
+    - `filter` keeps the even numbers 4, 2, 4, 6; `map` squares them; `collect` gathers them: `[16, 4, 16, 36]`. Duplicates stay because we didn't call `distinct()`.
+    - `reduce(0, Integer::sum)` adds everything starting from 0: 4+7+2+9+4+6 = `32`.
+    - Second highest: `distinct()` -> 4, 7, 2, 9, 6; sorted descending -> 9, 7, 6, 4, 2; `skip(1)` drops 9; `findFirst()` gives `7`.
+    - `groupingBy(s -> s.charAt(0), TreeMap::new, toList())` groups names by first letter into a **TreeMap**, so keys print in sorted order.
+
+    Output:
+    ```
+    [16, 4, 16, 36]
+    32
+    7
+    {A=[Asha, Anu], K=[Kiran], R=[Ravi, Raj]}
+    ```
+tryIt:
+  instructions: "Type this word-frequency program, a very common practice question. Then change the sentence and add .filter(w -> w.length() > 2) before collect to ignore short words."
+  code: |
+    import java.util.*;
+    import java.util.stream.*;
+
+    public class WordFreq {
+        public static void main(String[] args) {
+            String text = "the cat and the dog and the bird";
+            Map<String, Long> freq = Arrays.stream(text.split(" "))
+                .collect(Collectors.groupingBy(w -> w, TreeMap::new, Collectors.counting()));
+            System.out.println(freq);
+
+            List<List<String>> teams = List.of(List.of("Asha", "Ravi"), List.of("Anu"));
+            List<String> everyone = teams.stream()
+                .flatMap(List::stream)
+                .map(String::toUpperCase)
+                .toList();
+            System.out.println(everyone);
+        }
+    }
+predict:
+  code: |
+    import java.util.stream.*;
+
+    public class Lazy {
+        public static void main(String[] args) {
+            Stream<String> s = Stream.of("a", "bb", "ccc")
+                .filter(x -> {
+                    System.out.println("filter " + x);
+                    return x.length() > 1;
+                })
+                .map(x -> {
+                    System.out.println("map " + x);
+                    return x.toUpperCase();
+                });
+            System.out.println("pipeline built");
+            System.out.println(s.findFirst().get());
+        }
+    }
+  expectedOutput: |
+    pipeline built
+    filter a
+    filter bb
+    map bb
+    BB
+  explanation: |
+    Building the pipeline runs **nothing**: intermediate operations are lazy, so "pipeline built" prints first. `findFirst()` (terminal) starts the work. Elements flow **one at a time** through the whole pipeline: "a" fails the filter; "bb" passes the filter and is mapped to "BB". `findFirst` now has its answer and **short-circuits**, so "ccc" is never even filtered.
+commonMistakes:
+  - "Writing a pipeline with only intermediate operations and expecting something to happen. Without a terminal operation, nothing runs."
+  - "Reusing a stream after a terminal operation: IllegalStateException (stream has already been operated upon or closed). Create a new one."
+  - "Using map when you need flatMap for nested lists: you get a Stream of Lists or Streams instead of a flat stream."
+  - "Using Collectors.toMap with duplicate keys and no merge function: IllegalStateException (Duplicate key)."
+  - "Expecting groupingBy to give sorted keys. It returns a HashMap; pass TreeMap::new for sorted order."
+  - "Trying to add to a list returned by stream.toList(). It's unmodifiable; use collect(Collectors.toList()) or new ArrayList<>(...)."
+interviewBox:
+  why: "Why interviewers ask this: streams test lambdas, collections and functional thinking together, and stream one-liners are a quick way to judge modern Java fluency."
+  questions:
+    - q: "What is the difference between intermediate and terminal operations?"
+      a: "Intermediate operations like filter, map and sorted return a new stream and are lazy, so they don't run by themselves. Terminal operations like collect, forEach, count and reduce produce a result or side effect, and they trigger the whole pipeline. After a terminal operation the stream is used up."
+    - q: "What does lazy evaluation mean in streams?"
+      a: "It means nothing is processed until a terminal operation is called. Then each element goes through the whole pipeline one by one, and short-circuiting operations like findFirst or limit can stop early. This saves work and even allows infinite streams with limit."
+    - q: "What is the difference between map and flatMap?"
+      a: "map converts each element into exactly one new element. flatMap converts each element into a stream of elements and then flattens all of them into one stream. For example, flatMap turns a list of lists into a single list of items."
+    - q: "Count the frequency of each character in a string using streams."
+      a: "str.chars().mapToObj(c -> (char) c).collect(Collectors.groupingBy(c -> c, Collectors.counting())). chars gives an IntStream, mapToObj turns each into a Character, and groupingBy with counting builds a map of character to count."
+    - q: "Find the second highest number in a list with streams."
+      a: "list.stream().distinct().sorted(Comparator.reverseOrder()).skip(1).findFirst(). distinct removes duplicates, the reverse sort puts the highest first, skip 1 drops the highest, and findFirst returns the second as an Optional."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      List<Integer> r = Stream.of(5, 3, 8, 1, 8)
+          .filter(n -> n > 2)
+          .distinct()
+          .sorted()
+          .map(n -> n * 10)
+          .toList();
+      System.out.println(r);
+    options: ["[30, 50, 80]", "[50, 30, 80, 80]", "[30, 50, 80, 80]", "[10, 30, 50, 80]"]
+    answer: 0
+    explanation: "filter keeps 5, 3, 8, 8 (1 is dropped). distinct removes the second 8. sorted gives 3, 5, 8, and map multiplies by 10. '[30, 50, 80, 80]' forgets distinct; '[10, ...]' forgets the filter."
+  - id: q2
+    type: MCQ
+    prompt: "Which of these is a TERMINAL operation?"
+    code: null
+    options: ["filter", "map", "sorted", "collect"]
+    answer: 3
+    explanation: "collect produces a result and triggers the pipeline. filter, map and sorted all return a new Stream, so they are intermediate and lazy."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This compiles, but crashes at runtime. Why?"
+    code: |
+      Stream<String> s = Stream.of("x", "y", "z");
+      System.out.println(s.count());
+      System.out.println(s.findFirst().get());
+    options:
+      - "count() is not a valid stream method"
+      - "A stream can be used only once; after count() it is consumed, so findFirst() throws IllegalStateException"
+      - "findFirst() needs a Comparator"
+      - "Stream.of cannot hold Strings"
+    answer: 1
+    explanation: "count() is a terminal operation and closes the stream. Calling another operation on it throws IllegalStateException: stream has already been operated upon or closed. Create a new stream (e.g. from a list) each time."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      List<List<Integer>> nested = List.of(List.of(1, 2), List.of(3), List.of(4, 5));
+      int total = nested.stream()
+          .flatMap(List::stream)
+          .mapToInt(Integer::intValue)
+          .sum();
+      System.out.println(total + " " + nested.size());
+    options: ["15 3", "15 5", "3 3", "6 3"]
+    answer: 0
+    explanation: "flatMap flattens the three lists into 1, 2, 3, 4, 5, which sum to 15. The source list is never changed by a stream, so nested still has 3 inner lists. '15 5' wrongly assumes flatMap changed the original."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "In a stream pipeline, all elements finish the filter step before any element starts the map step."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Streams process elements one at a time through the whole pipeline (vertical processing). That's why short-circuit operations like findFirst can stop early."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the collector that groups employees by department."
+    code: |
+      Map<String, List<Employee>> byDept = employees.stream()
+          .collect(Collectors.____(Employee::getDept));
+    acceptedAnswers: ["groupingBy"]
+    explanation: "Collectors.groupingBy(classifier) builds a Map from the classifier's result to a List of matching elements. partitioningBy would split into only true/false groups."
+  - id: q7
+    type: MATCH
+    prompt: "Match each stream operation to what it does"
+    pairs:
+      - left: "map"
+        right: "Converts each element into one new element"
+      - left: "flatMap"
+        right: "Turns each element into a stream and flattens them"
+      - left: "reduce"
+        right: "Combines all elements into a single value"
+      - left: "partitioningBy"
+        right: "Splits elements into a true group and a false group"
+      - left: "limit"
+        right: "Keeps only the first n elements"
+    explanation: "These are the core building blocks; most stream interview answers combine two or three of them."
+  - id: q8
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      Map<Boolean, Long> parts = Stream.of(3, 8, 10, 7, 2)
+          .collect(Collectors.partitioningBy(n -> n % 2 == 0, Collectors.counting()));
+      System.out.println(parts);
+    options: ["{false=2, true=3}", "{true=3, false=2}", "{false=[3, 7], true=[8, 10, 2]}", "{even=3, odd=2}"]
+    answer: 0
+    explanation: "partitioningBy always has two keys, false and true, printed false first. With counting(), the values are counts: 2 odd numbers (3, 7) and 3 even ones (8, 10, 2). The list version would need no downstream collector."
+explainBack:
+  prompt: "Explain to a friend what a Java stream is, the difference between intermediate and terminal operations, and what 'lazy' means. Use one example pipeline."
+  rubric:
+    - "I said a stream processes data from a source without storing or changing it"
+    - "I explained intermediate operations (filter, map) return streams and are lazy"
+    - "I explained terminal operations (collect, count, reduce) trigger the work and end the stream"
+    - "I explained elements flow one at a time and short-circuiting"
+    - "I gave a real example pipeline, like filter then map then collect"
+  modelAnswer: |
+    A stream is like an assembly line for data. I take a source, like a list of names, pass it through steps, and get a result, without changing the original list. Steps like filter and map are intermediate: they just describe the work and return another stream. Nothing happens until a terminal step like collect, count or reduce is called. That's lazy evaluation. Then each element goes through the whole line one at a time, so findFirst can stop as soon as it finds an answer. For example, names.stream().filter(n -> n.startsWith("A")).map(String::toUpperCase).toList() gives the A-names in capitals. And a stream can only be used once.
+flashcards:
+  - front: "Intermediate vs terminal operations"
+    back: "Intermediate (filter, map, sorted, distinct) return a Stream and are lazy. Terminal (collect, forEach, count, reduce, findFirst) produce a result and run the pipeline."
+  - front: "map vs flatMap"
+    back: "map: one in, one out. flatMap: one in, a stream out, then flattened into one stream."
+  - front: "Frequency map with streams"
+    back: "collect(Collectors.groupingBy(x -> x, Collectors.counting()))"
+  - front: "Can a stream be reused?"
+    back: "No. After a terminal operation, using it again throws IllegalStateException."
+  - front: "reduce with and without identity"
+    back: "reduce(0, Integer::sum) returns a value; reduce(Integer::max) returns an Optional (stream may be empty)."
+  - front: "Second highest with streams"
+    back: "distinct().sorted(Comparator.reverseOrder()).skip(1).findFirst()"
+keyTakeaways:
+  - "Pipeline = source + lazy intermediate operations + one terminal operation."
+  - "Streams don't modify the source and can be used only once."
+  - "Elements flow one by one; findFirst, anyMatch and limit short-circuit."
+  - "map transforms, filter selects, flatMap flattens, reduce combines, collect gathers."
+  - "groupingBy, counting, partitioningBy and joining solve most stream interview questions."

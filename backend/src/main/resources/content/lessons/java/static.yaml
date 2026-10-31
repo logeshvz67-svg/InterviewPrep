@@ -1,0 +1,364 @@
+slug: static
+world: JAVA_CORE
+section: C
+order: 4
+title: "static: variables, methods, blocks"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Frequent in SP and DSE output questions and theory rounds: shared counters, static blocks running before main, and 'why is main static?'."
+otherCompanies: "A frequent output and theory topic at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  You've typed `public static void main` many times. Now it's time to understand that `static`.
+
+  `static` decides whether something belongs to **each object** or to the **class as a whole**. It appears in:
+  - Theory questions: "Why is `main` static?", "Can a static method use instance variables?", "Can we override static methods?"
+  - Output questions: shared counters, static blocks that print **before** `main`.
+  - Everyday code: `Math.max`, `Integer.parseInt`, `Arrays.sort` are all static methods you call without creating objects.
+analogy: |
+  Think of a **classroom**.
+
+  - Each student has their **own notebook**. Writing in Ravi's notebook doesn't change Priya's. Those are **instance variables** (one per object).
+  - The classroom has **one whiteboard** on the wall. Everyone sees the same board; if anyone writes on it, everybody sees the change. That's a **static variable** (one per class).
+  - The **class teacher** can take attendance without needing any particular student to be present. That's a **static method**: it works at class level, no object needed.
+  - Every morning, before any lesson, the **room is unlocked and the fans switched on, once**. That's a **static block**: it runs once, when the class is first loaded.
+visual:
+  diagram: |
+    class Student {
+        String name;            // instance: one per object
+        static int count = 0;   // static: ONE for the whole class
+        Student(String n) { name = n; count++; }
+    }
+
+    new Student("Ravi");  new Student("Priya");  new Student("Arjun");
+
+      CLASS AREA (one copy)          HEAP (one per object)
+      +--------------------+         +--------------+
+      | Student.count = 3  |<---+    | name="Ravi"  |
+      +--------------------+    |    +--------------+
+                                +----| name="Priya" |  all three
+                                |    +--------------+  share count
+                                +----| name="Arjun" |
+                                     +--------------+
+  caption: "Instance fields live inside each object. A static field exists once per class and is shared by every object."
+  visualizer: null
+explanation: |
+  ### The core idea
+  - **Instance member** (no `static`): belongs to an **object**. Each object has its own copy.
+  - **Static member**: belongs to the **class**. There is exactly **one copy**, shared by all objects, and it exists even if you create **zero** objects.
+
+  You access static members with the **class name**: `Student.count`, `Math.max(3, 7)`.
+
+  ### Static variables
+  A **static variable** (also called a *class variable*) is shared. Typical uses: counters, constants, shared settings.
+  ```java
+  class Student {
+      String name;              // each student's own
+      static int count = 0;     // shared by all students
+
+      Student(String name) {
+          this.name = name;
+          count++;              // every new student increases the ONE counter
+      }
+  }
+  ```
+  Constants are usually `static final`: `static final double PI = 3.14159;` (one copy, never changes).
+
+  Static variables are created when the class is **loaded** into the JVM (once), and get default values like instance fields (0, false, null).
+
+  ### Static methods
+  A **static method** belongs to the class, so you can call it **without creating an object**: `Student.getCount()`. That's exactly why `main` is static: when the program starts, no object exists yet, so the JVM must be able to call `main` directly on the class.
+
+  Rules for static methods:
+  | Can a static method... | Answer |
+  |---|---|
+  | use static variables and call other static methods? | **Yes** |
+  | use instance variables or instance methods directly? | **No** (compile error) |
+  | use `this` or `super`? | **No**, there is no current object |
+  | use instance members through an object reference? | **Yes**, e.g. `s.name` where `s` is a Student |
+
+  Why not instance variables? If you call `Student.getCount()`, **which** student's `name` would it mean? There is no "current student", so Java forbids it.
+
+  Instance methods, on the other hand, **can** use both instance and static members.
+
+  ### Static blocks
+  A **static block** (or *static initializer*) is a block of code marked `static { ... }`. It runs **once**, automatically, when the class is **loaded and initialised**, which is before any object is created and, for the class holding `main`, **before `main` runs**.
+  ```java
+  class Config {
+      static String url;
+      static {
+          url = "jdbc:mysql://localhost/test";
+          System.out.println("Config loaded");
+      }
+  }
+  ```
+  Use it to set up static variables that need more than one line (loading settings, filling a lookup table). If a class has several static blocks, they run **top to bottom** in the order written. (The full ordering with instance blocks and constructors is lesson C6.)
+
+  ### Can static methods be overridden?
+  **No.** If a child class declares a static method with the same signature, it **hides** the parent's method; it doesn't override it. Which one runs depends on the **reference type** at compile time, not on the actual object. (More in the overloading vs overriding lesson.)
+
+  ### A famous trap: static through a null reference
+  ```java
+  Student s = null;
+  System.out.println(s.count);   // works! prints the count, no exception
+  ```
+  Because `count` is static, the compiler turns `s.count` into `Student.count`; the object isn't needed. It's legal but confusing, so always write `ClassName.member`.
+
+  ### Other things to know
+  - **Local variables can't be static** (`static int x = 0;` inside a method is a compile error).
+  - **Top-level classes can't be static**; only nested classes can (lesson C12).
+  - **`import static`** lets you use static members without the class name: `import static java.lang.Math.max;` then `max(3, 7)`.
+
+  ### Instance vs static at a glance
+  | | Instance member | Static member |
+  |---|---|---|
+  | Belongs to | Each object | The class |
+  | Copies | One per object | One in total |
+  | Access | `obj.member` | `ClassName.member` |
+  | Created | When the object is created (`new`) | When the class is loaded |
+  | Can use `this` | Yes | No |
+tinyCode:
+  code: |
+    public class StaticDemo {
+        static class Student {
+            String name;
+            static int count = 0;
+
+            static {
+                System.out.println("Student class loaded");
+            }
+
+            Student(String name) {
+                this.name = name;
+                count++;
+            }
+
+            static int getCount() {
+                return count;
+            }
+        }
+
+        public static void main(String[] args) {
+            System.out.println("main started");
+            Student a = new Student("Ravi");
+            Student b = new Student("Priya");
+            System.out.println(Student.getCount());
+            System.out.println(a.name + " " + b.name);
+            a.count = 10;
+            System.out.println(b.count + " " + Student.count);
+        }
+    }
+  walkthrough: |
+    - `main started` prints first. The `Student` class is loaded only when it's **first used** (at `new Student("Ravi")`), so its static block prints `Student class loaded` right then, and only **once**, even though we create two objects.
+    - Each constructor call does `count++` on the **one shared** counter. After two students, `getCount()` returns `2`.
+    - Names are per-object: `Ravi Priya`.
+    - `a.count = 10` looks like it changes `a`'s count, but there is only **one** `count`. So `b.count` and `Student.count` both show `10`.
+
+    Output:
+    ```
+    main started
+    Student class loaded
+    2
+    Ravi Priya
+    10 10
+    ```
+tryIt:
+  instructions: "Type this ticket counter. Every Ticket gets a unique number from a shared static counter. Run it. Then remove the word static from nextNumber and delete the last println line (Ticket.nextNumber only works for a static field). Run again and see how every ticket now gets number 1."
+  code: |
+    public class TicketCounter {
+        static class Ticket {
+            static int nextNumber = 1;
+            int number;
+            String passenger;
+
+            Ticket(String passenger) {
+                this.passenger = passenger;
+                this.number = nextNumber;
+                nextNumber++;
+            }
+        }
+
+        public static void main(String[] args) {
+            Ticket t1 = new Ticket("Ravi");
+            Ticket t2 = new Ticket("Priya");
+            Ticket t3 = new Ticket("Arjun");
+            System.out.println(t1.passenger + " #" + t1.number);
+            System.out.println(t2.passenger + " #" + t2.number);
+            System.out.println(t3.passenger + " #" + t3.number);
+            System.out.println("Next: " + Ticket.nextNumber);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static int x = 5;
+        int y = 5;
+
+        static {
+            x = x * 2;
+            System.out.println("static block x=" + x);
+        }
+
+        public static void main(String[] args) {
+            System.out.println("main x=" + x);
+            Predict p1 = new Predict();
+            Predict p2 = new Predict();
+            p1.x++;
+            p1.y++;
+            System.out.println(p2.x + " " + p2.y);
+        }
+    }
+  expectedOutput: |
+    static block x=10
+    main x=10
+    11 5
+  explanation: |
+    - `Predict` holds `main`, so the JVM loads it before calling `main`. Its static block runs first: `x` becomes 10 and prints `static block x=10`.
+    - Then `main` runs: `main x=10`.
+    - `p1.x++` increments the **shared** static `x` to 11, so `p2.x` is 11.
+    - `p1.y++` changes only `p1`'s own `y`. `p2.y` is still 5.
+commonMistakes:
+  - "Using an instance variable directly inside a static method (like main). Compile error: create an object or make it static."
+  - "Thinking each object has its own copy of a static variable. There is only one, shared."
+  - "Using this inside a static method."
+  - "Believing static methods can be overridden. A child's static method only hides the parent's."
+  - "Expecting s.count to throw NullPointerException when s is null. Static access ignores the object."
+  - "Declaring a local variable as static inside a method (compile error)."
+interviewBox:
+  why: "Why interviewers ask this: static decides object-level vs class-level, and getting it wrong causes real bugs (shared state) and compile errors in timed tests."
+  questions:
+    - q: "Why is the main method static?"
+      a: "Because when the program starts, no object exists yet. Making main static lets the JVM call it directly on the class, without creating an object first."
+    - q: "What is the difference between a static and an instance variable?"
+      a: "An instance variable belongs to each object, so every object has its own copy. A static variable belongs to the class, so there's only one copy shared by all objects. It is created when the class is loaded, and we access it with the class name."
+    - q: "Can a static method access instance variables?"
+      a: "Not directly, because a static method doesn't run on any object, so there is no 'this'. It can access them only through an object reference, like obj.name."
+    - q: "When does a static block run?"
+      a: "Once, when the class is loaded and initialised, before any object is created. For the class that contains main, it runs before main. Multiple static blocks run top to bottom."
+    - q: "Can we override a static method?"
+      a: "No. If the child declares the same static method, it hides the parent's version. Which one is called depends on the reference type, not the actual object, so there is no runtime polymorphism."
+quiz:
+  - id: q1
+    type: SPOT_THE_BUG
+    prompt: "Why does this fail to compile?"
+    code: |
+      public class Main {
+          int score = 50;
+          public static void main(String[] args) {
+              score = score + 10;
+              System.out.println(score);
+          }
+      }
+    options:
+      - "score must be initialised inside main"
+      - "main is static and score is an instance variable; a static method can't use it without an object"
+      - "println can't print an int"
+      - "score + 10 overflows"
+    answer: 1
+    explanation: "A static method has no current object, so it can't know whose score to use. Fix: make score static, or create an object: Main m = new Main(); m.score += 10;. The initialisation is fine; the static context is the problem."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      class Counter {
+          static int s = 0;
+          int i = 0;
+          Counter() { s++; i++; }
+      }
+      public class Main {
+          public static void main(String[] args) {
+              Counter a = new Counter();
+              Counter b = new Counter();
+              Counter c = new Counter();
+              System.out.println(c.s + " " + c.i);
+          }
+      }
+    options: ["1 1", "3 3", "3 1", "1 3"]
+    answer: 2
+    explanation: "s is static, so all three constructors increase the same counter: 3. i is an instance field; each object starts at 0 and increments its own copy once: 1. \"3 3\" is the trap of treating i as shared."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "A static block runs every time a new object of the class is created."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A static block runs only once, when the class is loaded and initialised. Code that runs for every new object is an instance block or a constructor."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      class Bank {
+          static String name = "SBI";
+      }
+      public class Main {
+          public static void main(String[] args) {
+              Bank b = null;
+              System.out.println(b.name);
+          }
+      }
+    options: ["null", "SBI", "NullPointerException", "Compile error"]
+    answer: 1
+    explanation: "name is static, so b.name is compiled as Bank.name and the null reference is never used. It prints SBI. NullPointerException is the natural guess, and it WOULD happen for an instance field."
+  - id: q5
+    type: MCQ
+    prompt: "Why is Math.max(3, 7) called on the class name instead of on a Math object?"
+    options:
+      - "Because Math is an interface"
+      - "Because max is a static method; it belongs to the class and needs no object"
+      - "Because Math objects are created automatically"
+      - "Because max is private"
+    answer: 1
+    explanation: "Static methods are called with the class name. In fact Math has a private constructor, so you can't even create a Math object. It is a class, not an interface."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill the keyword so all Player objects share ONE total count."
+    code: |
+      class Player {
+          ____ int totalPlayers = 0;
+          Player() { totalPlayers++; }
+      }
+    acceptedAnswers: ["static"]
+    explanation: "static makes totalPlayers a class variable: one copy for all objects. Without static, each Player would have its own counter that only ever reaches 1."
+  - id: q7
+    type: MATCH
+    prompt: "Match each item to the correct fact"
+    pairs:
+      - left: "Static variable"
+        right: "One copy shared by all objects"
+      - left: "Instance variable"
+        right: "A separate copy inside each object"
+      - left: "Static block"
+        right: "Runs once when the class is loaded"
+      - left: "Static method"
+        right: "Called with the class name; cannot use this"
+    explanation: "static = class level (one copy, no object needed); instance = object level (one per object)."
+explainBack:
+  prompt: "Explain to a friend the difference between static and instance members, why main is static, and when a static block runs. Use the classroom whiteboard idea."
+  rubric:
+    - "I said static members belong to the class, one shared copy"
+    - "I said instance members belong to each object"
+    - "I said static methods can't use instance members or this directly"
+    - "I explained why main is static"
+    - "I said a static block runs once when the class loads"
+  modelAnswer: |
+    Instance members are like each student's own notebook: every object has its own copy. Static members are like the single whiteboard in the classroom: one copy that belongs to the class and is shared by every object. So if I count students with a static counter, every new student updates the same number. A static method works at class level, so I can call it without any object, which is exactly why main is static: when the program starts, there are no objects yet. But because there's no current object, a static method can't use this or instance variables directly. A static block runs only once, when the class is first loaded, so it's good for one-time setup.
+flashcards:
+  - front: "Static vs instance variable"
+    back: "Static: one copy per class, shared, accessed by ClassName. Instance: one copy per object."
+  - front: "Why is main static?"
+    back: "The JVM must call it before any object exists, so it must belong to the class."
+  - front: "Can a static method use instance variables?"
+    back: "Not directly (no this). Only through an object reference."
+  - front: "When does a static block run?"
+    back: "Once, when the class is loaded/initialised; before main for the main class. Multiple blocks run top to bottom."
+  - front: "Can static methods be overridden?"
+    back: "No. A same-signature static method in the child HIDES the parent's (method hiding)."
+  - front: "ClassRef s = null; s.staticField?"
+    back: "Works, no NullPointerException: static access uses the class, not the object."
+keyTakeaways:
+  - "static means 'belongs to the class': one shared copy, no object needed."
+  - "Static methods can't use this or instance members directly; instance methods can use both."
+  - "main is static so the JVM can call it before any object exists."
+  - "A static block runs once when the class is loaded, before main for the main class."
+  - "Static methods are hidden, not overridden; access static members with the class name."

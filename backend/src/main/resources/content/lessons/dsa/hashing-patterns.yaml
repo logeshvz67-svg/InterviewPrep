@@ -1,0 +1,351 @@
+slug: hashing-patterns
+world: DSA
+section: DSA
+order: 5
+title: "Hashing patterns"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: HASHING
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE coding rounds: frequency counting, duplicate detection and two-sum style lookups appear inside a huge number of problems."
+otherCompanies: "Very common everywhere: character frequency and first non-repeating character in TCS-style questions; two-sum and group anagrams in product-company interviews."
+why: |
+  The single most useful trick in coding rounds is: **"Can I remember what I've already seen, so I don't search again?"** A `HashMap` or `HashSet` answers "have I seen X?" or "how many X?" in **O(1) on average**.
+
+  That one idea turns many O(n^2) brute-force solutions (compare every pair) into **O(n)**:
+  - count frequencies of characters or numbers,
+  - find duplicates or the first repeating / non-repeating element,
+  - two-sum (find two numbers that add to a target) in an unsorted array,
+  - group words that are anagrams.
+
+  You'll also learn **when hashing beats sorting** and when it doesn't, which is a common follow-up question.
+analogy: |
+  Think of the **pigeonhole mailboxes** in a hostel office, one per room number.
+
+  - When a letter comes for room 214, the warden doesn't search through a pile. He **computes** where it goes (box 214) and drops it there: instant.
+  - To check "is there a letter for room 214?", he looks in **one box**, not the whole pile.
+
+  A hash table works the same way: a **hash function** turns a key (a word, a number) into a box number (a **bucket**), so storing and finding are both instant. Sometimes two keys land in the same box (a **collision**); then the warden checks the few letters inside that box.
+visual:
+  diagram: |
+    FREQUENCY COUNT of "banana"            HashMap<Character,Integer>
+    read b -> b:1                         +--------+-------+
+    read a -> a:1                         |  key   | count |
+    read n -> n:1                         +--------+-------+
+    read a -> a:2                         |   b    |   1   |
+    read n -> n:2                         |   a    |   3   |
+    read a -> a:3                         |   n    |   2   |
+                                          +--------+-------+
+
+    TWO SUM, nums = [2, 7, 11, 15], target = 9
+    i=0: need 9-2=7  seen? no   -> store {2:0}
+    i=1: need 9-7=2  seen? YES at index 0  -> answer [0, 1]
+  caption: "Frequency counting stores how many times each key appears. Two-sum asks 'have I already seen the number I need?' in O(1) instead of rescanning."
+  visualizer: null
+explanation: |
+  ### Key words
+  - **HashSet**: stores unique values. Answers "is X in the set?" in O(1) average.
+  - **HashMap**: stores **key -> value** pairs. Answers "what is the value for key X?" in O(1) average.
+  - **Average O(1)**: usually instant; in the rare worst case (many collisions) slower. Java 8+ turns crowded buckets into trees, so the worst case is O(log n) per operation.
+
+  ### Pattern 1: frequency counting
+  ```java
+  Map<Character, Integer> freq = new HashMap<>();
+  for (char c : s.toCharArray()) {
+      freq.put(c, freq.getOrDefault(c, 0) + 1);   // or freq.merge(c, 1, Integer::sum)
+  }
+  ```
+  Uses: anagram check, most frequent element, first non-repeating character, "can you build word A from letters of B?".
+
+  **Shortcut**: for only lowercase letters, an `int[26]` array is faster and simpler: `count[c - 'a']++`.
+
+  **First non-repeating character**: count everything in pass 1, then in pass 2 walk the string **in its original order** and return the first char with count 1. (Don't loop over the HashMap: its order is not the string's order.)
+
+  ### Pattern 2: the seen-set
+  "Have I seen this before?"
+  ```java
+  Set<Integer> seen = new HashSet<>();
+  for (int x : arr) {
+      if (!seen.add(x)) {          // add returns false if x was already there
+          System.out.println("First duplicate: " + x);
+          break;
+      }
+  }
+  ```
+  Uses: contains-duplicate, first repeating element, longest consecutive sequence, intersection of two arrays.
+
+  ### Pattern 3: complement lookup (two-sum)
+  Find two indexes whose values add up to `target` in an **unsorted** array.
+  ```java
+  Map<Integer, Integer> indexOf = new HashMap<>();   // value -> index
+  for (int i = 0; i < nums.length; i++) {
+      int need = target - nums[i];                   // the complement
+      if (indexOf.containsKey(need)) {
+          return new int[]{indexOf.get(need), i};
+      }
+      indexOf.put(nums[i], i);                       // store AFTER checking
+  }
+  ```
+  - **Check first, then store**: otherwise for target 6 and value 3, the number would pair with itself.
+  - O(n) time, O(n) space. Brute force is O(n^2); sort + two pointers is O(n log n) but loses the original indexes.
+
+  ### Pattern 4: grouping by a key (group anagrams)
+  **Anagrams** are words with the same letters in a different order ("eat", "tea", "ate"). Give every word a **signature** that is the same for all its anagrams, and group by it.
+  ```java
+  Map<String, List<String>> groups = new HashMap<>();
+  for (String w : words) {
+      char[] chars = w.toCharArray();
+      Arrays.sort(chars);
+      String key = new String(chars);            // "eat" -> "aet"
+      groups.computeIfAbsent(key, x -> new ArrayList<>()).add(w);
+  }
+  ```
+  `computeIfAbsent` creates the list the first time a key appears. Time O(n * L log L) for n words of length L. (A faster key: the 26 letter counts joined into a string.)
+
+  ### When does hashing beat sorting?
+  | | Hashing | Sorting |
+  |---|---|---|
+  | Time | O(n) average | O(n log n) |
+  | Extra space | O(n) | O(1) to O(n) |
+  | Keeps original indexes | Yes | No (unless you store them) |
+  | Gives order (smallest, k-th, ranges) | No | Yes |
+  | Worst case | Degrades with many collisions | Guaranteed |
+  **Rule of thumb**: need "seen?", "how many?", or "where was it?" -> hash. Need order, sorted output, or O(1) extra memory -> sort.
+
+  ### Choosing the map type
+  - `HashMap`: fastest, **no order**.
+  - `LinkedHashMap`: keeps **insertion order**.
+  - `TreeMap`: keeps keys **sorted**, O(log n) operations.
+
+  ### Custom keys
+  If you use your own class as a key, override **both `equals()` and `hashCode()`**, using the same fields. Otherwise lookups fail. (Records do this for you.)
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class HashingPatterns {
+        static int[] twoSum(int[] nums, int target) {
+            Map<Integer, Integer> indexOf = new HashMap<>();
+            for (int i = 0; i < nums.length; i++) {
+                int need = target - nums[i];
+                if (indexOf.containsKey(need)) {
+                    return new int[]{indexOf.get(need), i};
+                }
+                indexOf.put(nums[i], i);
+            }
+            return new int[]{-1, -1};
+        }
+
+        static char firstUnique(String s) {
+            int[] count = new int[26];
+            for (char c : s.toCharArray()) count[c - 'a']++;
+            for (char c : s.toCharArray()) {
+                if (count[c - 'a'] == 1) return c;
+            }
+            return '_';
+        }
+
+        public static void main(String[] args) {
+            Map<Character, Integer> freq = new TreeMap<>();
+            for (char c : "banana".toCharArray()) {
+                freq.put(c, freq.getOrDefault(c, 0) + 1);
+            }
+            System.out.println(freq);
+
+            System.out.println(Arrays.toString(twoSum(new int[]{2, 7, 11, 15}, 9)));
+            System.out.println(firstUnique("leetcode"));
+
+            Set<Integer> seen = new HashSet<>();
+            for (int x : new int[]{4, 1, 3, 1, 4}) {
+                if (!seen.add(x)) { System.out.println("dup " + x); break; }
+            }
+        }
+    }
+  walkthrough: |
+    - **Frequency**: `getOrDefault(c, 0) + 1` adds one to the count (0 if new). We used `TreeMap` here only so the printout is sorted; a `HashMap` works the same but prints in no fixed order.
+    - **twoSum**: for 2, we need 7, not seen yet, store `{2:0}`. For 7, we need 2, seen at index 0: return `[0, 1]`.
+    - **firstUnique**: an `int[26]` counts letters (`c - 'a'` turns 'a'..'z' into 0..25). The second pass goes in the string's order: 'l' has count 1, so it's the answer.
+    - **Seen-set**: `seen.add(x)` returns `false` when `x` is already present. 4 and 1 are new, 3 is new, then 1 is a repeat.
+
+    Output:
+    ```
+    {a=3, b=1, n=2}
+    [0, 1]
+    l
+    dup 1
+    ```
+tryIt:
+  instructions: "Type this group-anagrams program. It uses a TreeMap so the output order is predictable. Add the word \"tab\" to the array and run again."
+  code: |
+    import java.util.*;
+
+    public class Anagrams {
+        public static void main(String[] args) {
+            String[] words = {"eat", "tea", "tan", "ate", "nat", "bat"};
+            Map<String, List<String>> groups = new TreeMap<>();
+
+            for (String w : words) {
+                char[] chars = w.toCharArray();
+                Arrays.sort(chars);
+                String key = new String(chars);
+                groups.computeIfAbsent(key, k -> new ArrayList<>()).add(w);
+            }
+
+            for (Map.Entry<String, List<String>> e : groups.entrySet()) {
+                System.out.println(e.getKey() + " -> " + e.getValue());
+            }
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class TwoSumTrace {
+        public static void main(String[] args) {
+            int[] nums = {3, 2, 4};
+            int target = 6;
+            Map<Integer, Integer> indexOf = new HashMap<>();
+            for (int i = 0; i < nums.length; i++) {
+                int need = target - nums[i];
+                if (indexOf.containsKey(need)) {
+                    System.out.println(indexOf.get(need) + " " + i);
+                    break;
+                }
+                indexOf.put(nums[i], i);
+            }
+        }
+    }
+  expectedOutput: |
+    1 2
+  explanation: |
+    i=0: value 3 needs 3; the map is empty, so no match (3 cannot pair with itself because we check before storing). Store {3:0}. i=1: value 2 needs 4, not seen. Store {2:1}. i=2: value 4 needs 2, seen at index 1. Prints "1 2".
+commonMistakes:
+  - "In two-sum, storing the current number BEFORE checking its complement, so an element pairs with itself (e.g. 3 + 3 = 6 using one 3)."
+  - "Looping over a HashMap and expecting insertion or sorted order. Use LinkedHashMap (insertion) or TreeMap (sorted), or walk the original input."
+  - "Using map.get(key) + 1 for a new key: get returns null and unboxing throws NullPointerException. Use getOrDefault or merge."
+  - "Using your own class as a key without overriding equals() and hashCode()."
+  - "Saying HashMap is always O(1). It is O(1) on average; heavy collisions make it slower."
+interviewBox:
+  why: "Why interviewers ask this: hashing is the most common way to cut O(n^2) to O(n), and the follow-ups (collisions, order, hashing vs sorting) test real understanding."
+  questions:
+    - q: "How would you solve two-sum in an unsorted array?"
+      a: "I walk through the array once with a HashMap from value to index. For each number, I compute the complement, target minus the number, and check if it's already in the map. If yes, I return both indexes. If not, I store the current number and its index. Checking before storing avoids using the same element twice. It's O(n) time and O(n) space."
+    - q: "How do you find the first non-repeating character in a string?"
+      a: "Two passes. In the first, I count every character, using an int array of 26 for lowercase letters or a HashMap in general. In the second, I walk the string in its original order and return the first character whose count is 1. Both passes are O(n)."
+    - q: "How do you group anagrams?"
+      a: "Anagrams have the same letters, so I make a key that is the same for all of them, for example the word with its letters sorted, so eat, tea and ate all become aet. I use a HashMap from that key to a list of words, with computeIfAbsent to create each list. Each group in the map is one anagram group."
+    - q: "When would you prefer sorting over hashing?"
+      a: "Hashing gives O(n) average time for lookups and counts but uses O(n) extra memory and loses order. I'd prefer sorting when I need the elements in order, like the k-th smallest or ranges, when memory is tight, or when I need a guaranteed worst case, accepting O(n log n) time."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "You need to check whether an unsorted array of 10^5 numbers has any duplicate. Which approach is fastest on average?"
+    code: null
+    options: ["Compare every pair: O(n^2)", "Add each number to a HashSet and check if it was already there: O(n)", "Binary search each number: O(n log n) without sorting", "Use a LinkedList and contains()"]
+    answer: 1
+    explanation: "A HashSet gives O(1) average add/contains, so one pass is O(n). Comparing every pair is O(n^2). Binary search only works on sorted data, and LinkedList.contains is O(n) per call."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "First non-repeating character. What does this print?"
+    code: |
+      String s = "swiss";
+      Map<Character, Integer> freq = new HashMap<>();
+      for (char c : s.toCharArray()) freq.merge(c, 1, Integer::sum);
+      for (char c : s.toCharArray()) {
+          if (freq.get(c) == 1) {
+              System.out.println(c);
+              break;
+          }
+      }
+    options: ["s", "w", "i", "Nothing is printed"]
+    answer: 1
+    explanation: "Counts: s=3, w=1, i=1. Walking \"swiss\" in order: 's' has 3, 'w' has 1, so it prints w. 'i' also has count 1 but comes later. merge(c, 1, Integer::sum) adds 1 to the existing count (or starts at 1)."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "For nums = {3, 2, 4} and target 6, this prints [0, 0], which is wrong (the answer is [1, 2]). What is the bug?"
+    code: |
+      int[] nums = {3, 2, 4};
+      int target = 6;
+      Map<Integer, Integer> indexOf = new HashMap<>();
+      int[] ans = {-1, -1};
+      for (int i = 0; i < nums.length; i++) {
+          indexOf.put(nums[i], i);
+          int need = target - nums[i];
+          if (indexOf.containsKey(need)) {
+              ans = new int[]{indexOf.get(need), i};
+              break;
+          }
+      }
+      System.out.println(Arrays.toString(ans));
+    options:
+      - "HashMap cannot store int values"
+      - "The current number is stored before checking, so 3 finds itself as its own complement; check first, then put"
+      - "The loop should start from i = 1"
+      - "need should be nums[i] - target"
+    answer: 1
+    explanation: "At i = 0, 3 is put into the map, then need = 3 is found immediately: the same element is used twice. Moving indexOf.put after the check fixes it and gives [1, 2]. Starting at 1 would skip a valid element, and the complement formula target - nums[i] is correct."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Iterating over a HashMap always returns keys in the order they were inserted."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. HashMap has no guaranteed order; it depends on hash buckets. Use LinkedHashMap for insertion order or TreeMap for sorted order."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Frequency counting: fill the default value so a new character starts counting correctly."
+    code: |
+      for (char c : s.toCharArray()) {
+          freq.put(c, freq.getOrDefault(c, ____) + 1);
+      }
+    acceptedAnswers: ["0"]
+    explanation: "A character seen for the first time has no entry, so we treat its count as 0 and add 1. Using get(c) + 1 would throw a NullPointerException for new keys."
+  - id: q6
+    type: MATCH
+    prompt: "Match each problem to its hashing pattern"
+    pairs:
+      - left: "Most frequent element"
+        right: "Frequency map: value -> count"
+      - left: "Contains duplicate"
+        right: "Seen-set: add() returns false on repeat"
+      - left: "Two numbers adding to a target (unsorted)"
+        right: "Complement lookup: target - x in a map"
+      - left: "Group anagrams"
+        right: "Map from a signature key (sorted letters) to a list"
+    explanation: "Count, seen, complement and group-by-key are the four core hashing patterns."
+  - id: q7
+    type: MCQ
+    prompt: "You need the 3 smallest distinct values of a big array, and memory is very limited. Which is the better fit?"
+    code: null
+    options: ["HashSet, because it is O(1)", "Sorting (in place), because hashing gives no order and needs O(n) extra memory", "HashMap from value to index", "Two HashSets"]
+    answer: 1
+    explanation: "Hashing answers 'seen?' and 'how many?' fast, but it keeps no order, so it can't directly give the smallest values, and it uses O(n) extra memory. Sorting in place puts values in order with little extra memory; then you walk from the start skipping duplicates."
+explainBack:
+  prompt: "Explain to a friend how hashing makes problems faster, using the hostel mailbox example, and walk through two-sum."
+  rubric:
+    - "I explained that a hash function computes a bucket, giving O(1) average lookups"
+    - "I described at least three patterns: frequency, seen-set, complement, group-by-key"
+    - "I walked through two-sum, including 'check before storing'"
+    - "I compared hashing with sorting (time, memory, order)"
+    - "I mentioned that HashMap has no order (LinkedHashMap / TreeMap if needed)"
+  modelAnswer: |
+    A hash map is like hostel mailboxes: the warden computes the box from the room number, so storing and finding a letter is instant instead of searching a pile. That makes "have I seen this?" and "how many times?" O(1) on average. I use it to count frequencies, to detect duplicates with a seen-set, and to group anagrams by a sorted-letters key. For two-sum, I walk the array once; for each number I check if target minus that number is already in the map. If yes, I have the pair; if not, I store the number with its index. I check before storing so an element doesn't pair with itself. Hashing is O(n) but uses extra memory and loses order; if I need order or have little memory, I sort instead.
+flashcards:
+  - front: "Frequency count line"
+    back: "map.put(c, map.getOrDefault(c, 0) + 1) or map.merge(c, 1, Integer::sum)."
+  - front: "Two-sum with HashMap"
+    back: "For each x: if map has target - x, done; else map.put(x, index). O(n) time, O(n) space."
+  - front: "Seen-set trick"
+    back: "if (!set.add(x)) -> x is a duplicate."
+  - front: "Group anagrams key"
+    back: "The word's letters sorted (\"tea\" -> \"aet\"), or its 26 letter counts."
+  - front: "HashMap vs LinkedHashMap vs TreeMap"
+    back: "No order / insertion order / sorted keys (O(log n))."
+  - front: "Hashing vs sorting"
+    back: "Hashing: O(n) avg, O(n) space, no order. Sorting: O(n log n), gives order, less extra memory."
+keyTakeaways:
+  - "Hashing remembers what you've seen: O(1) average lookups turn O(n^2) into O(n)."
+  - "Four patterns: frequency count, seen-set, complement lookup, group by key."
+  - "Two-sum: check the complement first, then store the current number."
+  - "HashMap has no order; walk the original input when order matters."
+  - "Prefer sorting when you need order or must save memory."

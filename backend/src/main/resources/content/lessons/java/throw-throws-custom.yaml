@@ -1,0 +1,368 @@
+slug: throw-throws-custom
+world: JAVA_CORE
+section: D
+order: 4
+title: "throw vs throws, custom exceptions"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A common comparison question for SP and DSE; writing a small custom exception is useful practice for coding and design discussions."
+otherCompanies: "throw vs throws is a common basic question at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies also ask when to create custom exceptions."
+why: |
+  So far Java threw exceptions *for* you (divide by zero, null). Real programs also need to raise their **own** errors: "balance too low", "age cannot be negative", "user not found".
+
+  Two keywords look almost the same and confuse everyone:
+  - **throw** (no s) – actually raises an exception, right now.
+  - **throws** (with s) – a warning label on a method: "this method might throw these."
+
+  **"Difference between throw and throws?"** is a very common interview question, and **"How do you create a custom exception?"** usually follows. After this lesson you can answer both and write one in two minutes.
+analogy: |
+  Think of a **cricket match**.
+
+  - **throw** is the bowler **actually bowling the ball**. It is an action, done once, at one moment, with one real ball (one exception object).
+  - **throws** is the **team sheet before the match** saying "This bowler may bowl bouncers and yorkers." It is only a declaration. It warns the batsman (the caller) what might come.
+  - A **custom exception** is like a new named rule your local tournament adds, e.g. "BallLostInPondException". It is still a cricket rule (it extends Exception), but its name tells everyone exactly what happened.
+visual:
+  diagram: |2
+     class Bank {
+       void withdraw(int amt)  throws InsufficientFundsException {
+                               ^^^^^^ DECLARES (method signature)
+         if (amt > balance)
+           throw new InsufficientFundsException("Need " + amt);
+           ^^^^^ RAISES one object, right now
+       }
+     }
+           |                         caller must handle or declare
+           v                         (because it is CHECKED)
+     try { bank.withdraw(5000); }
+     catch (InsufficientFundsException e) { show(e.getMessage()); }
+
+     Custom exception:
+     class InsufficientFundsException extends Exception {   <- checked
+         InsufficientFundsException(String msg) { super(msg); }
+     }
+  caption: "throw raises one exception object inside a method body. throws sits in the method signature and declares what may come out. A custom exception is just a class that extends Exception or RuntimeException."
+  visualizer: null
+explanation: |
+  ### throw: raise an exception now
+  `throw` is a **statement** used inside a method body. It takes **one** object of type Throwable and starts the exception flow immediately:
+  ```java
+  if (age < 0) {
+      throw new IllegalArgumentException("Age cannot be negative: " + age);
+  }
+  ```
+  - The line after `throw` in the same block can never run. Writing code directly after it is a compile error ("unreachable statement").
+  - You can throw only **one** exception per `throw` statement.
+  - You can throw a built-in exception or your own custom one.
+
+  ### throws: declare what may come out
+  `throws` is part of the **method signature**. It lists exception **classes** (not objects), separated by commas:
+  ```java
+  void readFile(String path) throws IOException, SQLException { ... }
+  ```
+  - It is **required** for checked exceptions that the method doesn't catch.
+  - It is **optional** for unchecked ones (allowed, but it's only documentation).
+  - It passes the responsibility to the **caller**, who must again handle or declare.
+
+  ### throw vs throws table
+  | | throw | throws |
+  |---|---|---|
+  | What it is | A statement (an action) | A clause in the method signature (a declaration) |
+  | Where | Inside a method body | After the method's parameter list |
+  | Followed by | One exception **object**: `new X(...)` | One or more exception **class names** |
+  | How many | Exactly one at a time | Many, comma-separated |
+  | Purpose | Actually raise the error | Tell callers what might come |
+
+  They often appear together: the method body `throw`s, and the signature `throws`.
+
+  ### Creating a custom exception
+  A **custom exception** is just a class that extends an exception class. Choose the parent:
+  - extend **Exception** to make it **checked** (callers must handle it; good for recoverable business problems),
+  - extend **RuntimeException** to make it **unchecked** (good for "you used this wrongly" errors).
+
+  ```java
+  class InsufficientFundsException extends Exception {
+      private final int shortBy;
+
+      public InsufficientFundsException(String message, int shortBy) {
+          super(message);          // stores the message in Throwable
+          this.shortBy = shortBy;
+      }
+      public int getShortBy() { return shortBy; }
+  }
+  ```
+  Good habits:
+  1. **End the name with `Exception`**.
+  2. Pass the message to `super(message)` so `getMessage()` works.
+  3. Add a constructor that takes a **cause**: `super(message, cause)`. This is **exception chaining**: wrapping a low-level exception inside a meaningful one without losing the original.
+  4. Add extra fields (like `shortBy`) when the caller needs details.
+
+  ### Exception chaining and rethrowing
+  ```java
+  try {
+      Files.readString(Path.of("config.txt"));
+  } catch (IOException e) {
+      throw new ConfigException("Cannot load config", e);   // keep the cause
+  }
+  ```
+  Later, `ex.getCause()` returns the original `IOException`, and the stack trace shows both ("Caused by: ..."). Never throw away the cause: it is the clue to the real problem.
+
+  ### Why create custom exceptions at all?
+  - The **name** explains the problem (`UserNotFoundException` is clearer than `Exception`).
+  - Callers can **catch exactly that** problem and react differently.
+  - You can carry **extra data** (account ID, missing amount).
+tinyCode:
+  code: |
+    public class Voter {
+        static void register(String name, int age) throws InvalidAgeException {
+            if (age < 18) {
+                throw new InvalidAgeException(name + " is only " + age);
+            }
+            System.out.println(name + " registered");
+        }
+
+        public static void main(String[] args) {
+            try {
+                register("Asha", 22);
+                register("Ravi", 16);
+                register("Meena", 30);
+            } catch (InvalidAgeException e) {
+                System.out.println("Rejected: " + e.getMessage());
+            }
+        }
+    }
+
+    class InvalidAgeException extends Exception {
+        public InvalidAgeException(String message) {
+            super(message);
+        }
+    }
+  walkthrough: |
+    - At the bottom, `InvalidAgeException extends Exception`, so it is a **checked** custom exception. Its constructor passes the message to `super`, the parent constructor.
+    - `register` **declares** it with `throws InvalidAgeException` and **raises** it with `throw new ...` when age is below 18.
+    - In `main`, Asha (22) is registered. Ravi (16) causes the throw, so control jumps to the catch.
+    - Meena is **never registered**: the rest of the try is skipped after the exception.
+
+    Output:
+    ```
+    Asha registered
+    Rejected: Ravi is only 16
+    ```
+    (Note: this file has two classes. Only `Voter` is public, so save it as `Voter.java`. Keep the class with `main` first if you run it with `java Voter.java`.)
+tryIt:
+  instructions: "Type this unchecked custom exception with a cause. Run it and look at how getCause() gives back the original NumberFormatException."
+  code: |
+    public class Wrap {
+        static int parseQuantity(String text) {
+            try {
+                return Integer.parseInt(text);
+            } catch (NumberFormatException e) {
+                throw new BadInputException("Quantity must be a number", e);
+            }
+        }
+        public static void main(String[] args) {
+            System.out.println(parseQuantity("5"));
+            try {
+                parseQuantity("five");
+            } catch (BadInputException e) {
+                System.out.println(e.getMessage());
+                System.out.println("Cause: " + e.getCause().getClass().getSimpleName());
+            }
+        }
+    }
+
+    class BadInputException extends RuntimeException {
+        public BadInputException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+predict:
+  code: |
+    public class Order {
+        static void check(int qty) {
+            if (qty <= 0) {
+                throw new IllegalArgumentException("qty=" + qty);
+            }
+            System.out.println("ok " + qty);
+        }
+        public static void main(String[] args) {
+            int[] list = {3, 0, 7};
+            for (int q : list) {
+                try {
+                    check(q);
+                } catch (IllegalArgumentException e) {
+                    System.out.println("bad " + e.getMessage());
+                }
+            }
+        }
+    }
+  expectedOutput: |
+    ok 3
+    bad qty=0
+    ok 7
+  explanation: |
+    `check` needs no `throws` because `IllegalArgumentException` is unchecked. The try/catch is **inside** the loop, so after catching the problem with 0, the loop continues and 7 is still checked. Compare with the Voter example, where the whole loop-like sequence was inside one try and stopped at the first error.
+commonMistakes:
+  - "Mixing up the keywords: 'throws new X()' or 'void m() throw X'. throw + object inside the body; throws + class names in the signature."
+  - "Writing code right after a throw in the same block. It is unreachable and won't compile."
+  - "Extending Exception when you wanted an unchecked exception (or the reverse). The parent decides checked vs unchecked."
+  - "Forgetting super(message) in the custom exception's constructor, so getMessage() returns null."
+  - "Catching an exception and throwing a new one without passing the original as the cause. The real reason is lost."
+interviewBox:
+  why: "Why interviewers ask this: it checks that you know the keywords precisely and can design meaningful errors for real applications."
+  questions:
+    - q: "What is the difference between throw and throws?"
+      a: "throw is a statement inside a method that actually raises one exception object, like throw new IllegalArgumentException(). throws is written in the method signature and declares which exception classes the method might pass to its caller. throw takes one object; throws can list many class names."
+    - q: "How do you create a custom exception?"
+      a: "Create a class that extends Exception for a checked exception or RuntimeException for an unchecked one. Add constructors that call super(message) and super(message, cause). Give it a clear name ending in Exception, and add extra fields if the caller needs details."
+    - q: "When would you choose a checked custom exception?"
+      a: "When the caller can sensibly recover. For example, InsufficientFundsException: the app can show a message and ask for a smaller amount. If it means the code was misused, like a null argument, I'd use an unchecked one."
+    - q: "What is exception chaining?"
+      a: "Wrapping a lower-level exception inside a higher-level one by passing it as the cause, like new ServiceException(\"Order failed\", e). We can get it back with getCause(), and the stack trace shows 'Caused by', so the original reason isn't lost."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which line correctly raises an exception?"
+    code: null
+    options:
+      - "throws new IllegalStateException(\"bad\");"
+      - "throw new IllegalStateException(\"bad\");"
+      - "throw IllegalStateException;"
+      - "raise new IllegalStateException(\"bad\");"
+    answer: 1
+    explanation: "throw (no s) followed by an exception object raises it. 'throws' belongs in a method signature, 'throw IllegalStateException' uses a class name instead of an object, and 'raise' is not a Java keyword (it's Python)."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this code fail to compile?"
+    code: |
+      class LowBalanceException extends Exception {
+          LowBalanceException(String m) { super(m); }
+      }
+      public class Main {
+          static void pay(int amt) {
+              if (amt > 100) {
+                  throw new LowBalanceException("need " + amt);
+              }
+          }
+          public static void main(String[] args) {
+              pay(50);
+          }
+      }
+    options:
+      - "Custom exceptions must extend RuntimeException"
+      - "LowBalanceException is checked, so pay must declare 'throws LowBalanceException' (or catch it)"
+      - "super(m) is not allowed in an exception class"
+      - "You cannot throw inside an if block"
+    answer: 1
+    explanation: "LowBalanceException extends Exception, so it's checked. pay throws it without catching or declaring it, so the compiler reports 'unreported exception'. Custom exceptions may extend either Exception or RuntimeException."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static void step(int n) {
+              if (n == 2) throw new RuntimeException("stop at " + n);
+              System.out.println("step " + n);
+          }
+          public static void main(String[] args) {
+              try {
+                  for (int i = 1; i <= 3; i++) {
+                      step(i);
+                  }
+              } catch (RuntimeException e) {
+                  System.out.println(e.getMessage());
+              }
+              System.out.println("end");
+          }
+      }
+    options:
+      - "step 1\nstep 2\nstep 3\nend"
+      - "step 1\nstop at 2\nend"
+      - "step 1\nstop at 2\nstep 3\nend"
+      - "stop at 2\nend"
+    answer: 1
+    explanation: "step(1) prints. step(2) throws before printing. The catch is OUTSIDE the loop, so the loop ends; step 3 never runs. The catch prints the message, then 'end'. Option 3 would be right only if the try/catch were inside the loop."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Declaring an unchecked exception in a throws clause (for example 'throws IllegalArgumentException') is a compile error."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. You may list unchecked exceptions in throws; it's allowed and acts as documentation. It just isn't required, unlike checked exceptions."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the constructor so getMessage() returns the message passed in."
+    code: |
+      class OrderNotFoundException extends RuntimeException {
+          OrderNotFoundException(String message) {
+              ____(message);
+          }
+      }
+    acceptedAnswers: ["super"]
+    explanation: "super(message) calls the parent constructor, which stores the message inside Throwable. Without it, getMessage() returns null. 'this(message)' would call the same constructor again (a compile error for recursive constructor call)."
+  - id: q6
+    type: MATCH
+    prompt: "Match each piece with its meaning"
+    pairs:
+      - left: "throw"
+        right: "Raises one exception object inside a method body"
+      - left: "throws"
+        right: "Declares exception classes in the method signature"
+      - left: "extends Exception"
+        right: "Makes a checked custom exception"
+      - left: "extends RuntimeException"
+        right: "Makes an unchecked custom exception"
+      - left: "getCause()"
+        right: "Returns the original wrapped exception"
+    explanation: "throw acts, throws declares. The parent class decides checked vs unchecked. getCause() supports exception chaining."
+  - id: q7
+    type: SPOT_THE_BUG
+    prompt: "What is wrong here?"
+    code: |
+      public class Main {
+          static int check(int x) {
+              if (x < 0) {
+                  throw new IllegalArgumentException("negative");
+                  System.out.println("never");
+              }
+              return x;
+          }
+          public static void main(String[] args) {
+              System.out.println(check(5));
+          }
+      }
+    options:
+      - "IllegalArgumentException must be declared with throws"
+      - "The println after throw is unreachable, which is a compile error"
+      - "check must return void"
+      - "Nothing; it prints 5"
+    answer: 1
+    explanation: "After throw, control never continues to the next line in that block, so Java reports 'unreachable statement'. IllegalArgumentException is unchecked, so no throws is needed."
+explainBack:
+  prompt: "Explain throw vs throws to a friend, and describe how and why you would make your own exception."
+  rubric:
+    - "I said throw raises one exception object inside the method"
+    - "I said throws declares exception classes in the method signature"
+    - "I explained extends Exception (checked) vs extends RuntimeException (unchecked)"
+    - "I mentioned super(message) and/or passing the cause"
+    - "I gave a real example like InsufficientFundsException"
+  modelAnswer: |
+    throw and throws look alike but do different jobs. throw is an action inside a method: throw new SomeException("message") raises one exception right now. throws is a label on the method signature saying which exceptions might come out, so the caller can prepare. To make my own exception, I write a class like InsufficientFundsException that extends Exception if I want callers to be forced to handle it, or RuntimeException if it's a programming mistake. In the constructor I call super(message), and I can also pass the original exception as a cause so nothing is lost. A custom name makes the problem obvious and easy to catch.
+flashcards:
+  - front: "throw vs throws"
+    back: "throw: statement in the body, raises ONE exception object. throws: in the signature, declares one or more exception CLASSES."
+  - front: "How to make a checked custom exception?"
+    back: "class MyException extends Exception { MyException(String m) { super(m); } }"
+  - front: "How to make an unchecked custom exception?"
+    back: "Extend RuntimeException instead of Exception."
+  - front: "What is exception chaining?"
+    back: "Wrapping the original exception as the cause: new MyException(msg, e). Read it back with getCause()."
+  - front: "Code right after throw in the same block?"
+    back: "Compile error: unreachable statement."
+keyTakeaways:
+  - "throw raises one exception object; throws declares exception classes in the signature."
+  - "throws is required for unhandled checked exceptions, optional for unchecked ones."
+  - "Custom exception = class extending Exception (checked) or RuntimeException (unchecked)."
+  - "Always call super(message) and keep the cause when wrapping."
+  - "Good custom exceptions have clear names and carry useful details."

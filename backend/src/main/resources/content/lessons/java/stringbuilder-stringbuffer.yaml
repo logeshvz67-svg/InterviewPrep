@@ -1,0 +1,302 @@
+slug: stringbuilder-stringbuffer
+world: JAVA_CORE
+section: B
+order: 3
+title: "StringBuilder vs StringBuffer"
+version: 1
+estimatedMinutes: 25
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common comparison question in SP and DSE technical rounds; StringBuilder is also the tool you'll use in almost every string coding problem."
+otherCompanies: "A common basic comparison question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  **"String vs StringBuilder vs StringBuffer"** is one of the top Java comparison questions. You should be able to answer it in 30 seconds with a clear table.
+
+  It also matters in coding tests:
+  - Reversing a string, building output, joining characters in a loop: `StringBuilder` does it fast.
+  - Using `+` inside a big loop can make your solution slow enough to fail time limits.
+  - Printing many lines? Collect them in one `StringBuilder` and print once.
+analogy: |
+  Think about writing a shopping list.
+
+  - **String** is like writing on a **printed card**. To add "milk", you must print a whole new card. Do that 1,000 times and your table is full of old cards.
+  - **StringBuilder** is a **whiteboard**. You just keep writing, erasing and inserting on the same board. Fast. But if two people write at the same moment, the words can get mixed up.
+  - **StringBuffer** is a whiteboard with a **token**: only the person holding the token may write. Safe for many people, but everyone waits for the token, so it is slower.
+visual:
+  diagram: |
+    String s = "";  for 3 times: s = s + i;
+      ""  ->  "0"  ->  "01"  ->  "012"      4 objects, 3 are garbage
+
+    StringBuilder sb = new StringBuilder();  sb.append(i) x3
+      sb ---> [0][1][2][ ][ ][ ] ... (capacity 16)
+              one object, the same buffer grows in place
+
+    +---------------+-----------+---------------+---------------+
+    |               | String    | StringBuilder | StringBuffer  |
+    +---------------+-----------+---------------+---------------+
+    | Mutable?      | No        | Yes           | Yes           |
+    | Thread-safe?  | Yes       | No            | Yes (sync)    |
+    | Speed         | Slow loop | Fastest       | Slower        |
+    | Since         | Java 1.0  | Java 5        | Java 1.0      |
+    +---------------+-----------+---------------+---------------+
+  caption: "String creates a new object on every change. StringBuilder and StringBuffer change one buffer in place; StringBuffer adds locking for thread safety."
+  visualizer: null
+explanation: |
+  ### The problem with `+` in a loop
+  `String` is **immutable** (it can never change). So this:
+  ```java
+  String s = "";
+  for (int i = 0; i < 10000; i++) {
+      s = s + i;      // makes a NEW String every time
+  }
+  ```
+  creates about 10,000 temporary String objects, and each one copies all the characters so far. That's roughly **O(n²)** work: doubling the loop size makes it about four times slower. (**O(...)**, "Big-O", is a way to say how work grows as input grows.)
+
+  ### StringBuilder: a mutable string
+  **Mutable** means "can be changed in place". `StringBuilder` keeps an internal array of characters, called a **buffer**, and changes it directly.
+  ```java
+  StringBuilder sb = new StringBuilder();
+  for (int i = 0; i < 10000; i++) {
+      sb.append(i);   // writes into the same buffer
+  }
+  String result = sb.toString();  // convert back to String at the end
+  ```
+  This is about **O(n)**: much faster.
+
+  ### Capacity: how the buffer grows
+  - **length()** = number of characters actually stored.
+  - **capacity()** = how many characters fit before the buffer must grow.
+  - `new StringBuilder()` starts with capacity **16**. `new StringBuilder("abc")` starts with 16 + 3 = **19**.
+  - When full, it grows to about **(old capacity × 2) + 2** and copies the characters over. If you know the final size, give it upfront: `new StringBuilder(1000)`.
+
+  ### Most useful methods
+  | Method | What it does | Example (sb = "code") |
+  |---|---|---|
+  | `append(x)` | add at the end | `append("!")` → `code!` |
+  | `insert(i, x)` | add at position i | `insert(0, "I ")` → `I code` |
+  | `reverse()` | reverse in place | → `edoc` |
+  | `deleteCharAt(i)` | remove one char | `deleteCharAt(0)` → `ode` |
+  | `delete(a, b)` | remove chars a..b-1 | `delete(1, 3)` → `ce` |
+  | `replace(a, b, s)` | replace a..b-1 with s | `replace(0, 2, "MO")` → `MOde` |
+  | `setCharAt(i, c)` | change one char | `setCharAt(0, 'm')` → `mode` |
+  | `toString()` | make a String | `"code"` |
+
+  Most methods return the same `StringBuilder`, so you can **chain** them: `sb.append("a").append("b").reverse();`
+
+  ### StringBuffer: the thread-safe twin
+  `StringBuffer` has the same methods. The difference is that its methods are **synchronized**. **Synchronized** means only one **thread** (an independent path of execution running at the same time as others) can use the object at a time; others wait. That locking costs time even if you only have one thread.
+
+  | | StringBuilder | StringBuffer |
+  |---|---|---|
+  | Thread-safe | No | Yes (synchronized methods) |
+  | Speed | Faster | Slower (locking cost) |
+  | Added in | Java 5 | Java 1.0 |
+  | Use when | Almost always (single thread, coding tests) | A buffer really shared by many threads (rare) |
+
+  ### A common trap: `equals`
+  `StringBuilder` and `StringBuffer` do **not** override `equals()`. So two builders with the same text are **not** equal by `equals`; it compares references, like `==`. Compare their content with `sb1.toString().equals(sb2.toString())`, or `sb1.compareTo(sb2) == 0` (Java 11+).
+
+  ### Does the compiler use StringBuilder for `+`?
+  For a single line like `String s = a + b + c;` the compiler already optimises the join (older Java turned it into StringBuilder calls; Java 9+ uses a faster built-in mechanism). So `+` in **one line** is fine. The problem is `+` inside a **loop**, where each round still creates a new String.
+
+  ### Quick decision
+  1. Text that doesn't change → `String`.
+  2. Building text in a loop, single thread → `StringBuilder`.
+  3. Building text shared by many threads → `StringBuffer`.
+tinyCode:
+  code: |
+    public class BuilderDemo {
+        public static void main(String[] args) {
+            StringBuilder sb = new StringBuilder("code");
+            System.out.println(sb.length() + " " + sb.capacity());
+
+            sb.append(" quest");
+            System.out.println(sb);
+
+            sb.insert(0, "my ");
+            System.out.println(sb);
+
+            sb.reverse();
+            System.out.println(sb);
+
+            String done = sb.reverse().toString();
+            System.out.println(done.toUpperCase());
+        }
+    }
+  walkthrough: |
+    - `new StringBuilder("code")` stores 4 chars, capacity is 16 + 4 = 20. Prints `4 20`.
+    - `append(" quest")` adds at the end of the **same** object: `code quest`.
+    - `insert(0, "my ")` puts text at index 0: `my code quest`.
+    - `reverse()` flips the buffer in place: `tseuq edoc ym`.
+    - `sb.reverse()` flips it back, `toString()` turns it into a normal String, then `toUpperCase()` gives `MY CODE QUEST`.
+
+    Output:
+    ```
+    4 20
+    code quest
+    my code quest
+    tseuq edoc ym
+    MY CODE QUEST
+    ```
+    Notice we never wrote `sb = sb.append(...)`. The builder changes itself.
+tryIt:
+  instructions: "Type this program and run it. It times String + versus StringBuilder for 50,000 joins. Your exact milliseconds will differ, but StringBuilder should be far faster. Try changing n to 100000 and see how the String time grows much more."
+  code: |
+    public class SpeedTest {
+        public static void main(String[] args) {
+            int n = 50000;
+
+            long t1 = System.currentTimeMillis();
+            String s = "";
+            for (int i = 0; i < n; i++) {
+                s = s + "x";
+            }
+            long t2 = System.currentTimeMillis();
+
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < n; i++) {
+                sb.append("x");
+            }
+            long t3 = System.currentTimeMillis();
+
+            System.out.println("String:        " + (t2 - t1) + " ms");
+            System.out.println("StringBuilder: " + (t3 - t2) + " ms");
+            System.out.println(s.length() == sb.length());
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            StringBuilder a = new StringBuilder("hi");
+            StringBuilder b = a;
+            b.append("!");
+            StringBuilder c = new StringBuilder("hi!");
+            System.out.println(a);
+            System.out.println(a == b);
+            System.out.println(a.equals(c));
+            System.out.println(a.toString().equals(c.toString()));
+        }
+    }
+  expectedOutput: |
+    hi!
+    true
+    false
+    true
+  explanation: |
+    - `b = a` copies the reference, so `a` and `b` are the **same** builder. `b.append("!")` changes that one object, so `a` prints `hi!`. (With an immutable String this would not happen.)
+    - `a == b` is `true`: same object.
+    - `a.equals(c)` is `false`: StringBuilder does not override `equals`, so it compares references, and `c` is a different object.
+    - Comparing the `toString()` results compares text: `true`.
+commonMistakes:
+  - "Using s = s + x inside a big loop. It's O(n^2); use StringBuilder.append."
+  - "Choosing StringBuffer \"to be safe\" in normal single-threaded code. It's slower for no benefit."
+  - "Comparing two StringBuilders with equals(). It compares references; compare toString() values instead."
+  - "Forgetting toString() when a method must return a String."
+  - "Thinking reverse() returns a new builder and leaves the old one alone. It changes the same object (and returns it)."
+interviewBox:
+  why: "Why interviewers ask this: it checks if you understand immutability, performance, and thread safety, and if you pick the right tool in real code."
+  questions:
+    - q: "What is the difference between String, StringBuilder and StringBuffer?"
+      a: "String is immutable, so every change makes a new object. StringBuilder and StringBuffer are mutable, they change one buffer in place. StringBuffer's methods are synchronized, so it's thread-safe but slower. StringBuilder is not synchronized, so it's faster, and it's the one we use in normal single-threaded code."
+    - q: "Why is StringBuilder faster than String concatenation in a loop?"
+      a: "With String, each + creates a new object and copies all the old characters, so the total work grows like n squared. StringBuilder appends into the same buffer and only grows it sometimes, so the work is roughly linear."
+    - q: "What is the default capacity of StringBuilder and how does it grow?"
+      a: "The default capacity is 16 characters. If you pass a String, it's 16 plus that String's length. When it fills up, it grows to about double the old capacity plus 2 and copies the characters."
+    - q: "When would you use StringBuffer?"
+      a: "Only when the same buffer is really changed by several threads at once. In almost all other cases, including coding tests, StringBuilder is the better choice."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "You are building a result String inside a loop that runs 1 lakh times, in a single-threaded program. Which is best?"
+    options: ["String with +", "StringBuffer", "StringBuilder", "String.concat in the loop"]
+    answer: 2
+    explanation: "StringBuilder is mutable and not synchronized, so it's the fastest choice for single-threaded building. StringBuffer also works but pays for locking you don't need. String + and concat create a new object each time."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      StringBuilder sb = new StringBuilder("abc");
+      sb.reverse();
+      sb.append("d");
+      System.out.println(sb);
+    options: ["abcd", "cbad", "dcba", "cba"]
+    answer: 1
+    explanation: "reverse() changes the builder itself to \"cba\" (no assignment needed, unlike String). Then append adds \"d\": \"cbad\". \"abcd\" is the tempting answer if you think reverse() returns a copy and leaves sb unchanged."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "StringBuffer is faster than StringBuilder because it is synchronized."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Synchronization adds locking work, so StringBuffer is slower. Its benefit is thread safety, not speed."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      StringBuilder a = new StringBuilder();
+      StringBuilder b = new StringBuilder("hello");
+      System.out.println(a.capacity() + " " + b.capacity() + " " + b.length());
+    options: ["0 5 5", "16 16 5", "16 21 5", "16 21 21"]
+    answer: 2
+    explanation: "An empty StringBuilder has capacity 16. With an initial String it's 16 + length = 16 + 5 = 21. length() counts only stored characters: 5. Don't mix up capacity (space) with length (used)."
+  - id: q5
+    type: SPOT_THE_BUG
+    prompt: "This method should return true when both builders hold the same text, but it returns false for two builders containing \"ok\". Why?"
+    code: |
+      StringBuilder x = new StringBuilder("ok");
+      StringBuilder y = new StringBuilder("ok");
+      System.out.println(x.equals(y));
+    options:
+      - "StringBuilder text is case-sensitive"
+      - "StringBuilder does not override equals(), so it compares references; use x.toString().equals(y.toString())"
+      - "equals() only works after calling reverse()"
+      - "The builders need the same capacity"
+    answer: 1
+    explanation: "StringBuilder inherits equals from Object, which is the same as ==. x and y are different objects, so false. Converting both to String compares the characters."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill the method that adds text at the END of a StringBuilder."
+    code: |
+      StringBuilder sb = new StringBuilder("Hello");
+      sb.____(" World");
+      System.out.println(sb); // Hello World
+    acceptedAnswers: ["append"]
+    explanation: "append adds to the end of the same buffer. insert would need a position, and concat is a String method, not a StringBuilder method."
+  - id: q7
+    type: MATCH
+    prompt: "Match each class to its key property"
+    pairs:
+      - left: "String"
+        right: "Immutable; every change makes a new object"
+      - left: "StringBuilder"
+        right: "Mutable and not synchronized: fastest"
+      - left: "StringBuffer"
+        right: "Mutable and synchronized: thread-safe"
+    explanation: "Mutability separates String from the other two; synchronization separates StringBuffer from StringBuilder."
+explainBack:
+  prompt: "Explain to a friend when to use String, StringBuilder and StringBuffer, using the printed card and whiteboard idea."
+  rubric:
+    - "I said String is immutable and + in a loop makes many objects"
+    - "I said StringBuilder changes one buffer in place, so it's fast"
+    - "I said StringBuffer is synchronized: thread-safe but slower"
+    - "I gave a clear rule for which one to choose"
+  modelAnswer: |
+    A String is like a printed card: to change it, you print a new card, so adding text in a loop makes lots of throw-away objects and gets slow. StringBuilder is a whiteboard: you keep writing on the same board with append, insert or reverse, so it's fast, and at the end you call toString. StringBuffer is the same whiteboard but with a token, because its methods are synchronized, so only one thread writes at a time. That makes it thread-safe but slower. So: use String for fixed text, StringBuilder for building text in normal code, and StringBuffer only when many threads share one buffer.
+flashcards:
+  - front: "String vs StringBuilder vs StringBuffer"
+    back: "String: immutable. StringBuilder: mutable, not synchronized, fastest. StringBuffer: mutable, synchronized, thread-safe, slower."
+  - front: "Default StringBuilder capacity"
+    back: "16. With an initial String: 16 + its length. Grows to about (old * 2) + 2."
+  - front: "Does StringBuilder override equals()?"
+    back: "No. equals compares references. Use sb1.toString().equals(sb2.toString())."
+  - front: "Why is + in a loop slow?"
+    back: "Each + creates a new String and copies all characters: about O(n^2) total."
+  - front: "Which came first, StringBuilder or StringBuffer?"
+    back: "StringBuffer (Java 1.0). StringBuilder was added in Java 5 as the faster, non-synchronized version."
+keyTakeaways:
+  - "String is immutable; StringBuilder and StringBuffer are mutable buffers."
+  - "Use StringBuilder for building text in loops; it's the default choice."
+  - "StringBuffer is synchronized: thread-safe but slower. Use it only for shared buffers."
+  - "Builder methods change the same object and can be chained; call toString() at the end."
+  - "StringBuilder.equals compares references, not text."

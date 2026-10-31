@@ -1,0 +1,328 @@
+slug: string-pool
+world: JAVA_CORE
+section: B
+order: 2
+title: "String pool, new vs literal"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Classic predict-the-output topic: == vs equals with literals, new String and intern() is core prep for SP and DSE MCQs and technical rounds."
+otherCompanies: "A common basic question at TCS, Wipro, Cognizant, Accenture, Capgemini; product companies use it to check memory understanding."
+why: |
+  Two of the most common Java questions are:
+  - **"What is the difference between `==` and `equals()`?"**
+  - **"How many objects does `new String("hello")` create?"**
+
+  Both are about the **String pool**. Output questions with `s1 == s2` are everywhere in practice tests, and they are easy marks *only* if you can draw the memory picture in your head.
+
+  This lesson also fixes a real bug many beginners write: comparing user input with `==`, which "works sometimes" and then fails.
+analogy: |
+  Think of a **college library** with a **reference section**.
+
+  - The reference section (the **String pool**) keeps **one copy** of each popular book. If 50 students want "Let Us C", they all read the *same* copy. Nobody can write in it (Strings are immutable), so sharing is safe.
+  - A **literal** like `"hello"` is "give me the reference-section copy". Same title, same copy.
+  - `new String("hello")` is "photocopy the book and give me my own copy". Same words, but a **different physical book** on your desk.
+  - `==` asks: *"Are we holding the very same physical book?"*
+  - `equals()` asks: *"Do our books have the same words?"*
+  - `intern()` is "take my photocopy to the librarian and get the reference-section copy instead".
+visual:
+  diagram: |
+    String s1 = "hello";
+    String s2 = "hello";
+    String s3 = new String("hello");
+    String s4 = s3.intern();
+
+     STACK                HEAP
+     (variables)  +------------------------------------+
+                  |   String pool                      |
+     s1 ------+   |   +-----------+                    |
+              +-----> |  "hello"  | <-------+          |
+     s2 ------+   |   +-----------+         |          |
+                  |                         |          |
+     s4 ----------------------------------->+          |
+                  |                                    |
+     s3 -------------> +-----------+  normal heap      |
+                  |    |  "hello"  |  (separate obj)   |
+                  |    +-----------+                   |
+                  +------------------------------------+
+
+     s1 == s2  -> true    (same box)
+     s1 == s3  -> false   (different boxes)
+     s1.equals(s3) -> true (same text)
+     s1 == s4  -> true    (intern() gave back the pool box)
+  caption: "Literals share one object in the pool. new String always makes a separate heap object. == compares arrows (addresses); equals compares the text."
+  visualizer: null
+explanation: |
+  ### Where Strings live
+  - The **stack** is memory for local variables of a running method. A String variable there holds only a **reference** (an arrow / address).
+  - The **heap** is memory for objects. All String objects live here.
+  - The **String pool** (also called the *String constant pool*) is a special area **inside the heap** (since Java 7; earlier it was in a place called PermGen). It stores **one shared copy** of each String literal.
+
+  ### Literal vs `new`
+  ```java
+  String s1 = "hello";              // literal: look in the pool
+  String s2 = "hello";              // found in pool -> reuse same object
+  String s3 = new String("hello");  // new: ALWAYS a fresh object on the heap
+  ```
+  - When Java sees a literal, it checks the pool. If `"hello"` is already there, it reuses that object. If not, it adds it once.
+  - `new` always creates a **brand-new** object, even if the same text exists in the pool.
+
+  ### `==` vs `equals()`
+  | | `==` | `equals()` |
+  |---|---|---|
+  | Compares | References (are both arrows pointing to the same object?) | Content (are the characters the same?) |
+  | `s1` vs `s2` (both literals) | `true` | `true` |
+  | `s1` vs `s3` (literal vs new) | `false` | `true` |
+  | Use it for Strings? | Almost never | **Yes, always** |
+
+  > Golden rule: **compare Strings with `equals()`** (or `equalsIgnoreCase()` to ignore upper/lower case). `==` only tells you whether it's the same object.
+
+  A safe trick when one side might be `null`: put the literal first, `"yes".equals(input)`. If `input` is `null` this returns `false` instead of crashing with a `NullPointerException`.
+
+  ### How many objects does `new String("hello")` create?
+  **Up to two.**
+  1. The literal `"hello"` inside the brackets goes into the pool, *if it is not already there* (this happens when the class is loaded).
+  2. `new` creates one more object on the normal heap.
+
+  So: 2 objects if `"hello"` was not in the pool yet, 1 new object if it already was. Interview answer: *"one or two; two if the literal is not already in the pool."*
+
+  ### `intern()`
+  `s.intern()` returns the **pool copy** of the same text. If the pool doesn't have it yet, it adds it and returns that.
+  ```java
+  String s3 = new String("hello");
+  String s4 = s3.intern();
+  System.out.println(s4 == "hello"); // true: s4 is the pool object
+  System.out.println(s3 == s4);      // false: s3 is still the heap copy
+  ```
+
+  ### Compile-time constant folding
+  **Constant folding** means: if the compiler can work out a value *while compiling*, it puts the final answer straight into the `.class` file.
+  ```java
+  String a = "hel" + "lo";      // compiler writes "hello" -> pool
+  System.out.println(a == "hello");   // true
+
+  String part = "hel";
+  String b = part + "lo";       // part is a variable: joined at RUNTIME
+  System.out.println(b == "hello");   // false: new heap object
+
+  final String fpart = "hel";   // final + literal = compile-time constant
+  String c = fpart + "lo";      // compiler can fold it -> "hello"
+  System.out.println(c == "hello");   // true
+  ```
+  The rule: if **every** part of the `+` is a literal or a `final` variable initialised with a literal, the result is computed at compile time and goes into the pool. If any part is a normal variable or a method call, the join happens at runtime and creates a **new** heap object.
+
+  ### Quick memory checklist for output questions
+  1. Draw the pool box and the heap boxes.
+  2. Literal or compile-time constant? Arrow into the pool.
+  3. `new`, or runtime `+` with a variable? Arrow to a fresh heap box.
+  4. `intern()`? Arrow into the pool.
+  5. `==` true only if both arrows end at the same box.
+tinyCode:
+  code: |
+    public class PoolDemo {
+        public static void main(String[] args) {
+            String s1 = "hello";
+            String s2 = "hello";
+            String s3 = new String("hello");
+            String s4 = s3.intern();
+
+            System.out.println(s1 == s2);
+            System.out.println(s1 == s3);
+            System.out.println(s1.equals(s3));
+            System.out.println(s1 == s4);
+        }
+    }
+  walkthrough: |
+    - `s1 = "hello"`: the literal goes into the pool, `s1` points to it.
+    - `s2 = "hello"`: already in the pool, so `s2` points to the **same** object.
+    - `s3 = new String("hello")`: a separate object on the heap.
+    - `s4 = s3.intern()`: asks for the pool copy of `"hello"`, which is the object `s1` points to.
+    - `s1 == s2` is `true` (same object).
+    - `s1 == s3` is `false` (different objects).
+    - `s1.equals(s3)` is `true` (same characters).
+    - `s1 == s4` is `true` (both are the pool object).
+
+    Output:
+    ```
+    true
+    false
+    true
+    true
+    ```
+tryIt:
+  instructions: "Type this program. For each println, first draw the arrows on paper (pool box vs heap boxes) and write true/false. Then run it and check your drawing."
+  code: |
+    public class FoldDemo {
+        public static void main(String[] args) {
+            String full = "codequest";
+            String a = "code" + "quest";
+            String part = "code";
+            String b = part + "quest";
+            final String fpart = "code";
+            String c = fpart + "quest";
+
+            System.out.println(full == a);
+            System.out.println(full == b);
+            System.out.println(full == c);
+            System.out.println(full == b.intern());
+            System.out.println(full.equals(b));
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            String x = "java";
+            String y = new String("java");
+            String z = y;
+            System.out.println(x == y);
+            System.out.println(y == z);
+            System.out.println(x.equals(z));
+            System.out.println(x == z.intern());
+        }
+    }
+  expectedOutput: |
+    false
+    true
+    true
+    true
+  explanation: |
+    - `x` points to the pool object; `y` points to a new heap object, so `x == y` is `false`.
+    - `z = y` copies the arrow, so `y` and `z` are the same object: `true`.
+    - `x.equals(z)` compares text, both are "java": `true`.
+    - `z.intern()` returns the pool copy of "java", which is exactly what `x` points to: `true`.
+commonMistakes:
+  - "Comparing Strings with == (e.g. if (input == \"yes\")). It compares addresses, not text. Use equals()."
+  - "Thinking new String(\"a\") reuses the pool object. new ALWAYS creates a fresh heap object."
+  - "Forgetting compile-time folding: \"a\" + \"b\" == \"ab\" is true, but a variable + \"b\" is not."
+  - "Saying the String pool is on the stack or in PermGen. Since Java 7 it is part of the heap."
+  - "Calling input.equals(\"yes\") when input may be null. Write \"yes\".equals(input) to avoid NullPointerException."
+interviewBox:
+  why: "Why interviewers ask this: it checks if you understand references vs content, and it shows up in nearly every set of Java output questions."
+  questions:
+    - q: "What is the difference between == and equals() for Strings?"
+      a: "== checks if two references point to the very same object in memory. equals() checks if the characters are the same. Two different String objects with the same text give false for == but true for equals. So we always use equals to compare Strings."
+    - q: "What is the String pool?"
+      a: "It's a special area inside the heap where Java keeps one shared copy of each String literal. When I write the same literal twice, both variables point to the same pooled object. This saves memory, and it's safe because Strings are immutable."
+    - q: "How many objects are created by new String(\"hello\")?"
+      a: "One or two. The literal \"hello\" goes into the pool if it isn't there already, and new always creates one more object on the heap. So it's two if the literal is new, otherwise one."
+    - q: "What does intern() do?"
+      a: "intern() returns the pool copy of a String's text. If the pool doesn't have that text yet, it adds it. So after s = s.intern(), s points to the shared pool object and == with the same literal becomes true."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String a = "hi";
+      String b = "hi";
+      String c = new String("hi");
+      System.out.println((a == b) + " " + (a == c) + " " + a.equals(c));
+    options: ["true true true", "true false true", "false false true", "true false false"]
+    answer: 1
+    explanation: "a and b are the same pooled literal (true). c is a new heap object, so a == c is false even though the text is equal. equals compares text, so it's true. \"true true true\" is the tempting wrong answer from thinking new reuses the pool."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String s = "ab";
+      String p = "a";
+      String q = p + "b";
+      String r = "a" + "b";
+      System.out.println((s == q) + " " + (s == r));
+    options: ["true true", "false false", "false true", "true false"]
+    answer: 2
+    explanation: "r = \"a\" + \"b\" is folded by the compiler into the literal \"ab\", so it's the pool object (true). q uses the variable p, so the join happens at runtime and creates a new heap object (false)."
+  - id: q3
+    type: MCQ
+    prompt: "Since Java 7, where does the String pool live?"
+    options: ["On the stack", "In the heap", "In PermGen", "In the CPU cache"]
+    answer: 1
+    explanation: "From Java 7 the pool was moved into the main heap. Before that it lived in PermGen, which is why older notes say PermGen; that's outdated. Stack memory holds only local variables and references."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This login check prints \"Denied\" even though the user typed admin. What is the bug?"
+    code: |
+      Scanner sc = new Scanner("admin");
+      String user = sc.next();
+      if (user == "admin") {
+          System.out.println("Welcome");
+      } else {
+          System.out.println("Denied");
+      }
+    options:
+      - "Scanner cannot read words, only numbers"
+      - "== compares references; the typed text is a new object, so use user.equals(\"admin\")"
+      - "\"admin\" must be written with new String(\"admin\")"
+      - "The if needs a semicolon after the condition"
+    answer: 1
+    explanation: "Text read at runtime by Scanner is a new String object, not the pooled literal, so == is false and it prints Denied. \"admin\".equals(user) compares the characters and works. Adding new String would make it even worse, and a semicolon after if would be a different bug."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "new String(\"code\") can create two objects."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. If \"code\" is not yet in the pool, the literal is added to the pool (one object) and new creates another on the heap (second object). If the literal is already pooled, only one new object is made."
+  - id: q6
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      final String f = "co";
+      String g = f + "de";
+      String h = new String("code").intern();
+      System.out.println((g == "code") + " " + (h == "code"));
+    options: ["false false", "true false", "false true", "true true"]
+    answer: 3
+    explanation: "f is final and set to a literal, so f + \"de\" is a compile-time constant folded into the pooled \"code\" (true). intern() returns the pool copy (true). Without final, the first one would be false."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill the method that returns the String pool's copy of s."
+    code: |
+      String s = new String("quest");
+      String pooled = s.____();
+      System.out.println(pooled == "quest"); // true
+    acceptedAnswers: ["intern"]
+    explanation: "intern() looks up (or adds) the text in the pool and returns that shared object, so == with the literal becomes true."
+  - id: q8
+    type: MATCH
+    prompt: "Match each expression to where its String object comes from"
+    pairs:
+      - left: "\"java\""
+        right: "The pool (literal)"
+      - left: "new String(\"java\")"
+        right: "A fresh object on the normal heap"
+      - left: "\"ja\" + \"va\""
+        right: "The pool, because the compiler folds it"
+      - left: "v + \"va\" (v is a normal variable)"
+        right: "A new heap object made at runtime"
+    explanation: "Literals and compile-time constants go to the pool; new and runtime joins with variables create new heap objects."
+explainBack:
+  prompt: "Explain to a friend the difference between String s = \"hi\" and new String(\"hi\"), and why we use equals() instead of ==."
+  rubric:
+    - "I explained the String pool shares one copy of each literal"
+    - "I said new always makes a separate object"
+    - "I said == compares references, equals compares text"
+    - "I mentioned intern() or compile-time folding"
+    - "I used an analogy or a drawing in words"
+  modelAnswer: |
+    Java keeps a String pool, like a library's reference section with one copy of each book. When I write "hi" as a literal, I get the shared pool copy, so two literals with the same text point to the same object. new String("hi") is like photocopying the book: same words, different physical copy on the heap. The == operator asks "is it the same physical copy?", while equals asks "are the words the same?". That's why we compare Strings with equals. If I want the pool copy of any String, I call intern(). And if I join two literals like "h" + "i", the compiler already makes "hi", so it's in the pool too.
+flashcards:
+  - front: "== vs equals() for Strings"
+    back: "== compares references (same object?). equals() compares characters (same text?). Use equals."
+  - front: "Where is the String pool?"
+    back: "Inside the heap (since Java 7). Before Java 7 it was in PermGen."
+  - front: "Objects created by new String(\"x\")"
+    back: "1 or 2: pool literal (if not already there) + one new heap object."
+  - front: "What does intern() return?"
+    back: "The shared pool copy of the String's text (adding it if missing)."
+  - front: "When is a + b folded at compile time?"
+    back: "When every part is a literal or a final variable set to a literal. Otherwise it's joined at runtime into a new heap object."
+  - front: "Null-safe comparison trick"
+    back: "\"yes\".equals(input): returns false for null instead of throwing NullPointerException."
+keyTakeaways:
+  - "String literals are stored once in the String pool and shared."
+  - "new String(...) always creates a new heap object; == with a literal is false."
+  - "== compares references, equals() compares content. Use equals for Strings."
+  - "intern() gives you the pool copy."
+  - "Literal + literal (or final constant) is folded at compile time into the pool; variable + literal is built at runtime."

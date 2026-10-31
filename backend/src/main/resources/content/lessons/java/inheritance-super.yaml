@@ -1,0 +1,372 @@
+slug: inheritance-super
+world: JAVA_CORE
+section: C
+order: 7
+title: "Inheritance and super"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Core OOP theory for SP and DSE technical rounds; also the base for overriding and polymorphism questions."
+otherCompanies: "A basic OOP question almost everywhere: TCS, Wipro, Cognizant, Accenture, Capgemini, product companies."
+why: |
+  **Inheritance** is one of the four pillars of OOP (with encapsulation, abstraction and polymorphism). Interviewers love starting with "What is inheritance? What types does Java support? Why no multiple inheritance of classes?"
+
+  It also unlocks the next lessons:
+  - **Overriding** only exists because of inheritance.
+  - **Polymorphism** (a parent variable holding a child object) needs inheritance.
+  - Many output questions test **constructor order** and the **`super`** keyword.
+
+  Learn this properly once and the rest of Section C becomes much easier.
+analogy: |
+  Think of a **family business** in Chennai: the father runs "Kumar Textiles".
+
+  - The son **inherits** the shop, the customers and the father's skills. He doesn't rebuild them from scratch. That is `extends`.
+  - The son can **add** new things (an online store) and can **change** how he does something the father also did (a new billing style). That is adding methods and **overriding**.
+  - When the son says "let me ask Appa how he did billing", he is using **`super`**: talking to the parent's version.
+  - And before the son's shop can open, the father's shop must already exist. That is why the **parent constructor always runs first**.
+visual:
+  diagram: |2
+         +------------------+
+         |     Animal       |   <- parent / superclass
+         |------------------|
+         | name             |
+         | eat()            |
+         +------------------+
+                  ^  extends ("IS-A")
+         +--------+---------+
+         |                  |
+    +---------+        +---------+
+    |   Dog   |        |   Cat   |   <- children / subclasses
+    |---------|        |---------|
+    | bark()  |        | meow()  |
+    +---------+        +---------+
+
+    new Dog("Tommy")  ->  Animal() constructor runs FIRST
+                      ->  then Dog() constructor finishes
+  caption: "Dog and Cat get name and eat() from Animal for free, and add their own methods. The parent part of an object is built before the child part."
+  visualizer: null
+explanation: |
+  ### What is inheritance?
+  **Inheritance** means one class gets the fields and methods of another class. We write it with the keyword **`extends`**.
+  - The class that gives is the **parent** (also called **superclass** or **base class**).
+  - The class that receives is the **child** (also called **subclass** or **derived class**).
+
+  ```java
+  class Animal {
+      String name;
+      void eat() { System.out.println(name + " is eating"); }
+  }
+
+  class Dog extends Animal {           // Dog IS-A Animal
+      void bark() { System.out.println(name + " says Woof"); }
+  }
+  ```
+  A `Dog` object can call `eat()` and use `name` even though `Dog` never wrote them. This is **code reuse**.
+
+  ### The IS-A test
+  Use inheritance only when "Child **is a** Parent" makes sense. A Dog *is an* Animal: good. A Car *is an* Engine: wrong! A car **has an** engine. "HAS-A" relationships use a field instead (called **composition**).
+
+  ### What is NOT inherited?
+  | Member | Inherited? |
+  |---|---|
+  | public / protected fields and methods | Yes |
+  | default (no modifier) members | Yes, if the child is in the same package |
+  | private fields and methods | No direct access (they exist inside the object, but the child can't touch them by name) |
+  | constructors | **Never** inherited |
+  | static members | Accessible through the child, but they still belong to the parent class |
+
+  ### Types of inheritance
+  | Type | Shape | Allowed with classes? |
+  |---|---|---|
+  | Single | A <- B | Yes |
+  | Multilevel | A <- B <- C | Yes |
+  | Hierarchical | A <- B, A <- C | Yes |
+  | Multiple | A, B <- C | **No** (only with interfaces) |
+  | Hybrid | a mix | Only through interfaces |
+
+  **Why no multiple inheritance of classes?** If `C extends A, B` and both A and B have a method `show()` with different code, which one should C get? This confusion is called the **diamond problem**. Java avoids it by allowing only one parent class. (A class can implement many interfaces; you'll see how Java handles the diamond there in the abstraction lesson.)
+
+  Every class you write already has a parent: if you don't write `extends`, Java adds `extends Object` for you. So `Object` is the root of every class.
+
+  ### The `super` keyword: three uses
+  `super` means "the parent part of this object".
+
+  **1. `super.method()`: call the parent's version of a method**
+  ```java
+  class Dog extends Animal {
+      void eat() {
+          super.eat();                       // run Animal's eat() first
+          System.out.println("...and wags tail");
+      }
+  }
+  ```
+
+  **2. `super.field`: reach a parent field hidden by a child field with the same name**
+  ```java
+  class Parent { int x = 10; }
+  class Child extends Parent {
+      int x = 20;
+      void show() { System.out.println(x + " " + super.x); }   // 20 10
+  }
+  ```
+
+  **3. `super(...)`: call a parent constructor**
+  ```java
+  class Animal {
+      String name;
+      Animal(String name) { this.name = name; }
+  }
+  class Dog extends Animal {
+      Dog(String name) {
+          super(name);       // MUST be the first statement
+          System.out.println("Dog created");
+      }
+  }
+  ```
+
+  ### Constructor rules you must know
+  1. Every constructor's **first line** is either `this(...)` or `super(...)`. If you write neither, Java silently inserts **`super();`** (call the parent's no-argument constructor).
+  2. So the **parent constructor always runs before the child constructor**. Building goes top-down: `Object` -> `Animal` -> `Dog`.
+  3. If the parent has **only** a constructor with parameters (no no-arg one), the hidden `super();` fails, and the child **must** call `super(something)` explicitly. Otherwise: compile error.
+  4. You can't use both `this(...)` and `super(...)` in the same constructor, because both want to be first.
+  5. `super` can't be used inside a `static` method, because there is no object there.
+
+  ### `super` vs `this`
+  | `this` | `super` |
+  |---|---|
+  | the current object | the parent part of the current object |
+  | `this.x` = my field | `super.x` = parent's field |
+  | `this()` = another constructor of my class | `super()` = a constructor of my parent |
+tinyCode:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Dog d = new Dog("Tommy");
+            d.eat();
+            d.bark();
+        }
+    }
+
+    class Animal {
+        String name;
+        Animal(String name) {
+            this.name = name;
+            System.out.println("Animal constructor");
+        }
+        void eat() {
+            System.out.println(name + " is eating");
+        }
+    }
+
+    class Dog extends Animal {
+        Dog(String name) {
+            super(name);
+            System.out.println("Dog constructor");
+        }
+        void eat() {
+            super.eat();
+            System.out.println(name + " wags its tail");
+        }
+        void bark() {
+            System.out.println(name + " says Woof");
+        }
+    }
+  walkthrough: |
+    - `new Dog("Tommy")` calls the Dog constructor. Its first line `super(name)` jumps to the Animal constructor.
+    - Animal's constructor stores the name and prints **"Animal constructor"**. Only then does control come back to Dog, which prints **"Dog constructor"**.
+    - `d.eat()` runs Dog's own `eat()`. Its first line `super.eat()` runs the parent's version (**"Tommy is eating"**), then Dog adds **"Tommy wags its tail"**.
+    - `d.bark()` is Dog's own new method.
+    - Notice `name` is used inside Dog even though Dog never declared it: it was inherited.
+
+    Output:
+    ```
+    Animal constructor
+    Dog constructor
+    Tommy is eating
+    Tommy wags its tail
+    Tommy says Woof
+    ```
+tryIt:
+  instructions: "Type this multilevel example (A <- B <- C). Before running, guess the order of the three lines. Then remove the call super(5) and see the compile error you get."
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            new C();
+        }
+    }
+
+    class A {
+        A(int n) { System.out.println("A got " + n); }
+    }
+
+    class B extends A {
+        B() {
+            super(5);
+            System.out.println("B ready");
+        }
+    }
+
+    class C extends B {
+        C() { System.out.println("C ready"); }
+    }
+predict:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Child c = new Child();
+            c.show();
+        }
+    }
+
+    class Parent {
+        int x = 10;
+        Parent() { System.out.println("P"); }
+    }
+
+    class Child extends Parent {
+        int x = 20;
+        Child() { System.out.println("C"); }
+        void show() {
+            System.out.println(x + " " + super.x + " " + this.x);
+        }
+    }
+  expectedOutput: |
+    P
+    C
+    20 10 20
+  explanation: |
+    `Child()` has no explicit `super()`, so Java inserts one: "P" prints before "C". In `show()`, plain `x` and `this.x` mean the child's own field (20). `super.x` reaches the parent's hidden field (10).
+commonMistakes:
+  - "Putting super(...) on the second line of a constructor. It must be the very first statement, or the code won't compile."
+  - "Forgetting that Java inserts super() automatically. If the parent has no no-arg constructor, the child fails to compile until you call super(args)."
+  - "Saying constructors are inherited. They are never inherited; the child only calls them with super(...)."
+  - "Saying Java supports multiple inheritance with classes. It doesn't (diamond problem); interfaces give a form of it."
+  - "Using inheritance for HAS-A relationships (Car extends Engine). Use a field (composition) instead."
+  - "Trying to use super inside a static method like main. There is no object there, so super has no meaning."
+interviewBox:
+  why: "Why interviewers ask this: inheritance is the base of overriding and polymorphism, and constructor-order questions quickly show whether you really understand how objects are built."
+  questions:
+    - q: "What is inheritance and why do we use it?"
+      a: "Inheritance lets one class reuse the fields and methods of another class using extends. The child IS-A parent. We use it for code reuse and to support method overriding and runtime polymorphism."
+    - q: "Why doesn't Java support multiple inheritance with classes?"
+      a: "Because of the diamond problem. If a class had two parents with the same method, the compiler wouldn't know which version to use. Java keeps one parent class to avoid that confusion, but a class can implement many interfaces."
+    - q: "What are the uses of the super keyword?"
+      a: "Three uses: super.method() calls the parent's version of a method, super.field reaches a parent field hidden by a child field, and super(...) calls a parent constructor. super(...) must be the first line of the constructor."
+    - q: "In which order do constructors run in a multilevel hierarchy?"
+      a: "From top to bottom: the parent constructor runs first, then the child. Every constructor starts with super(), written by me or inserted by Java, so Object runs first, then the grandparent, the parent and finally the child."
+    - q: "Are private members inherited?"
+      a: "The child object does contain the parent's private fields in memory, but the child class can't access them by name. It must use public or protected getters and setters of the parent."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              new Z();
+          }
+      }
+      class X { X() { System.out.print("X"); } }
+      class Y extends X { Y() { System.out.print("Y"); } }
+      class Z extends Y { Z() { System.out.print("Z"); } }
+    options: ["Z", "ZYX", "XYZ", "XZ"]
+    answer: 2
+    explanation: "Each constructor secretly starts with super(), so the call goes up to X first and prints on the way back down: XYZ. ZYX is the tempting answer if you think the child's body runs first, but the parent part is always built before the child part."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this code fail to compile?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              new Car();
+          }
+      }
+      class Vehicle {
+          Vehicle(String type) { System.out.println(type); }
+      }
+      class Car extends Vehicle {
+          Car() { System.out.println("Car"); }
+      }
+    options:
+      - "Car must also declare a String parameter in its constructor"
+      - "Java inserts super() in Car(), but Vehicle has no no-arg constructor"
+      - "A class can't print inside a constructor"
+      - "Vehicle must be declared abstract"
+    answer: 1
+    explanation: "Car() has no explicit super(...), so Java adds super(). Vehicle only has Vehicle(String), so there is no matching constructor and compilation fails. The fix is super(\"Car\") as Car's first line. Car's own constructor doesn't need a parameter; it just has to pass one up."
+  - id: q3
+    type: MCQ
+    prompt: "Which type of inheritance does Java NOT allow with classes?"
+    options: ["Single", "Multilevel", "Hierarchical", "Multiple"]
+    answer: 3
+    explanation: "A class can extend only one class, so multiple inheritance (C extends A, B) is not allowed; it would cause the diamond problem. Multilevel (A <- B <- C) is fine because each class still has just one direct parent."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Constructors are inherited by the child class."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Constructors are never inherited. The child can only call a parent constructor with super(...). That's why a child must write its own constructors."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword so Cat's speak() first runs the parent's speak()."
+    code: |
+      public class Main {
+          public static void main(String[] args) { new Cat().speak(); }
+      }
+      class Pet { void speak() { System.out.println("..."); } }
+      class Cat extends Pet {
+          void speak() {
+              ____.speak();
+              System.out.println("Meow");
+          }
+      }
+    acceptedAnswers: ["super"]
+    explanation: "super.speak() calls the parent's version. Writing this.speak() instead would call Cat's own speak() again and again, causing a StackOverflowError."
+  - id: q6
+    type: MATCH
+    prompt: "Match each expression to what it refers to"
+    pairs:
+      - left: "super.x"
+        right: "The parent's field x"
+      - left: "this.x"
+        right: "The current class's field x"
+      - left: "super()"
+        right: "A parent constructor call"
+      - left: "this()"
+        right: "Another constructor of the same class"
+    explanation: "this points at the current object/class; super points at the parent part. The () forms are constructor calls and must be the first statement."
+  - id: q7
+    type: MCQ
+    prompt: "Which pair is a correct use of inheritance (IS-A)?"
+    options: ["Car extends Engine", "Student extends Person", "Room extends House", "Wheel extends Bicycle"]
+    answer: 1
+    explanation: "A Student IS-A Person, so extends fits. A car HAS-AN engine, a house HAS rooms and a bicycle HAS wheels; those are composition (fields), not inheritance."
+explainBack:
+  prompt: "Explain inheritance and the super keyword to a friend who doesn't code, including which constructor runs first."
+  rubric:
+    - "I said a child class reuses fields and methods of a parent using extends (IS-A)"
+    - "I explained the three uses of super"
+    - "I said the parent constructor runs before the child's, because super() is always the first line"
+    - "I mentioned that Java allows only one parent class and why"
+    - "I used an analogy and simple words"
+  modelAnswer: |
+    Inheritance is like a son taking over his father's shop. The child class gets the parent's fields and methods for free by writing extends, and it can add new things or change old ones. It should pass the IS-A test: a dog is an animal. The keyword super means "my parent part": super.method() calls the parent's version, super.field reaches a hidden parent field, and super(...) calls the parent constructor. That call is always the first line, and if I don't write it Java adds super() for me, so the parent is built first and then the child. Java allows only one parent class to avoid the diamond problem.
+flashcards:
+  - front: "What does Java insert if a constructor has no this() or super()?"
+    back: "super(); a call to the parent's no-argument constructor, as the first line."
+  - front: "Order of constructors for new C() where C extends B extends A"
+    back: "A, then B, then C (top-down; parent part built first)."
+  - front: "Three uses of super"
+    back: "super.method() (parent method), super.field (hidden parent field), super(...) (parent constructor, first line only)."
+  - front: "Why no multiple inheritance of classes in Java?"
+    back: "The diamond problem: two parents with the same method would be ambiguous. Interfaces are used instead."
+  - front: "Are constructors and private members inherited?"
+    back: "Constructors: never. Private members: exist in the object but can't be accessed by name in the child."
+keyTakeaways:
+  - "extends creates an IS-A relationship: the child reuses the parent's fields and methods."
+  - "Java allows single, multilevel and hierarchical inheritance of classes, but not multiple."
+  - "Every constructor starts with this(...) or super(...); if missing, Java inserts super()."
+  - "The parent constructor always runs before the child constructor."
+  - "super.method(), super.field and super(...) all mean 'the parent part of this object'."

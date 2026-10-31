@@ -1,0 +1,387 @@
+slug: recursion-backtracking
+world: DSA
+section: DSA
+order: 6
+title: "Recursion and backtracking"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: BACKTRACKING
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+infosysRelevance: "Core for SP coding rounds: generating subsets, permutations and combinations with backtracking is a standard tool for harder problems with small input sizes."
+otherCompanies: "Product-company interviews use recursion and backtracking often (subsets, permutations, N-Queens, word search); service companies ask factorial, Fibonacci and recursion basics."
+why: |
+  Some problems ask you to **try all possibilities**: all subsets of a set, all orderings (permutations), all ways to place queens, all paths in a maze. Loops alone can't easily do this when the number of choices is not fixed.
+
+  **Recursion** (a function that calls itself on a smaller version of the problem) handles this naturally. **Backtracking** is recursion with a simple rhythm: **choose -> explore -> un-choose**. It builds a solution step by step and **undoes** the last step to try the next option.
+
+  It's also the foundation for trees, graphs (DFS), divide and conquer (merge sort) and dynamic programming. If the constraints say **n <= 20**, think backtracking.
+analogy: |
+  Think of trying outfits before a family function with **3 shirts and 2 pants**.
+
+  - You **choose** a shirt and put it on.
+  - You **explore**: try each pair of pants with it, and look in the mirror.
+  - You **un-choose**: take the shirt off, so you're back to the starting point, and try the next shirt.
+
+  If you forgot to take off the shirt (no un-choose), you'd end up wearing three shirts at once. That's the most common backtracking bug.
+
+  Recursion itself is like **Russian dolls**: open a doll, and inside is a smaller doll of the same kind, until the smallest doll that doesn't open. That smallest doll is the **base case**.
+visual:
+  diagram: |
+    SUBSETS of [1, 2, 3]: at each level, "take it" or "skip it"
+
+                              []
+                 take 1 /           \ skip 1
+                     [1]             []
+            take 2 /    \ skip   take 2 /   \ skip
+              [1,2]     [1]        [2]      []
+             /    \    /   \      /   \    /   \
+         [1,2,3][1,2][1,3] [1] [2,3] [2]  [3]   []
+                                       (8 = 2^3 leaves)
+
+    CALL STACK for fact(3)
+    fact(3) waits -> 3 * fact(2)
+      fact(2) waits -> 2 * fact(1)
+        fact(1) = 1          <- base case, stack unwinds
+      fact(2) = 2 * 1 = 2
+    fact(3) = 3 * 2 = 6
+  caption: "Each level makes one choice for one element, so 3 elements give 2^3 = 8 subsets. The call stack grows until the base case, then unwinds."
+  visualizer: recursion
+explanation: |
+  ### Part 1: Recursion basics
+  A **recursive function** calls itself on a **smaller** input. Every recursive function needs:
+  1. **Base case**: the smallest input, answered directly, with no further call. Without it, the function never stops.
+  2. **Recursive case**: solve a smaller problem and use its answer.
+  ```java
+  static int fact(int n) {
+      if (n <= 1) return 1;          // base case
+      return n * fact(n - 1);        // recursive case (smaller n)
+  }
+  ```
+
+  ### The call stack
+  Each call gets its own **stack frame** (its own copy of local variables) on the **call stack**. A call waits until the deeper call returns. With no base case (or a huge depth), the stack fills up and Java throws **StackOverflowError**.
+  So recursion depth d costs **O(d) space**.
+
+  ### The recursion tree
+  Draw each call as a node and its recursive calls as children. Counting the nodes gives the time.
+  - `fact(n)`: one child each time, a chain of n calls: **O(n)**.
+  - Naive Fibonacci `fib(n) = fib(n-1) + fib(n-2)`: two children each time, about **2^n** calls, because the same values are recomputed again and again. (Storing results, called memoization, fixes this; that is dynamic programming.)
+
+  ### Code that runs before vs after the recursive call
+  ```java
+  static void show(int n) {
+      if (n == 0) return;
+      System.out.print(n);   // before: runs on the way DOWN
+      show(n - 1);
+      System.out.print(n);   // after: runs on the way back UP
+  }
+  // show(3) prints 321123
+  ```
+
+  ### Part 2: Backtracking
+  **Backtracking** builds a candidate solution one choice at a time, and when a path is finished (or hopeless), it **goes back** and tries a different choice.
+
+  **The template: choose, explore, un-choose**
+  ```java
+  void backtrack(state, List<Integer> current) {
+      if (goal reached) {
+          result.add(new ArrayList<>(current));   // save a COPY
+          return;
+      }
+      for (each option) {
+          current.add(option);                    // choose
+          backtrack(next state, current);         // explore
+          current.remove(current.size() - 1);     // un-choose
+      }
+  }
+  ```
+  - **Save a copy**: `current` is one shared list that keeps changing. Adding `current` itself would make every saved answer the same (finally empty) list.
+  - **Un-choose** restores the state exactly as it was before the choice, so the next option starts clean.
+
+  ### Subsets (take it or skip it)
+  For each element, two choices: include it or not. n elements -> **2^n subsets**.
+  ```java
+  void subsets(int[] nums, int i, List<Integer> cur, List<List<Integer>> res) {
+      if (i == nums.length) { res.add(new ArrayList<>(cur)); return; }
+      cur.add(nums[i]);                    // choose: take nums[i]
+      subsets(nums, i + 1, cur, res);      // explore
+      cur.remove(cur.size() - 1);          // un-choose
+      subsets(nums, i + 1, cur, res);      // skip nums[i]
+  }
+  ```
+  Time **O(n * 2^n)** (2^n subsets, each copied in O(n)). Space O(n) for the recursion depth (plus the output).
+
+  ### Permutations (all orderings)
+  At each position, pick any element **not used yet**. Track usage with a `boolean[] used`.
+  ```java
+  void permute(int[] nums, boolean[] used, List<Integer> cur, List<List<Integer>> res) {
+      if (cur.size() == nums.length) { res.add(new ArrayList<>(cur)); return; }
+      for (int i = 0; i < nums.length; i++) {
+          if (used[i]) continue;
+          used[i] = true;  cur.add(nums[i]);            // choose
+          permute(nums, used, cur, res);                // explore
+          cur.remove(cur.size() - 1);  used[i] = false; // un-choose
+      }
+  }
+  ```
+  n elements -> **n! permutations**. Time **O(n * n!)**. 3 elements give 6, but 10 elements give 3,628,800, so permutations only work for small n.
+
+  ### Pruning
+  **Pruning** means stopping a path early when it can't lead to a valid answer (for example, the running sum already exceeds the target). It doesn't change the worst-case Big-O, but makes real runs much faster.
+
+  ### Complexity cheat sheet
+  | Problem | Number of results | Time |
+  |---|---|---|
+  | Subsets | 2^n | O(n * 2^n) |
+  | Permutations | n! | O(n * n!) |
+  | Combinations (choose k of n) | C(n, k) | O(k * C(n, k)) |
+  | Naive Fibonacci | 1 value | O(2^n) |
+  From the complexity lesson: n <= 20 allows 2^n; n <= 10 allows n!.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Backtracking {
+        static void subsets(int[] nums, int i, List<Integer> cur, List<List<Integer>> res) {
+            if (i == nums.length) {
+                res.add(new ArrayList<>(cur));
+                return;
+            }
+            cur.add(nums[i]);                  // choose
+            subsets(nums, i + 1, cur, res);    // explore (with nums[i])
+            cur.remove(cur.size() - 1);        // un-choose
+            subsets(nums, i + 1, cur, res);    // explore (without nums[i])
+        }
+
+        static void permute(int[] nums, boolean[] used, List<Integer> cur, List<List<Integer>> res) {
+            if (cur.size() == nums.length) {
+                res.add(new ArrayList<>(cur));
+                return;
+            }
+            for (int i = 0; i < nums.length; i++) {
+                if (used[i]) continue;
+                used[i] = true;
+                cur.add(nums[i]);                    // choose
+                permute(nums, used, cur, res);       // explore
+                cur.remove(cur.size() - 1);          // un-choose
+                used[i] = false;
+            }
+        }
+
+        public static void main(String[] args) {
+            int[] nums = {1, 2, 3};
+            List<List<Integer>> subs = new ArrayList<>();
+            subsets(nums, 0, new ArrayList<>(), subs);
+            System.out.println(subs.size() + " " + subs);
+
+            List<List<Integer>> perms = new ArrayList<>();
+            permute(nums, new boolean[3], new ArrayList<>(), perms);
+            System.out.println(perms.size() + " " + perms);
+        }
+    }
+  walkthrough: |
+    **subsets**:
+    - `i` is the index of the element we are deciding about. When `i == nums.length`, every element has been decided: save a **copy** of `cur`.
+    - First we **take** `nums[i]` and recurse, then **un-choose** it and recurse again **without** it.
+    - The "take" branch runs first, so `[1, 2, 3]` is found first and `[]` last.
+
+    **permute**:
+    - `used[i]` marks numbers already in `cur`, so each number appears once per ordering.
+    - For each unused number: mark it, add it, recurse, then remove it and unmark it, so the next loop iteration starts from the same state.
+
+    Output:
+    ```
+    8 [[1, 2, 3], [1, 2], [1, 3], [1], [2, 3], [2], [3], []]
+    6 [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]
+    ```
+    8 = 2^3 subsets and 6 = 3! permutations.
+tryIt:
+  instructions: "Type this program that prints all binary strings of length n (each position chooses 0 or 1). Run with n = 3, then n = 4: how many lines appear each time?"
+  code: |
+    public class BinaryStrings {
+        static void generate(int n, String current) {
+            if (current.length() == n) {     // base case
+                System.out.println(current);
+                return;
+            }
+            generate(n, current + "0");      // choose 0, explore
+            generate(n, current + "1");      // choose 1, explore
+        }
+
+        public static void main(String[] args) {
+            generate(3, "");
+        }
+    }
+predict:
+  code: |
+    public class UpDown {
+        static void show(int n) {
+            if (n == 0) return;
+            System.out.print(n);
+            show(n - 1);
+            System.out.print(n);
+        }
+
+        public static void main(String[] args) {
+            show(3);
+            System.out.println();
+        }
+    }
+  expectedOutput: |
+    321123
+  explanation: |
+    The first print runs **before** the recursive call, on the way down: 3, 2, 1. At `show(0)` the base case returns. Then each waiting call finishes its second print on the way back **up**, in reverse order: 1, 2, 3. Together: 321123.
+commonMistakes:
+  - "Missing or wrong base case, causing infinite recursion and StackOverflowError."
+  - "Adding the shared list itself (res.add(cur)) instead of a copy (new ArrayList<>(cur)); every saved answer ends up as the same final list."
+  - "Forgetting to un-choose (remove the last element / reset used[i]), so choices leak into the next branch."
+  - "Calling list.remove(x) with an Integer value when you meant the last index; use cur.remove(cur.size() - 1)."
+  - "Using backtracking for large n. 2^n and n! explode; check constraints (n <= 20 for subsets, n <= 10 for permutations)."
+interviewBox:
+  why: "Why interviewers ask this: recursion tests whether you can break a problem into smaller copies of itself, and backtracking shows you can explore all options systematically and reason about exponential complexity."
+  questions:
+    - q: "What is recursion and what is a base case?"
+      a: "Recursion is when a function calls itself on a smaller version of the same problem. The base case is the smallest input that is answered directly without another call, like factorial of 1 is 1. Without a base case, the calls never stop and Java throws a StackOverflowError."
+    - q: "What is backtracking?"
+      a: "Backtracking is recursion that builds a solution step by step and undoes the last step to try other options. The rhythm is choose, explore, un-choose: add an option, recurse, then remove it. It's used for subsets, permutations, combinations, N-Queens and maze paths."
+    - q: "How do you generate all subsets of an array? What is the complexity?"
+      a: "For each element I have two choices, take it or skip it. I recurse with an index: add the element and recurse, remove it and recurse again. When the index reaches the end, I save a copy of the current list. There are 2 to the power n subsets and copying each takes up to n, so it's O(n times 2 to the n) time and O(n) recursion depth."
+    - q: "Why do we add new ArrayList<>(current) instead of current to the result?"
+      a: "Because current is one shared list that keeps changing during backtracking. If I add the list itself, all saved entries point to the same object, and after all the un-choose steps it ends up empty. Adding a copy freezes the subset at that moment."
+    - q: "Why is naive recursive Fibonacci slow?"
+      a: "Each call makes two more calls, and the same values are computed again and again; fib(n-2) is computed inside fib(n-1) and again separately. That gives about 2 to the n calls. Storing results in an array or map, called memoization, makes it O(n)."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "How many subsets does a set of 5 distinct elements have, and what is the backtracking time complexity in general?"
+    code: null
+    options: ["10 subsets; O(n^2)", "32 subsets; O(n * 2^n)", "120 subsets; O(n!)", "25 subsets; O(n log n)"]
+    answer: 1
+    explanation: "Each element is either in or out: 2^5 = 32 subsets. Generating and copying them takes O(n * 2^n). 120 = 5! is the number of permutations, not subsets."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "How many times is fib called in total for fib(4)? What does this print?"
+    code: |
+      public class FibCalls {
+          static int calls = 0;
+          static int fib(int n) {
+              calls++;
+              if (n <= 1) return n;
+              return fib(n - 1) + fib(n - 2);
+          }
+
+          public static void main(String[] args) {
+              int value = fib(4);
+              System.out.println(value + " " + calls);
+          }
+      }
+    options: ["3 4", "3 9", "5 9", "3 5"]
+    answer: 1
+    explanation: "fib(4) = 3 (0, 1, 1, 2, 3). Calls: fib(4) calls fib(3) and fib(2); fib(3) calls fib(2) and fib(1); each fib(2) calls fib(1) and fib(0). Counting all nodes in the tree gives 9. The repeated fib(2) is exactly why naive Fibonacci is exponential. \"3 4\" counts only one call per value."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This should print the 8 subsets of [1, 2, 3], but it prints 8 empty lists. What is the bug?"
+    code: |
+      import java.util.*;
+
+      public class SubsetBug {
+          static void subsets(int[] nums, int i, List<Integer> cur, List<List<Integer>> res) {
+              if (i == nums.length) {
+                  res.add(cur);
+                  return;
+              }
+              cur.add(nums[i]);
+              subsets(nums, i + 1, cur, res);
+              cur.remove(cur.size() - 1);
+              subsets(nums, i + 1, cur, res);
+          }
+
+          public static void main(String[] args) {
+              List<List<Integer>> res = new ArrayList<>();
+              subsets(new int[]{1, 2, 3}, 0, new ArrayList<>(), res);
+              System.out.println(res);
+          }
+      }
+    options:
+      - "The base case should be i == nums.length - 1"
+      - "res.add(cur) stores the same shared list 8 times; after all un-choose steps it is empty. Use res.add(new ArrayList<>(cur))"
+      - "cur.remove should be cur.clear()"
+      - "The two recursive calls are in the wrong order"
+    answer: 1
+    explanation: "All 8 entries point to one list object. Backtracking removes everything by the end, so it prints [[], [], [], [], [], [], [], []]. Saving a copy freezes each subset. Changing the base case would skip the last element, clear() would destroy earlier choices, and call order only changes the output order."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "A recursive method with no reachable base case will eventually throw StackOverflowError in Java."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Each call adds a frame to the call stack. Without a base case the calls never return, the stack fills up, and the JVM throws StackOverflowError."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill the un-choose step: remove the LAST element added to cur."
+    code: |
+      cur.add(nums[i]);                 // choose
+      backtrack(nums, i + 1, cur, res); // explore
+      cur.remove(____);                 // un-choose
+    acceptedAnswers: ["cur.size()-1", "cur.size() - 1"]
+    explanation: "cur.size() - 1 is the index of the last element. Using remove(nums[i]) on a List<Integer> would call remove(int index) and remove the wrong element (or throw)."
+  - id: q6
+    type: MATCH
+    prompt: "Match each backtracking step to its code"
+    pairs:
+      - left: "Base case / goal"
+        right: "if (cur.size() == n) { res.add(new ArrayList<>(cur)); return; }"
+      - left: "Choose"
+        right: "used[i] = true; cur.add(nums[i]);"
+      - left: "Explore"
+        right: "permute(nums, used, cur, res);"
+      - left: "Un-choose"
+        right: "cur.remove(cur.size() - 1); used[i] = false;"
+    explanation: "Every backtracking function has these four parts: stop and save at the goal, make a choice, recurse, and undo the choice."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "What does this recursive sum print?"
+    code: |
+      public class DigitSum {
+          static int sumDigits(int n) {
+              if (n < 10) return n;
+              return n % 10 + sumDigits(n / 10);
+          }
+
+          public static void main(String[] args) {
+              System.out.println(sumDigits(4096) + " " + sumDigits(7));
+          }
+      }
+    options: ["19 7", "4096 7", "6 7", "19 0"]
+    answer: 0
+    explanation: "4096 % 10 = 6, then 409 -> 9, 40 -> 0, and 4 is the base case: 6 + 9 + 0 + 4 = 19. For 7, n < 10 is already true, so the base case returns 7 directly."
+explainBack:
+  prompt: "Explain recursion and backtracking to a friend using the outfit-trying example, and describe how subsets are generated."
+  rubric:
+    - "I explained base case and recursive case, and what happens without a base case"
+    - "I explained choose -> explore -> un-choose"
+    - "I explained subsets as take/skip for each element, giving 2^n"
+    - "I explained why we save a copy of the current list"
+    - "I mentioned the exponential complexity and small-n constraints"
+  modelAnswer: |
+    Recursion is a function solving a problem by calling itself on a smaller version, until it reaches a base case it can answer directly; without a base case it never stops and the stack overflows. Backtracking uses recursion to try all options, like trying outfits: choose a shirt, explore all pants with it, then take the shirt off before trying the next one. In code it's choose, explore, un-choose. For subsets, at each element I either take it or skip it, so three elements give 2 to the power 3, which is 8 subsets. When I reach the end, I save a copy of the current list, because the same list keeps changing. It's exponential, so I use it when n is small, around 20 or less.
+flashcards:
+  - front: "Two parts of every recursive function"
+    back: "Base case (answer directly) + recursive case (call on a smaller input)."
+  - front: "Backtracking rhythm"
+    back: "Choose -> explore (recurse) -> un-choose (undo)."
+  - front: "Number of subsets / permutations of n items"
+    back: "2^n subsets, n! permutations."
+  - front: "Why res.add(new ArrayList<>(cur))?"
+    back: "cur is shared and keeps changing; a copy freezes the current answer."
+  - front: "Space cost of recursion"
+    back: "O(depth) for the call stack."
+  - front: "Why is naive fib slow?"
+    back: "Two calls per call and repeated work: about 2^n calls. Memoization makes it O(n)."
+keyTakeaways:
+  - "Recursion = base case + smaller recursive call; each call sits on the call stack."
+  - "Code before the recursive call runs going down; code after runs coming back up."
+  - "Backtracking = choose, explore, un-choose."
+  - "Subsets: take/skip, 2^n. Permutations: used[] array, n!."
+  - "Always save a copy of the current list, and always undo your choice."
+  - "Exponential: only for small n (about 20 for subsets, 10 for permutations)."

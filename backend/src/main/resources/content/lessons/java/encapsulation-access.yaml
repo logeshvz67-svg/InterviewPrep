@@ -1,0 +1,369 @@
+slug: encapsulation-access
+world: JAVA_CORE
+section: C
+order: 11
+title: "Encapsulation, access modifiers, packages"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Core OOP theory for SP and DSE; the access-modifier table is a common MCQ and theory question."
+otherCompanies: "Basic OOP pillar asked at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  **Encapsulation** is the OOP pillar you use in every single class you write. Interviewers ask:
+  - What is encapsulation? How is it different from abstraction?
+  - What are the four access modifiers? Fill in the "who can see what" table.
+  - Why make fields `private` and add getters and setters?
+  - What is a package, and what does `protected` really allow?
+
+  Getting the access table exactly right is easy marks in MCQs, and explaining *why* we hide data shows you think like a real developer.
+analogy: |
+  Think of your **bank account**.
+
+  - Your **balance** is kept **private** inside the bank's system. You can't walk into the vault and change the number yourself.
+  - To change it, you use **public counters**: deposit and withdraw. The cashier **checks the rules** (no negative deposit, no withdrawing more than you have).
+  - That is encapsulation: **data locked inside, controlled doors (methods) outside**.
+
+  **Access modifiers** are like the areas of the bank: the **vault** (private: only the bank's own staff), the **staff room** (default: only staff of the same branch, i.e. the same package), the **regional office** (protected: same branch plus trained staff from child branches) and the **public lobby** (public: anyone).
+visual:
+  diagram: |2
+     Who can access a member?        (Y = yes, N = no)
+
+                       same   same     subclass in   anywhere
+     modifier          class  package  other package else
+     ---------------   -----  -------  ------------  --------
+     private             Y      N          N            N
+     (default)           Y      Y          N            N
+     protected           Y      Y          Y*           N
+     public              Y      Y          Y            Y
+
+     * through inheritance (the child's own object), not via
+       a plain parent object
+
+     +------------- class Account --------------+
+     |  private double balance;   <- locked     |
+     |  public void deposit(x)    <- checked    |
+     |  public double getBalance() <- read-only |
+     +------------------------------------------+
+  caption: "Access gets wider from private to default to protected to public. Encapsulation keeps fields private and exposes only checked public methods."
+  visualizer: null
+explanation: |
+  ### What is encapsulation?
+  **Encapsulation** means **wrapping data (fields) and the code that works on that data (methods) together in one class**, and **hiding the data** from direct outside access. Outsiders can only use the methods you choose to make public.
+
+  The recipe:
+  1. Make fields **`private`**.
+  2. Provide **public getter** methods to read them (if needed).
+  3. Provide **public setter** methods to change them, with **validation** (if needed).
+
+  ```java
+  class Account {
+      private double balance;               // nobody outside can touch this
+
+      public double getBalance() {          // getter: read access
+          return balance;
+      }
+
+      public void deposit(double amount) {  // controlled change
+          if (amount <= 0) {
+              System.out.println("Invalid amount");
+              return;
+          }
+          balance += amount;
+      }
+  }
+  ```
+  Now `acc.balance = -5000;` doesn't compile. Bad data can't sneak in.
+
+  ### Why bother?
+  - **Data safety**: rules (validation) are always applied.
+  - **Control**: make something read-only (getter, no setter) or write-only.
+  - **Flexibility**: you can change the inside (e.g. store balance in paise as a `long`) without breaking code that uses the class.
+  - **Easier testing and debugging**: only a few methods can change the data.
+
+  A class whose fields are all private with getters/setters is often called a **POJO** (Plain Old Java Object) or **JavaBean**.
+
+  ### Encapsulation vs abstraction
+  | Encapsulation | Abstraction |
+  |---|---|
+  | **Hides data** (the *how it's stored*) | **Hides complexity** (the *how it works*) |
+  | Done with `private` + getters/setters | Done with abstract classes and interfaces |
+  | Protects the object's state | Simplifies what the user sees |
+  | Like a locked vault | Like a car dashboard |
+
+  ### The four access modifiers
+  An **access modifier** is a keyword that controls who can see a class, field, method or constructor.
+
+  | Modifier | Same class | Same package | Subclass (other package) | Everywhere |
+  |---|---|---|---|---|
+  | `private` | Yes | No | No | No |
+  | *(default)*, no keyword | Yes | Yes | No | No |
+  | `protected` | Yes | Yes | Yes (through inheritance) | No |
+  | `public` | Yes | Yes | Yes | Yes |
+
+  Memory trick: **private < default < protected < public**, from most hidden to most open.
+
+  Details people get wrong:
+  - **default** is also called **package-private**. There is no keyword `default` for access (the `default` keyword in interfaces and switch means something else).
+  - **protected** includes the whole package **plus** subclasses in other packages. In another package, the child can use the protected member through **its own object** (inheritance), not through a separately created parent object.
+  - A **top-level class** can be only `public` or default. It can't be `private` or `protected` (nested classes can).
+  - A `.java` file can have **at most one public top-level class**, and the file name must match it.
+  - Making a **constructor private** stops others from using `new` (used in Singleton and utility classes like `Math`).
+
+  ### Packages
+  A **package** is a folder-like group of related classes, e.g. `java.util` or `com.codequest.bank`. It:
+  - organises code (like folders),
+  - avoids name clashes (`java.util.Date` vs `java.sql.Date`),
+  - works with default and protected access to control visibility.
+
+  ```java
+  package com.codequest.bank;     // first line of the file
+  import java.util.ArrayList;      // use a class from another package
+  import java.util.*;              // all classes in java.util (not sub-packages)
+  ```
+  - `package` must be the **first statement** in the file. The folder path must match: `com/codequest/bank/Account.java`.
+  - `java.lang` (String, Math, System) is **imported automatically**.
+  - Package names are lowercase, usually your company domain reversed.
+  - **static import** lets you use static members without the class name: `import static java.lang.Math.max;` then `max(3, 7)`.
+tinyCode:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Account acc = new Account("Priya");
+            acc.deposit(5000);
+            acc.deposit(-200);
+            acc.withdraw(8000);
+            acc.withdraw(1500);
+            System.out.println(acc.getOwner() + " has " + acc.getBalance());
+        }
+    }
+
+    class Account {
+        private final String owner;
+        private double balance;
+
+        Account(String owner) { this.owner = owner; }
+
+        public String getOwner() { return owner; }
+        public double getBalance() { return balance; }
+
+        public void deposit(double amount) {
+            if (amount <= 0) { System.out.println("Rejected deposit: " + amount); return; }
+            balance += amount;
+        }
+
+        public void withdraw(double amount) {
+            if (amount > balance) { System.out.println("Insufficient funds"); return; }
+            balance -= amount;
+        }
+    }
+  walkthrough: |
+    - `owner` and `balance` are **private**: code in `Main` can't read or change them directly.
+    - `owner` is also `final` with only a getter, so it's **read-only** after creation.
+    - `deposit` and `withdraw` are the only ways to change the balance, and both **validate** first.
+    - `deposit(-200)` is rejected, `withdraw(8000)` is refused because the balance is only 5000, `withdraw(1500)` works.
+    - If you wrote `acc.balance = 1000000;` in `main`, the compiler would say: *balance has private access in Account*.
+
+    Output:
+    ```
+    Rejected deposit: -200.0
+    Insufficient funds
+    Priya has 3500.0
+    ```
+tryIt:
+  instructions: "Type this Student class. Run it, then add the line s.marks = 150; inside main and read the compile error. Remove it and try s.setMarks(150) instead to see validation at work."
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Student s = new Student();
+            s.setMarks(88);
+            System.out.println("Marks: " + s.getMarks());
+            s.setMarks(-5);
+            System.out.println("Marks: " + s.getMarks());
+        }
+    }
+
+    class Student {
+        private int marks;
+
+        public int getMarks() { return marks; }
+
+        public void setMarks(int marks) {
+            if (marks < 0 || marks > 100) {
+                System.out.println("Invalid marks: " + marks);
+                return;
+            }
+            this.marks = marks;
+        }
+    }
+predict:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Counter c = new Counter();
+            c.increment();
+            c.increment();
+            c.reset(5);
+            c.increment();
+            System.out.println(c.getCount());
+        }
+    }
+
+    class Counter {
+        private int count;
+
+        public void increment() { count++; }
+
+        public void reset(int value) {
+            if (value < 0) return;
+            count = 0;
+        }
+
+        public int getCount() { return count; }
+    }
+  expectedOutput: |
+    1
+  explanation: |
+    Read `reset` carefully: it ignores `value` and always sets `count` to 0 (for non-negative input). So: 1, 2, then reset to 0, then increment to 1. Encapsulation means you trust the method's *code*, not its *name*: always read what it really does.
+commonMistakes:
+  - "Thinking default access means public. Default (no keyword) is package-private: other packages can't see it."
+  - "Thinking protected is only for subclasses. protected also gives access to every class in the same package."
+  - "Writing getters and setters with no validation and calling it full encapsulation. The point is control: validate, or leave out setters for read-only data."
+  - "Declaring a top-level class private or protected. Top-level classes can only be public or default."
+  - "Putting two public classes in one .java file, or naming the file differently from the public class."
+  - "Mixing up encapsulation (hiding data) and abstraction (hiding implementation complexity)."
+interviewBox:
+  why: "Why interviewers ask this: it checks basic OOP vocabulary and whether you design classes that protect their own data."
+  questions:
+    - q: "What is encapsulation?"
+      a: "Encapsulation means bundling data and the methods that work on it into one class and hiding the data from direct access. We make fields private and expose public getters and setters, so every change goes through methods that can check the rules."
+    - q: "Explain the four access modifiers."
+      a: "private is visible only inside the same class. Default, with no keyword, is visible inside the same package. protected is visible in the same package and also in subclasses in other packages through inheritance. public is visible everywhere."
+    - q: "What is the difference between encapsulation and abstraction?"
+      a: "Encapsulation hides the data and protects the object's state, using private fields and methods. Abstraction hides the implementation complexity and shows only what an object does, using abstract classes and interfaces."
+    - q: "What is a package and why do we use it?"
+      a: "A package is a namespace that groups related classes, like a folder. It organises code, avoids name clashes such as java.util.Date and java.sql.Date, and works with default and protected access to control visibility."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each access modifier to its widest visibility"
+    pairs:
+      - left: "private"
+        right: "Only the same class"
+      - left: "(default)"
+        right: "Same package only"
+      - left: "protected"
+        right: "Same package + subclasses in other packages"
+      - left: "public"
+        right: "Everywhere"
+    explanation: "Visibility widens in this order: private < default < protected < public. protected is wider than default because it adds subclasses in other packages."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this fail to compile?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Wallet w = new Wallet();
+              w.cash = 500;
+              System.out.println(w.getCash());
+          }
+      }
+      class Wallet {
+          private int cash;
+          public int getCash() { return cash; }
+      }
+    options:
+      - "getCash() must be static"
+      - "cash is private, so Main can't assign it directly"
+      - "Wallet needs a constructor"
+      - "int fields can't be private"
+    answer: 1
+    explanation: "private fields can be used only inside Wallet. The compiler says 'cash has private access in Wallet'. Java gives a default constructor automatically, so a missing constructor isn't the problem. The fix is a setter method."
+  - id: q3
+    type: MCQ
+    prompt: "Which modifier lets classes in the SAME package see a member, but NOT a subclass in a different package?"
+    options: ["private", "default (no modifier)", "protected", "public"]
+    answer: 1
+    explanation: "Default (package-private) stops at the package boundary. protected looks similar but also allows subclasses in other packages, which is the trap."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "A top-level class can be declared private."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A top-level class can be only public or default. private and protected are allowed only for nested (inner) classes."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Temp t = new Temp();
+              t.setCelsius(30);
+              t.setCelsius(-500);
+              System.out.println(t.getCelsius());
+          }
+      }
+      class Temp {
+          private double celsius;
+          public void setCelsius(double c) {
+              if (c < -273.15) return;
+              celsius = c;
+          }
+          public double getCelsius() { return celsius; }
+      }
+    options: ["-500.0", "30.0", "0.0", "30"]
+    answer: 1
+    explanation: "-500 is below absolute zero, so the setter rejects it and celsius stays 30.0. It's a double, so it prints 30.0, not 30. This is exactly why encapsulation is useful: bad data never gets in."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword so the field can't be accessed from outside the class."
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              System.out.println(new Phone().getModel());
+          }
+      }
+      class Phone {
+          ____ String model = "Pixel";
+          public String getModel() { return model; }
+      }
+    acceptedAnswers: ["private"]
+    explanation: "private hides the field; other classes must go through getModel(). With no setter, model becomes read-only from outside."
+  - id: q7
+    type: MCQ
+    prompt: "Which statement about packages is correct?"
+    options:
+      - "import java.util.*; also imports java.util.function classes"
+      - "java.lang classes like String must be imported manually"
+      - "The package statement must be the first statement in the file"
+      - "A package name must start with a capital letter"
+    answer: 2
+    explanation: "package must come first (only comments may appear before it). A wildcard import does not include sub-packages, java.lang is imported automatically, and package names are lowercase by convention."
+explainBack:
+  prompt: "Explain encapsulation and the four access modifiers to a friend using a bank account example."
+  rubric:
+    - "I said fields are private and accessed through public methods"
+    - "I explained why: validation, control, flexibility"
+    - "I listed private, default, protected, public in order with who can see each"
+    - "I mentioned packages as groups of classes that affect default/protected access"
+    - "I contrasted it with abstraction in one line"
+  modelAnswer: |
+    Encapsulation is like a bank keeping your balance in a locked vault. In Java I make the balance field private, so nobody outside the class can change it, and I give public methods like deposit and withdraw that check the rules first. That keeps data safe and lets me change the inside later. Access modifiers decide who can see what: private is only the same class, default with no keyword is the same package, protected is the package plus child classes elsewhere, and public is everyone. A package is just a named group of related classes, like a folder. Encapsulation hides data; abstraction hides complexity.
+flashcards:
+  - front: "Access modifiers from narrowest to widest"
+    back: "private < default (package-private) < protected < public."
+  - front: "What does protected allow?"
+    back: "Same class, same package, and subclasses in other packages (through inheritance)."
+  - front: "Encapsulation recipe"
+    back: "private fields + public getters/setters with validation."
+  - front: "Encapsulation vs abstraction"
+    back: "Encapsulation hides data (private fields). Abstraction hides implementation complexity (abstract classes/interfaces)."
+  - front: "Allowed modifiers for a top-level class"
+    back: "Only public or default."
+keyTakeaways:
+  - "Encapsulation = data + methods in one class, with data hidden behind private."
+  - "Getters/setters give controlled access; setters should validate."
+  - "private < default < protected < public; default is package-private."
+  - "protected = same package + subclasses in other packages."
+  - "Packages group classes, avoid name clashes and work with access modifiers; java.lang is auto-imported."

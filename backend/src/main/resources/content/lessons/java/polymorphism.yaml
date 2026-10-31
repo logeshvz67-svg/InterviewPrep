@@ -1,0 +1,354 @@
+slug: polymorphism
+world: JAVA_CORE
+section: C
+order: 9
+title: "Polymorphism and casting"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Core OOP theory for SP and DSE; upcasting, downcasting and 'which method runs' are favourite output questions."
+otherCompanies: "A standard OOP pillar question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  **Polymorphism** is one of the four OOP pillars, and interviewers rarely stop at the definition. They show code like `Animal a = new Dog();` and ask:
+  - Which method runs?
+  - Which field is printed?
+  - Can I call a Dog-only method on `a`?
+  - What happens if I cast it to `Cat`?
+
+  Once you understand the **two types** of polymorphism and the **"variable type vs object type"** rule, every one of these questions becomes easy.
+
+  It's also how real Java code is written: `List<String> list = new ArrayList<>();` is polymorphism.
+analogy: |
+  Think of a **TV remote** with a "Power" button.
+
+  - The button (the **reference**, the variable) looks the same for every TV.
+  - But pressing it on a Sony, a Samsung or an LG makes *that* TV do *its own* thing (the **object** decides).
+
+  The remote only shows buttons that **every TV** has (the **reference type** decides what you're *allowed* to press). If your Samsung has a special "Smart Hub" button, a generic remote doesn't show it. To use it, you need the **Samsung remote** (a **downcast**). And if you point the Samsung remote at a Sony, it simply fails (a **ClassCastException**).
+visual:
+  diagram: |2
+     REFERENCE (what the compiler sees)     OBJECT (what really exists)
+
+       Animal a ----------------------------->  +---------------+
+                                                | Dog object    |
+                                                |  name="Tommy" |
+                                                |  sound(): Woof|
+                                                |  fetch()      |
+                                                +---------------+
+     Compiler: "a is an Animal; only Animal methods allowed"
+     JVM:      "the object is a Dog; run Dog's sound()"
+
+     Upcast   (automatic, always safe):  Animal a = new Dog();
+     Downcast (explicit, can fail):      Dog d = (Dog) a;
+     Wrong downcast:  Cat c = (Cat) a;   -> ClassCastException
+  caption: "The variable's type decides WHICH methods you may call (compile time). The object's real type decides WHICH VERSION runs (run time)."
+  visualizer: null
+explanation: |
+  ### What is polymorphism?
+  **Polymorphism** means "many forms": one name or one variable that behaves differently depending on the situation. Java has two kinds.
+
+  | | Compile-time polymorphism | Runtime polymorphism |
+  |---|---|---|
+  | Achieved by | Method **overloading** | Method **overriding** |
+  | Decided by | The compiler, using argument types | The JVM, using the real object |
+  | Also called | Static binding / early binding | Dynamic binding / late binding / dynamic method dispatch |
+  | Needs inheritance? | No | Yes |
+
+  **Binding** just means "connecting a method call to the actual method body".
+
+  ### Runtime polymorphism: the key rule
+  ```java
+  Animal a = new Dog();
+  ```
+  There are **two types** here:
+  - The **reference type** (the variable's declared type): `Animal`.
+  - The **object type** (what `new` really built): `Dog`.
+
+  **The golden rule:**
+  1. The **compiler** checks the reference type: "Does `Animal` have this method?" If not, compile error.
+  2. The **JVM** looks at the object type at run time and runs the **overridden** version from `Dog`.
+
+  ```java
+  a.sound();   // Dog's sound(): runtime polymorphism
+  a.fetch();   // COMPILE ERROR: Animal has no fetch()
+  ```
+
+  ### What is NOT polymorphic
+  Only **overridden instance methods** are chosen by the object. These are chosen by the **reference type**:
+  - **Fields** (variables): `a.name` uses Animal's field if both classes declare `name`.
+  - **static methods** (they are hidden, not overridden).
+  - **private** and **final** methods (they can't be overridden).
+
+  ### Upcasting
+  **Upcasting** = treating a child object as its parent type.
+  ```java
+  Dog d = new Dog();
+  Animal a = d;          // upcast, automatic
+  ```
+  It's **always safe** (every Dog is an Animal), so Java does it automatically. This is why you can write one method `void feed(Animal a)` and pass a Dog, a Cat or a Cow.
+
+  ### Downcasting
+  **Downcasting** = converting a parent reference back to a child type, so you can use child-only methods.
+  ```java
+  Animal a = new Dog();
+  Dog d = (Dog) a;       // downcast, needs explicit (Dog)
+  d.fetch();             // now allowed
+  ```
+  It's **not always safe**, so Java makes you write the cast. If the object is not really a Dog, the JVM throws a **`ClassCastException`** at run time:
+  ```java
+  Animal a = new Cat();
+  Dog d = (Dog) a;       // compiles, but ClassCastException at run time
+  ```
+  If the two types are not related at all (`String s = (String) new Dog();`), the compiler already rejects it: "incompatible types".
+
+  ### Safe downcasting with `instanceof`
+  `x instanceof Dog` returns `true` if the object `x` points to is a Dog (or a subclass of Dog). It returns `false` for `null`.
+
+  **Old style (before Java 16):**
+  ```java
+  if (a instanceof Dog) {
+      Dog d = (Dog) a;
+      d.fetch();
+  }
+  ```
+
+  **Pattern matching for instanceof (Java 16+):** test and cast in one step.
+  ```java
+  if (a instanceof Dog d) {   // if true, d is already a Dog
+      d.fetch();
+  }
+  ```
+  The new variable `d` (called a **pattern variable**) exists only where the test is known to be true.
+
+  ### Why it matters
+  Polymorphism lets you write code against a general type and add new types later without changing old code:
+  ```java
+  Animal[] zoo = { new Dog(), new Cat(), new Cow() };
+  for (Animal x : zoo) x.sound();   // each animal makes its own sound
+  ```
+tinyCode:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Animal[] zoo = { new Dog(), new Cat() };
+            for (Animal a : zoo) {
+                a.sound();
+                if (a instanceof Dog d) {
+                    d.fetch();
+                }
+            }
+        }
+    }
+
+    class Animal {
+        void sound() { System.out.println("Some sound"); }
+    }
+
+    class Dog extends Animal {
+        @Override
+        void sound() { System.out.println("Woof"); }
+        void fetch() { System.out.println("Dog fetches the ball"); }
+    }
+
+    class Cat extends Animal {
+        @Override
+        void sound() { System.out.println("Meow"); }
+    }
+  walkthrough: |
+    - `Animal[] zoo = { new Dog(), new Cat() };` stores a Dog and a Cat in Animal slots. That's **upcasting**, done automatically.
+    - In the loop, `a` is always declared as `Animal`, but `a.sound()` runs the **real object's** version: Woof, then Meow. That's **runtime polymorphism**.
+    - `a.fetch()` would not compile, because `Animal` has no `fetch()`.
+    - `a instanceof Dog d` checks "is this object really a Dog?" and, if yes, gives us `d` already cast to Dog. Then `d.fetch()` is allowed. For the Cat the test is false, so nothing happens.
+
+    Output:
+    ```
+    Woof
+    Dog fetches the ball
+    Meow
+    ```
+tryIt:
+  instructions: "Type this, run it, and read the ClassCastException message. Then wrap the risky cast in an if (s instanceof Circle c) check so the program prints a friendly message instead of crashing."
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Shape s = new Square();
+            s.draw();
+            Circle c = (Circle) s;
+            System.out.println("This line never runs");
+        }
+    }
+
+    class Shape {
+        void draw() { System.out.println("Drawing a shape"); }
+    }
+
+    class Circle extends Shape {
+        void draw() { System.out.println("Drawing a circle"); }
+    }
+
+    class Square extends Shape {
+        void draw() { System.out.println("Drawing a square"); }
+    }
+predict:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Parent p = new Child();
+            System.out.println(p.name);
+            p.show();
+            System.out.println(p instanceof Child);
+        }
+    }
+
+    class Parent {
+        String name = "parent-field";
+        void show() { System.out.println("Parent show, name=" + name); }
+    }
+
+    class Child extends Parent {
+        String name = "child-field";
+        @Override
+        void show() { System.out.println("Child show, name=" + name); }
+    }
+  expectedOutput: |
+    parent-field
+    Child show, name=child-field
+    true
+  explanation: |
+    Fields are **not** polymorphic: `p.name` uses the reference type `Parent`, so "parent-field". Methods **are**: `p.show()` runs Child's `show()`, and inside Child's method, `name` means Child's own field, so "child-field". Finally, the object really is a Child, so `instanceof` gives `true`.
+commonMistakes:
+  - "Calling a child-only method through a parent reference (Animal a = new Dog(); a.fetch();). The compiler only looks at the reference type, so it's a compile error."
+  - "Thinking fields are polymorphic. Fields (and static methods) are picked by the reference type, not the object."
+  - "Downcasting without checking. If the object isn't really that type you get a ClassCastException at run time."
+  - "Thinking a cast changes the object. A cast only changes how the compiler lets you use the reference; the object stays exactly the same."
+  - "Saying overloading is runtime polymorphism. Overloading is compile-time; overriding is runtime."
+interviewBox:
+  why: "Why interviewers ask this: it checks if you can separate what the compiler checks from what the JVM does at run time, which is the heart of OOP in Java."
+  questions:
+    - q: "What is polymorphism? What are its types in Java?"
+      a: "Polymorphism means one thing taking many forms. Compile-time polymorphism is method overloading, where the compiler picks the method by arguments. Runtime polymorphism is method overriding, where the JVM picks the method by the real object, also called dynamic method dispatch."
+    - q: "What is the difference between upcasting and downcasting?"
+      a: "Upcasting is using a child object through a parent reference, like Animal a = new Dog(). It is automatic and always safe. Downcasting is converting the parent reference back to the child type with an explicit cast like (Dog) a. It can fail with ClassCastException if the object is not really a Dog, so we check with instanceof first."
+    - q: "When do you get a ClassCastException?"
+      a: "At run time, when you cast a reference to a type that the actual object is not. For example, the reference points to a Cat and you cast it to Dog. The code compiles because the types are related, but the JVM throws the exception."
+    - q: "What is pattern matching for instanceof?"
+      a: "From Java 16, I can write if (a instanceof Dog d). It checks the type and, if true, creates a variable d already cast to Dog. It removes the separate cast line and the chance of casting wrongly."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Vehicle v = new Bike();
+              v.start();
+              System.out.println(v.wheels);
+          }
+      }
+      class Vehicle {
+          int wheels = 4;
+          void start() { System.out.println("Vehicle starts"); }
+      }
+      class Bike extends Vehicle {
+          int wheels = 2;
+          void start() { System.out.println("Bike starts"); }
+      }
+    options: ["Vehicle starts\n4", "Bike starts\n2", "Bike starts\n4", "Vehicle starts\n2"]
+    answer: 2
+    explanation: "start() is an overridden method, so the object (Bike) decides: 'Bike starts'. wheels is a field, and fields are chosen by the reference type (Vehicle): 4. 'Bike starts / 2' is tempting, but fields are never polymorphic."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This compiles. What happens when it runs?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Object o = "hello";
+              Integer n = (Integer) o;
+              System.out.println(n + 1);
+          }
+      }
+    options:
+      - "Prints hello1"
+      - "Prints 6 (the length plus one)"
+      - "Throws ClassCastException, because the object is a String, not an Integer"
+      - "Throws NumberFormatException"
+    answer: 2
+    explanation: "Object -> Integer is a legal downcast, so it compiles. But at run time the object is a String, so the JVM throws ClassCastException. Casting never converts data; NumberFormatException is what Integer.parseInt(\"hello\") would throw, which is different."
+  - id: q3
+    type: MCQ
+    prompt: "Animal a = new Dog(); Dog has an extra method fetch(). What happens with a.fetch(); ?"
+    options:
+      - "Runs Dog's fetch()"
+      - "Compile error: Animal has no fetch()"
+      - "ClassCastException at run time"
+      - "Runs Animal's fetch()"
+    answer: 1
+    explanation: "The compiler only checks the reference type, Animal, which has no fetch(). It fails before the program ever runs. You'd need ((Dog) a).fetch() or an instanceof pattern first."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Method overloading is an example of runtime polymorphism."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Overloading is decided by the compiler from argument types, so it's compile-time polymorphism. Runtime polymorphism comes from overriding."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the Java 16+ pattern so s can be used as a String inside the if."
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Object obj = "polymorphism";
+              if (obj ____ String s) {
+                  System.out.println(s.length());
+              }
+          }
+      }
+    acceptedAnswers: ["instanceof"]
+    explanation: "obj instanceof String s checks the type and, if true, gives you s already cast to String, so s.length() works and prints 12."
+  - id: q6
+    type: MATCH
+    prompt: "Match each line to what happens"
+    pairs:
+      - left: "Animal a = new Dog();"
+        right: "Upcast: automatic and always safe"
+      - left: "Dog d = (Dog) a;  (a holds a Dog)"
+        right: "Downcast that succeeds"
+      - left: "Dog d = (Dog) a;  (a holds a Cat)"
+        right: "ClassCastException at run time"
+      - left: "String s = (String) new Dog();"
+        right: "Compile error: unrelated types"
+    explanation: "Up the hierarchy is automatic. Down needs a cast and is checked at run time. Casting between completely unrelated classes is caught by the compiler."
+  - id: q7
+    type: MCQ
+    prompt: "Which of these is chosen by the ACTUAL OBJECT at run time?"
+    options: ["An instance field", "A static method", "An overridden instance method", "A private method"]
+    answer: 2
+    explanation: "Only overridden instance methods use dynamic dispatch. Fields and static methods use the reference type, and private methods can't be overridden at all."
+explainBack:
+  prompt: "Explain polymorphism, upcasting and downcasting to a friend using the line Animal a = new Dog();"
+  rubric:
+    - "I named both types: compile-time (overloading) and runtime (overriding)"
+    - "I said the reference type decides what can be called and the object type decides which version runs"
+    - "I explained upcasting is automatic and downcasting needs a cast and can throw ClassCastException"
+    - "I mentioned instanceof (or pattern matching) as the safe check"
+    - "I used an analogy like a TV remote"
+  modelAnswer: |
+    Polymorphism means one thing with many forms. Overloading gives compile-time polymorphism and overriding gives runtime polymorphism. In Animal a = new Dog(), the variable type is Animal but the object is a Dog. The compiler only lets me call methods Animal has, but at run time the JVM runs Dog's overridden version. Putting a Dog into an Animal variable is upcasting: automatic and safe. Getting the Dog back with (Dog) a is downcasting; it needs a cast and throws ClassCastException if the object isn't really a Dog. So I first check with instanceof, and in modern Java I write if (a instanceof Dog d) to test and cast together.
+flashcards:
+  - front: "Animal a = new Dog(); who decides what you can call, and who decides which version runs?"
+    back: "Reference type (Animal) decides what's allowed at compile time; object type (Dog) decides which overridden version runs."
+  - front: "Two types of polymorphism"
+    back: "Compile-time = overloading (static binding). Runtime = overriding (dynamic binding / dynamic method dispatch)."
+  - front: "Are fields polymorphic?"
+    back: "No. Fields and static methods are chosen by the reference type."
+  - front: "When is ClassCastException thrown?"
+    back: "At run time, when a downcast targets a type the real object isn't."
+  - front: "Pattern matching instanceof syntax"
+    back: "if (obj instanceof Dog d) { d.fetch(); }  (Java 16+)"
+keyTakeaways:
+  - "Polymorphism = many forms: overloading (compile time) and overriding (run time)."
+  - "Reference type decides what you may call; object type decides which overridden method runs."
+  - "Fields, static, private and final methods are not polymorphic."
+  - "Upcasting is automatic and safe; downcasting needs a cast and may throw ClassCastException."
+  - "Use instanceof (or pattern matching: obj instanceof Dog d) before downcasting."

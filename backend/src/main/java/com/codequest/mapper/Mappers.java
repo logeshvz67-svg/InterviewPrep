@@ -33,7 +33,7 @@ public final class Mappers {
     public static ProfileView toView(Profile p) {
         return new ProfileView(p.getCharacterName(), p.getAvatar(), p.getPrimaryCompany(), List.copyOf(p.getLaterCompanies()),
                 p.getTestDate(), p.getTimezone(), p.getDailyMinutes(), p.getWhyStatement(), Map.copyOf(p.getSelfAssessment()),
-                p.isOnboardingComplete(), p.getTotalXp(), p.getGold(), p.isSoundEnabled());
+                p.isOnboardingComplete(), p.getTotalXp(), p.getGold(), p.isSoundEnabled(), Map.copyOf(p.getSettings()));
     }
 
     public static LevelView toLevelView(Profile p) {

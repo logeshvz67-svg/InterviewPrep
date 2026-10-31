@@ -1,0 +1,306 @@
+slug: collections-utility-complexity
+world: JAVA_CORE
+section: E
+order: 11
+title: "Collections utility class and Big-O cheat sheet"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Needed for the 'can you optimise this?' discussion in SP and DSE rounds: you must state the time complexity of the structure you chose."
+otherCompanies: "Collections methods save time in every coding test (TCS, Wipro, Cognizant, Accenture, Capgemini); product companies always ask for the Big-O of your solution."
+why: |
+  After writing a solution, interviewers almost always ask: **"What is the time complexity? Can you do better?"** To answer, you must know the cost of each operation of the structure you used. A `list.contains()` inside a loop quietly turns O(n) into O(n²).
+
+  Second, the `java.util.Collections` class (with an **s**) has ready-made helpers: `sort`, `reverse`, `max`, `frequency`, `unmodifiableList` and more. Using them saves time in coding rounds and shows you know the library.
+
+  This lesson finishes Section E with one big **cheat sheet** you can revise the night before an interview.
+analogy: |
+  Think of `Collections` as a **Swiss army knife** for your lists: one tool to sort, one to reverse, one to shuffle, one to count. You don't build a knife every time you want to cut something.
+
+  And Big-O is like knowing **travel time** before choosing transport. Going 2 km? Walk. Going Chennai to Delhi? Take a flight. A HashMap lookup is a flight (O(1)), scanning an ArrayList is walking past every house (O(n)). Good engineers check the travel time before they leave.
+visual:
+  diagram: |
+    How cost grows as n grows (n = 1,000,000)
+
+    O(1)        |#                        1 step      HashMap.get
+    O(log n)    |##                       ~20 steps   TreeMap.get
+    O(n)        |##########               1e6 steps   list.contains
+    O(n log n)  |##############           ~2e7 steps  Collections.sort
+    O(n^2)      |######################## 1e12 steps  nested loops
+                 (bars not to scale: O(n^2) is far, far worse)
+
+    Collection   = the interface (List, Set, Queue extend it)
+    Collections  = utility class full of static helper methods
+  caption: "Each step up the Big-O ladder costs much more time for large n. Collection is an interface; Collections is a helper class."
+  visualizer: null
+explanation: |
+  ### Collection vs Collections (a classic trick question)
+  | | `Collection` | `Collections` |
+  |---|---|---|
+  | What | an **interface** (the root of List, Set, Queue) | a **utility class** (only static methods) |
+  | Example | `Collection<String> c = new ArrayList<>();` | `Collections.sort(list);` |
+
+  A **utility class** is a class you never create objects of; you just call its static methods, like `Math.max`.
+
+  ### The most useful Collections methods
+  | Method | What it does | Time |
+  |---|---|---|
+  | `sort(list)` / `sort(list, cmp)` | sort ascending / by comparator (stable TimSort) | O(n log n) |
+  | `reverse(list)` | reverse in place | O(n) |
+  | `shuffle(list)` | random order | O(n) |
+  | `swap(list, i, j)` | swap two positions | O(1) for ArrayList |
+  | `max(c)` / `min(c)` (+ comparator) | largest / smallest | O(n) |
+  | `frequency(c, x)` | how many times x appears | O(n) |
+  | `binarySearch(list, key)` | find key in a **sorted** list | O(log n) |
+  | `fill(list, x)` | set every element to x | O(n) |
+  | `nCopies(n, x)` | an immutable list of n copies of x | O(1) |
+  | `addAll(c, a, b, c...)` | add many items at once | O(k) |
+  | `unmodifiableList(list)` | read-only **view** | O(1) |
+  | `synchronizedList(list)` | thread-safe wrapper | O(1) |
+  | `emptyList()`, `singletonList(x)` | tiny immutable lists | O(1) |
+
+  **Stable sort** means equal elements keep their original relative order. `Collections.sort` and `List.sort` are stable; this is why `thenComparing` chains behave predictably.
+
+  `binarySearch` returns the index if found, otherwise a **negative** number: `-(insertionPoint) - 1`. On an unsorted list the result is meaningless.
+
+  ### Unmodifiable vs immutable: three different "read-only" lists
+  | | Can you add/remove? | Does it change if the original changes? | Nulls? |
+  |---|---|---|---|
+  | `Arrays.asList(a, b)` | no add/remove, **but `set()` works** | it's backed by the array | allowed |
+  | `Collections.unmodifiableList(list)` | no (throws `UnsupportedOperationException`) | **yes**, it's a view | allowed |
+  | `List.of(...)`, `List.copyOf(list)` (Java 9/10) | no, and no `set()` | no, truly immutable | **not allowed** |
+
+  A **view** is like a window: you can't change things through it, but if someone changes the room behind it, you see the change.
+
+  ### The Big-O cheat sheet
+  **Big-O** describes how the number of steps grows as the input size n grows. "Amortized O(1)" means usually O(1), with a rare expensive step (like resizing) that averages out.
+
+  #### Lists and queues
+  | Structure | get(i) | add at end | add/remove at start | add/remove middle | contains | Notes |
+  |---|---|---|---|---|---|---|
+  | `ArrayList` | O(1) | O(1) amortized | O(n) | O(n) | O(n) | best default list |
+  | `LinkedList` | O(n) | O(1) | O(1) | O(n) to find + O(1) to link | O(n) | rarely the best choice |
+  | `ArrayDeque` | - | O(1) amortized | O(1) | - | O(n) | best stack and queue |
+  | `PriorityQueue` | - | offer O(log n) | poll O(log n), peek O(1) | remove(obj) O(n) | O(n) | heap |
+  | `Stack` (legacy) | O(1) | push O(1) | - | - | O(n) | prefer ArrayDeque |
+
+  #### Sets and maps
+  | Structure | add / put | contains / get | remove | Order | Null |
+  |---|---|---|---|---|---|
+  | `HashSet` / `HashMap` | O(1) avg | O(1) avg, O(log n) worst | O(1) avg | none | one null key |
+  | `LinkedHashSet` / `LinkedHashMap` | O(1) avg | O(1) avg | O(1) avg | insertion | one null key |
+  | `TreeSet` / `TreeMap` | O(log n) | O(log n) | O(log n) | sorted | no null key |
+  | `ConcurrentHashMap` | O(1) avg | O(1) avg | O(1) avg | none | no nulls |
+
+  #### Common algorithms
+  | Operation | Time |
+  |---|---|
+  | `Collections.sort`, `List.sort` (objects, TimSort) | O(n log n), stable |
+  | `Arrays.sort(int[])` (dual-pivot quicksort) | O(n log n) average |
+  | `Arrays.sort(Object[])` | O(n log n), stable |
+  | `Collections.binarySearch` / `Arrays.binarySearch` | O(log n), needs sorted input |
+  | `Collections.reverse`, `max`, `min`, `frequency` | O(n) |
+  | `String` concatenation in a loop with `+` | O(n²) overall; use `StringBuilder` |
+
+  ### Using the sheet to optimise
+  - `list.contains(x)` inside a loop -> O(n²). Put items in a `HashSet` first -> O(n).
+  - Removing from the front of an `ArrayList` repeatedly -> O(n²). Use `ArrayDeque`.
+  - Need sorted data with frequent inserts? `TreeMap` (O(log n) each) instead of re-sorting a list each time.
+  - Need just the top k? `PriorityQueue` of size k: O(n log k) instead of sorting O(n log n).
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Toolkit {
+        public static void main(String[] args) {
+            List<Integer> marks = new ArrayList<>(List.of(72, 45, 91, 45, 60));
+            System.out.println(Collections.max(marks) + " " + Collections.min(marks));
+            System.out.println(Collections.frequency(marks, 45));
+            Collections.sort(marks);
+            System.out.println(marks);
+            System.out.println(Collections.binarySearch(marks, 72));
+            Collections.reverse(marks);
+            System.out.println(marks);
+
+            List<Integer> readOnly = Collections.unmodifiableList(marks);
+            try {
+                readOnly.add(100);
+            } catch (UnsupportedOperationException e) {
+                System.out.println("cannot modify");
+            }
+        }
+    }
+  walkthrough: |
+    - `max` and `min` scan the list once: `91 45`.
+    - `frequency(marks, 45)` counts how many times 45 appears: `2`.
+    - `sort` gives `[45, 45, 60, 72, 91]`.
+    - `binarySearch` on the **sorted** list finds 72 at index `3`.
+    - `reverse` flips it in place: `[91, 72, 60, 45, 45]`.
+    - `unmodifiableList` gives a read-only view; `add` throws `UnsupportedOperationException`, which we catch.
+
+    Output:
+    ```
+    91 45
+    2
+    [45, 45, 60, 72, 91]
+    3
+    [91, 72, 60, 45, 45]
+    cannot modify
+    ```
+tryIt:
+  instructions: "Type this program that finds common elements two ways. Read the comments, then explain to yourself why the HashSet version is O(n + m) while the list version is O(n x m)."
+  code: |
+    import java.util.*;
+
+    public class Common {
+        public static void main(String[] args) {
+            List<Integer> a = List.of(4, 9, 2, 7, 5);
+            List<Integer> b = List.of(7, 1, 4, 8);
+
+            // O(n x m): contains on a List scans it every time
+            List<Integer> slow = new ArrayList<>();
+            for (int x : a) if (b.contains(x)) slow.add(x);
+
+            // O(n + m): contains on a HashSet is O(1) on average
+            Set<Integer> bSet = new HashSet<>(b);
+            List<Integer> fast = new ArrayList<>();
+            for (int x : a) if (bSet.contains(x)) fast.add(x);
+
+            System.out.println(slow + " " + fast);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class ViewDemo {
+        public static void main(String[] args) {
+            List<Integer> base = new ArrayList<>(List.of(3, 1, 2));
+            List<Integer> view = Collections.unmodifiableList(base);
+            List<Integer> copy = List.copyOf(base);
+            base.add(0);
+            Collections.sort(base);
+            System.out.println(view);
+            System.out.println(copy);
+        }
+    }
+  expectedOutput: |
+    [0, 1, 2, 3]
+    [3, 1, 2]
+  explanation: |
+    `unmodifiableList` is only a **read-only window** on `base`. You can't change the list through `view`, but when `base` itself changes (add 0, then sort), the view shows it. `List.copyOf` made a **separate immutable copy** at that moment, so it still holds `[3, 1, 2]`.
+commonMistakes:
+  - "Confusing Collection (the interface) with Collections (the utility class)."
+  - "Calling binarySearch on an unsorted list. The result is meaningless; sort first."
+  - "Believing unmodifiableList makes the data constant. It's a view: changes to the original list show through. Use List.copyOf for a true snapshot."
+  - "Calling add() on Arrays.asList(...) or List.of(...): UnsupportedOperationException."
+  - "Using list.contains() inside a loop and calling the solution O(n). It's O(n²); use a HashSet."
+  - "Saying LinkedList is faster for get(i). It's O(n); ArrayList is O(1)."
+interviewBox:
+  why: "Why interviewers ask this: knowing operation costs lets you justify and improve your solution, which is what separates a working answer from a good one."
+  questions:
+    - q: "What is the difference between Collection and Collections?"
+      a: "Collection is an interface, the parent of List, Set and Queue. Collections is a utility class in java.util with static helper methods like sort, reverse, max, frequency and unmodifiableList."
+    - q: "What is the time complexity of ArrayList vs LinkedList operations?"
+      a: "ArrayList gives O(1) get by index and amortized O(1) add at the end, but inserting or removing in the middle is O(n) because elements shift. LinkedList adds or removes at the ends in O(1), but get by index is O(n) because it walks the nodes. In practice ArrayList is usually faster, and for a queue I'd use ArrayDeque."
+    - q: "What is the difference between Collections.unmodifiableList and List.of?"
+      a: "unmodifiableList is a read-only view over an existing list: I can't change it through the view, but changes to the original list are visible. List.of creates a truly immutable list that never changes, and it doesn't allow null elements."
+    - q: "Your solution checks list.contains inside a loop. How would you optimise it?"
+      a: "list.contains is O(n), so inside a loop it's O(n squared). I'd first copy the list into a HashSet, which has O(1) average contains, so the total becomes O(n)."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      List<Integer> list = new ArrayList<>(List.of(30, 10, 20));
+      Collections.sort(list);
+      Collections.reverse(list);
+      System.out.println(list + " " + Collections.binarySearch(List.of(10, 20, 30), 20));
+    options: ["[30, 20, 10] 1", "[10, 20, 30] 1", "[30, 20, 10] 2", "[20, 10, 30] 1"]
+    answer: 0
+    explanation: "sort gives [10, 20, 30], then reverse gives [30, 20, 10]. binarySearch on the separate sorted list [10, 20, 30] finds 20 at index 1. '[10, 20, 30] 1' forgets that reverse changes the list in place."
+  - id: q2
+    type: MCQ
+    prompt: "What is the time complexity of get(i) on a LinkedList with n elements?"
+    code: null
+    options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"]
+    answer: 2
+    explanation: "A LinkedList has no index array; it must walk node by node from the nearer end, so it is O(n). O(1) is ArrayList's cost, which is the common mix-up."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Why does this throw an exception at runtime?"
+    code: |
+      List<String> names = Arrays.asList("Asha", "Bala");
+      names.add("Chitra");
+      System.out.println(names);
+    options:
+      - "Arrays.asList returns a fixed-size list backed by the array, so add() throws UnsupportedOperationException"
+      - "Strings cannot be added to a List"
+      - "println cannot print a List"
+      - "Arrays.asList needs an int array"
+    answer: 0
+    explanation: "Arrays.asList gives a fixed-size list: set() works, but add() and remove() throw UnsupportedOperationException. Wrap it: new ArrayList<>(Arrays.asList(...)) if you need to grow it."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Collections.sort() is a stable sort: elements that compare as equal keep their original relative order."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Collections.sort and List.sort use TimSort, which is stable. That is what makes multi-key sorting with thenComparing predictable."
+  - id: q5
+    type: MATCH
+    prompt: "Match each operation to its typical time complexity"
+    pairs:
+      - left: "HashMap.get"
+        right: "O(1) average"
+      - left: "TreeMap.get"
+        right: "O(log n)"
+      - left: "ArrayList.contains"
+        right: "O(n)"
+      - left: "Collections.sort"
+        right: "O(n log n)"
+    explanation: "Hash = O(1) average, tree = O(log n), linear scan = O(n), comparison sort = O(n log n)."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the Collections method that counts how many times \"x\" appears in the list."
+    code: |
+      int count = Collections.____(list, "x");
+    acceptedAnswers: ["frequency"]
+    explanation: "Collections.frequency(collection, element) scans the collection and counts matches using equals(): O(n)."
+  - id: q7
+    type: MCQ
+    prompt: "You need a stack (push/pop at one end) in modern Java. Which is the recommended choice?"
+    code: null
+    options: ["java.util.Stack", "ArrayDeque", "LinkedList get/set", "TreeSet"]
+    answer: 1
+    explanation: "ArrayDeque gives amortized O(1) push and pop without the synchronization overhead of the legacy Stack class. Stack works, which is why it is tempting, but the Java docs recommend Deque implementations instead."
+explainBack:
+  prompt: "Explain to a friend the difference between Collection and Collections, and how knowing Big-O helps you improve a solution. Use one example."
+  rubric:
+    - "I said Collection is an interface and Collections is a utility class with static methods"
+    - "I named at least three Collections methods"
+    - "I explained Big-O in simple words (how steps grow with input size)"
+    - "I gave an optimisation example, like replacing list.contains in a loop with a HashSet"
+    - "I mentioned unmodifiable view vs immutable copy"
+  modelAnswer: |
+    Collection is the interface that List, Set and Queue come from. Collections, with an s, is a helper class full of static methods like sort, reverse, max, frequency and unmodifiableList. Big-O tells me how the work grows when the input grows. For example, if I call contains on an ArrayList inside a loop, each contains scans the whole list, so the solution becomes O(n squared). If I first put the items in a HashSet, each contains is O(1) on average, and the solution becomes O(n). Also, unmodifiableList is only a read-only view, while List.of or List.copyOf are truly immutable.
+flashcards:
+  - front: "Collection vs Collections"
+    back: "Collection: root interface of List/Set/Queue. Collections: utility class of static helpers (sort, reverse, max, frequency...)."
+  - front: "ArrayList vs LinkedList costs"
+    back: "ArrayList: get O(1), add end O(1) amortized, middle O(n). LinkedList: ends O(1), get(i) O(n)."
+  - front: "HashMap vs TreeMap get"
+    back: "HashMap O(1) average (O(log n) worst in Java 8+). TreeMap O(log n)."
+  - front: "Collections.sort complexity and stability"
+    back: "O(n log n), stable (TimSort)."
+  - front: "unmodifiableList vs List.of"
+    back: "unmodifiableList: read-only view, shows changes to the original. List.of: truly immutable, no nulls."
+  - front: "binarySearch requirement and cost"
+    back: "List must be sorted; O(log n); returns a negative number if not found."
+keyTakeaways:
+  - "Collection is an interface; Collections is a utility class of static helpers."
+  - "Collections.sort is O(n log n) and stable; binarySearch needs a sorted list."
+  - "unmodifiableList is a view; List.of / List.copyOf are truly immutable; Arrays.asList is fixed-size."
+  - "Hash structures are O(1) average, tree structures O(log n), list scans O(n)."
+  - "Optimise by swapping structures: List contains -> HashSet, front removals -> ArrayDeque, full sort -> heap of size k."

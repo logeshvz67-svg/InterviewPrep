@@ -1,0 +1,292 @@
+slug: priorityqueue
+world: JAVA_CORE
+section: E
+order: 8
+title: "PriorityQueue"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, TCS]
+infosysRelevance: "Important for SP-style DSA coding: top-K, k-th largest, merging sorted lists and scheduling problems all become short with a PriorityQueue."
+otherCompanies: "Very useful in TCS advanced coding and product-company DSA rounds (heaps, Dijkstra, median of a stream)."
+why: |
+  Many coding problems have the words **"k largest"**, **"k smallest"**, **"closest"**, **"most frequent"** or **"always pick the cheapest next"**. Sorting the whole array works, but costs O(n log n) and often more memory than needed.
+
+  A **PriorityQueue** gives you the **smallest (or largest) item at any moment** in O(log n) per operation. It turns hard-looking problems into 10-line solutions.
+
+  It also hides a classic interview trap: **printing a PriorityQueue does NOT show sorted order**. After this lesson you will know exactly why.
+analogy: |
+  Think of a **hospital emergency room**.
+
+  Patients don't get treated in arrival order. The nurse always calls the **most serious patient next**. When a new patient arrives, the nurse quickly decides where they fit in the priority, without re-sorting the whole waiting room.
+
+  But if you look at the waiting room chairs, people are not sitting in a perfect line from most serious to least serious. The nurse only guarantees one thing: **the person called next is the most serious one**. That is exactly a PriorityQueue: only the **head** is guaranteed.
+visual:
+  diagram: |
+    add 5, 1, 4, 2, 3   (min-heap)
+
+    tree view                 array view (what toString shows)
+             1                index:  0   1   2   3   4
+           /   \                    +---+---+---+---+---+
+          2     4                   | 1 | 2 | 4 | 5 | 3 |
+         / \                        +---+---+---+---+---+
+        5   3
+                              parent of i   = (i - 1) / 2
+    rule: parent <= children  children of i = 2i + 1, 2i + 2
+
+    poll() -> removes 1, moves last (3) to top, sinks it down:
+             2
+           /   \
+          3     4
+         /
+        5
+  caption: "A PriorityQueue is a binary heap stored in an array. The parent is always smaller than its children, so the smallest is at index 0, but the rest of the array is NOT sorted."
+  visualizer: null
+explanation: |
+  ### What is a PriorityQueue?
+  A normal **queue** is FIFO: first in, first out. A **priority queue** is different: the element that comes out first is the one with the **highest priority**. In Java's `PriorityQueue`, by default, that is the **smallest** element. So the default is a **min-heap**.
+
+  ```java
+  PriorityQueue<Integer> pq = new PriorityQueue<>();
+  pq.offer(30); pq.offer(10); pq.offer(20);
+  pq.poll();   // 10
+  pq.poll();   // 20
+  ```
+
+  ### How it works inside: the binary heap
+  A **binary heap** is a complete binary tree (every level is full except maybe the last, which fills from the left) with one rule: **every parent is <= its children** (for a min-heap).
+
+  The tree is stored in a plain **array**, no node objects:
+  - children of index `i` are at `2i + 1` and `2i + 2`,
+  - the parent of index `i` is at `(i - 1) / 2`.
+
+  **offer / add (sift up):** put the new item at the end of the array, then keep swapping it with its parent while it is smaller. At most log n swaps.
+
+  **poll (sift down):** take the root (index 0). Move the last item to the root, then keep swapping it with its smaller child while it is bigger. At most log n swaps.
+
+  **peek:** just read index 0. O(1).
+
+  ### Main methods
+  | Method | What it does | Time |
+  |---|---|---|
+  | `offer(e)` / `add(e)` | insert | O(log n) |
+  | `poll()` | remove and return the head (null if empty) | O(log n) |
+  | `remove()` | like poll but throws if empty | O(log n) |
+  | `peek()` | look at the head, don't remove (null if empty) | O(1) |
+  | `element()` | like peek but throws if empty | O(1) |
+  | `size()`, `isEmpty()` | count | O(1) |
+  | `contains(o)`, `remove(o)` | search for any element | O(n) |
+
+  ### The printing trap
+  `System.out.println(pq)` and the for-each loop walk the **internal array**, which is only "heap ordered", not sorted. To get sorted output you must `poll()` repeatedly:
+  ```java
+  while (!pq.isEmpty()) System.out.print(pq.poll() + " ");
+  ```
+
+  ### Max-heap and custom order
+  Pass a **Comparator** (an object that decides which of two items comes first):
+  ```java
+  PriorityQueue<Integer> max = new PriorityQueue<>(Collections.reverseOrder());
+  PriorityQueue<int[]> byDist = new PriorityQueue<>((a, b) -> Integer.compare(a[1], b[1]));
+  PriorityQueue<String> byLen = new PriorityQueue<>(Comparator.comparing(String::length));
+  ```
+  > Avoid `(a, b) -> b - a` for big numbers: the subtraction can overflow and give a wrong sign. `Integer.compare(b, a)` or `Collections.reverseOrder()` is always safe.
+
+  ### The top-K pattern
+  **"Find the k largest elements"**: keep a **min-heap of size k**.
+  1. Add each number.
+  2. If the size goes above k, `poll()` the smallest.
+  3. At the end the heap holds the k largest, and `peek()` is the **k-th largest**.
+
+  Cost: O(n log k), and only O(k) memory. Much better than sorting when k is small. (Flip it for k smallest: use a max-heap of size k.)
+
+  ### Other facts
+  - `null` elements are **not allowed** (NullPointerException).
+  - Elements must be comparable (or you give a Comparator), otherwise `ClassCastException`.
+  - Equal-priority elements come out in **no fixed order** (not stable).
+  - **Not thread-safe**. Use `PriorityBlockingQueue` with threads.
+  - You can build it from a collection: `new PriorityQueue<>(list)` builds the heap in O(n).
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class TopK {
+        public static void main(String[] args) {
+            int[] nums = {7, 2, 9, 4, 11, 5};
+            int k = 3;
+            PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+            for (int n : nums) {
+                minHeap.offer(n);
+                if (minHeap.size() > k) {
+                    minHeap.poll();          // throw away the smallest
+                }
+            }
+            System.out.println("3rd largest: " + minHeap.peek());
+
+            PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+            for (int n : nums) maxHeap.offer(n);
+            System.out.print("Descending:");
+            while (!maxHeap.isEmpty()) System.out.print(" " + maxHeap.poll());
+            System.out.println();
+        }
+    }
+  walkthrough: |
+    - `minHeap` keeps at most `k = 3` numbers. Whenever it grows to 4, `poll()` removes the smallest, so only the 3 biggest seen so far survive.
+    - Trace: 7 -> {7}; 2 -> {2,7}; 9 -> {2,7,9}; 4 -> {2,4,7,9} then poll 2 -> {4,7,9}; 11 -> poll 4 -> {7,9,11}; 5 -> poll 5 -> {7,9,11}.
+    - `peek()` is the smallest of the top 3, which is the **3rd largest**: `7`.
+    - `Collections.reverseOrder()` turns the queue into a **max-heap**. Polling until empty gives the numbers biggest first.
+
+    Output:
+    ```
+    3rd largest: 7
+    Descending: 11 9 7 5 4 2
+    ```
+tryIt:
+  instructions: "Type this 'cheapest ticket first' program. Each ticket is an int array {id, price}. Change the comparator to sort by id instead and see the order change."
+  code: |
+    import java.util.*;
+
+    public class Tickets {
+        public static void main(String[] args) {
+            PriorityQueue<int[]> pq = new PriorityQueue<>(
+                (a, b) -> Integer.compare(a[1], b[1]));
+            pq.offer(new int[]{101, 450});
+            pq.offer(new int[]{102, 120});
+            pq.offer(new int[]{103, 300});
+            while (!pq.isEmpty()) {
+                int[] t = pq.poll();
+                System.out.println("ticket " + t[0] + " costs " + t[1]);
+            }
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class HeapPrint {
+        public static void main(String[] args) {
+            PriorityQueue<Integer> pq = new PriorityQueue<>();
+            for (int x : new int[]{5, 1, 4, 2, 3}) pq.add(x);
+            System.out.println(pq);
+            System.out.println(pq.poll() + " " + pq.peek());
+        }
+    }
+  expectedOutput: |
+    [1, 2, 4, 5, 3]
+    1 2
+  explanation: |
+    Printing shows the **internal heap array**, not sorted order. Trace the sift-ups: add 5 -> [5]; add 1 -> swaps up -> [1, 5]; add 4 -> [1, 5, 4]; add 2 -> goes below 5, swaps up -> [1, 2, 4, 5]; add 3 -> its parent is 2, no swap -> [1, 2, 4, 5, 3]. Then `poll()` returns the smallest, 1, and the new head is 2.
+commonMistakes:
+  - "Printing or for-each looping over a PriorityQueue and expecting sorted order. Only the head is guaranteed; poll() repeatedly to get sorted output."
+  - "Forgetting the default is a MIN-heap. For the largest first, pass Collections.reverseOrder()."
+  - "Writing the comparator as (a, b) -> b - a. It can overflow for large or negative values; use Integer.compare(b, a)."
+  - "Using a max-heap of all n elements for k largest. A min-heap of size k is O(n log k) and uses less memory."
+  - "Calling contains() or remove(obj) in a loop, thinking they are O(log n). They are O(n)."
+  - "Adding null: PriorityQueue throws NullPointerException."
+interviewBox:
+  why: "Why interviewers ask this: heaps are the standard tool for top-K and scheduling problems, and the internals test if you understand trees stored in arrays."
+  questions:
+    - q: "How is PriorityQueue implemented in Java?"
+      a: "It is a binary heap stored in an array. By default it's a min-heap, so every parent is smaller than or equal to its children and the smallest element is at index zero. The children of index i are at 2i plus 1 and 2i plus 2. offer and poll are O(log n) because they move one element up or down the tree, and peek is O(1)."
+    - q: "How do you find the k-th largest element using a PriorityQueue?"
+      a: "I keep a min-heap of size k. I add each number, and if the size becomes more than k, I poll the smallest. At the end, the heap has the k largest numbers and peek gives the k-th largest. It's O(n log k) time and O(k) space."
+    - q: "How do you make a max-heap in Java?"
+      a: "Pass a comparator that reverses the order, like new PriorityQueue with Collections.reverseOrder, or a lambda using Integer.compare of b and a."
+    - q: "Why doesn't printing a PriorityQueue show sorted order?"
+      a: "Because toString and the iterator just walk the internal array, and a heap only guarantees that parents are smaller than children, not that the whole array is sorted. To get sorted order you poll until it's empty."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      PriorityQueue<Integer> pq = new PriorityQueue<>(List.of(8, 3, 6));
+      pq.offer(1);
+      System.out.print(pq.poll() + " ");
+      System.out.print(pq.poll() + " ");
+      System.out.println(pq.size());
+    options: ["8 3 2", "1 3 2", "1 8 2", "3 1 2"]
+    answer: 1
+    explanation: "Default PriorityQueue is a min-heap: poll gives 1, then 3. Two elements (6 and 8) remain, so size is 2. '8 3 2' is the insertion-order guess, but a priority queue is not FIFO."
+  - id: q2
+    type: MCQ
+    prompt: "What is the time complexity of peek() and poll() on a PriorityQueue with n elements?"
+    code: null
+    options: ["peek O(1), poll O(log n)", "both O(1)", "peek O(log n), poll O(n)", "both O(log n)"]
+    answer: 0
+    explanation: "peek just reads index 0, so O(1). poll removes the root and sinks the last element down the tree, at most log n swaps. 'Both O(1)' is tempting but forgets the re-heapify step."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This is meant to print the 2 largest numbers. What is wrong?"
+    code: |
+      int[] nums = {4, 9, 1, 7};
+      PriorityQueue<Integer> pq = new PriorityQueue<>();
+      for (int n : nums) pq.offer(n);
+      System.out.println(pq.poll() + " " + pq.poll());
+    options:
+      - "PriorityQueue cannot store int values"
+      - "The default PriorityQueue is a min-heap, so it prints the 2 smallest (1 4); use Collections.reverseOrder()"
+      - "poll() must be replaced by peek()"
+      - "offer() must be replaced by push()"
+    answer: 1
+    explanation: "Java's PriorityQueue is a min-heap by default, so this prints 1 4. Pass Collections.reverseOrder() to get 9 7. Autoboxing handles int values fine, and PriorityQueue has no push() method."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Iterating over a PriorityQueue with a for-each loop visits the elements in sorted order."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The iterator walks the internal heap array, which is only partly ordered. Only repeated poll() gives sorted order."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the line so the queue gives the LARGEST number first."
+    code: |
+      PriorityQueue<Integer> pq = new PriorityQueue<>(Collections.____());
+    acceptedAnswers: ["reverseOrder"]
+    explanation: "Collections.reverseOrder() returns a comparator that reverses natural ordering, turning the min-heap into a max-heap."
+  - id: q6
+    type: MATCH
+    prompt: "In a heap stored as an array, match each position to its formula (i is the current index)"
+    pairs:
+      - left: "Left child"
+        right: "2i + 1"
+      - left: "Right child"
+        right: "2i + 2"
+      - left: "Parent"
+        right: "(i - 1) / 2"
+      - left: "Root (smallest in a min-heap)"
+        right: "index 0"
+    explanation: "These formulas let the heap live in a plain array without node objects."
+  - id: q7
+    type: MCQ
+    prompt: "You need the 10 largest values from a stream of 1 million numbers. What is the best approach?"
+    code: null
+    options: ["Sort all numbers: O(n log n)", "Min-heap of size 10: O(n log 10)", "Max-heap of all n numbers, then poll 10 times", "Nested loops: O(n x 10)"]
+    answer: 1
+    explanation: "A min-heap capped at 10 elements keeps only the current top 10 and kicks out the smallest, so it costs O(n log k) time and O(k) memory. A max-heap of everything works but needs O(n) memory."
+explainBack:
+  prompt: "Explain to a friend what a PriorityQueue is, how it works inside, and how you would use it to find the k-th largest number."
+  rubric:
+    - "I said it always gives the smallest (or highest priority) element first, and the default is a min-heap"
+    - "I explained it is a binary heap stored in an array (parent <= children)"
+    - "I gave the costs: offer/poll O(log n), peek O(1)"
+    - "I explained the size-k min-heap trick for the k-th largest"
+    - "I mentioned printing does not show sorted order"
+  modelAnswer: |
+    A PriorityQueue is like an emergency room: whoever has the highest priority is served next, not whoever came first. In Java the default is a min-heap, so the smallest comes out first. Inside, it's a binary heap stored in an array, where every parent is smaller than its children, so the smallest sits at index zero. Adding or removing moves one element up or down the tree, which is O(log n), and peek is O(1). To find the k-th largest, I keep a min-heap of size k, removing the smallest whenever it grows beyond k, and at the end peek gives the answer. Printing it doesn't show sorted order.
+flashcards:
+  - front: "Default ordering of Java's PriorityQueue"
+    back: "Min-heap: poll() returns the smallest element."
+  - front: "PriorityQueue costs"
+    back: "offer/poll O(log n), peek O(1), contains/remove(Object) O(n)."
+  - front: "How to make a max-heap"
+    back: "new PriorityQueue<>(Collections.reverseOrder()) or a comparator like (a, b) -> Integer.compare(b, a)."
+  - front: "K-th largest with a heap"
+    back: "Min-heap of size k: offer each, poll when size > k; peek() is the k-th largest. O(n log k)."
+  - front: "Why does println(pq) look unsorted?"
+    back: "It prints the internal heap array, which only guarantees parent <= children."
+keyTakeaways:
+  - "PriorityQueue = binary heap in an array; default is a min-heap."
+  - "offer/poll are O(log n), peek is O(1); contains is O(n)."
+  - "Only the head is guaranteed; poll repeatedly for sorted output."
+  - "Use Collections.reverseOrder() or a Comparator for max-heap or custom priority."
+  - "Top-K pattern: keep a heap of size k for O(n log k)."

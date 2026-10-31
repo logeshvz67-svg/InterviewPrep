@@ -25,6 +25,8 @@ public class ProblemSolved extends BaseEntity {
     @Column(nullable = false) private String approach;
     private String code;
     @Column(name = "solved_on", nullable = false) private LocalDate solvedOn;
+    /** Set when the problem came from the curated problem bank (suggestions). */
+    @Column(name = "bank_problem_id") private Long bankProblemId;
 
     /**
      * Many-to-many through the problem_patterns join table.
@@ -62,6 +64,8 @@ public class ProblemSolved extends BaseEntity {
     public void setCode(String code) { this.code = code; }
     public LocalDate getSolvedOn() { return solvedOn; }
     public void setSolvedOn(LocalDate solvedOn) { this.solvedOn = solvedOn; }
+    public Long getBankProblemId() { return bankProblemId; }
+    public void setBankProblemId(Long v) { bankProblemId = v; }
     public Set<Pattern> getPatterns() { return patterns; }
     public void setPatterns(Set<Pattern> patterns) { this.patterns = patterns; }
 }

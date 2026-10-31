@@ -1,0 +1,407 @@
+slug: string-problems
+world: JAVA_CORE
+section: B
+order: 5
+title: "String interview problems"
+version: 1
+estimatedMinutes: 45
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Very common in coding rounds; these five problems are the base patterns (two pointers, counting array, HashMap) behind many harder SP-level string questions."
+otherCompanies: "Very common practice problems for TCS, Wipro, Cognizant, Accenture, Capgemini coding rounds and as warm-ups at product companies."
+why: |
+  Five string problems appear again and again in coding practice and interviews:
+  1. **Reverse** a string
+  2. Check a **palindrome**
+  3. Check if two strings are **anagrams**
+  4. Count **character frequency**
+  5. Find the **first non-repeating character**
+
+  They look small, but they teach the three tools you will use in hundreds of harder problems: **two pointers**, a **counting array**, and a **HashMap**. Interviewers also ask "what is the time and space complexity?" and "can you do better?", so this lesson gives you a simple solution, the better solution, and the complexity for each.
+analogy: |
+  Think of a **class attendance register**.
+
+  - **Reversing** is reading the register from the last name to the first.
+  - **Palindrome** check is two monitors, one starting at roll number 1 and one at the last roll number, walking towards each other and checking if they see the same name.
+  - **Frequency counting** is a tally sheet: a box for each letter a-z, and you put one tick in the right box for every letter you see.
+  - **Anagram** check is comparing two tally sheets. If every box has the same number of ticks, the words use the same letters.
+  - **First non-repeating** is: fill the tally sheet first, then walk the register again in order, and the first name whose box has exactly one tick is the answer.
+visual:
+  diagram: |
+    PALINDROME (two pointers)        s = "racecar"
+      r  a  c  e  c  a  r
+      i->                <-j      r == r  ok, i++, j--
+         i->          <-j         a == a  ok
+            i->    <-j            c == c  ok
+               i/j                i >= j  -> stop: PALINDROME
+
+    FREQUENCY (counting array)       s = "apple"
+      index:  0(a) 1(b) ... 4(e) ... 11(l) ... 15(p)
+      count:    1    0       1        1          2
+      count[c - 'a']++   ('p' - 'a' = 15)
+
+    FIRST NON-REPEATING              s = "swiss"
+      pass 1 counts: s=3  w=1  i=1
+      pass 2 in order: s(3) w(1) <- first with count 1 = 'w'
+  caption: "Two pointers walk in from both ends; a counting array keeps a tally per letter using c - 'a' as the index; two passes give the first unique character."
+  visualizer: two-pointers
+explanation: |
+  **Complexity** quick reminder: **time complexity** says how the running time grows with input size `n` (the length of the string); **space complexity** says how much extra memory you use. O(1) means "constant, does not grow with n".
+
+  ### 1. Reverse a string
+  **Way A: StringBuilder** (one line, fine in interviews):
+  ```java
+  String rev = new StringBuilder(s).reverse().toString();
+  ```
+  **Way B: two pointers on a char array** (shows you understand the logic; often asked "without using built-in reverse"):
+  ```java
+  static String reverse(String s) {
+      char[] a = s.toCharArray();
+      int i = 0, j = a.length - 1;
+      while (i < j) {
+          char t = a[i]; a[i] = a[j]; a[j] = t;   // swap the two ends
+          i++; j--;                                // move inwards
+      }
+      return new String(a);
+  }
+  ```
+  Time **O(n)** (each character swapped once), space **O(n)** for the char array (Strings are immutable, so we need a copy).
+
+  Avoid `rev = rev + s.charAt(i)` in a loop: it creates a new String every step, so it's O(n²).
+
+  ### 2. Palindrome
+  A **palindrome** reads the same forwards and backwards: "madam", "racecar", "1221".
+  ```java
+  static boolean isPalindrome(String s) {
+      int i = 0, j = s.length() - 1;
+      while (i < j) {
+          if (s.charAt(i) != s.charAt(j)) return false;  // mismatch: stop early
+          i++; j--;
+      }
+      return true;
+  }
+  ```
+  Time **O(n)**, space **O(1)** (just two index variables). Better than "reverse and compare with equals", which also works but uses O(n) extra space.
+
+  **Common follow-up:** ignore case, spaces and punctuation ("A man, a plan, a canal: Panama"). Skip characters that are not letters or digits with `Character.isLetterOrDigit`, and compare with `Character.toLowerCase`. (See the Try It program.)
+
+  ### 3. Anagram
+  Two strings are **anagrams** if they use exactly the same letters the same number of times: "listen" and "silent".
+
+  **Way A: sort and compare**. Simple, time **O(n log n)** because of sorting:
+  ```java
+  char[] x = a.toCharArray(), y = b.toCharArray();
+  Arrays.sort(x); Arrays.sort(y);
+  return Arrays.equals(x, y);
+  ```
+  **Way B: counting array** (better). Time **O(n)**, space **O(1)** (always 26 boxes, no matter how long the strings are):
+  ```java
+  static boolean isAnagram(String a, String b) {
+      if (a.length() != b.length()) return false;   // quick exit
+      int[] count = new int[26];
+      for (int k = 0; k < a.length(); k++) {
+          count[a.charAt(k) - 'a']++;   // tick for a
+          count[b.charAt(k) - 'a']--;   // untick for b
+      }
+      for (int c : count) if (c != 0) return false;
+      return true;
+  }
+  ```
+  `c - 'a'` turns `'a'..'z'` into `0..25`, because chars are numbers. This version assumes lowercase a-z; for any characters, use `int[256]` or a `HashMap<Character, Integer>`.
+
+  ### 4. Character frequency
+  **Counting array** (for lowercase letters):
+  ```java
+  int[] freq = new int[26];
+  for (char c : s.toCharArray()) freq[c - 'a']++;
+  for (int k = 0; k < 26; k++)
+      if (freq[k] > 0) System.out.print((char) ('a' + k) + "=" + freq[k] + " ");
+  ```
+  **HashMap** (for any characters, keeps first-seen order with `LinkedHashMap`). A **HashMap** stores key → value pairs; here key = character, value = count:
+  ```java
+  Map<Character, Integer> map = new LinkedHashMap<>();
+  for (char c : s.toCharArray()) map.put(c, map.getOrDefault(c, 0) + 1);
+  ```
+  `getOrDefault(c, 0)` means "the current count, or 0 if this character is new". Both ways are time **O(n)**. Space is O(1) for the 26-array, O(k) for the map where k is the number of distinct characters.
+
+  ### 5. First non-repeating character
+  Idea: **two passes**. Pass 1 counts every character. Pass 2 walks the string **in its original order** and returns the first character whose count is 1.
+  ```java
+  static char firstUnique(String s) {
+      int[] count = new int[256];          // covers all basic ASCII chars
+      for (char c : s.toCharArray()) count[c]++;
+      for (char c : s.toCharArray())
+          if (count[c] == 1) return c;
+      return '_';                           // none found
+  }
+  ```
+  Time **O(n)** (two passes is still O(n)), space **O(1)** (fixed 256 boxes). The naive way, checking each character against every other one with two nested loops, is O(n²).
+
+  Why the second pass goes over the **string**, not the count array: the count array is in alphabet order, but we need the first unique character in **string order**. For "swiss", alphabet order would say `'i'`, but the correct answer is `'w'`.
+
+  ### Summary table
+  | Problem | Best approach | Time | Extra space |
+  |---|---|---|---|
+  | Reverse | two pointers swap / StringBuilder | O(n) | O(n) |
+  | Palindrome | two pointers | O(n) | O(1) |
+  | Anagram | counting array (26) | O(n) | O(1) |
+  | Frequency | counting array / HashMap | O(n) | O(1) / O(k) |
+  | First non-repeating | count, then second pass in order | O(n) | O(1) |
+
+  ### How to talk in the interview
+  1. Say the simple idea first ("sort both and compare").
+  2. Give its complexity.
+  3. Improve it ("a counting array makes it O(n)").
+  4. Mention edge cases: empty string, different lengths, upper/lower case, spaces.
+tinyCode:
+  code: |
+    public class StringProblems {
+        static String reverse(String s) {
+            char[] a = s.toCharArray();
+            int i = 0, j = a.length - 1;
+            while (i < j) {
+                char t = a[i]; a[i] = a[j]; a[j] = t;
+                i++; j--;
+            }
+            return new String(a);
+        }
+
+        static boolean isPalindrome(String s) {
+            int i = 0, j = s.length() - 1;
+            while (i < j) {
+                if (s.charAt(i) != s.charAt(j)) return false;
+                i++; j--;
+            }
+            return true;
+        }
+
+        static boolean isAnagram(String a, String b) {
+            if (a.length() != b.length()) return false;
+            int[] count = new int[26];
+            for (int k = 0; k < a.length(); k++) {
+                count[a.charAt(k) - 'a']++;
+                count[b.charAt(k) - 'a']--;
+            }
+            for (int c : count) if (c != 0) return false;
+            return true;
+        }
+
+        static void printFrequency(String s) {
+            int[] freq = new int[26];
+            for (char c : s.toCharArray()) freq[c - 'a']++;
+            for (int k = 0; k < 26; k++)
+                if (freq[k] > 0) System.out.print((char) ('a' + k) + "=" + freq[k] + " ");
+            System.out.println();
+        }
+
+        static char firstUnique(String s) {
+            int[] count = new int[256];
+            for (char c : s.toCharArray()) count[c]++;
+            for (char c : s.toCharArray())
+                if (count[c] == 1) return c;
+            return '_';
+        }
+
+        public static void main(String[] args) {
+            System.out.println(reverse("quest"));
+            System.out.println(isPalindrome("racecar") + " " + isPalindrome("coder"));
+            System.out.println(isAnagram("listen", "silent") + " " + isAnagram("rat", "car"));
+            printFrequency("banana");
+            System.out.println(firstUnique("swiss") + " " + firstUnique("aabb"));
+        }
+    }
+  walkthrough: |
+    - `reverse("quest")`: swap q/t, then u/s, then the middle e stays. Result `tseuq`.
+    - `isPalindrome("racecar")` never finds a mismatch: `true`. For "coder", `'c'` vs `'r'` differ at once: `false`.
+    - `isAnagram("listen", "silent")`: every letter is ticked once by "listen" and unticked once by "silent", so all 26 counts end at 0: `true`. "rat" vs "car": t is +1 and c is -1, so not all zero: `false`.
+    - `printFrequency("banana")`: counts a=3, b=1, n=2 and prints them in alphabet order.
+    - `firstUnique("swiss")`: counts s=3, w=1, i=1. Walking "swiss" in order, the first count-1 char is `w`. For "aabb" nothing has count 1, so `_`.
+
+    Output:
+    ```
+    tseuq
+    true false
+    true false
+    a=3 b=1 n=2
+    w _
+    ```
+    (The frequency line ends with a space because each entry prints a space after it.)
+tryIt:
+  instructions: "Type this 'real-world' palindrome checker that ignores case, spaces and punctuation. It uses two pointers that skip characters that aren't letters or digits. Then test it with your own name and with \"Was it a car or a cat I saw?\"."
+  code: |
+    public class CleanPalindrome {
+        static boolean isPalindrome(String s) {
+            int i = 0, j = s.length() - 1;
+            while (i < j) {
+                char a = s.charAt(i), b = s.charAt(j);
+                if (!Character.isLetterOrDigit(a)) { i++; continue; }
+                if (!Character.isLetterOrDigit(b)) { j--; continue; }
+                if (Character.toLowerCase(a) != Character.toLowerCase(b)) return false;
+                i++;
+                j--;
+            }
+            return true;
+        }
+
+        public static void main(String[] args) {
+            System.out.println(isPalindrome("A man, a plan, a canal: Panama"));
+            System.out.println(isPalindrome("Madam"));
+            System.out.println(isPalindrome("Code Quest"));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Predict {
+        public static void main(String[] args) {
+            String s = "programming";
+            Map<Character, Integer> map = new LinkedHashMap<>();
+            for (char c : s.toCharArray()) {
+                map.put(c, map.getOrDefault(c, 0) + 1);
+            }
+            System.out.println(map);
+            for (char c : s.toCharArray()) {
+                if (map.get(c) == 1) {
+                    System.out.println(c);
+                    break;
+                }
+            }
+        }
+    }
+  expectedOutput: |
+    {p=1, r=2, o=1, g=2, a=1, m=2, i=1, n=1}
+    p
+  explanation: |
+    - `LinkedHashMap` keeps keys in the order they were **first inserted**: p, r, o, g, a, m, i, n.
+    - Counts: r appears twice (p**r**og**r**amming), g twice, m twice; the rest once.
+    - The second loop walks "programming" in order. The very first character `p` already has count 1, so it prints `p` and stops.
+    - A plain `HashMap` would give the same counts but could print the keys in a different order, which is why we used `LinkedHashMap` here.
+commonMistakes:
+  - "Reversing with rev = rev + ch in a loop: O(n^2). Use StringBuilder or a char array."
+  - "For first non-repeating, scanning the count array in alphabet order instead of the string in original order."
+  - "Using int[26] with c - 'a' on input that has capitals or spaces: negative or too-big index, ArrayIndexOutOfBoundsException."
+  - "Forgetting the length check in the anagram method (different lengths can never be anagrams)."
+  - "Comparing chars with equals or Strings with ==. Use == for char, equals for String."
+  - "Not stating time and space complexity when you finish; interviewers expect it."
+interviewBox:
+  why: "Why interviewers ask this: these problems are small enough for 10 minutes but show if you can go from a brute-force idea to an O(n) solution and explain complexity clearly."
+  questions:
+    - q: "How do you check if two strings are anagrams? What's the complexity?"
+      a: "The simple way is to sort both char arrays and compare them, which is O(n log n). The better way is a counting array of 26: add one for each letter of the first string, subtract one for each letter of the second, and check that all counts are zero. That's O(n) time and O(1) extra space."
+    - q: "How do you find the first non-repeating character?"
+      a: "Two passes. First, count every character in an array or a HashMap. Second, go through the string again from the start and return the first character whose count is one. It's O(n) time. I must loop over the string in the second pass, not the count array, to keep the original order."
+    - q: "How do you check a palindrome without extra space?"
+      a: "I use two pointers, one at the start and one at the end. While they haven't crossed, I compare the characters. If any pair differs, it's not a palindrome. If they meet, it is. That's O(n) time and O(1) space."
+    - q: "Reverse a string without using the reverse() method."
+      a: "I convert it to a char array, put one pointer at each end, swap the two characters, and move the pointers inwards until they meet. Then I build a new String from the array. That's O(n) time."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the time complexity of the counting-array anagram check for strings of length n?"
+    options: ["O(n log n)", "O(n)", "O(n^2)", "O(1)"]
+    answer: 1
+    explanation: "We loop once over both strings and then over a fixed 26-length array, so the time is O(n). O(n log n) is the sort-and-compare approach, a common mix-up."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String s = "aabbcdc";
+      int[] count = new int[256];
+      for (char c : s.toCharArray()) count[c]++;
+      char ans = '_';
+      for (char c : s.toCharArray()) {
+          if (count[c] == 1) { ans = c; break; }
+      }
+      System.out.println(ans);
+    options: ["a", "c", "d", "_"]
+    answer: 2
+    explanation: "Counts: a=2, b=2, c=2, d=1. Walking the string in order, the first char with count 1 is d. c is tempting because it appears near the end once, but c appears twice in total."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This palindrome check returns true for \"abca\", which is wrong. Find the bug."
+    code: |
+      static boolean isPal(String s) {
+          int i = 0, j = s.length() - 1;
+          while (i < j) {
+              if (s.charAt(i) == s.charAt(j)) return true;
+              i++; j--;
+          }
+          return true;
+      }
+    options:
+      - "j should start at s.length(), not s.length() - 1"
+      - "It returns true as soon as ONE pair matches; it should return false when a pair does NOT match"
+      - "The loop should be while (i <= j)"
+      - "charAt cannot be compared with =="
+    answer: 1
+    explanation: "For \"abca\", the first pair a/a matches and the method returns true immediately, without checking b/c. The correct logic is: if (s.charAt(i) != s.charAt(j)) return false; and return true only after the loop. j = length() - 1 is correct (length() would be out of range), and == is right for chars."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In a counting array for lowercase letters, the expression c - 'a' gives the index 0 for 'a' and 25 for 'z'."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. chars are numbers: 'a' is 97 and 'z' is 122, so 'a' - 'a' = 0 and 'z' - 'a' = 25. That's exactly the range of an int[26]."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill the HashMap method that returns the current count, or 0 if the character is new."
+    code: |
+      Map<Character, Integer> map = new HashMap<>();
+      for (char c : s.toCharArray()) {
+          map.put(c, map.____(c, 0) + 1);
+      }
+    acceptedAnswers: ["getOrDefault"]
+    explanation: "getOrDefault(key, 0) returns the stored value, or 0 when the key is missing. Plain get(c) would return null for a new character, and null + 1 throws NullPointerException."
+  - id: q6
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String s = "level";
+      String r = "";
+      for (int i = s.length() - 1; i >= 0; i--) {
+          r = r + s.charAt(i);
+      }
+      System.out.println(r.equals(s) + " " + (r == s));
+    options: ["true true", "true false", "false false", "false true"]
+    answer: 1
+    explanation: "Reversing \"level\" gives \"level\", so equals is true. But r was built at runtime with +, so it is a new object, not the pooled literal: == is false. (Also note this loop is O(n^2); fine for a tiny word, slow for big input.)"
+  - id: q7
+    type: MATCH
+    prompt: "Match each problem to its best simple technique"
+    pairs:
+      - left: "Palindrome"
+        right: "Two pointers moving inwards"
+      - left: "Anagram"
+        right: "One counting array: +1 for the first string, -1 for the second"
+      - left: "First non-repeating char"
+        right: "Count first, then scan the string again in order"
+      - left: "Reverse"
+        right: "Swap ends of a char array"
+    explanation: "These four patterns (two pointers, counting array, two-pass scan, in-place swap) are the reusable ideas behind many harder problems."
+explainBack:
+  prompt: "Explain to a friend how to find the first non-repeating character in a string and why your method is O(n). Then say how you'd check an anagram."
+  rubric:
+    - "I described two passes: count first, then scan the string in order"
+    - "I explained why the second pass is over the string, not the count array"
+    - "I said O(n) time and O(1) or small extra space"
+    - "I explained the anagram counting idea (+1 / -1, all zero)"
+  modelAnswer: |
+    I make a tally sheet with a box for every character. In the first pass, I go through the string and add one tick to each character's box. In the second pass, I go through the string again from the beginning, and the first character whose box has exactly one tick is my answer. I scan the string, not the tally sheet, because I need the original order. Each pass is one loop over n characters, so it's O(n), and the tally sheet has a fixed size, so the extra space is constant. For an anagram, I tick for the first word and untick for the second; if every box ends at zero, they use the same letters.
+flashcards:
+  - front: "Palindrome check: best approach and complexity"
+    back: "Two pointers from both ends, return false on first mismatch. O(n) time, O(1) space."
+  - front: "Anagram check in O(n)"
+    back: "int[26]: count[a.charAt(k)-'a']++, count[b.charAt(k)-'a']--, then all must be 0. (Check lengths first.)"
+  - front: "First non-repeating character"
+    back: "Pass 1: count. Pass 2: scan the STRING in order, return first char with count 1. O(n)."
+  - front: "Why not rev = rev + c in a loop?"
+    back: "Each + makes a new String: O(n^2). Use StringBuilder or a char array swap: O(n)."
+  - front: "Map counting one-liner"
+    back: "map.put(c, map.getOrDefault(c, 0) + 1); use LinkedHashMap to keep insertion order."
+keyTakeaways:
+  - "Two pointers solve reverse and palindrome in O(n); palindrome needs only O(1) space."
+  - "A counting array (c - 'a' as index) solves anagram and frequency in O(n)."
+  - "First non-repeating = count everything, then scan the string again in order."
+  - "Use HashMap / LinkedHashMap with getOrDefault for any characters, not only a-z."
+  - "Always state the simple approach, then the better one, with time and space complexity."

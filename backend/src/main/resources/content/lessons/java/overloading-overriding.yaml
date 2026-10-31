@@ -1,0 +1,362 @@
+slug: overloading-overriding
+world: JAVA_CORE
+section: C
+order: 8
+title: "Overloading vs overriding"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A top OOP comparison for SP and DSE technical rounds; the rules also show up in output and compile-error MCQs."
+otherCompanies: "One of the most common Java theory questions everywhere: TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  "What is the difference between **overloading** and **overriding**?" is one of the most common Java interview questions of all time.
+
+  The simple answer is easy. The follow-up questions are where people lose marks:
+  - Can I change the **return type**?
+  - Can the child make the method **less public**?
+  - Can the child throw **more exceptions**?
+  - Can you override a **static** method? A **private** one? `main`?
+
+  This lesson gives you one clear table of rules so you can answer every follow-up calmly.
+analogy: |
+  **Overloading** is like a tea stall owner named Raju who answers three different orders:
+  - "One tea" -> makes tea.
+  - "One tea, less sugar" -> makes tea a different way.
+  - "Two teas and one biscuit" -> yet another way.
+  Same name (Raju), but he decides *what to do by looking at what you gave him* (the parameters). All of this is one person, one shop.
+
+  **Overriding** is when Raju's son takes over the stall and says "When someone orders tea, I'll make it **my** way (masala chai)." Same order, same words, but the **child replaces the parent's recipe**. Customers still say "tea", but who serves it decides the taste.
+visual:
+  diagram: |2
+    OVERLOADING (same class, compile time)
+    +--------------------------------------------+
+    | class Calc                                 |
+    |   add(int a, int b)          <- add(2,3)   |
+    |   add(int a, int b, int c)   <- add(1,2,3) |
+    |   add(double a, double b)    <- add(1.5,2) |
+    +--------------------------------------------+
+      compiler picks by ARGUMENT LIST
+
+    OVERRIDING (parent + child, run time)
+    +---------------------+      +---------------------+
+    | class Animal        |      | class Dog           |
+    |   void sound()      | <--- |   void sound()      |
+    |   "..."             |      |   "Woof"  (replaces)|
+    +---------------------+      +---------------------+
+      Animal a = new Dog();  a.sound();  -> "Woof"
+      JVM picks by the REAL OBJECT
+  caption: "Overloading: many methods with one name but different parameters, chosen by the compiler. Overriding: a child replaces a parent method with the same signature, chosen at run time by the actual object."
+  visualizer: null
+explanation: |
+  ### Two words you need first
+  - A method's **signature** is its **name + parameter list** (number, types and order of parameters). The return type is **not** part of the signature.
+  - **Compile time** is when `javac` checks your code. **Run time** is when the JVM actually runs it.
+
+  ### Overloading
+  **Overloading** = the **same method name** with **different parameter lists**, usually in the same class.
+  ```java
+  class Calc {
+      int add(int a, int b)            { return a + b; }
+      int add(int a, int b, int c)     { return a + b + c; }
+      double add(double a, double b)   { return a + b; }
+  }
+  ```
+  The **compiler** chooses which one to call by looking at the arguments. That's why overloading is called **compile-time polymorphism** (or static binding).
+
+  Ways to overload: change the **number** of parameters, their **types**, or their **order** (`f(int, String)` vs `f(String, int)`).
+
+  Changing **only the return type is not overloading**; it's a compile error, because a call like `add(2, 3)` wouldn't tell the compiler which one you mean.
+
+  ### Overriding
+  **Overriding** = a **child class** gives its own body for a method that it inherited, with the **same signature**.
+  ```java
+  class Animal { void sound() { System.out.println("..."); } }
+  class Dog extends Animal {
+      @Override
+      void sound() { System.out.println("Woof"); }
+  }
+  ```
+  `@Override` is an **annotation** (a label for the compiler). It's optional, but if you misspell the method or change a parameter, the compiler shouts. Always use it.
+
+  Which version runs is decided at **run time** by the **actual object**, not the variable type. That's **runtime polymorphism** (dynamic binding).
+
+  ### The full rules table
+  | Rule | Overloading | Overriding |
+  |---|---|---|
+  | Where | Same class (or parent + child) | Parent and child only |
+  | Method name | Same | Same |
+  | Parameter list | **Must differ** | **Must be identical** |
+  | Return type | Anything (but can't be the *only* difference) | Same, or a **subtype** for objects (**covariant return**). For primitives: exactly the same |
+  | Access modifier | Anything | Same or **wider** (never weaker). `protected` -> `public` OK; `public` -> `protected` error |
+  | Checked exceptions | Anything | Same, a **subclass**, fewer, or none. **Never new or broader** checked exceptions |
+  | Unchecked exceptions | Anything | Anything |
+  | `static` methods | Can be overloaded | **Not overridden; they are hidden** |
+  | `private` methods | Can be overloaded | Not overridden (child can't see them) |
+  | `final` methods | Can be overloaded | **Cannot** be overridden |
+  | Constructors | Can be overloaded | Cannot be overridden (not inherited) |
+  | Decided at | Compile time | Run time |
+  | Also called | Static / compile-time polymorphism | Dynamic / runtime polymorphism |
+
+  Access order from narrow to wide: `private` < default < `protected` < `public`.
+
+  A **checked exception** is one the compiler forces you to handle (like `IOException`). An **unchecked exception** is a `RuntimeException` (like `NullPointerException`) that the compiler doesn't force you to handle.
+
+  Why "same or wider" and "no broader exceptions"? Because code written for the parent must still work with a child object. If the parent promised "I'm public and I only throw `IOException`", the child can't break that promise.
+
+  ### Static methods: hiding, not overriding
+  ```java
+  class P { static void hi() { System.out.println("P hi"); } }
+  class C extends P { static void hi() { System.out.println("C hi"); } }
+
+  P obj = new C();
+  obj.hi();      // prints "P hi"
+  ```
+  Static methods belong to the **class**, not the object. The compiler picks the version from the **variable's type** (`P`), not the real object. This is called **method hiding**. Also:
+  - A child **instance** method can't have the same signature as a parent **static** method (compile error), and vice versa.
+
+  ### Overloading tricks
+  - **Can `main` be overloaded?** Yes. But the JVM only starts from `public static void main(String[] args)`.
+  - **Can `main` be overridden?** No, it's static, so it can only be hidden.
+  - **Which overload wins?** The compiler tries, in order: exact match -> **widening** (`int` to `long`) -> **boxing** (`int` to `Integer`) -> **varargs** (`int...`).
+  ```java
+  static void f(long x)     { System.out.println("long"); }
+  static void f(Integer x)  { System.out.println("Integer"); }
+  static void f(int... x)   { System.out.println("varargs"); }
+  f(5);   // "long": widening beats boxing and varargs
+  ```
+tinyCode:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Printer p = new Printer();
+            p.print(10);
+            p.print("Hi");
+            p.print(3, 4);
+
+            Animal a = new Dog();
+            a.sound();
+        }
+    }
+
+    class Printer {
+        void print(int x)        { System.out.println("int: " + x); }
+        void print(String s)     { System.out.println("String: " + s); }
+        void print(int x, int y) { System.out.println("two ints: " + (x + y)); }
+    }
+
+    class Animal {
+        void sound() { System.out.println("Some sound"); }
+    }
+
+    class Dog extends Animal {
+        @Override
+        void sound() { System.out.println("Woof"); }
+    }
+  walkthrough: |
+    - `Printer` has three methods all named `print`. That's **overloading**.
+    - `p.print(10)` has one `int` argument, so the compiler picks `print(int)`. `p.print("Hi")` picks `print(String)`. `p.print(3, 4)` picks the two-parameter version and prints 7.
+    - `Dog` re-writes `sound()` with the same signature: **overriding**. `@Override` asks the compiler to double-check that.
+    - `Animal a = new Dog();` The variable type is Animal, but the real object is a Dog. At run time the JVM calls Dog's `sound()`, printing **Woof**.
+
+    Output:
+    ```
+    int: 10
+    String: Hi
+    two ints: 7
+    Woof
+    ```
+tryIt:
+  instructions: "Type this to see overriding vs static hiding side by side. Predict both lines first. Then remove the word static from both hello() methods and run again: what changes and why?"
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Parent obj = new Child();
+            obj.greet();
+            obj.hello();
+        }
+    }
+
+    class Parent {
+        void greet() { System.out.println("Parent greet"); }
+        static void hello() { System.out.println("Parent hello"); }
+    }
+
+    class Child extends Parent {
+        @Override
+        void greet() { System.out.println("Child greet"); }
+        static void hello() { System.out.println("Child hello"); }
+    }
+predict:
+  code: |
+    public class Main {
+        static void show(long x)    { System.out.println("long " + x); }
+        static void show(Integer x) { System.out.println("Integer " + x); }
+        static void show(int... x)  { System.out.println("varargs"); }
+        static void show(double x)  { System.out.println("double " + x); }
+
+        public static void main(String[] args) {
+            show(5);
+            show(5.0f);
+            show();
+        }
+    }
+  expectedOutput: |
+    long 5
+    double 5.0
+    varargs
+  explanation: |
+    `show(5)`: there is no `show(int)`, so the compiler first tries **widening**. `int` can widen to `long` or `double`; `long` is the closer (more specific) one, so "long 5". Boxing to `Integer` is only tried if widening fails.
+    `show(5.0f)`: a `float` can only widen to `double`, so "double 5.0".
+    `show()`: no arguments only matches varargs.
+commonMistakes:
+  - "Thinking a different return type alone is overloading. If only the return type differs, it is a compile error."
+  - "Making an overriding method less accessible (public in parent, protected in child). Access can stay the same or get wider only."
+  - "Adding a new or broader checked exception in the overriding method (e.g. parent throws IOException, child throws Exception). Not allowed."
+  - "Saying static methods can be overridden. They are hidden: the variable's type decides which one runs."
+  - "Forgetting @Override and accidentally overloading instead (e.g. equals(Dog d) instead of equals(Object o))."
+  - "Thinking overloading is decided at run time. The compiler picks the overload from the declared argument types."
+interviewBox:
+  why: "Why interviewers ask this: it's the quickest way to check if you understand compile-time vs runtime decisions, and the follow-up rules reveal whether you have actually written OOP code."
+  questions:
+    - q: "What is the difference between overloading and overriding?"
+      a: "Overloading means the same method name with different parameter lists, usually in one class, and the compiler chooses which one to call. Overriding means a child class gives a new body for an inherited method with the same signature, and the JVM chooses at run time based on the real object. Overloading is compile-time polymorphism; overriding is runtime polymorphism."
+    - q: "Can we override a static method?"
+      a: "No. If a child declares a static method with the same signature, it hides the parent's method. The version that runs depends on the reference type, not the object, so there is no runtime polymorphism."
+    - q: "Can an overriding method change the return type?"
+      a: "Only to a subtype, called a covariant return type. For example the parent returns Animal and the child returns Dog. For primitive return types it must be exactly the same."
+    - q: "What are the exception rules for overriding?"
+      a: "The overriding method can throw the same checked exceptions, narrower ones, fewer, or none. It can't throw new or broader checked exceptions. Unchecked exceptions have no restriction."
+    - q: "Can we overload the main method?"
+      a: "Yes, we can write other main methods with different parameters. But the JVM only starts the program from public static void main(String[] args)."
+quiz:
+  - id: q1
+    type: SPOT_THE_BUG
+    prompt: "Why does this class fail to compile?"
+    code: |
+      public class Main {
+          int total(int a, int b)    { return a + b; }
+          double total(int a, int b) { return a + b; }
+
+          public static void main(String[] args) {
+              System.out.println(new Main().total(2, 3));
+          }
+      }
+    options:
+      - "Methods can't be named total"
+      - "Only the return type differs, so both methods have the same signature"
+      - "double can't hold the sum of two ints"
+      - "Overloaded methods must be static"
+    answer: 1
+    explanation: "The signature is name + parameters, and both are total(int, int). A different return type alone is not overloading, so the compiler reports 'method already defined'. Returning an int sum as a double is perfectly legal, so that's not the problem."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              A obj = new B();
+              obj.show();
+              obj.info();
+          }
+      }
+      class A {
+          void show() { System.out.println("A show"); }
+          static void info() { System.out.println("A info"); }
+      }
+      class B extends A {
+          void show() { System.out.println("B show"); }
+          static void info() { System.out.println("B info"); }
+      }
+    options: ["A show\nA info", "B show\nB info", "B show\nA info", "A show\nB info"]
+    answer: 2
+    explanation: "show() is an instance method, overridden in B, so the real object (B) decides: 'B show'. info() is static, so it's hidden, not overridden; the variable type A decides: 'A info'. Choosing 'B info' is the common trap."
+  - id: q3
+    type: MCQ
+    prompt: "Parent has: protected void run() throws IOException. Which child method is a VALID override?"
+    options:
+      - "void run() throws IOException"
+      - "public void run() throws Exception"
+      - "public void run() throws FileNotFoundException"
+      - "private void run()"
+    answer: 2
+    explanation: "public is wider than protected (OK) and FileNotFoundException is a subclass of IOException (OK). Option 1 uses default access, which is weaker than protected. Option 2 throws Exception, which is broader. Option 4 makes it private, which is weaker."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "An overriding method may return a subclass of the parent method's return type."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. This is called a covariant return type (e.g. parent returns Animal, child returns Dog). It only works for object types; primitive return types must match exactly."
+  - id: q5
+    type: MATCH
+    prompt: "Match each situation to its correct name"
+    pairs:
+      - left: "add(int,int) and add(double,double) in one class"
+        right: "Overloading"
+      - left: "Child re-writes an inherited instance method"
+        right: "Overriding"
+      - left: "Child declares a static method with the parent's signature"
+        right: "Method hiding"
+      - left: "Parent method marked final"
+        right: "Cannot be overridden"
+    explanation: "Different parameters = overloading. Same signature, instance method in child = overriding. Same signature but static = hiding. final blocks overriding completely."
+  - id: q6
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static void m(Object o) { System.out.println("Object"); }
+          static void m(String s) { System.out.println("String"); }
+
+          public static void main(String[] args) {
+              m(null);
+              Object x = "hello";
+              m(x);
+          }
+      }
+    options: ["Object\nObject", "String\nString", "String\nObject", "Compile error: ambiguous"]
+    answer: 2
+    explanation: "null fits both, but the compiler picks the most specific type, String. For m(x), the declared type of x is Object, and overloading is decided at compile time by declared types, so 'Object' prints even though x really holds a String."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the annotation that makes the compiler check this really overrides a parent method."
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              System.out.println(new Main());
+          }
+          ____
+          public String toString() { return "I am Main"; }
+      }
+    acceptedAnswers: ["@Override"]
+    explanation: "@Override tells the compiler 'this must override something'. If you typo the name (tostring) or change parameters, you get a compile error instead of a silent new method."
+explainBack:
+  prompt: "Explain overloading vs overriding to a friend, including at least three overriding rules."
+  rubric:
+    - "I said overloading = same name, different parameters, decided at compile time"
+    - "I said overriding = child re-writes a parent method with the same signature, decided at run time"
+    - "I mentioned return type (same or covariant), access (same or wider) and exceptions (no new/broader checked)"
+    - "I said static methods are hidden, not overridden"
+    - "I used an example or analogy"
+  modelAnswer: |
+    Overloading is like a tea seller who handles different orders: one name, but different inputs, so add(int, int) and add(double, double) can live in the same class. The compiler picks the right one from the arguments, so it's compile-time polymorphism. Overriding is when a child class rewrites a method it inherited, with exactly the same name and parameters. The JVM checks the real object at run time and runs the child's version. For overriding, the return type must be the same or a subtype, access can only get wider, and it can't throw new or broader checked exceptions. Static methods aren't overridden; they're only hidden.
+flashcards:
+  - front: "Is return type part of the method signature?"
+    back: "No. Signature = name + parameter list. A different return type alone is a compile error, not overloading."
+  - front: "Overriding: access modifier rule"
+    back: "Same or wider. protected -> public is OK; public -> protected is a compile error."
+  - front: "Overriding: checked exception rule"
+    back: "Same, narrower (subclass), fewer or none. Never new or broader checked exceptions. Unchecked: anything."
+  - front: "Can static methods be overridden?"
+    back: "No, they are hidden. The reference (variable) type decides which runs."
+  - front: "Overload resolution order"
+    back: "Exact match -> widening -> boxing -> varargs."
+  - front: "Covariant return type"
+    back: "An overriding method may return a subtype of the parent's return type (Animal -> Dog)."
+keyTakeaways:
+  - "Overloading: same name, different parameter list; chosen by the compiler (compile-time polymorphism)."
+  - "Overriding: same signature in a child class; chosen at run time by the real object (runtime polymorphism)."
+  - "Overriding rules: same or covariant return, same or wider access, no new or broader checked exceptions."
+  - "static methods are hidden, final methods can't be overridden, private methods aren't inherited."
+  - "Always use @Override so the compiler catches mistakes."

@@ -1,0 +1,296 @@
+slug: setup-first-program
+world: JAVA_CORE
+section: A
+order: 2
+title: "Setup and your first program"
+version: 1
+estimatedMinutes: 25
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Foundation for every coding round: you must be able to write main(), print output exactly, and compile and run without an IDE."
+otherCompanies: "Every company's coding round expects a correct class with main and exact output formatting. Theory rounds often ask why main is public static void."
+why: |
+  In a coding test you do not get marks for an idea. You get marks when your program **compiles, runs and prints exactly the right output**.
+
+  Many beginners lose easy marks because of tiny setup problems:
+  - the class name does not match what the platform expects,
+  - an extra space or missing newline in the output,
+  - a missing semicolon or bracket that they cannot find quickly without an IDE.
+
+  This lesson makes you comfortable with the full cycle: **install the JDK, write `main`, compile, run, read the error, fix it**. It also prepares you for the classic question: *"Explain `public static void main(String[] args)` word by word."*
+analogy: |
+  Think of starting your program like **starting a cricket match**.
+
+  - The **stadium** is the JDK installed on your computer. Without it, there is no match.
+  - The **team sheet** is your `.java` file: who plays and what they do.
+  - The **umpire** checking the team sheet before the match is the compiler (`javac`). If a name is misspelt, the match does not start.
+  - The **first ball** is always bowled from one fixed place: the `main` method. The JVM always starts there, no matter how many other methods you write.
+  - The **scoreboard** is `System.out.println`: the only thing the audience (the test platform) actually sees.
+visual:
+  diagram: |
+    1. Install JDK        ->  check: javac -version / java -version
+    2. Write file         ->  Hello.java   (public class Hello)
+    3. Compile            ->  javac Hello.java
+                                 |  errors? read line number, fix, repeat
+                                 v
+                              Hello.class  (bytecode)
+    4. Run                ->  java Hello
+                                 |
+                                 v
+              JVM looks for: public static void main(String[] args)
+                                 |
+                                 v
+                        statements run top to bottom
+                        System.out.println -> console
+  caption: "The full cycle: install once, then write, compile, run. The JVM always begins at main."
+  visualizer: null
+explanation: |
+  ### Step 1: Install the JDK
+  The **JDK (Java Development Kit)** is the package that gives you the compiler (`javac`) and the runner (`java`).
+  - Download a JDK (for example Temurin or Oracle JDK, version 17 or 21; both are **LTS**, meaning Long Term Support versions that companies use).
+  - Install it. On Windows, make sure the JDK `bin` folder is in the **PATH**. PATH is a list of folders where your computer searches for commands.
+  - Check it worked by opening a terminal (Command Prompt) and typing:
+  ```
+  javac -version
+  java -version
+  ```
+  If both print a version number, you are ready. If you see "javac is not recognized", the PATH is not set.
+
+  ### Step 2: Write the program
+  ```java
+  public class Hello {
+      public static void main(String[] args) {
+          System.out.println("Hello, World!");
+      }
+  }
+  ```
+  Rules to remember:
+  - A **class** is a container for code. Every Java program lives inside at least one class.
+  - If the class is `public`, the file name **must** be exactly the class name plus `.java` (here `Hello.java`). Capital letters matter.
+  - Every statement ends with a **semicolon** `;`.
+  - Curly braces `{ }` mark the start and end of a block. Every `{` needs a matching `}`.
+
+  ### Step 3: Compile and run
+  ```
+  javac Hello.java     # makes Hello.class
+  java Hello           # runs it (no .java, no .class)
+  ```
+  Since Java 11 you can also run a single file directly: `java Hello.java`. It compiles in memory and runs in one step. Handy for practice.
+
+  ### main, word by word
+  | Word | Meaning in plain words |
+  |---|---|
+  | `public` | Anyone can call it, including the JVM from outside. |
+  | `static` | It belongs to the class, so the JVM can call it **without creating an object**. |
+  | `void` | It returns nothing. |
+  | `main` | The exact name the JVM searches for. `Main` or `mian` will not work. |
+  | `String[] args` | An array of text values passed from the command line. |
+
+  What if you change it?
+  - Change `main` to `Main`: it **compiles**, but running gives an error like *"Main method not found in class Hello"* because the JVM cannot find the entry point.
+  - Remove `static`: on Java 17 and 21 (the versions most test platforms use) running fails with *"Main method is not static"*. Very new Java (25+) relaxes this rule, but interviews expect the classic answer: main is `static`.
+  - `String args[]` and `String... args` are also valid ways to write the parameter.
+  - You can **overload** `main` (write another `main` with different parameters), but the JVM only calls the `String[]` one.
+
+  ### Printing: the three you will use
+  | Method | What it does |
+  |---|---|
+  | `System.out.println(x)` | Prints x, then moves to a new line. |
+  | `System.out.print(x)` | Prints x, stays on the same line. |
+  | `System.out.printf("%d %.2f%n", a, b)` | Prints with a format. `%d` = whole number, `%.2f` = decimal with 2 places, `%s` = text, `%n` = new line. |
+
+  In tests, **output must match exactly**. "Sum: 5" and "Sum:5" are different answers to a computer.
+
+  ### Comments
+  - `// one line comment`
+  - `/* many lines */`
+  - `/** documentation comment */` (used by the javadoc tool)
+  The compiler ignores comments. Use them to explain *why*, not *what*.
+
+  ### Reading compiler errors
+  ```
+  Hello.java:3: error: ';' expected
+          System.out.println("Hi")
+                                  ^
+  ```
+  The format is **file : line number : message**, and the `^` points near the problem. Always fix the **first** error first; later errors are often caused by it.
+
+  ### Coding platforms
+  Most online tests give you a fixed class name (often `Main` or `Solution`). Do not rename it, and do not put your class inside a `package` unless the template already has one. A stray `package` line is a common reason for "class not found" on online judges.
+tinyCode:
+  code: |
+    public class Hello {
+        public static void main(String[] args) {
+            // This is my first program
+            System.out.println("Hello, World!");
+            System.out.print("Java ");
+            System.out.println("is fun");
+            System.out.printf("%d + %d = %d%n", 2, 3, 2 + 3);
+        }
+    }
+  walkthrough: |
+    - Line 1: `public class Hello` creates a class called Hello. The file must be `Hello.java`.
+    - Line 2: the `main` method. The JVM starts running here.
+    - Line 3: a comment. The compiler skips it.
+    - Line 4: prints `Hello, World!` and moves to the next line.
+    - Line 5: `print` writes `Java ` (with a space) and stays on the same line.
+    - Line 6: `println` writes `is fun` right after it, then ends the line. Together they make `Java is fun`.
+    - Line 7: `printf` fills each `%d` with the numbers in order: 2, 3, then 5. `%n` adds a new line.
+
+    Output:
+    ```
+    Hello, World!
+    Java is fun
+    2 + 3 = 5
+    ```
+tryIt:
+  instructions: "Type this program yourself, save it as AboutMe.java, then run javac AboutMe.java and java AboutMe. Change the values to your own details and run again."
+  code: |
+    public class AboutMe {
+        public static void main(String[] args) {
+            String name = "Ravi";
+            int age = 21;
+            double cgpa = 8.456;
+            System.out.println("Name: " + name);
+            System.out.println("Age: " + age);
+            System.out.printf("CGPA: %.2f%n", cgpa);
+            System.out.print("Goal: ");
+            System.out.println("Crack the coding round");
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            System.out.print("1");
+            System.out.print("2");
+            System.out.println();
+            System.out.println("3" + 4 + 5);
+            System.out.println(4 + 5 + "3");
+        }
+    }
+  expectedOutput: |
+    12
+    345
+    93
+  explanation: |
+    - `print("1")` and `print("2")` stay on one line: `12`. The empty `println()` just ends that line.
+    - `"3" + 4 + 5` is read left to right. `"3" + 4` is text `"34"`, then `"34" + 5` is `"345"`.
+    - `4 + 5 + "3"`: first `4 + 5` is the number `9`, then `9 + "3"` becomes text `"93"`.
+    Once a String joins the expression, `+` means "join text" for everything after it.
+commonMistakes:
+  - "File name not matching the public class name (Hello.java vs hello.java). This is a compile error."
+  - "Typing `java Hello.class` or `java Hello.java` after compiling instead of `java Hello`. (java Hello.java works only as single-file mode, without the separate javac step.)"
+  - "Writing `Main` or `mian` instead of `main`, or forgetting `static`. It compiles but the JVM cannot start the program."
+  - "Extra spaces or missing newlines in the output. Online judges compare text exactly."
+  - "Leaving a `package` line at the top when submitting to an online judge."
+  - "Fixing the last compiler error first. Always start with the first one."
+interviewBox:
+  why: "Why interviewers ask this: explaining main word by word shows you understand classes, static and how the JVM starts a program, not just how to press Run."
+  questions:
+    - q: "Explain public static void main(String[] args)."
+      a: "public means the JVM can call it from outside the class. static means it belongs to the class, so the JVM can call it without creating an object. void means it returns nothing. main is the fixed name the JVM looks for. String[] args holds any command-line arguments as text."
+    - q: "Why is main static?"
+      a: "Because when the program starts, no object exists yet. If main were not static, the JVM would need to create an object first, and it would not know which constructor to use. Making it static lets the JVM call it directly on the class."
+    - q: "Can we overload the main method?"
+      a: "Yes. We can write other methods called main with different parameters. But the JVM only starts the program from the one that takes a String array. The others are normal methods we call ourselves."
+    - q: "What happens if the file name and public class name are different?"
+      a: "The compiler gives an error, because a public class must be saved in a file with exactly the same name, including capital letters."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Your public class is called Solution. What must the file be named?"
+    code: null
+    options: ["solution.java", "Solution.java", "Solution.class", "Any name ending in .java"]
+    answer: 1
+    explanation: "A public class must live in a file with exactly the same name, and names are case-sensitive, so Solution.java. solution.java fails because of the small s. Solution.class is the compiled output, not the source file."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      System.out.println(1 + 2 + "3" + 4 + 5);
+    options: ["15", "3345", "12345", "339"]
+    answer: 1
+    explanation: "Left to right: 1 + 2 is the number 3. Then 3 + \"3\" becomes text \"33\". After that every + joins text: \"334\", then \"3345\". 15 would be the answer only if no String was involved."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This compiles but the program will not start. Why?"
+    code: |
+      public class App {
+          public static void Main(String[] args) {
+              System.out.println("Start");
+          }
+      }
+    options:
+      - "println should be print"
+      - "The method is named Main with a capital M; the JVM looks for main exactly"
+      - "The class must be called Main"
+      - "String[] args must be written as String args[]"
+    answer: 1
+    explanation: "Java is case-sensitive. Main is a perfectly legal method name, so it compiles, but the JVM searches for main in small letters and reports that the main method is not found. The class name can be anything, and both String[] args and String args[] are valid."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In main, String[] args can also be written as String... args."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. String... args is varargs, which the compiler treats as a String array, so public static void main(String... args) is a valid entry point."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the command that runs the compiled class Hello."
+    code: |
+      javac Hello.java
+      ____ Hello
+    acceptedAnswers: ["java"]
+    explanation: "javac compiles; java starts the JVM and runs the class. You give the class name only, without .class."
+  - id: q6
+    type: MATCH
+    prompt: "Match each word in the main signature to its meaning"
+    pairs:
+      - left: "public"
+        right: "The JVM can call it from outside the class"
+      - left: "static"
+        right: "Can run without creating an object"
+      - left: "void"
+        right: "Returns nothing"
+      - left: "String[] args"
+        right: "Command-line arguments as text"
+    explanation: "Each keyword has one job. Together they make the exact entry point the JVM searches for."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      System.out.print("A");
+      System.out.printf("%d-%s%n", 7, "B");
+      System.out.print("C");
+    options: ["A7-B\nC", "A\n7-B\nC", "A 7 - B C", "A7-BC"]
+    answer: 0
+    explanation: "print(\"A\") stays on the line. printf fills %d with 7 and %s with B, then %n ends the line. Finally C is printed on the next line. A7-BC would be right only without %n."
+explainBack:
+  prompt: "Explain to a friend how to go from an empty file to seeing output on the screen in Java, and why main looks the way it does."
+  rubric:
+    - "I mentioned installing the JDK and checking javac -version"
+    - "I said the file name must match the public class name"
+    - "I described javac to compile and java to run"
+    - "I explained public, static, void and String[] args in simple words"
+    - "I mentioned that output must match exactly in tests"
+  modelAnswer: |
+    First I install the JDK and check it with javac -version. Then I create a file like Hello.java with a public class Hello, and the file name must match the class name exactly. Inside I write the main method, because the JVM always starts there. It is public so the JVM can reach it, static so it can run without an object, void because it returns nothing, and String array args holds command-line values. I compile with javac Hello.java, which gives Hello.class, and run with java Hello. In tests, I make sure my output matches exactly, including spaces and new lines.
+flashcards:
+  - front: "Why is main static?"
+    back: "So the JVM can call it without creating an object first."
+  - front: "Command to compile and to run Hello.java"
+    back: "javac Hello.java, then java Hello (no extension)."
+  - front: "print vs println vs printf"
+    back: "print: no newline. println: adds newline. printf: formatted (%d, %s, %.2f, %n)."
+  - front: "\"3\" + 4 + 5 vs 4 + 5 + \"3\""
+    back: "\"345\" vs \"93\". + works left to right; once a String appears, + joins text."
+  - front: "Can main be overloaded?"
+    back: "Yes, but the JVM only starts from main(String[] args)."
+keyTakeaways:
+  - "Install the JDK and confirm with javac -version and java -version."
+  - "A public class must be saved in a file with the same name (case-sensitive)."
+  - "javac File.java compiles; java ClassName runs. java File.java runs a single file directly."
+  - "The JVM starts at public static void main(String[] args)."
+  - "Output must match exactly; know print, println and printf."
+  - "Read compiler errors by file and line number, and fix the first one first."

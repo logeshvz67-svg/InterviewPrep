@@ -1,0 +1,303 @@
+slug: complexity-analysis
+world: DSA
+section: DSA
+order: 1
+title: "Time and space complexity (Big-O)"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: COMPLEXITY
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE coding rounds: choosing an approach that fits the input size is what separates a solution that passes all test cases from one that times out."
+otherCompanies: "\"What is the time complexity of your solution?\" is a common follow-up in every coding interview, from TCS to product companies."
+why: |
+  In a coding round, your solution can be **correct and still fail**: the hidden test cases use big inputs, and a slow solution gets **TLE (Time Limit Exceeded)**.
+
+  **Complexity analysis** lets you know *before* you write code whether an idea is fast enough. It is the first tool of every DSA pattern that follows (two pointers, sliding window, hashing...), because each pattern exists to turn a slow solution into a fast one.
+
+  And after every coding question, the interviewer asks: **"What is the time and space complexity?"** You must be able to answer in one line and explain why.
+analogy: |
+  Imagine finding your friend's name in a **college attendance register** of n students.
+
+  - **O(1)**: you know the roll number, so you open that exact line. Same effort for 60 or 6000 students.
+  - **O(log n)**: the names are sorted, so you open the middle, decide "left half or right half", and repeat. 6000 names take only about 13 steps.
+  - **O(n)**: the register is not sorted; you read every name, one by one.
+  - **O(n^2)**: for every student, you compare them with every other student (for example, to find two with the same birthday).
+
+  Big-O is not about **seconds**. It is about **how the work grows** when the register gets bigger.
+visual:
+  diagram: |
+    steps (approx) for different n
+
+    complexity    n = 10     n = 1,000       n = 100,000
+    ----------    ------     ----------      --------------
+    O(1)               1             1                    1
+    O(log n)           3            10                   17
+    O(n)              10         1,000              100,000
+    O(n log n)        33        10,000            1,700,000
+    O(n^2)           100     1,000,000       10,000,000,000  <- TLE
+    O(2^n)         1,024     too many!            too many!
+
+    Rule of thumb: about 10^8 simple operations per second.
+  caption: "Small inputs hide the difference. At n = 100,000, O(n log n) needs under 2 million steps while O(n^2) needs 10 billion: seconds versus minutes."
+  visualizer: null
+explanation: |
+  ### Key words
+  - **Time complexity**: how the number of steps grows as the input size **n** grows.
+  - **Space complexity**: how much **extra memory** your algorithm needs as n grows.
+  - **Big-O**: a way to write the growth rate, focusing on the **worst case** and ignoring small details.
+
+  ### How to count steps
+  Count how many times the most frequent line runs, as a formula in n.
+  ```java
+  for (int i = 0; i < n; i++) {        // runs n times
+      sum += arr[i];                   // 1 step each -> n steps -> O(n)
+  }
+  ```
+  ```java
+  for (int i = 0; i < n; i++)
+      for (int j = 0; j < n; j++)      // n * n = n^2 steps -> O(n^2)
+          count++;
+  ```
+
+  ### The simplifying rules
+  1. **Drop constants**: 3n + 5 is O(n). 2n^2 is O(n^2).
+  2. **Keep only the biggest term**: n^2 + n + 100 is O(n^2), because for large n the n^2 part dominates.
+  3. **Sequential steps add**: a loop of n then a loop of m is O(n + m).
+  4. **Nested steps multiply**: a loop of m inside a loop of n is O(n * m).
+  5. **Halving (or doubling) gives log**: if each step cuts the problem in half, it takes about log2(n) steps. `for (i = 1; i < n; i *= 2)` is O(log n).
+  6. A triangle loop (`j` from `i` to n) does n + (n-1) + ... + 1 = n(n+1)/2 steps, which is still **O(n^2)**.
+
+  ### Common complexities
+  | Big-O | Name | Typical example |
+  |---|---|---|
+  | O(1) | constant | array access `arr[i]`, HashMap get (average) |
+  | O(log n) | logarithmic | binary search |
+  | O(n) | linear | one loop, two pointers, sliding window |
+  | O(n log n) | linearithmic | sorting (`Arrays.sort`), merge sort |
+  | O(n^2) | quadratic | two nested loops, bubble sort |
+  | O(2^n) | exponential | all subsets, naive recursive Fibonacci |
+  | O(n!) | factorial | all permutations |
+
+  ### Input size tells you the target
+  A judge machine does roughly **10^8 simple operations per second**, and time limits are usually 1-2 seconds. So read the constraints **first**:
+  | Max n | Allowed complexity (approx) |
+  |---|---|
+  | n <= 10-11 | O(n!) |
+  | n <= 20-25 | O(2^n) |
+  | n <= 500 | O(n^3) |
+  | n <= 5,000 | O(n^2) |
+  | n <= 10^6 | O(n log n) or O(n) |
+  | n up to 10^8 | O(n), careful |
+  | n >= 10^9 | O(log n) or O(1) (a formula) |
+  Example: if n <= 10^5, then O(n^2) = 10^10 steps, way too slow. You need O(n log n) or O(n).
+
+  ### Space complexity
+  Count the **extra** memory you create, not the input itself:
+  - A few variables: **O(1)** space.
+  - A new array or HashMap of size n: **O(n)** space.
+  - **Recursion uses stack space**: each call waiting on the call stack takes memory, so recursion depth d costs O(d) space.
+
+  ### Best, average and worst case
+  Big-O usually means the **worst case**. Linear search finds the item at index 0 in the best case, but we say O(n). HashMap get is **O(1) on average**, but O(n) in the worst case if many keys collide. (Formally, Big-O is an upper bound, Omega is a lower bound, and Theta is a tight bound; in interviews "Big-O" is fine.)
+
+  ### Java operations you should know
+  | Operation | Cost |
+  |---|---|
+  | `ArrayList.get(i)`, `add(x)` at end | O(1) (add is amortized: occasionally it resizes) |
+  | `ArrayList.contains`, `remove(0)` | O(n) |
+  | `HashMap/HashSet` get, put, contains | O(1) average |
+  | `TreeMap` get, put | O(log n) |
+  | `Arrays.sort`, `Collections.sort` | O(n log n) |
+  | `String +` inside a loop | O(n^2) total; use StringBuilder |
+tinyCode:
+  code: |
+    public class CountSteps {
+        public static void main(String[] args) {
+            int n = 16;
+
+            int linear = 0;
+            for (int i = 0; i < n; i++) linear++;
+
+            int quadratic = 0;
+            for (int i = 0; i < n; i++)
+                for (int j = 0; j < n; j++) quadratic++;
+
+            int logarithmic = 0;
+            for (int i = 1; i < n; i *= 2) logarithmic++;
+
+            System.out.println("O(n)     -> " + linear);
+            System.out.println("O(n^2)   -> " + quadratic);
+            System.out.println("O(log n) -> " + logarithmic);
+        }
+    }
+  walkthrough: |
+    We don't measure seconds; we **count steps** with counters.
+    - The single loop runs 16 times: **O(n)**.
+    - The nested loops run 16 x 16 = 256 times: **O(n^2)**.
+    - In the last loop `i` doubles: 1, 2, 4, 8, and stops at 16. That is 4 steps, and log2(16) = 4: **O(log n)**.
+
+    Output:
+    ```
+    O(n)     -> 16
+    O(n^2)   -> 256
+    O(log n) -> 4
+    ```
+    Change n to 1024: linear becomes 1024, quadratic becomes 1,048,576, and log becomes only 10. That is why the class of algorithm matters more than tiny optimisations.
+tryIt:
+  instructions: "Type this and run it. Watch how the step counts grow as n grows ten times each time. Which column explodes?"
+  code: |
+    public class Growth {
+        public static void main(String[] args) {
+            int[] sizes = {10, 100, 1000};
+            for (int n : sizes) {
+                long lin = 0, quad = 0, log = 0;
+                for (int i = 0; i < n; i++) lin++;
+                for (int i = 0; i < n; i++)
+                    for (int j = 0; j < n; j++) quad++;
+                for (int i = n; i > 1; i /= 2) log++;
+                System.out.println("n=" + n + " linear=" + lin
+                    + " quadratic=" + quad + " log=" + log);
+            }
+        }
+    }
+predict:
+  code: |
+    public class Steps {
+        public static void main(String[] args) {
+            int count = 0;
+            for (int i = 0; i < 4; i++) {
+                for (int j = i; j < 4; j++) {
+                    count++;
+                }
+            }
+            for (int k = 1; k < 100; k *= 3) {
+                count++;
+            }
+            System.out.println(count);
+        }
+    }
+  expectedOutput: |
+    15
+  explanation: |
+    The triangle loop runs 4 + 3 + 2 + 1 = 10 times (j starts at i, so each round is one shorter). The second loop has k = 1, 3, 9, 27, 81 and stops at 243: 5 times. Total 15. In Big-O terms: the triangle loop is O(n^2) (about n^2/2), and the tripling loop is O(log n).
+commonMistakes:
+  - "Calling a triangle loop (j from i to n) O(n log n). It is n(n+1)/2 steps, which is still O(n^2)."
+  - "Ignoring hidden costs inside a loop: list.contains, String +, or remove(0) are O(n) each, making the loop O(n^2)."
+  - "Forgetting recursion stack space when stating space complexity."
+  - "Writing code before reading the constraints. n <= 10^5 rules out O(n^2) immediately."
+  - "Keeping constants and small terms in the answer, like O(2n + 3). Say O(n)."
+interviewBox:
+  why: "Why interviewers ask this: complexity shows whether your solution will work on real data sizes, and whether you can reason about your own code."
+  questions:
+    - q: "What is Big-O notation?"
+      a: "Big-O describes how the running time or memory of an algorithm grows as the input size grows, usually in the worst case. We drop constants and smaller terms, so 3n plus 5 is O(n). It lets us compare approaches without depending on the machine."
+    - q: "What is the time complexity of binary search, and why?"
+      a: "O(log n). Each step compares with the middle element and throws away half of the remaining array. Halving n repeatedly until one element is left takes about log base 2 of n steps, so a million elements need only about 20 comparisons."
+    - q: "If n is up to 10^5, can you use an O(n^2) solution?"
+      a: "Usually no. n squared is 10^10 operations, and a judge does roughly 10^8 simple operations per second, so it would take around 100 seconds. I'd aim for O(n log n) or O(n), for example with sorting, hashing, two pointers or a sliding window."
+    - q: "What is space complexity? Does recursion use extra space?"
+      a: "Space complexity is the extra memory the algorithm uses as the input grows, not counting the input. Yes, recursion uses stack space: every call waiting to return sits on the call stack, so recursion with depth n uses O(n) space even without any arrays."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "n can be up to 100,000 and the time limit is 1 second. Which complexity should you aim for?"
+    code: null
+    options: ["O(n^2)", "O(n log n) or better", "O(2^n)", "O(n^3)"]
+    answer: 1
+    explanation: "O(n log n) is about 1.7 million steps, easily fast. O(n^2) is 10^10 steps; at about 10^8 per second that is roughly 100 seconds, so it would time out. O(2^n) and O(n^3) are even worse."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (It counts how many times the loop runs.)"
+    code: |
+      int n = 64, steps = 0;
+      while (n > 1) {
+          n = n / 2;
+          steps++;
+      }
+      System.out.println(steps);
+    options: ["32", "6", "7", "64"]
+    answer: 1
+    explanation: "n goes 64 -> 32 -> 16 -> 8 -> 4 -> 2 -> 1: six halvings, and log2(64) = 6. Halving loops are O(log n). 7 would count the starting value too; 32 confuses halving with a loop that steps by 2."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "An algorithm that does 2n + 10 steps is O(n)."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Big-O drops constant factors and smaller terms. 2n + 10 grows in a straight line with n, so it is O(n)."
+  - id: q4
+    type: MATCH
+    prompt: "Match each code shape to its time complexity"
+    pairs:
+      - left: "for (i = 0; i < n; i++) then a separate for (j = 0; j < n; j++)"
+        right: "O(n)"
+      - left: "for (i = 0; i < n; i++) { for (j = 0; j < n; j++) }"
+        right: "O(n^2)"
+      - left: "for (i = 1; i < n; i *= 2)"
+        right: "O(log n)"
+      - left: "Arrays.sort(arr)"
+        right: "O(n log n)"
+    explanation: "Separate loops add (n + n = 2n = O(n)), nested loops multiply (n^2), doubling gives log n, and Java's sort is O(n log n)."
+  - id: q5
+    type: SPOT_THE_BUG
+    prompt: "This finds common elements correctly, but it is too slow for n = 100,000. What is the performance bug?"
+    code: |
+      List<Integer> a = List.of(1, 2, 3, 4);
+      List<Integer> b = List.of(3, 4, 5, 6);
+      List<Integer> common = new ArrayList<>();
+      for (int x : a) {
+          if (b.contains(x)) common.add(x);
+      }
+      System.out.println(common);
+    options:
+      - "common should be a LinkedList"
+      - "b.contains is O(n) on a List, so the loop is O(n^2); put b into a HashSet for O(1) lookups"
+      - "for-each loops are slower than index loops"
+      - "List.of makes the lists immutable, which is slow"
+    answer: 1
+    explanation: "The code prints [3, 4] correctly, but List.contains scans the whole list each time, so n lookups cost O(n) each: O(n^2) total. Using Set<Integer> set = new HashSet<>(b) makes each lookup O(1) on average, and the whole thing O(n). The loop style and immutability do not change the complexity."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Binary search halves the search range every step. Fill in its time complexity: O(____)"
+    code: |
+      // binary search on a sorted array of size n
+      // time complexity: O(____)
+    acceptedAnswers: ["log n", "logn", "log(n)", "log2n", "log2(n)"]
+    explanation: "Halving n until one element remains takes about log2(n) steps, so binary search is O(log n)."
+  - id: q7
+    type: MCQ
+    prompt: "A recursive function calls itself n times in a chain (f(n) calls f(n-1) ... down to f(0)) and creates no arrays. What is its space complexity?"
+    code: null
+    options: ["O(1), since there are no arrays", "O(n), because of the call stack", "O(log n)", "O(n^2)"]
+    answer: 1
+    explanation: "Every call waits on the call stack until the deeper calls return, so n frames exist at the same time: O(n) space. The tempting O(1) answer forgets the stack."
+explainBack:
+  prompt: "Explain Big-O to a friend using the attendance register example, and say how you decide which complexity is fast enough from the input size."
+  rubric:
+    - "I said Big-O measures how work grows with input size, not seconds"
+    - "I gave examples of O(1), O(log n), O(n) and O(n^2)"
+    - "I mentioned dropping constants and keeping the biggest term"
+    - "I used the ~10^8 operations per second rule with an example like n = 10^5"
+    - "I mentioned space complexity, including recursion stack"
+  modelAnswer: |
+    Big-O tells me how the work grows when the input grows, not the exact time. If I know the roll number, I jump straight to the line: O(1). If the names are sorted, I can keep halving the register: O(log n). Reading every name is O(n), and comparing every student with every other is O(n squared). I drop constants, so 2n plus 10 is just O(n). To choose an approach, I read the constraints first: a judge does about 10^8 simple steps per second, so for n up to 10^5, n squared is 10^10 and too slow, and I need n log n or n. Space complexity is the extra memory, and recursion uses stack space too.
+flashcards:
+  - front: "What does Big-O measure?"
+    back: "How time (or memory) grows with input size n, usually worst case, ignoring constants and smaller terms."
+  - front: "Operations per second rule of thumb"
+    back: "About 10^8 simple operations per second."
+  - front: "n <= 10^5: which complexities are OK?"
+    back: "O(n log n) or O(n). O(n^2) = 10^10 is too slow."
+  - front: "Loop with i *= 2 or n /= 2"
+    back: "O(log n)."
+  - front: "Space complexity of recursion depth n"
+    back: "O(n) for the call stack."
+  - front: "Cost of list.contains inside a loop"
+    back: "O(n) per call, so O(n^2) total. Use a HashSet."
+keyTakeaways:
+  - "Big-O = growth rate; drop constants, keep the biggest term."
+  - "Sequential loops add, nested loops multiply, halving gives log n."
+  - "Read constraints first: ~10^8 ops/sec decides the allowed complexity."
+  - "n <= 10^5 means O(n log n) or O(n); n <= 20 allows O(2^n)."
+  - "Space counts extra memory, including the recursion stack."
+  - "Watch hidden O(n) calls inside loops (contains, remove(0), String +)."

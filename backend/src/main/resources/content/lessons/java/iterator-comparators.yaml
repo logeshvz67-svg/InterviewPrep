@@ -1,0 +1,322 @@
+slug: iterator-comparators
+world: JAVA_CORE
+section: E
+order: 10
+title: "Iterator, Comparable vs Comparator"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Comparable vs Comparator is a top comparison question for SP and DSE; custom sorting also appears constantly in coding rounds."
+otherCompanies: "A very common basic question at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies expect fluent Comparator.comparing chains."
+why: |
+  Two everyday coding needs:
+  1. **Remove items while looping** over a list ("remove all failed students"). Done wrongly, it crashes with `ConcurrentModificationException`.
+  2. **Sort objects your own way** ("sort employees by salary, highest first, then by name"). Numbers and Strings sort themselves, but Java has no idea how to sort your `Student` class.
+
+  The tools for these are **`Iterator`**, **`Comparable`** and **`Comparator`**. "Comparable vs Comparator" is one of the most asked Java comparison questions, and modern `Comparator.comparing(...)` chains make your coding answers short and clean.
+analogy: |
+  **Iterator** is like a **bus conductor** walking down the aisle checking tickets one by one. If a passenger must get off, the conductor himself says "you, out" (`iterator.remove()`), and keeps track of his position. If someone else pushes a passenger out behind his back (`list.remove()`), the conductor loses count and stops in confusion (the exception).
+
+  **Comparable vs Comparator** is like ranking **cricket players**:
+  - **Comparable** is the player's **own default ranking** printed on the team sheet, say by jersey number. One natural order, built into the player.
+  - **Comparator** is a **selector's custom ranking**: today by runs, tomorrow by strike rate, next week by age. Many orders, written outside the player.
+visual:
+  diagram: |
+    Iterator over [A, B, C]
+       cursor
+         v
+       [ A | B | C ]   hasNext()? yes -> next() returns A
+           v
+       [ A | B | C ]   it.remove() removes A safely,
+                       iterator updates its own count
+
+    list.remove(..) inside for-each:
+       modCount 3 -> 4, iterator expects 3
+       next() -> ConcurrentModificationException
+
+    Sorting Students
+    +-------------+-----------------------------+--------------------+
+    |             | Comparable<Student>         | Comparator<Student>|
+    +-------------+-----------------------------+--------------------+
+    | where       | inside Student              | outside, separate  |
+    | method      | compareTo(Student o)        | compare(a, b)      |
+    | how many    | one natural order           | as many as needed  |
+    | used by     | Collections.sort(list)      | list.sort(cmp)     |
+    +-------------+-----------------------------+--------------------+
+  caption: "An Iterator walks a collection with a cursor and can remove safely. Comparable puts one natural order inside the class; Comparators are separate, reusable sort rules."
+  visualizer: null
+explanation: |
+  ### Part 1: Iterator
+  An **Iterator** is an object that walks through a collection one element at a time. Every collection gives you one with `.iterator()`. It has three main methods:
+  | Method | Meaning |
+  |---|---|
+  | `hasNext()` | is there another element? |
+  | `next()` | return the next element and move forward |
+  | `remove()` | remove the element last returned by `next()` |
+
+  ```java
+  Iterator<Integer> it = marks.iterator();
+  while (it.hasNext()) {
+      if (it.next() < 40) it.remove();   // safe removal
+  }
+  ```
+  The **for-each loop** (`for (int m : marks)`) is just a shortcut that uses an Iterator behind the scenes. That is why you cannot call `marks.remove(...)` inside it.
+
+  ### Why ConcurrentModificationException happens
+  `ArrayList` keeps a counter `modCount` that goes up on every add/remove. The iterator saves this number when it starts. If you change the list directly (not through the iterator), the numbers don't match on the next `next()`, and it throws **`ConcurrentModificationException`** (CME). Despite the name, this happens even with **one thread**.
+
+  Safe ways to remove while looping:
+  1. `iterator.remove()` (shown above),
+  2. `list.removeIf(m -> m < 40)` (Java 8, shortest),
+  3. a normal index loop going **backwards**: `for (int i = list.size() - 1; i >= 0; i--)`.
+
+  > Trap: removing the **second-last** element inside for-each does **not** throw! After the removal, `size` shrinks to equal the cursor, so `hasNext()` returns false and the loop just ends early, silently skipping the last element. The check is "best effort", not a promise.
+
+  Rules: call `next()` before `remove()`, and only one `remove()` per `next()`, otherwise `IllegalStateException`.
+
+  `ListIterator` (from `list.listIterator()`) can also go backwards (`hasPrevious()`, `previous()`) and `set()`/`add()` elements.
+
+  ### Part 2: Comparable (natural order)
+  **`Comparable<T>`** is an interface you implement **inside your class** to give it one **natural order**. It has one method:
+  ```java
+  int compareTo(T other);
+  ```
+  Return a **negative** number if `this` comes first, **zero** if equal, **positive** if `this` comes after. `String`, `Integer`, `LocalDate` all implement it already.
+  ```java
+  class Student implements Comparable<Student> {
+      String name; int marks;
+      public int compareTo(Student o) {
+          return Integer.compare(this.marks, o.marks);   // ascending marks
+      }
+  }
+  Collections.sort(students);   // uses compareTo
+  ```
+
+  ### Part 3: Comparator (custom orders)
+  **`Comparator<T>`** is a separate object with `int compare(T a, T b)`, same sign rules. Use it when:
+  - you want **more than one** order,
+  - you **cannot edit** the class (e.g. it is from a library),
+  - the order is just for one screen or report.
+
+  ```java
+  Comparator<Student> byName = (a, b) -> a.name.compareTo(b.name);
+  students.sort(byName);
+  ```
+
+  ### Comparator.comparing chains (Java 8+)
+  Instead of writing compare logic by hand, build it:
+  ```java
+  students.sort(
+      Comparator.comparingInt((Student s) -> s.marks)   // by marks
+                .reversed()                             // highest first
+                .thenComparing(s -> s.name));           // tie: by name
+  ```
+  | Method | Meaning |
+  |---|---|
+  | `Comparator.comparing(keyFn)` | compare by the key the function extracts |
+  | `comparingInt / comparingDouble` | same, for primitives, no boxing |
+  | `.reversed()` | flip the **whole chain so far** |
+  | `.thenComparing(keyFn)` | tie-breaker when the earlier keys are equal |
+  | `Comparator.naturalOrder() / reverseOrder()` | natural ascending / descending |
+  | `Comparator.nullsFirst(cmp)` | put nulls first instead of crashing |
+
+  > Note: in `comparing(s -> s.marks).reversed()` Java cannot guess the type of `s` and says "cannot find symbol". Fix it by writing the type: `(Student s) -> s.marks`, or by using a method reference such as `Student::getMarks` (you will meet `::` properly in Section F).
+
+  ### Never compare by subtraction
+  `(a, b) -> a.marks - b.marks` looks neat but **overflows** for big or negative numbers (for example `Integer.MIN_VALUE - 1` wraps around to a huge positive number) and gives the wrong sign. Use `Integer.compare(a, b)`.
+
+  ### Comparable vs Comparator: the answer table
+  | | Comparable | Comparator |
+  |---|---|---|
+  | Package | `java.lang` | `java.util` |
+  | Method | `compareTo(T o)` | `compare(T a, T b)` |
+  | Where | inside the class | separate class / lambda |
+  | Number of orders | one (natural) | many |
+  | Edits the class? | yes | no |
+  | Used by | `Collections.sort(list)`, `TreeSet` by default | `list.sort(cmp)`, `new TreeSet<>(cmp)` |
+
+  Tip: keep `compareTo` **consistent with equals** (return 0 only when `equals` is true), otherwise `TreeSet` may drop elements it thinks are duplicates.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class SortStudents {
+        static class Student {
+            String name; int marks;
+            Student(String name, int marks) { this.name = name; this.marks = marks; }
+            public String toString() { return name + ":" + marks; }
+        }
+
+        public static void main(String[] args) {
+            List<Student> list = new ArrayList<>(List.of(
+                new Student("Ravi", 82), new Student("Anu", 91),
+                new Student("Kiran", 82), new Student("Meera", 35)));
+
+            list.removeIf(s -> s.marks < 40);
+            list.sort(Comparator.comparingInt((Student s) -> s.marks)
+                                .reversed()
+                                .thenComparing(s -> s.name));
+            System.out.println(list);
+        }
+    }
+  walkthrough: |
+    - `Student` does not implement `Comparable`, so Java has no default way to sort it. We give a **Comparator** instead.
+    - `removeIf(s -> s.marks < 40)` removes Meera safely (it uses an iterator internally). No CME.
+    - `comparingInt((Student s) -> s.marks)` sorts by marks ascending. We wrote `(Student s)` so Java knows the type before `.reversed()`.
+    - `.reversed()` flips it: highest marks first.
+    - `.thenComparing(s -> s.name)` breaks ties: Ravi and Kiran both have 82, so they are ordered by name, **Kiran** before **Ravi**.
+
+    Output:
+    ```
+    [Anu:91, Kiran:82, Ravi:82]
+    ```
+tryIt:
+  instructions: "Type this program that removes odd numbers with an Iterator and then sorts words by length. Then try replacing it.remove() with nums.remove(n) and watch the exception."
+  code: |
+    import java.util.*;
+
+    public class IterSort {
+        public static void main(String[] args) {
+            List<Integer> nums = new ArrayList<>(List.of(5, 8, 3, 10, 7, 6));
+            Iterator<Integer> it = nums.iterator();
+            while (it.hasNext()) {
+                int n = it.next();
+                if (n % 2 != 0) it.remove();
+            }
+            System.out.println(nums);
+
+            List<String> words = new ArrayList<>(List.of("kiwi", "fig", "banana", "apple"));
+            words.sort(Comparator.comparing(String::length).thenComparing(Comparator.reverseOrder()));
+            System.out.println(words);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class SecondLast {
+        public static void main(String[] args) {
+            List<String> list = new ArrayList<>(List.of("a", "b", "c"));
+            for (String s : list) {
+                if (s.equals("b")) list.remove(s);
+            }
+            System.out.println(list);
+        }
+    }
+  expectedOutput: |
+    [a, c]
+  explanation: |
+    Surprise: no exception! After removing `"b"` (the second-last element), the list size becomes 2. The iterator's cursor is also at 2, so `hasNext()` (which checks `cursor != size`) returns **false** and the loop simply ends. `next()` is never called again, so the modCount check never runs. `"c"` was never even visited. Remove `"a"` instead and you would get a `ConcurrentModificationException`. This is why you should never rely on CME: use `removeIf` or `iterator.remove()`.
+commonMistakes:
+  - "Calling list.remove() inside a for-each loop. Use iterator.remove() or removeIf()."
+  - "Writing the comparator as a - b. It can overflow and give the wrong sign; use Integer.compare(a, b) or Comparator.comparingInt."
+  - "Using Comparator.comparing(s -> s.marks).reversed() without a type: s becomes Object and it doesn't compile. Write (Student s) -> s.marks or use a method reference."
+  - "Thinking reversed() only flips the last key. It flips the whole chain built so far, so place it carefully."
+  - "Calling iterator.remove() twice in a row, or before next(): IllegalStateException."
+  - "Mixing up the packages: Comparable is java.lang, Comparator is java.util."
+interviewBox:
+  why: "Why interviewers ask this: sorting custom objects and safe removal are daily tasks, and the comparison shows if you understand interfaces and design choices."
+  questions:
+    - q: "What is the difference between Comparable and Comparator?"
+      a: "Comparable is implemented inside the class itself with compareTo, and gives one natural order, like Student sorted by roll number. Comparator is a separate object with compare(a, b), so I can create many different orders without changing the class, like by marks or by name. Comparable is in java.lang and Comparator is in java.util."
+    - q: "How do you remove elements from a list while iterating?"
+      a: "Not with list.remove inside a for-each loop, because that throws ConcurrentModificationException. I use an explicit Iterator and call iterator.remove, or in Java 8 just list.removeIf with a condition. Looping backwards with an index also works."
+    - q: "Why does ConcurrentModificationException happen?"
+      a: "ArrayList keeps a modCount that changes on every add or remove. The iterator remembers it, and on each next it checks if it changed. If you modify the list directly instead of through the iterator, the counts don't match and it throws. This is the fail-fast behaviour."
+    - q: "Sort employees by salary descending, then name ascending."
+      a: "list.sort(Comparator.comparingDouble(Employee::getSalary).reversed().thenComparing(Employee::getName)). comparingDouble sorts by salary ascending, reversed makes it descending, and thenComparing breaks ties by name."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      List<String> w = new ArrayList<>(List.of("pear", "fig", "plum", "date"));
+      w.sort(Comparator.comparing(String::length).thenComparing(Comparator.naturalOrder()));
+      System.out.println(w);
+    options: ["[fig, date, pear, plum]", "[fig, pear, plum, date]", "[date, fig, pear, plum]", "[plum, pear, date, fig]"]
+    answer: 0
+    explanation: "First by length: fig (3) comes first, then the three 4-letter words. thenComparing(naturalOrder()) sorts those alphabetically: date, pear, plum. '[fig, pear, plum, date]' keeps the original order for ties, which would happen without the thenComparing."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this fail to compile? (Student has a field int marks.)"
+    code: |
+      students.sort(Comparator.comparing(s -> s.marks).reversed());
+    options:
+      - "reversed() does not exist on Comparator"
+      - "Before .reversed() Java cannot infer that s is a Student, so it treats s as Object and s.marks is not found"
+      - "comparing() only works with Strings"
+      - "sort() needs Collections.sort instead"
+    answer: 1
+    explanation: "Type inference does not flow backwards through the .reversed() call, so the lambda's s becomes Object. Fix: comparing((Student s) -> s.marks).reversed(), or a method reference like Student::getMarks. reversed() definitely exists; that's the tempting wrong answer."
+  - id: q3
+    type: MCQ
+    prompt: "You cannot edit the Employee class (it is in a library), but you need to sort by joining date. What do you use?"
+    code: null
+    options: ["Make Employee implement Comparable", "A Comparator, e.g. Comparator.comparing(Employee::getJoinDate)", "Collections.reverse()", "A HashMap"]
+    answer: 1
+    explanation: "Comparator lives outside the class, so it works without editing it. Implementing Comparable would require changing the Employee source code, which you can't."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "ConcurrentModificationException can happen in a program with only one thread."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Calling list.remove() inside the list's own for-each loop in a single thread is the most common cause. The name is misleading: 'concurrent' here means 'during the iteration'."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that removes the current element safely during iteration."
+    code: |
+      Iterator<Integer> it = list.iterator();
+      while (it.hasNext()) {
+          if (it.next() < 0) it.____();
+      }
+    acceptedAnswers: ["remove", "remove()"]
+    explanation: "iterator.remove() removes the last element returned by next() and keeps the iterator's own counter in sync, so no CME."
+  - id: q6
+    type: MATCH
+    prompt: "Match each item to its description"
+    pairs:
+      - left: "compareTo(T o)"
+        right: "Comparable's method, written inside the class"
+      - left: "compare(T a, T b)"
+        right: "Comparator's method, written outside the class"
+      - left: "thenComparing(...)"
+        right: "Tie-breaker when earlier keys are equal"
+      - left: "reversed()"
+        right: "Flips the whole comparator chain so far"
+    explanation: "compareTo = natural order inside the class; compare = external rule; thenComparing and reversed build chains."
+  - id: q7
+    type: MCQ
+    prompt: "Why is (a, b) -> a - b a risky comparator for int values?"
+    code: null
+    options: ["It sorts in descending order", "The subtraction can overflow and return the wrong sign for large or negative values", "Lambdas cannot return int", "It is slower than a loop"]
+    answer: 1
+    explanation: "For example, Integer.MIN_VALUE - 1 overflows to a huge positive number, flipping the result. Integer.compare(a, b) never overflows. It actually sorts ascending, so the first option is wrong."
+explainBack:
+  prompt: "Explain to a friend the difference between Comparable and Comparator, and how to safely remove items while looping over a list."
+  rubric:
+    - "I said Comparable is inside the class (compareTo) and gives one natural order"
+    - "I said Comparator is outside (compare) and allows many orders without changing the class"
+    - "I gave a Comparator.comparing ... thenComparing example"
+    - "I explained why list.remove in for-each causes ConcurrentModificationException"
+    - "I gave the fix: iterator.remove() or removeIf()"
+  modelAnswer: |
+    Comparable is something a class implements itself, using compareTo, so it has one natural order, like students sorted by roll number. Comparator is a separate rule with compare(a, b), so I can sort the same class many ways without touching it, for example Comparator.comparing by marks, reversed, then comparing by name. For removing while looping, I don't call list.remove inside a for-each, because the hidden iterator notices the list changed and throws ConcurrentModificationException. Instead I use iterator.remove, which keeps the iterator in sync, or simply list.removeIf with a condition.
+flashcards:
+  - front: "Comparable vs Comparator in one line"
+    back: "Comparable: compareTo inside the class, one natural order (java.lang). Comparator: compare(a, b) outside, many orders (java.util)."
+  - front: "compareTo / compare return values"
+    back: "Negative: first comes before. Zero: equal. Positive: first comes after."
+  - front: "Sort by marks desc, then name asc"
+    back: "Comparator.comparingInt((Student s) -> s.marks).reversed().thenComparing(s -> s.name)"
+  - front: "Safe ways to remove while iterating"
+    back: "iterator.remove(), list.removeIf(cond), or an index loop going backwards."
+  - front: "Why avoid a - b in comparators?"
+    back: "Integer overflow can flip the sign. Use Integer.compare(a, b)."
+keyTakeaways:
+  - "For-each uses an Iterator; changing the list directly inside it causes ConcurrentModificationException."
+  - "Remove safely with iterator.remove() or removeIf()."
+  - "Comparable = one natural order inside the class; Comparator = many external orders."
+  - "Build comparators with comparing, thenComparing and reversed; reversed flips the whole chain."
+  - "Use Integer.compare, never subtraction, inside comparators."

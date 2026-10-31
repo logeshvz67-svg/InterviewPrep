@@ -1,0 +1,303 @@
+slug: memory-leaks-references
+world: JAVA_CORE
+section: H
+order: 4
+title: "Memory leaks and reference types"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT]
+infosysRelevance: "Depth topic for SP: 'Can Java have memory leaks?' and 'strong vs weak vs soft vs phantom references' are good follow-ups after garbage collection."
+otherCompanies: "Common in product-company and senior backend interviews, especially around caches, ThreadLocal and production OutOfMemoryError debugging."
+why: |
+  Many beginners believe **"Java has a garbage collector, so it can't leak memory."** That's wrong, and interviewers love to check it.
+
+  The GC frees only **unreachable** objects. If your code **accidentally keeps a reference** to objects it no longer needs, the GC must keep them. Memory slowly fills up until the app crashes with **`OutOfMemoryError`**, usually at 2 a.m. in production.
+
+  In this lesson you'll learn:
+  - What a memory leak means **in Java**, and the most common causes.
+  - The **four reference types**: strong, soft, weak, phantom. They let you tell the GC "keep this only if memory allows" or "don't keep this just because of me".
+  - How to find leaks with a **heap dump**.
+analogy: |
+  Think of your **phone's photo gallery**.
+
+  - A **strong reference** is a photo in your **"Favourites" album**. The phone will never delete it to free space, even when storage is full. (If you favourite everything, storage fills up: that's a memory leak.)
+  - A **soft reference** is a **cached thumbnail**. The phone keeps it while there's space, but deletes it when storage is running low.
+  - A **weak reference** is a **"recently viewed" link**. It doesn't keep the photo alive at all: as soon as you delete the actual photo, the link stops working at the next cleanup.
+  - A **phantom reference** is a **"photo deleted" notification**. You can never open the photo through it; it only tells you "it's gone now, clean up anything related".
+
+  A **memory leak** is like an app that copies every photo into a hidden folder "just in case" and never cleans it. Your phone isn't broken; the app is holding onto things it doesn't need.
+visual:
+  diagram: |
+    THE FOUR REFERENCE TYPES (strongest -> weakest)
+
+    Type      Example                          Collected when?
+    --------  -------------------------------  ---------------------
+    Strong    Photo p = new Photo();           Never, while this
+                                               reference exists
+    Soft      new SoftReference<>(p)           Only if memory is
+                                               running low
+    Weak      new WeakReference<>(p)           At the next GC once
+                                               no strong/soft refs
+    Phantom   new PhantomReference<>(p, q)     get() is ALWAYS null;
+                                               enqueued after death
+
+    A CLASSIC LEAK: a static collection that only grows
+    +--------------+      +------------------------------------+
+    | static CACHE |----->| [req1] [req2] [req3] ... [req9999] |
+    |  (GC root)   |      |  all reachable -> never collected  |
+    +--------------+      +------------------------------------+
+                          ... heap fills up -> OutOfMemoryError
+  caption: "Weaker references give the GC more freedom. A leak happens when a strong reference from a GC root (like a static list) keeps objects you no longer need."
+  visualizer: null
+explanation: |
+  ### What is a memory leak in Java?
+  In Java, a **memory leak** means objects that your program **no longer needs** are still **reachable** (some reference still points to them), so the GC is not allowed to free them. Memory use grows over time until `OutOfMemoryError: Java heap space`.
+
+  Remember from the last lesson: GC frees **unreachable** objects, not **unused** ones. A leak lives in the gap between "unused" and "unreachable".
+
+  ### Common causes (and fixes)
+  | Cause | What goes wrong | Fix |
+  |---|---|---|
+  | **Static collections** that only grow | A `static List`/`Map` is a GC root; everything inside stays forever | Remove entries, limit size, or use a proper cache with eviction |
+  | **Unclosed resources** (files, DB connections, streams) | They hold memory and OS handles | **try-with-resources** |
+  | **Listeners / callbacks not removed** | A long-lived object keeps a list of listeners that should have gone | Unregister them, or use weak references |
+  | **Mutable keys in HashMap/HashSet** | Key's `hashCode` changes after insertion; it can't be found or removed | Use immutable keys (String, records) |
+  | **Keys without `equals()`/`hashCode()`** | Every "same" key looks new, so the map keeps growing | Override both methods properly |
+  | **ThreadLocal in thread pools** | Pool threads live forever, so their ThreadLocal values never go away | Call `threadLocal.remove()` in `finally` |
+  | **Non-static inner classes** | Each inner object secretly holds a reference to its outer object | Use a `static` nested class when the outer isn't needed |
+
+  ### The four reference types
+  Package: `java.lang.ref`.
+
+  **1. Strong reference**: the normal kind. `Photo p = new Photo();`. As long as a strong reference is reachable, the object is never collected.
+
+  **2. Soft reference**: `SoftReference<Photo> s = new SoftReference<>(p);`. The object is collected **only when the JVM is low on memory** (it's guaranteed to be cleared before an `OutOfMemoryError`). Good for **memory-sensitive caches**.
+
+  **3. Weak reference**: `WeakReference<Photo> w = new WeakReference<>(p);`. Doesn't protect the object at all. Once no strong (or soft) references remain, it's collected at the **next GC** and `w.get()` returns `null`. Used in **`WeakHashMap`** (entries disappear when their key is no longer used elsewhere) and for listeners/metadata attached to objects.
+
+  **4. Phantom reference**: `new PhantomReference<>(p, queue);`. `get()` **always returns null**. It is put into a **`ReferenceQueue`** after the object has been finalized and is about to be reclaimed, so you can do **cleanup** of related resources (e.g. native memory). Modern code uses **`java.lang.ref.Cleaner`**, built on this idea, instead of the deprecated `finalize()`.
+
+  | Type | `get()` returns object? | Collected when | Typical use |
+  |---|---|---|---|
+  | Strong | (normal variable) | Never while reachable | Everyday code |
+  | Soft | Yes, until cleared | Memory is low | Caches |
+  | Weak | Yes, until cleared | Next GC after strong refs are gone | `WeakHashMap`, listeners, canonical maps |
+  | Phantom | **Always null** | After the object is reclaimable; then enqueued | Post-mortem cleanup (`Cleaner`) |
+
+  Using a weak or soft reference:
+  ```java
+  WeakReference<Photo> ref = new WeakReference<>(photo);
+  Photo p = ref.get();     // may be null if collected
+  if (p != null) {
+      p.show();            // p is a strong reference while we use it
+  }
+  ```
+  Always check for `null`, because the GC may have cleared it.
+
+  ### How to find a memory leak
+  1. **Symptom**: memory use keeps climbing over hours/days; GC runs more and more often; finally `OutOfMemoryError`.
+  2. **Take a heap dump**: `jmap -dump:live,format=b,file=heap.hprof <pid>`, or start the JVM with `-XX:+HeapDumpOnOutOfMemoryError` so it saves one automatically when it crashes.
+  3. **Analyse it** with Eclipse MAT or VisualVM: look for the biggest objects and the **path to GC root** that keeps them alive (often a static map or a cache).
+  4. Monitor live with **VisualVM / JConsole** (heap graph that never comes back down = suspicious).
+tinyCode:
+  code: |
+    import java.lang.ref.*;
+
+    public class RefTypes {
+        public static void main(String[] args) {
+            String data = new String("report");            // strong reference
+
+            SoftReference<String> soft = new SoftReference<>(data);
+            WeakReference<String> weak = new WeakReference<>(data);
+            ReferenceQueue<String> queue = new ReferenceQueue<>();
+            PhantomReference<String> phantom = new PhantomReference<>(data, queue);
+
+            System.out.println("strong        = " + data);
+            System.out.println("soft.get()    = " + soft.get());
+            System.out.println("weak.get()    = " + weak.get());
+            System.out.println("phantom.get() = " + phantom.get());
+        }
+    }
+  walkthrough: |
+    - `data` is a normal **strong** reference to a String object in the heap.
+    - We wrap the **same** object in a `SoftReference`, a `WeakReference` and a `PhantomReference`. The phantom one needs a `ReferenceQueue`, where the JVM will post it after the object dies.
+    - `soft.get()` and `weak.get()` return "report", because `data` still holds a strong reference, so the object can't be collected yet. This output is fixed.
+    - `phantom.get()` returns `null` **always**, by design. A phantom reference is only for "tell me when it's gone", never for reading the object.
+
+    Output:
+    ```
+    strong        = report
+    soft.get()    = report
+    weak.get()    = report
+    phantom.get() = null
+    ```
+tryIt:
+  instructions: "Type this and run it. After we drop the strong reference and hint the GC, the weak reference usually returns null and you'll see 'gone'. Because System.gc() is only a hint, on some JVMs or runs you may still see 'still here'. Then try changing WeakReference to SoftReference: the photo will usually stay, because there is plenty of free memory."
+  code: |
+    import java.lang.ref.WeakReference;
+
+    public class WeakDemo {
+        public static void main(String[] args) throws InterruptedException {
+            byte[] photo = new byte[10_000_000];          // strong reference
+            WeakReference<byte[]> weak = new WeakReference<>(photo);
+
+            System.out.println("Before: " + (weak.get() != null ? "still here" : "gone"));
+
+            photo = null;                                 // drop the strong reference
+            System.gc();                                  // a hint, not a command
+            Thread.sleep(100);
+
+            System.out.println("After:  " + (weak.get() != null ? "still here" : "gone"));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class MutableKey {
+        public static void main(String[] args) {
+            Set<List<Integer>> set = new HashSet<>();
+            List<Integer> key = new ArrayList<>();
+            key.add(1);
+            set.add(key);
+
+            key.add(2);              // changes the key's hashCode!
+            set.remove(key);
+
+            System.out.println(set.size());
+            System.out.println(set.contains(key));
+        }
+    }
+  expectedOutput: |
+    1
+    false
+  explanation: |
+    A `HashSet` stores each element in a bucket chosen by its `hashCode()` **at the time it was added**. A list's hashCode depends on its contents, so after `key.add(2)` it has a different hashCode. `remove(key)` looks in the **wrong bucket**, finds nothing, and removes nothing, so the size is still 1. `contains(key)` is false for the same reason. The list is now stuck in the set: you can't find it or remove it by key, but the set keeps it reachable. That's a real memory leak pattern. Use immutable keys.
+commonMistakes:
+  - "Saying Java can't have memory leaks because of GC. GC can't free objects that are still reachable."
+  - "Forgetting that static collections are GC roots and live as long as the class."
+  - "Expecting phantom.get() to return the object. It always returns null."
+  - "Using weak references for a cache you want to keep: they're cleared at the next GC. Soft references (or a real cache library) fit better."
+  - "Not checking ref.get() for null before using a soft or weak reference."
+  - "Leaving ThreadLocal values set in pool threads; always call remove()."
+interviewBox:
+  why: "Why interviewers ask this: leaks are a real production problem, and this checks whether you understand reachability deeply enough to prevent and debug them."
+  questions:
+    - q: "Can a Java program have a memory leak even with garbage collection?"
+      a: "Yes. The GC only frees objects that are unreachable. If our code keeps references to objects it no longer needs, for example in a static list or a map that only grows, those objects stay reachable and the GC can't remove them. Over time the heap fills and we get OutOfMemoryError."
+    - q: "What are the types of references in Java?"
+      a: "Strong references are normal variables; the object is never collected while they exist. Soft references are cleared only when memory is low, so they're good for caches. Weak references are cleared at the next GC once no strong references remain, as in WeakHashMap. Phantom references always return null from get and are used to know when an object has been collected, for cleanup."
+    - q: "What are common causes of memory leaks in Java?"
+      a: "Static collections that keep growing, unclosed resources like connections and streams, listeners that are never removed, ThreadLocal values in thread pools, and map keys that are mutable or missing equals and hashCode."
+    - q: "How would you find a memory leak?"
+      a: "I'd watch heap usage in a tool like VisualVM; if it keeps rising after GCs, that's a sign. Then I'd take a heap dump with jmap or the HeapDumpOnOutOfMemoryError option and open it in Eclipse MAT, find the largest objects, and check their path to the GC root to see what is holding them."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each reference type to when its object can be collected"
+    pairs:
+      - left: "Strong"
+        right: "Never while this reference is reachable"
+      - left: "Soft"
+        right: "Only when the JVM is low on memory"
+      - left: "Weak"
+        right: "At the next GC once no strong references remain"
+      - left: "Phantom"
+        right: "get() is always null; enqueued after the object dies"
+    explanation: "From strongest to weakest: strong protects fully, soft protects until memory is tight, weak doesn't protect, and phantom is only a notification."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "Because Java has garbage collection, a Java program cannot have memory leaks."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. GC frees only unreachable objects. Unneeded objects that are still referenced (e.g. in a static map) are never collected, and memory keeps growing."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This cache is supposed to hold one entry per user, but its size keeps growing with every request. Why?"
+    code: |
+      static class Key {
+          String id;
+          Key(String id) { this.id = id; }
+      }
+      static Map<Key, String> cache = new HashMap<>();
+
+      // called on every request
+      cache.put(new Key("user-1"), "Asha");
+    options:
+      - "HashMap can't store custom objects as keys"
+      - "Key doesn't override equals() and hashCode(), so every new Key(\"user-1\") is treated as a different key"
+      - "The map should be a TreeMap"
+      - "String values can't be shared between entries"
+    answer: 1
+    explanation: "Without equals/hashCode, HashMap compares keys by identity, so each new Key object is a new entry, and the static map keeps them all reachable: a leak. Calling put 3 times gives size 3. Overriding equals and hashCode (or using a record/String as the key) fixes it."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (data still holds a strong reference, so the output is fixed.)"
+    code: |
+      String data = new String("report");
+      WeakReference<String> weak = new WeakReference<>(data);
+      PhantomReference<String> phantom =
+          new PhantomReference<>(data, new ReferenceQueue<>());
+      System.out.println(weak.get() + " " + phantom.get());
+    options: ["report report", "report null", "null null", "null report"]
+    answer: 1
+    explanation: "The object is still strongly reachable through data, so the weak reference returns it. A phantom reference's get() always returns null, by design, so 'report report' is the trap."
+  - id: q5
+    type: MCQ
+    prompt: "You want a cache of large images that the JVM may clear automatically when memory runs low. Which reference type fits best?"
+    code: null
+    options: ["Strong", "Soft", "Weak", "Phantom"]
+    answer: 1
+    explanation: "Soft references stay while memory is available and are cleared before an OutOfMemoryError. Weak references would be cleared at almost every GC, making the cache nearly useless; strong ones would never be freed; phantom can't even return the image."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the ThreadLocal method you should call in finally so values don't leak in thread pools."
+    code: |
+      try {
+          currentUser.set(userId);
+          handleRequest();
+      } finally {
+          currentUser.____;
+      }
+    acceptedAnswers: ["remove()", "remove"]
+    explanation: "Pool threads live for a long time and are reused. remove() clears this thread's value so it doesn't stay in memory or leak into the next request."
+  - id: q7
+    type: MCQ
+    prompt: "Which tool output helps you find WHAT is keeping leaked objects alive?"
+    code: null
+    options:
+      - "The output of System.gc()"
+      - "The path to GC root in a heap dump analysed with Eclipse MAT or VisualVM"
+      - "The stack trace of a NullPointerException"
+      - "The javac compiler warnings"
+    answer: 1
+    explanation: "A heap dump shows every object; the 'path to GC root' shows the chain of references (often a static map) holding it. System.gc() returns nothing useful, and the others are unrelated."
+explainBack:
+  prompt: "Explain to a friend how a Java program can leak memory despite having a garbage collector, and what strong, soft, weak and phantom references are."
+  rubric:
+    - "I said GC frees only unreachable objects, so unneeded but referenced objects leak"
+    - "I gave a common cause like a static collection that only grows"
+    - "I explained the four reference types and when each is cleared"
+    - "I mentioned finding leaks with a heap dump"
+    - "I used an analogy like the phone gallery"
+  modelAnswer: |
+    The garbage collector only removes objects nobody can reach. If my code keeps references it doesn't need, like adding every request to a static list and never removing them, those objects stay reachable forever and memory keeps growing until OutOfMemoryError. That's a leak. Java has four reference strengths. A strong reference is a normal variable, like a favourite photo that's never deleted. A soft reference is like a cached thumbnail, removed when memory is low. A weak reference doesn't keep the object alive at all, like a recently-viewed link. A phantom reference never gives the object back; it just tells me it's gone. To find leaks, I take a heap dump and check what holds the objects.
+flashcards:
+  - front: "Memory leak in Java"
+    back: "Objects no longer needed but still reachable, so GC can't free them; heap grows until OutOfMemoryError."
+  - front: "Strong / Soft / Weak / Phantom"
+    back: "Strong: never collected while reachable. Soft: cleared when memory is low. Weak: cleared at next GC. Phantom: get() always null, for cleanup notification."
+  - front: "Common leak causes"
+    back: "Growing static collections, unclosed resources, unremoved listeners, ThreadLocal in pools, mutable or equals/hashCode-less map keys."
+  - front: "What is WeakHashMap?"
+    back: "A map whose entries are removed automatically when their key is no longer strongly reachable elsewhere."
+  - front: "How to find a leak"
+    back: "Heap dump (jmap or -XX:+HeapDumpOnOutOfMemoryError) + Eclipse MAT/VisualVM, check path to GC root."
+keyTakeaways:
+  - "Java can leak memory: GC frees unreachable objects, not unused ones."
+  - "Watch static collections, unclosed resources, listeners, ThreadLocal and bad map keys."
+  - "Strong > soft (cleared when memory is low) > weak (cleared at next GC) > phantom (get() always null)."
+  - "Soft for memory-sensitive caches, weak for WeakHashMap and listeners, phantom/Cleaner for cleanup."
+  - "Debug leaks with heap dumps and the path to GC root."

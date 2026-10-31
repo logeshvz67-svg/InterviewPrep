@@ -1,0 +1,338 @@
+slug: wildcards-erasure
+world: JAVA_CORE
+section: E
+order: 2
+title: "Wildcards and type erasure"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT]
+infosysRelevance: "A depth topic for SP technical rounds: explaining PECS and erasure clearly shows strong Java fundamentals beyond basic syntax."
+otherCompanies: "Product companies use it to separate memorisers from people who understand generics; service companies rarely go this deep but may ask 'what is type erasure?'."
+why: |
+  In the last lesson you saw a surprising rule: **`List<Integer>` is not a `List<Number>`**. So how do you write one method that sums a `List<Integer>` *and* a `List<Double>`? The answer is **wildcards**: `?`, `? extends`, `? super`.
+
+  You also saw you can't write `new T()`. The reason is **type erasure**: generics exist only for the compiler, and are removed before the program runs.
+
+  These are favourite **depth questions**:
+  - "What is the difference between `? extends T` and `? super T`?"
+  - "What is PECS?"
+  - "What is type erasure? What are its side effects?"
+
+  One memory trick (PECS) and one idea (erasure) explain all of it.
+analogy: |
+  Think of **fruit baskets at a market**.
+
+  - **`? extends Fruit`** = "a basket of *some* kind of fruit; you don't know which." Maybe it's a mango basket, maybe a banana basket. You can safely **take out** a fruit (whatever it is, it's a Fruit). But you can't **put in** a banana, because it might be the mango basket. **Read-only. It's a PRODUCER: it gives you fruit.**
+  - **`? super Mango`** = "a basket that can hold mangoes": a mango basket, a fruit basket, or an any-thing basket. You can safely **put in** a mango. But when you take something out, you only know it's "some object". **Write-friendly. It's a CONSUMER: it accepts mangoes.**
+
+  **Type erasure** is like the **label on the basket being removed at the warehouse**. The shop counter (compiler) checked the label carefully, but inside the warehouse (the JVM at run time), every basket just looks like "basket".
+visual:
+  diagram: |
+    PECS = Producer Extends, Consumer Super
+
+    List<? extends Number>  (PRODUCER: you READ from it)
+       can point to: List<Number>, List<Integer>, List<Double>
+       Number n = list.get(0);      OK  (anything inside is a Number)
+       list.add(5);                 ERROR (might be a List<Double>)
+
+    List<? super Integer>   (CONSUMER: you WRITE into it)
+       can point to: List<Integer>, List<Number>, List<Object>
+       list.add(5);                 OK  (all of them accept Integer)
+       Integer x = list.get(0);     ERROR (might be a List<Object>)
+       Object o = list.get(0);      OK
+
+    TYPE ERASURE (compile time -> run time)
+       List<String>   --compiler checks, then erases-->  List
+       Box<T>         ------------------------------>  Box (T -> Object)
+       <T extends Number>  ------------------------->  T -> Number
+  caption: "Use ? extends when a collection only gives you values, ? super when it only receives values. At run time the type arguments are erased, so List<String> and List<Integer> are the same class."
+  visualizer: null
+explanation: |
+  ### Recap: why we need wildcards
+  Generics are **invariant**: `List<Integer>` is not a subtype of `List<Number>`. So this method only accepts exactly `List<Number>`:
+  ```java
+  static double sum(List<Number> list) { ... }
+  sum(List.of(1, 2, 3));   // passing a List<Integer> -> compile error
+  ```
+  A **wildcard** `?` means "some type I don't know exactly". It makes methods flexible.
+
+  ### 1. Unbounded wildcard: `List<?>`
+  "A list of some unknown type." Use it when you only need methods that don't care about the type, like `size()` or printing.
+  ```java
+  static void printAll(List<?> list) {
+      for (Object x : list) System.out.print(x + " ");
+  }
+  ```
+  You can read elements as `Object`, but you can't add anything except `null`.
+
+  ### 2. Upper-bounded wildcard: `? extends T`
+  `List<? extends Number>` accepts `List<Number>`, `List<Integer>`, `List<Double>`... ("Number or anything **below** it").
+  ```java
+  static double sum(List<? extends Number> list) {
+      double total = 0;
+      for (Number n : list) total += n.doubleValue();   // reading is safe
+      return total;
+  }
+  ```
+  - **Reading** gives a `Number`: safe, because every element is some kind of Number.
+  - **Adding** is a compile error: the compiler doesn't know if it's really a `List<Integer>` or a `List<Double>`, so adding `5` could break it.
+
+  ### 3. Lower-bounded wildcard: `? super T`
+  `List<? super Integer>` accepts `List<Integer>`, `List<Number>`, `List<Object>` ("Integer or anything **above** it").
+  ```java
+  static void fillNumbers(List<? super Integer> list) {
+      for (int i = 1; i <= 3; i++) list.add(i);   // adding Integers is safe
+  }
+  ```
+  - **Adding** an Integer is safe: every possible list type can hold an Integer.
+  - **Reading** only gives `Object`, since it might be a `List<Object>`.
+
+  ### PECS: the one rule to remember
+  **P**roducer **E**xtends, **C**onsumer **S**uper (a phrase from the book *Effective Java*).
+  - If the collection **produces** values for you (you **read** from it) → `? extends T`.
+  - If the collection **consumes** values from you (you **write** into it) → `? super T`.
+  - If you do **both** → no wildcard, use the exact type `List<T>`.
+
+  The JDK uses it. `Collections.copy` has this signature:
+  ```java
+  public static <T> void copy(List<? super T> dest, List<? extends T> src)
+  ```
+  `src` produces (extends), `dest` consumes (super).
+
+  | Wildcard | Accepts | Read as | Can add? | Role |
+  |---|---|---|---|---|
+  | `List<?>` | any list | `Object` | only `null` | just looking |
+  | `List<? extends Number>` | Number and subclasses | `Number` | no (except `null`) | producer |
+  | `List<? super Integer>` | Integer and superclasses | `Object` | yes, Integers | consumer |
+
+  ### Type erasure: generics vanish at run time
+  **Type erasure** means the compiler uses the type arguments to **check** your code and insert casts, and then **removes** them from the bytecode:
+  - `List<String>` becomes plain `List`.
+  - An unbounded `T` becomes `Object`; a bounded `<T extends Number>` becomes `Number`.
+  - The compiler adds casts where you read values (`(String) list.get(0)`).
+
+  Why? **Backward compatibility**: code written before Java 5 (with raw types) still runs on new JVMs, with one shared `ArrayList` class.
+
+  ### Side effects of erasure (common follow-ups)
+  1. **Same class at run time**: `new ArrayList<String>().getClass() == new ArrayList<Integer>().getClass()` is `true`.
+  2. **No `new T()` or `new T[n]`**: the JVM doesn't know what T is.
+  3. **No `instanceof List<String>`** on an unknown object: compile error ("Object cannot be safely cast to List<String>"). `instanceof List<?>` is fine.
+  4. **No overloading by type argument**: `void a(List<String> x)` and `void a(List<Integer> x)` together give "name clash: ... have the same erasure".
+  5. **Primitives not allowed** (`List<int>`), because erased T becomes Object.
+  6. **Heap pollution** with raw types: if you sneak an Integer into a `List<String>` through a raw `List`, the error appears later as a `ClassCastException` when reading. Avoid raw types.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Pecs {
+        // PRODUCER: we only read from src -> extends
+        static double sum(List<? extends Number> src) {
+            double total = 0;
+            for (Number n : src) total += n.doubleValue();
+            return total;
+        }
+        // CONSUMER: we only write into dest -> super
+        static void addOneToThree(List<? super Integer> dest) {
+            for (int i = 1; i <= 3; i++) dest.add(i);
+        }
+        public static void main(String[] args) {
+            List<Integer> ints = List.of(10, 20);
+            List<Double> doubles = List.of(1.5, 2.5);
+            System.out.println(sum(ints));
+            System.out.println(sum(doubles));
+
+            List<Number> nums = new ArrayList<>();
+            List<Object> objs = new ArrayList<>();
+            addOneToThree(nums);
+            addOneToThree(objs);
+            System.out.println(nums + " " + objs);
+        }
+    }
+  walkthrough: |
+    - `sum` takes `List<? extends Number>`, so both a `List<Integer>` and a `List<Double>` are accepted. We only **read** (producer), so `extends` is right.
+    - `addOneToThree` takes `List<? super Integer>`, so a `List<Number>` and a `List<Object>` are both accepted. We only **write** Integers (consumer), so `super` is right.
+    - Without wildcards, `sum(List<Number>)` would reject `ints` and `doubles`, because generics are invariant.
+
+    Output:
+    ```
+    30.0
+    4.0
+    [1, 2, 3] [1, 2, 3]
+    ```
+tryIt:
+  instructions: "Type this small copy method that follows PECS, just like Collections.copy. Run it. Then try changing '? extends T' to '? super T' and read the compile error."
+  code: |
+    import java.util.*;
+
+    public class CopyDemo {
+        static <T> void copyAll(List<? extends T> src, List<? super T> dest) {
+            for (T item : src) {
+                dest.add(item);
+            }
+        }
+
+        public static void main(String[] args) {
+            List<Integer> marks = List.of(88, 92, 75);
+            List<Number> all = new ArrayList<>();
+            all.add(3.5);
+            copyAll(marks, all);
+            System.out.println(all);
+
+            List<String> a = new ArrayList<>();
+            List<Integer> b = new ArrayList<>();
+            System.out.println(a.getClass() == b.getClass());
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Erased {
+        public static void main(String[] args) {
+            List<String> names = new ArrayList<>();
+            List<Integer> ages = new ArrayList<>();
+            System.out.println(names.getClass() == ages.getClass());
+            System.out.println(names.getClass().getSimpleName());
+            System.out.println(names instanceof List<?>);
+        }
+    }
+  expectedOutput: |
+    true
+    ArrayList
+    true
+  explanation: |
+    Because of **type erasure**, `ArrayList<String>` and `ArrayList<Integer>` are the **same class** at run time: plain `ArrayList`. So the comparison is `true` and the simple name is just `ArrayList` (no `<String>`). `instanceof List<?>` is allowed because it doesn't ask about the erased type argument.
+commonMistakes:
+  - "Trying to add to a List<? extends Number>. It's a producer: you can only read from it."
+  - "Expecting to read an Integer from a List<? super Integer>. You only get Object."
+  - "Mixing up the direction: extends = the type or anything below; super = the type or anything above."
+  - "Thinking generic type information exists at run time. It's erased: List<String> and List<Integer> are the same class."
+  - "Overloading methods that differ only in generic type, like m(List<String>) and m(List<Integer>). Name clash compile error."
+  - "Using raw types, which can cause heap pollution and a ClassCastException far away from the real mistake."
+interviewBox:
+  why: "Why interviewers ask this: wildcards and erasure show whether you understand how generics really work, not just how to write List<String>."
+  questions:
+    - q: "What is the difference between ? extends T and ? super T?"
+      a: "? extends T means T or any subclass, like List<? extends Number> accepting a List<Integer>. It's safe to read elements as T but not to add. ? super T means T or any superclass, like List<? super Integer> accepting a List<Number> or List<Object>. It's safe to add T values, but reading only gives Object."
+    - q: "What is PECS?"
+      a: "Producer Extends, Consumer Super. If a parameter gives me values to read, I use ? extends. If it receives values I write, I use ? super. Collections.copy is an example: the source is List<? extends T> and the destination is List<? super T>."
+    - q: "What is type erasure?"
+      a: "The compiler uses generic types to check the code and add casts, then removes the type arguments from the bytecode. List<String> becomes List, and T becomes Object or its bound. It was done for backward compatibility with pre-Java 5 code."
+    - q: "What are some consequences of type erasure?"
+      a: "List<String> and List<Integer> have the same runtime class. We can't do new T() or new T[], can't check instanceof List<String>, can't overload methods that differ only by type argument, and can't use primitives as type arguments."
+quiz:
+  - id: q1
+    type: SPOT_THE_BUG
+    prompt: "Which line fails to compile?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              List<? extends Number> nums = new ArrayList<Integer>();   // line A
+              Number first = nums.isEmpty() ? null : nums.get(0);       // line B
+              nums.add(5);                                              // line C
+              System.out.println(nums.size());                          // line D
+          }
+      }
+    options: ["Line A", "Line B", "Line C", "Line D"]
+    answer: 2
+    explanation: "A List<? extends Number> might really be a List<Double>, so the compiler refuses to add an Integer. Line A is fine (an ArrayList<Integer> fits ? extends Number) and line B is fine (reading gives a Number)."
+  - id: q2
+    type: MCQ
+    prompt: "A method only ADDS Integer values into a list passed to it. Which parameter type is best?"
+    code: null
+    options: ["List<? extends Integer>", "List<? super Integer>", "List<?>", "List<Object>"]
+    answer: 1
+    explanation: "The list consumes values, so by PECS use ? super Integer. It then accepts List<Integer>, List<Number> and List<Object>. ? extends Integer wouldn't allow adding, List<?> allows only null, and List<Object> rejects a List<Integer> argument."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              Map<String, Integer> a = new HashMap<>();
+              Map<Integer, List<String>> b = new HashMap<>();
+              System.out.println(a.getClass() == b.getClass());
+              System.out.println(b.getClass().getName());
+          }
+      }
+    options:
+      - "false\njava.util.HashMap<Integer, List<String>>"
+      - "true\njava.util.HashMap"
+      - "false\njava.util.HashMap"
+      - "Compile error: different types can't be compared"
+    answer: 1
+    explanation: "Type erasure removes the type arguments, so both are just java.util.HashMap at run time: same class, and the name has no <...>. The comparison compiles because both getClass() results have the type Class<? extends Map>."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "These two methods can exist in the same class: void save(List<String> x) and void save(List<Integer> x)."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. After erasure both become save(List x), which is the same signature. The compiler reports 'name clash: ... have the same erasure'."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Complete the signature using PECS: src is only read, dest is only written."
+    code: |
+      static <T> void copy(List<? extends T> src, List<? ____ T> dest) {
+          for (T x : src) dest.add(x);
+      }
+    acceptedAnswers: ["super"]
+    explanation: "dest consumes values, so it uses ? super T. This is exactly how Collections.copy is declared. Using extends for dest would make dest.add(x) a compile error."
+  - id: q6
+    type: MATCH
+    prompt: "Match each type with what it accepts"
+    pairs:
+      - left: "List<? extends Number>"
+        right: "List<Integer>, List<Double>, List<Number>"
+      - left: "List<? super Integer>"
+        right: "List<Integer>, List<Number>, List<Object>"
+      - left: "List<?>"
+        right: "A list of any element type"
+      - left: "List<Number>"
+        right: "Only List<Number> exactly"
+    explanation: "extends goes down the family tree, super goes up, ? alone accepts anything, and a plain type argument is invariant (exact match only)."
+  - id: q7
+    type: MCQ
+    prompt: "Why did Java implement generics with type erasure?"
+    code: null
+    options:
+      - "To make generic code run faster"
+      - "For backward compatibility with code written before generics (Java 1.4 and earlier)"
+      - "To allow primitives like int in collections"
+      - "To let instanceof check type arguments"
+    answer: 1
+    explanation: "Erasure let old raw-type code and new generic code share the same classes and run on the same JVM. It doesn't make code faster, and it is actually the reason primitives and instanceof List<String> are NOT allowed."
+explainBack:
+  prompt: "Explain PECS and type erasure to a friend in simple words."
+  rubric:
+    - "I explained ? extends as read-only (producer) with an example"
+    - "I explained ? super as write-friendly (consumer) with an example"
+    - "I said the PECS phrase: Producer Extends, Consumer Super"
+    - "I said type erasure removes type arguments after compile-time checks"
+    - "I gave at least one side effect of erasure"
+  modelAnswer: |
+    Generics are strict: a List<Integer> isn't a List<Number>. Wildcards relax that. If a list only gives me values, like when I sum numbers, I use List<? extends Number>, so it accepts lists of Integers or Doubles, but I can't add to it because I don't know its exact type. If a list only receives values, like when I fill it with Integers, I use List<? super Integer>, so a List<Number> or List<Object> also works. That's PECS: Producer Extends, Consumer Super. Type erasure means the compiler checks the generic types, then removes them, so at run time List<String> and List<Integer> are the same class. That's why I can't write new T().
+flashcards:
+  - front: "PECS"
+    back: "Producer Extends, Consumer Super. Read from ? extends T; write into ? super T."
+  - front: "Can you add to List<? extends Number>?"
+    back: "No (only null). It might be a List<Double>, so adding an Integer isn't safe."
+  - front: "What do you get when reading from List<? super Integer>?"
+    back: "Only Object."
+  - front: "What is type erasure?"
+    back: "The compiler checks generic types, inserts casts, then removes the type arguments; T becomes Object (or its bound)."
+  - front: "new ArrayList<String>().getClass() == new ArrayList<Integer>().getClass()?"
+    back: "true. Both are just ArrayList at run time."
+  - front: "Signature of Collections.copy"
+    back: "<T> void copy(List<? super T> dest, List<? extends T> src)"
+keyTakeaways:
+  - "Wildcards make generic methods flexible despite invariance."
+  - "? extends T: read as T, can't add. ? super T: can add T, read as Object."
+  - "PECS: Producer Extends, Consumer Super; use the exact type if you read and write."
+  - "Type erasure removes type arguments at run time for backward compatibility."
+  - "Erasure is why there's no new T(), no instanceof List<String>, and no overloads differing only by type argument."

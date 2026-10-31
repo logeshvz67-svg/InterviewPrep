@@ -1,0 +1,399 @@
+slug: nested-classes
+world: JAVA_CORE
+section: C
+order: 12
+title: "Inner, nested and anonymous classes"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+infosysRelevance: "A depth topic for SP: tests whether your OOP goes beyond the basics; inner-class syntax often appears in output and compile-error MCQs."
+otherCompanies: "Asked more in product companies and higher-level Java rounds; service companies ask it less often, usually as 'static nested vs inner class'."
+why: |
+  You can declare a class **inside another class**. Java has four flavours, and each behaves differently:
+  - **static nested class**
+  - **inner class** (non-static)
+  - **local class** (inside a method)
+  - **anonymous class** (no name at all)
+
+  Why it matters:
+  - Real Java code uses them everywhere: `Map.Entry` is a static nested interface, `HashMap` uses an inner `Node` class, the **Builder pattern** uses a static nested class, and before lambdas every button click handler was an anonymous class.
+  - Interview questions love the odd syntax: `outer.new Inner()`, `Outer.this.x`, and "why must the local variable be effectively final?"
+
+  This lesson makes the four types clear with one picture.
+analogy: |
+  Think of a **big house** (the outer class).
+
+  - A **static nested class** is like a **tenant's flat** built in the same compound. It shares the address (it lives inside the outer class's name), but it's independent: it doesn't need the owner family to exist.
+  - An **inner class** is like a **family member's room** inside the house. A room can't exist without the house, and whoever is in the room can freely use the house's kitchen (the outer object's fields, even private ones).
+  - A **local class** is like a **temporary pandal** set up in the courtyard for one function (one method). Outside that function, it doesn't exist.
+  - An **anonymous class** is a **hired cook for one wedding**: no name card, hired on the spot for one job.
+visual:
+  diagram: |2
+    class Outer {
+        private int x = 10;            (outer instance field)
+        static int count = 0;          (outer static field)
+
+        static class Nested { }    -> no Outer object needed
+                                      sees: count      (not x)
+
+        class Inner { }            -> needs an Outer object
+                                      sees: x, count   (everything)
+
+        void work() {
+            class Local { }        -> exists only inside work()
+                                      sees: x + effectively final locals
+
+            Runnable r = new Runnable() { ... };   -> anonymous:
+        }                                   one-time, no name
+    }
+
+    Outer.Nested n = new Outer.Nested();
+    Outer o = new Outer();
+    Outer.Inner  i = o.new Inner();     <- note: o.new
+  caption: "Static nested classes stand alone; inner, local and anonymous classes are tied to an outer object (when declared in instance code) and can use its private fields."
+  visualizer: null
+explanation: |
+  ### Words first
+  - **Outer class** (enclosing class): the class that contains another class.
+  - **Nested class**: any class declared inside another class. Java splits them into **static nested** and **inner** (non-static) classes. Local and anonymous classes are special kinds of inner classes.
+
+  ### 1. Static nested class
+  ```java
+  class Outer {
+      static int count = 5;
+      private int x = 10;
+
+      static class Nested {
+          void show() { System.out.println(count); }   // OK: static member
+          // System.out.println(x);   ERROR: no Outer object here
+      }
+  }
+  Outer.Nested n = new Outer.Nested();   // no Outer object needed
+  ```
+  - Behaves like a normal top-level class that just **lives inside Outer's name**.
+  - Can access Outer's **static** members (even private ones) directly.
+  - Can't access Outer's **instance** members without an Outer object.
+  - Common use: **Builder pattern** (`Pizza.Builder`), helper types like `Map.Entry`, a `Node` class inside a `LinkedList`.
+
+  ### 2. Inner class (non-static, also called member inner class)
+  ```java
+  class Outer {
+      private int x = 10;
+      class Inner {
+          void show() { System.out.println(x); }   // can read private x
+      }
+  }
+  Outer o = new Outer();
+  Outer.Inner in = o.new Inner();                 // needs an Outer object
+  ```
+  - Every Inner object is **attached to one Outer object** (it secretly keeps a reference to it).
+  - It can use **all** Outer members, including `private` ones.
+  - Create it with **`outerObject.new Inner()`**. Inside Outer's own instance methods, plain `new Inner()` works because `this` is the outer object.
+  - If names clash, `Outer.this.x` means the outer object's `x`:
+  ```java
+  class Outer {
+      int x = 1;
+      class Inner {
+          int x = 2;
+          void show() {
+              int x = 3;
+              System.out.println(x + " " + this.x + " " + Outer.this.x);  // 3 2 1
+          }
+      }
+  }
+  ```
+  - Since Java 16, inner classes may also declare static members; older Java versions did not allow that (except constants).
+
+  ### 3. Local class
+  A class declared **inside a method** (or any block). It's visible only inside that block.
+  ```java
+  void greet(String name) {
+      class Helper {
+          void say() { System.out.println("Hi " + name); }
+      }
+      new Helper().say();
+  }
+  ```
+  - It can use the method's local variables **only if they are effectively final**.
+  - **Effectively final** = never changed after it's first given a value (you didn't write `final`, but you could have).
+  - Why? The local class may keep a **copy** of the variable and outlive the method call. If the variable could change later, the copy and the original would disagree. Java avoids this by forbidding changes.
+  - Local classes can't have access modifiers (`public`, `private`) because they're local, like a local variable.
+
+  ### 4. Anonymous class
+  A class with **no name**, declared and created in **one expression**, usually to implement an interface or extend a class **for one use**.
+  ```java
+  Runnable r = new Runnable() {
+      @Override
+      public void run() { System.out.println("Running"); }
+  };
+  r.run();
+  ```
+  - `new Runnable() { ... }` doesn't create a Runnable (an interface can't be instantiated). It creates an object of a **new nameless class that implements Runnable**.
+  - Same effectively-final rule for local variables.
+  - It can't have a constructor (no name to give it), and it can implement **only one** interface or extend **one** class.
+  - Since Java 8, if the interface has just one abstract method (a functional interface), a **lambda** is shorter: `Runnable r = () -> System.out.println("Running");`. Anonymous classes are still needed when you need fields, several methods, or to extend a class.
+
+  ### Comparison table
+  | | Static nested | Inner | Local | Anonymous |
+  |---|---|---|---|---|
+  | Declared | in class, `static` | in class, no `static` | inside a method/block | inside an expression |
+  | Needs an outer object? | No | Yes | Yes (in instance methods) | Yes (in instance methods) |
+  | Access outer instance fields | No (needs an object) | Yes | Yes | Yes |
+  | Access local variables | n/a | n/a | effectively final only | effectively final only |
+  | Has a name / constructor | Yes / Yes | Yes / Yes | Yes / Yes | No / No |
+  | Created with | `new Outer.Nested()` | `outer.new Inner()` | `new Local()` in the block | `new Type() { ... }` |
+  | Typical use | Builder, Node, Entry | iterator over outer data | one-method helper | one-off listener/comparator |
+
+  ### A memory note
+  An inner class object keeps the outer object alive (it holds a hidden reference). If you don't need outer instance data, **prefer static nested**: lighter and no accidental memory leaks.
+
+  Each nested class compiles to its own `.class` file: `Outer$Nested.class`, `Outer$Inner.class`, and anonymous ones get numbers like `Outer$1.class`.
+tinyCode:
+  code: |
+    public class Main {
+        private int secret = 42;
+        static String tag = "TAG";
+
+        static class Nested {
+            void show() { System.out.println("Nested sees " + tag); }
+        }
+
+        class Inner {
+            void show() { System.out.println("Inner sees " + secret); }
+        }
+
+        void runLocal() {
+            String greeting = "Hello";
+            class Local {
+                void show() { System.out.println("Local says " + greeting); }
+            }
+            new Local().show();
+        }
+
+        public static void main(String[] args) {
+            new Main.Nested().show();
+
+            Main outer = new Main();
+            Main.Inner inner = outer.new Inner();
+            inner.show();
+
+            outer.runLocal();
+
+            Runnable r = new Runnable() {
+                public void run() { System.out.println("Anonymous runs"); }
+            };
+            r.run();
+        }
+    }
+  walkthrough: |
+    - `new Main.Nested()` needs **no** Main object; Nested can only use static `tag`.
+    - `outer.new Inner()` creates an Inner tied to `outer`, so it can read the **private** field `secret`.
+    - `runLocal()` declares a **local class**. It uses `greeting`, which is effectively final (never changed).
+    - `new Runnable() { ... }` creates an object of an **anonymous class** that implements Runnable; `r.run()` calls its method.
+
+    Output:
+    ```
+    Nested sees TAG
+    Inner sees 42
+    Local says Hello
+    Anonymous runs
+    ```
+tryIt:
+  instructions: "Type this Builder example: the most common real-world use of a static nested class. Then add one more option (cheese) to the builder yourself."
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Pizza p = new Pizza.Builder().size("Large").topping("Paneer").build();
+            System.out.println(p);
+        }
+    }
+
+    class Pizza {
+        private final String size;
+        private final String topping;
+
+        private Pizza(Builder b) {
+            this.size = b.size;
+            this.topping = b.topping;
+        }
+
+        public String toString() { return size + " pizza with " + topping; }
+
+        static class Builder {
+            private String size = "Medium";
+            private String topping = "Cheese";
+            Builder size(String s) { size = s; return this; }
+            Builder topping(String t) { topping = t; return this; }
+            Pizza build() { return new Pizza(this); }
+        }
+    }
+predict:
+  code: |
+    public class Main {
+        int x = 1;
+
+        class Inner {
+            int x = 2;
+            void print() {
+                int x = 3;
+                System.out.println(x);
+                System.out.println(this.x);
+                System.out.println(Main.this.x);
+            }
+        }
+
+        public static void main(String[] args) {
+            Main outer = new Main();
+            outer.x = 10;
+            outer.new Inner().print();
+        }
+    }
+  expectedOutput: |
+    3
+    2
+    10
+  explanation: |
+    Plain `x` is the nearest one: the local variable 3. `this.x` is the Inner object's field: 2. `Main.this.x` is the **outer object's** field, and that object's `x` was changed to 10 before the Inner was created, so 10 (not 1).
+commonMistakes:
+  - "Writing new Outer.Inner() for a non-static inner class. You need an outer object: outer.new Inner()."
+  - "Trying to read an outer instance field from a static nested class. It has no outer object; it can only use static members directly."
+  - "Changing a local variable that a local or anonymous class (or lambda) uses. It must be effectively final."
+  - "Thinking new Runnable() { ... } instantiates an interface. It creates an object of a nameless class that implements it."
+  - "Using an inner class when a static nested class would do, which keeps the outer object alive longer than needed."
+interviewBox:
+  why: "Why interviewers ask this: it checks deeper understanding of how objects relate in memory, and it leads into lambdas, the Builder pattern and iterators."
+  questions:
+    - q: "What is the difference between a static nested class and an inner class?"
+      a: "A static nested class doesn't belong to any outer object, so I create it with new Outer.Nested() and it can only use the outer class's static members directly. An inner class is tied to one outer object, so I create it with outer.new Inner(), and it can use all outer members, even private instance fields."
+    - q: "What is an anonymous class? When would you use it?"
+      a: "It's a class with no name that is declared and created in one expression, usually to implement an interface or extend a class for a single use, like a quick Comparator or listener. For a functional interface I'd normally use a lambda instead, but anonymous classes are still useful when I need state, multiple methods or to extend a class."
+    - q: "Why must local variables used in a local or anonymous class be effectively final?"
+      a: "Because the class captures a copy of the variable, and the object may live longer than the method. If the variable could change, the copy and the original would go out of sync. So Java only allows variables that are never reassigned."
+    - q: "Where have you seen static nested classes used?"
+      a: "In the Builder pattern, like Pizza.Builder, in Map.Entry, and as Node classes inside linked lists or hash maps. They group a helper type with the class it belongs to without needing an outer object."
+quiz:
+  - id: q1
+    type: SPOT_THE_BUG
+    prompt: "Why does this fail to compile?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              int count = 0;
+              Runnable r = new Runnable() {
+                  public void run() { System.out.println(count); }
+              };
+              count++;
+              r.run();
+          }
+      }
+    options:
+      - "Anonymous classes can't implement Runnable"
+      - "count is changed after being captured, so it isn't effectively final"
+      - "run() must be static"
+      - "r.run() must be called before count++"
+    answer: 1
+    explanation: "The anonymous class uses count, so count must be effectively final. count++ reassigns it, and the compiler reports 'local variables referenced from an inner class must be final or effectively final'. Moving r.run() earlier doesn't help, because count++ still changes it."
+  - id: q2
+    type: MCQ
+    prompt: "Inner is a NON-static inner class of Outer. How do you create it from main?"
+    options:
+      - "Outer.Inner i = new Outer.Inner();"
+      - "Outer.Inner i = new Outer().new Inner();"
+      - "Outer.Inner i = Outer.new Inner();"
+      - "Inner i = new Inner(Outer);"
+    answer: 1
+    explanation: "An inner class needs an outer object: outerObject.new Inner(). new Outer.Inner() only works for a static nested class, which is the tempting wrong answer."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static int a = 5;
+          int b = 7;
+
+          static class Box {
+              int get() { return a * 2; }
+          }
+
+          public static void main(String[] args) {
+              Box box = new Box();
+              System.out.println(box.get() + new Main().b);
+          }
+      }
+    options: ["10", "17", "107", "Compile error"]
+    answer: 1
+    explanation: "Box is a static nested class using the static field a: 5 * 2 = 10. Then new Main().b is 7, and int + int = 17. 107 would need string concatenation, but both sides are ints."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "A static nested class can directly read an instance field of its outer class (without any outer object)."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A static nested class has no link to any outer object, so it can only use instance fields through an explicit Outer object. It can use the outer's static members directly."
+  - id: q5
+    type: MATCH
+    prompt: "Match each kind of class to its key feature"
+    pairs:
+      - left: "Static nested class"
+        right: "Created without any outer object"
+      - left: "Inner class"
+        right: "Created with outer.new Inner()"
+      - left: "Local class"
+        right: "Declared inside a method"
+      - left: "Anonymous class"
+        right: "No name; declared and created in one expression"
+    explanation: "These four differences are the core of the topic: static vs tied to an object, where it's declared, and whether it has a name."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Inside Inner, print the OUTER object's field x (which is hidden by Inner's own x)."
+    code: |
+      public class Main {
+          int x = 100;
+          class Inner {
+              int x = 5;
+              void show() { System.out.println(____); }
+          }
+          public static void main(String[] args) {
+              new Main().new Inner().show();
+          }
+      }
+    acceptedAnswers: ["Main.this.x"]
+    explanation: "Main.this means 'the outer Main object this inner object belongs to', so Main.this.x prints 100. Plain x or this.x would give Inner's 5."
+  - id: q7
+    type: MCQ
+    prompt: "Which is TRUE about anonymous classes?"
+    options:
+      - "They can declare their own constructor"
+      - "They can implement two interfaces at once"
+      - "They can extend a class or implement one interface"
+      - "They can be reused with new by their name"
+    answer: 2
+    explanation: "An anonymous class extends exactly one class or implements exactly one interface. Having no name, it can't have a constructor or be created again by name."
+explainBack:
+  prompt: "Explain the four kinds of nested classes to a friend using the house analogy, and say when you'd use each."
+  rubric:
+    - "I said a static nested class doesn't need an outer object and can use only static outer members directly"
+    - "I said an inner class is tied to an outer object, can use private outer fields, and is made with outer.new Inner()"
+    - "I explained local and anonymous classes and the effectively-final rule"
+    - "I gave a real use (Builder, Map.Entry, Comparator/listener)"
+    - "I mentioned lambdas as the shorter option for one-method interfaces"
+  modelAnswer: |
+    Java lets me put a class inside another class. A static nested class is like a separate flat in the same compound: it doesn't need an outer object, so it's great for things like a Builder or Map.Entry. An inner class is like a room in the house: it belongs to one outer object, can use even its private fields, and I create it with outer.new Inner(). A local class lives inside a method, and an anonymous class has no name and is created right where I need it, like a one-time Comparator. Local and anonymous classes can only use local variables that are effectively final. For one-method interfaces, a lambda is usually shorter.
+flashcards:
+  - front: "Create a non-static inner class from main"
+    back: "Outer o = new Outer(); Outer.Inner i = o.new Inner();"
+  - front: "Create a static nested class"
+    back: "Outer.Nested n = new Outer.Nested();  (no outer object needed)"
+  - front: "Inner class: refer to the outer object's field x"
+    back: "Outer.this.x"
+  - front: "Effectively final"
+    back: "A local variable never reassigned after initialisation; required for local/anonymous classes and lambdas to use it."
+  - front: "Can an anonymous class have a constructor?"
+    back: "No, it has no name. It extends one class or implements one interface."
+keyTakeaways:
+  - "Static nested: no outer object needed; uses only static outer members directly."
+  - "Inner: tied to an outer object; uses all outer members; created with outer.new Inner()."
+  - "Local classes live inside a method; anonymous classes have no name and are one-time use."
+  - "Local and anonymous classes (and lambdas) can only capture effectively final local variables."
+  - "Prefer static nested unless you really need the outer object; prefer lambdas for one-method interfaces."

@@ -1,0 +1,284 @@
+slug: process-thread-lifecycle
+world: JAVA_CORE
+section: G
+order: 1
+title: "Process vs thread, thread lifecycle"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common theory question for SP and DSE technical rounds; the starting point for every multithreading discussion."
+otherCompanies: "A standard basic question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies: 'process vs thread' and 'thread states' come up often."
+why: |
+  Your laptop plays music, downloads a file and runs your IDE **at the same time**. Inside one Java program, a server answers many users **at the same time**. This is possible because of **processes** and **threads**.
+
+  Interviewers love two warm-up questions here:
+  - **"What is the difference between a process and a thread?"**
+  - **"Explain the life cycle of a thread."**
+
+  Everything else in this section (synchronization, deadlock, thread pools) builds on this lesson. If you know *what a thread is* and *which states it moves through*, the harder topics become easy to picture.
+analogy: |
+  Think of a **restaurant**.
+
+  - The **restaurant** is a **process**: it has its own building, kitchen, money and stock. Another restaurant next door cannot use its kitchen.
+  - The **cooks** inside are **threads**: they all share the same kitchen (shared memory), but each cook has their *own* order slip in hand (their own stack).
+  - Hiring a new cook is cheap and fast. Opening a new restaurant is expensive and slow. That's why threads are called **lightweight**.
+
+  And a cook's day has states: **hired but not started** (NEW), **ready or cooking** (RUNNABLE), **waiting for the only big pan** (BLOCKED), **waiting for the waiter to call** (WAITING), **taking a 5-minute break** (TIMED_WAITING), and **gone home** (TERMINATED).
+visual:
+  diagram: |
+    THREAD LIFE CYCLE (the 6 values of Thread.State)
+
+    +-----+  start()  +----------+  run() ends  +------------+
+    | NEW | --------> | RUNNABLE | -----------> | TERMINATED |
+    +-----+           +----------+              +------------+
+                       |  ^    |  ^              (can't restart)
+       lock is busy    |  |    |  |
+                       v  |    |  |  notify() / time is over /
+              +---------+ |    |  |  joined thread finished
+              | BLOCKED |-+    v  |
+              +---------+   +---------------------------+
+              got the lock  | WAITING: wait(), join()   |
+              -> RUNNABLE   | TIMED_WAITING: sleep(ms), |
+                            |   wait(ms), join(ms)      |
+                            +---------------------------+
+  caption: "A thread is born NEW, becomes RUNNABLE after start(), may pause in BLOCKED, WAITING or TIMED_WAITING, and ends TERMINATED when run() finishes."
+  visualizer: null
+explanation: |
+  ### What is a process?
+  A **process** is a program that is currently running. When you open Chrome or run `java Hello`, the operating system (OS) creates a process.
+  - Each process gets its **own memory space**. One process cannot directly read another's memory.
+  - Creating a process is **heavy**: the OS must set up memory, files and more.
+
+  ### What is a thread?
+  A **thread** is a single path of execution *inside* a process: one "worker" following the code line by line.
+  - Every Java program starts with at least one thread, called **`main`**.
+  - All threads of a process **share the heap** (where objects live) and static variables.
+  - Each thread has its **own stack** (its own local variables and method calls) and its own program counter (which line it is on).
+  - Creating a thread is **light**: no new memory space is needed.
+
+  ### Process vs thread
+  | | Process | Thread |
+  |---|---|---|
+  | What | A running program | A path of execution inside a process |
+  | Memory | Own separate memory | Shares heap with other threads of the same process |
+  | Cost to create | Heavy (slow) | Light (fast) |
+  | Communication | Hard (needs files, sockets, pipes) | Easy (shared objects) but needs care |
+  | If one crashes | Others are safe | An uncaught error can affect the whole process |
+
+  ### Why use multiple threads?
+  - **Responsiveness**: a UI thread stays smooth while a background thread downloads.
+  - **Speed on multi-core CPUs**: different cores can run different threads truly at the same time (**parallelism**).
+  - **Waiting is wasted time**: while one thread waits for a database, another can work. Taking turns quickly on one core is called **concurrency**.
+
+  ### The six thread states (`Thread.State`)
+  Java defines exactly six states in the enum `Thread.State`. You can check them with `t.getState()`.
+
+  | State | Meaning | How it gets there |
+  |---|---|---|
+  | **NEW** | Thread object created, not started | `new Thread(...)` |
+  | **RUNNABLE** | Ready to run or actually running | `t.start()` |
+  | **BLOCKED** | Waiting to get a lock (a `synchronized` door) held by another thread | Tries to enter a `synchronized` block that is busy |
+  | **WAITING** | Waiting with no time limit for another thread to do something | `wait()`, `join()` |
+  | **TIMED_WAITING** | Waiting, but only for a fixed time | `Thread.sleep(ms)`, `wait(ms)`, `join(ms)` |
+  | **TERMINATED** | `run()` has finished (normally or with an exception) | End of `run()` |
+
+  > Java has **no separate "RUNNING" state**. "Ready" and "running" are both RUNNABLE, because the OS scheduler decides who actually gets the CPU at each moment. Many textbooks draw a "Running" box; in Java's API it is part of RUNNABLE.
+
+  ### Important rules
+  - `start()` creates a new thread which then calls `run()`. Calling `run()` yourself does **not** create a thread (more in the next lesson).
+  - A thread can be started **only once**. Calling `start()` again throws `IllegalThreadStateException`, even after it finished.
+  - `t.join()` makes the *current* thread wait until `t` finishes. After `join()` returns, `t` is TERMINATED.
+  - `t.isAlive()` is `true` only between `start()` and the end of `run()`.
+
+  ```java
+  Thread t = new Thread(() -> System.out.println("work"));
+  System.out.println(t.getState()); // NEW
+  t.start();                        // now RUNNABLE
+  t.join();                         // main waits here
+  System.out.println(t.getState()); // TERMINATED
+  ```
+
+  ### A word about order
+  Once two threads are running, **the OS decides who runs when**. So output from different threads can appear in a different order each run. In this lesson's examples we use `join()` so the order is fixed and predictable.
+tinyCode:
+  code: |
+    public class Lifecycle {
+        public static void main(String[] args) throws InterruptedException {
+            Thread worker = new Thread(() -> System.out.println("Worker is running"));
+            System.out.println("Before start: " + worker.getState());
+            worker.start();
+            worker.join();
+            System.out.println("After join: " + worker.getState());
+        }
+    }
+  walkthrough: |
+    - `new Thread(() -> ...)` creates a thread object and gives it a job (a lambda, which is a short way to write a `Runnable`). The thread is **NEW**: nothing runs yet.
+    - `worker.getState()` prints `NEW`.
+    - `worker.start()` asks the JVM to start a real new thread. It moves to **RUNNABLE** and soon prints "Worker is running".
+    - `worker.join()` makes `main` **wait** until the worker finishes. This is why the output order is fixed.
+    - After `join()` returns, the worker's `run()` has ended, so its state is **TERMINATED**.
+    - `throws InterruptedException` is needed because `join()` can be interrupted while waiting.
+
+    Output:
+    ```
+    Before start: NEW
+    Worker is running
+    After join: TERMINATED
+    ```
+tryIt:
+  instructions: "Type this program. It names the helper thread so you can see which thread prints what. Run it and check that the states match the diagram. Then try removing the join() line and run it a few times: the last lines may change because main no longer waits."
+  code: |
+    public class Names {
+        public static void main(String[] args) throws InterruptedException {
+            System.out.println("I am: " + Thread.currentThread().getName());
+            Thread helper = new Thread(() -> {
+                String me = Thread.currentThread().getName();
+                System.out.println("Hello from " + me);
+            }, "helper");
+            System.out.println("helper state: " + helper.getState());
+            helper.start();
+            helper.join();
+            System.out.println("helper alive? " + helper.isAlive());
+            System.out.println("helper state: " + helper.getState());
+        }
+    }
+predict:
+  code: |
+    public class Restart {
+        public static void main(String[] args) throws InterruptedException {
+            Thread t = new Thread(() -> System.out.println("hi"));
+            t.start();
+            t.join();
+            try {
+                t.start();
+            } catch (IllegalThreadStateException e) {
+                System.out.println("Cannot restart");
+            }
+            System.out.println(t.getState());
+        }
+    }
+  expectedOutput: |
+    hi
+    Cannot restart
+    TERMINATED
+  explanation: |
+    The first `start()` runs the thread, which prints `hi`. `join()` waits for it, so the order is fixed. The thread is now TERMINATED. Calling `start()` a **second** time is illegal, even on a finished thread, so Java throws `IllegalThreadStateException`, which we catch and print "Cannot restart". The state stays TERMINATED. To run the job again, create a **new** Thread object.
+commonMistakes:
+  - "Saying threads have their own heap. Threads share the heap; each has its own stack."
+  - "Adding a RUNNING state to Java's Thread.State. Java has six states and 'running' is part of RUNNABLE."
+  - "Thinking a finished thread can be started again. start() can be called only once per Thread object."
+  - "Confusing BLOCKED and WAITING: BLOCKED is waiting for a lock; WAITING is waiting for another thread's action (notify, or finishing for join)."
+  - "Expecting output from different threads to come in a fixed order without join() or other coordination."
+interviewBox:
+  why: "Why interviewers ask this: it checks whether you understand the basic model of how Java runs work in parallel before moving to harder concurrency topics."
+  questions:
+    - q: "What is the difference between a process and a thread?"
+      a: "A process is a running program with its own separate memory. A thread is a path of execution inside a process. Threads of the same process share the heap, so they are cheap to create and can share data easily, but each thread has its own stack."
+    - q: "Explain the life cycle of a thread in Java."
+      a: "A thread is NEW when created. After start() it is RUNNABLE, meaning ready or running. It can go to BLOCKED when it waits for a lock, WAITING when it calls wait() or join(), or TIMED_WAITING when it calls sleep or wait with a time. When run() finishes, it is TERMINATED and cannot be restarted."
+    - q: "What is the difference between BLOCKED and WAITING?"
+      a: "BLOCKED means the thread wants to enter a synchronized block but another thread holds the lock. WAITING means the thread chose to wait for another thread, for example by calling wait() or join(), and it stays there until notified or until that thread finishes."
+    - q: "Can we start a thread twice?"
+      a: "No. Calling start() a second time throws IllegalThreadStateException. To run the same job again we create a new Thread object, or better, use a thread pool."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which of these do threads of the same process SHARE?"
+    code: null
+    options: ["Their stacks", "The heap (objects)", "Their program counters", "Their local variables"]
+    answer: 1
+    explanation: "All threads in a process share the heap, so they can see the same objects. Stacks, local variables and the program counter are private to each thread; that is why local variables are naturally thread-safe."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "A thread that has TERMINATED can be started again by calling start() once more."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. start() may be called only once per Thread object. A second call throws IllegalThreadStateException, even if the thread has finished. Create a new Thread to run the job again."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (The output is fixed because of join().)"
+    code: |
+      Thread t = new Thread(() -> {});
+      System.out.println(t.isAlive() + " " + t.getState());
+      t.start();
+      t.join();
+      System.out.println(t.isAlive() + " " + t.getState());
+    options:
+      - "false NEW\nfalse TERMINATED"
+      - "true NEW\nfalse TERMINATED"
+      - "false NEW\ntrue RUNNABLE"
+      - "false RUNNABLE\nfalse TERMINATED"
+    answer: 0
+    explanation: "Before start() the thread is NEW and not alive. join() waits until it finishes, so afterwards it is TERMINATED and not alive. 'true RUNNABLE' is tempting, but join() guarantees the thread already ended."
+  - id: q4
+    type: MATCH
+    prompt: "Match each action to the state the thread goes into"
+    pairs:
+      - left: "new Thread(r)"
+        right: "NEW"
+      - left: "Thread.sleep(500)"
+        right: "TIMED_WAITING"
+      - left: "join() with no timeout"
+        right: "WAITING"
+      - left: "Trying to enter a synchronized block someone else holds"
+        right: "BLOCKED"
+      - left: "run() method finished"
+        right: "TERMINATED"
+    explanation: "sleep has a time limit, so TIMED_WAITING. join() with no time waits forever, so WAITING. Waiting for a lock is the special BLOCKED state. A finished thread is TERMINATED."
+  - id: q5
+    type: MCQ
+    prompt: "How many states does Java's Thread.State enum have?"
+    code: null
+    options: ["4", "5", "6", "7 (including RUNNING)"]
+    answer: 2
+    explanation: "Six: NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED. There is no separate RUNNING state in Java; running is part of RUNNABLE, which is why 7 is the tempting wrong answer."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that makes main wait until worker has finished."
+    code: |
+      Thread worker = new Thread(task);
+      worker.start();
+      worker.____;
+      System.out.println("worker is done");
+    acceptedAnswers: ["join()", "join"]
+    explanation: "join() blocks the calling thread (main) until worker's run() ends. sleep() would only wait a guessed amount of time, which is not reliable."
+  - id: q7
+    type: MCQ
+    prompt: "Why is creating a thread called 'lightweight' compared to creating a process?"
+    code: null
+    options:
+      - "Threads use no memory at all"
+      - "A thread reuses the process's memory space; only a small stack is new"
+      - "Threads always run on a single CPU core"
+      - "Threads cannot share data, so there is less to set up"
+    answer: 1
+    explanation: "A new thread lives inside the existing process and shares its heap, so only a stack and some bookkeeping are needed. Threads still use memory (their stack), and they CAN share data, which is the whole point."
+explainBack:
+  prompt: "Explain to a friend who doesn't code what a thread is, how it is different from a process, and the main states a thread goes through."
+  rubric:
+    - "I said a process is a running program with its own memory"
+    - "I said threads live inside a process and share its memory but have their own stack"
+    - "I named the states NEW, RUNNABLE, BLOCKED/WAITING/TIMED_WAITING, TERMINATED"
+    - "I mentioned a thread cannot be started twice"
+    - "I used an analogy like a restaurant and its cooks"
+  modelAnswer: |
+    A process is a running program, like a restaurant with its own building and kitchen. Threads are the cooks inside it. They all share the same kitchen, which is the heap memory, but each one holds its own order slip, which is its own stack. That makes threads cheap to create. A thread starts NEW when we create it. After start() it becomes RUNNABLE, meaning ready or cooking. It may pause: BLOCKED when it waits for a lock, WAITING or TIMED_WAITING when it waits for another thread or sleeps. When its work is done, it is TERMINATED, and it can never be started again.
+flashcards:
+  - front: "Process vs thread in one line"
+    back: "Process = running program with its own memory. Thread = path of execution inside a process; threads share the heap, each has its own stack."
+  - front: "The 6 Java thread states"
+    back: "NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED (no separate RUNNING)."
+  - front: "BLOCKED vs WAITING"
+    back: "BLOCKED = waiting for a lock (synchronized). WAITING = waiting for another thread's action via wait() or join()."
+  - front: "What happens if you call start() twice?"
+    back: "IllegalThreadStateException. A Thread object can be started only once."
+  - front: "What does t.join() do?"
+    back: "The calling thread waits until thread t finishes."
+keyTakeaways:
+  - "A process has its own memory; threads inside it share the heap but have private stacks."
+  - "Threads are lightweight and let a program stay responsive and use multiple cores."
+  - "Java's six states: NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED."
+  - "start() can be called only once; a TERMINATED thread cannot be restarted."
+  - "Output order between threads is not fixed; join() lets you wait and get a predictable order."

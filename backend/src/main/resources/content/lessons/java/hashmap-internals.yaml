@@ -1,0 +1,337 @@
+slug: hashmap-internals
+world: JAVA_CORE
+section: E
+order: 6
+title: "HashMap internals"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A very common deep-dive question in SP and DSE technical rounds; expect follow-ups on collisions and resize."
+otherCompanies: "A favourite 'how does it work inside?' question at TCS, Wipro, Cognizant, Accenture, Capgemini and almost every product company."
+why: |
+  You use `HashMap` in nearly every coding problem: counting frequencies, two-sum, caching, grouping. Interviewers know this, so they love to ask: **"How does HashMap work internally?"**
+
+  A good answer shows that you understand:
+  - **hashing**: turning a key into a number,
+  - **buckets** and **collisions**: what happens when two keys land in the same place,
+  - **resize**: why the map suddenly grows,
+  - **why `equals()` and `hashCode()` must agree**.
+
+  This one question can last 10 minutes and lead to follow-ups on `ConcurrentHashMap`, red-black trees and Big-O. Once you see the picture inside, all of these become easy to talk about.
+analogy: |
+  Think of a **post office with numbered pigeonholes** (small boxes on the wall).
+
+  - Every letter (a **key-value pair**) has an address (the **key**).
+  - The clerk does a quick calculation on the address, for example "take the PIN code and look at the last digit". That gives a box number. This calculation is **hashing**, and the box is a **bucket**.
+  - Two different addresses can give the same box number. That is a **collision**. The clerk simply stacks both letters in the same box, and when you ask for your letter, he looks through that small stack and reads the full address (that is **`equals()`**).
+  - If a box gets crazy full (more than 8 letters) in a big post office, the clerk sorts that stack into a neat **binary tree** so finding a letter is faster.
+  - When the whole wall is 75% full, the post office builds a **wall twice as big** and moves every letter to its new box. That is **resize**.
+visual:
+  diagram: |
+    put("cat", 5)
+      1. h = "cat".hashCode()            -> a big int
+      2. hash = h ^ (h >>> 16)          -> mix top bits into bottom
+      3. index = (n - 1) & hash         -> n = 16, so 0..15
+
+     table (array of buckets), n = 16
+     +----+
+     | 0  | -> null
+     | 1  | -> [k=1|v=A] -> [k=17|v=B] -> [k=33|v=C]   (collision:
+     | 2  | -> null                                     linked list)
+     | .. |
+     | 7  | -> ["cat"|5]
+     | 9  | -> (red-black tree)    <- bucket had > 8 nodes
+     | .. |          [k]               and table >= 64
+     | 15 | -> null /   \
+     +----+        [k]   [k]
+
+     size > capacity * 0.75 (16 * 0.75 = 12)  ->  resize to 32
+  caption: "A HashMap is an array of buckets. The key's hash picks the bucket. Colliding keys form a linked list, which turns into a red-black tree when it gets too long."
+  visualizer: null
+explanation: |
+  ### The big picture
+  A `HashMap<K, V>` stores **key-value pairs**. Inside, it is just an **array** (called the **table**). Each slot of the array is a **bucket**. A bucket holds zero or more **nodes**; each node stores `hash`, `key`, `value` and a `next` pointer.
+
+  Why an array? Because reading `array[i]` is instant: O(1). The whole trick is to turn any key into a good index `i`.
+
+  ### Step 1: hashCode()
+  Every Java object has `hashCode()`, which returns an `int`. For `Integer`, it is the number itself. For `String`, it is calculated from the characters (`s[0]*31^(n-1) + ... + s[n-1]`).
+
+  ### Step 2: hash spreading
+  HashMap does not use `hashCode()` directly. It mixes it:
+  ```java
+  hash = h ^ (h >>> 16);   // h = key.hashCode()
+  ```
+  `>>>` shifts the bits right, and `^` (XOR) mixes the top 16 bits into the bottom 16 bits. Why? Because the next step only looks at the **lowest bits**. Without mixing, keys whose hash codes differ only in high bits would all crash into the same bucket.
+
+  ### Step 3: index = (n - 1) & hash
+  `n` is the table length, always a **power of 2** (16, 32, 64...). For n = 16, `n - 1` is `15` = binary `1111`. `& 15` keeps only the last 4 bits, which gives a number from 0 to 15. This is the same as `hash % 16` for positive numbers, but faster and it never gives a negative index.
+
+  ### Step 4: put into the bucket
+  - **Empty bucket**: create a new node there.
+  - **Not empty**: walk the nodes. For each node, check `node.hash == hash && (node.key == key || key.equals(node.key))`.
+    - Found a match: **replace the value** (and `put` returns the old value).
+    - No match: **append** a new node at the end. This is a **collision**: different keys, same bucket.
+
+  `get(key)` does the same steps 1-3, then walks the bucket using `equals()` to find the right node.
+
+  ### Treeification (Java 8+)
+  If many keys collide, a bucket's linked list gets long and `get` becomes O(n). Since Java 8:
+  - When one bucket grows past **8 nodes** (`TREEIFY_THRESHOLD = 8`) **and** the table length is at least **64** (`MIN_TREEIFY_CAPACITY`), that list is converted to a **red-black tree** (a self-balancing binary search tree). Search in that bucket becomes O(log n).
+  - If the table is smaller than 64, HashMap **resizes** instead, because spreading keys out is the cheaper fix.
+  - If a tree bucket shrinks to **6** or fewer nodes (during a resize), it turns back into a list.
+
+  ### Load factor and resize
+  - Default **capacity** = 16 buckets. Default **load factor** = **0.75**.
+  - **Threshold** = capacity x load factor = 16 x 0.75 = **12**.
+  - When `size` goes above the threshold, the table **doubles** (16 -> 32 -> 64...) and every entry is moved. This is called **rehashing**.
+  - Because the size doubles, each entry either stays at the **same index** or moves to **index + old capacity**. Java checks just one bit (`hash & oldCap`) to decide. Clever and fast.
+  - Resizing is O(n), but it happens rarely, so `put` is still **O(1) on average** (we call this **amortized** O(1)).
+
+  Why 0.75? It is a balance: lower wastes memory, higher causes more collisions.
+
+  > Tip: if you know you will store 1000 items, create `new HashMap<>(2048)` or let Java calculate it to avoid many resizes. The table itself is created lazily, on the **first** `put`.
+
+  ### The null key
+  HashMap allows **one null key** and **many null values**. The hash of `null` is defined as 0, so the null key always goes to **bucket 0**. (`Hashtable` and `ConcurrentHashMap` allow no nulls at all.)
+
+  ### The equals/hashCode contract
+  | Rule | What breaks if you ignore it |
+  |---|---|
+  | If `a.equals(b)` then `a.hashCode() == b.hashCode()` | Equal keys go to different buckets, so `get` returns null and duplicates appear |
+  | Override **both**, never only one | Same problem as above |
+  | Same object -> same hashCode while it is a key | The key gets "lost" |
+
+  ### Why keys should be immutable
+  The bucket is chosen **when you put**. If you later change a field that `hashCode()` uses, the key now hashes to a **different** bucket, so `get` looks in the wrong place and returns `null`, even though the entry is still inside. That is why `String`, `Integer` and other **immutable** (unchangeable) classes make the best keys.
+
+  ### Complexity
+  | Operation | Average | Worst case (Java 8+) |
+  |---|---|---|
+  | `put`, `get`, `remove`, `containsKey` | O(1) | O(log n) (tree bucket) |
+  | `containsValue` | O(n) | O(n) |
+  | Iteration | O(capacity + size) | |
+
+  Before Java 8 the worst case was O(n), because buckets were always linked lists.
+
+  ### Other facts interviewers check
+  - HashMap is **not thread-safe**. Use `ConcurrentHashMap` for threads.
+  - Iteration order is **not guaranteed**. Use `LinkedHashMap` for insertion order, `TreeMap` for sorted order.
+  - `HashSet` is just a `HashMap` where your element is the key and a dummy object is the value.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class HashPeek {
+        static int index(Object key, int n) {
+            int h = key.hashCode();
+            int hash = h ^ (h >>> 16);   // spread
+            return (n - 1) & hash;       // bucket number
+        }
+
+        public static void main(String[] args) {
+            for (Object k : List.of(1, 17, 33, "cat", "dog")) {
+                System.out.println(k + " -> bucket " + index(k, 16));
+            }
+            Map<String, Integer> map = new HashMap<>();
+            System.out.println(map.put("cat", 5));   // no old value
+            System.out.println(map.put("cat", 9));   // replaces 5
+            map.put(null, 0);                        // null key allowed
+            System.out.println(map.get("cat") + " " + map.get(null) + " " + map.size());
+        }
+    }
+  walkthrough: |
+    - `index(...)` copies HashMap's real formula: take `hashCode()`, spread it with `h ^ (h >>> 16)`, then `& (n - 1)` to get a bucket from 0 to 15.
+    - Keys `1`, `17` and `33` all print **bucket 1**: their last 4 bits are the same (`0001`). That is a collision; HashMap would chain them in one bucket.
+    - `"cat"` prints bucket 7 and `"dog"` bucket 13 (from their String hash codes).
+    - `map.put("cat", 5)` returns `null` because there was no old value.
+    - `map.put("cat", 9)` finds the same key with `equals()`, replaces the value and returns the old one, `5`. Size stays 1.
+    - `map.put(null, 0)` works: the null key goes to bucket 0.
+    - The last line prints `9 0 2`.
+
+    Full output:
+    ```
+    1 -> bucket 1
+    17 -> bucket 1
+    33 -> bucket 1
+    cat -> bucket 7
+    dog -> bucket 13
+    null
+    5
+    9 0 2
+    ```
+tryIt:
+  instructions: "Type this to see the equals/hashCode contract in action. First run it as is. Then delete the hashCode() method, run again, and watch the size change from 1 to 2."
+  code: |
+    import java.util.*;
+
+    public class PinKey {
+        static class Pin {
+            final int code;
+            Pin(int code) { this.code = code; }
+            @Override public boolean equals(Object o) {
+                return o instanceof Pin p && p.code == code;
+            }
+            @Override public int hashCode() { return Integer.hashCode(code); }
+        }
+
+        public static void main(String[] args) {
+            Map<Pin, String> city = new HashMap<>();
+            city.put(new Pin(560001), "Bengaluru");
+            city.put(new Pin(560001), "Bangalore");
+            System.out.println(city.size());
+            System.out.println(city.get(new Pin(560001)));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class LostKey {
+        public static void main(String[] args) {
+            List<Integer> key = new ArrayList<>(List.of(1, 2));
+            Map<List<Integer>, String> map = new HashMap<>();
+            map.put(key, "found");
+            key.add(3);
+            System.out.println(map.get(key));
+            System.out.println(map.size());
+        }
+    }
+  expectedOutput: |
+    null
+    1
+  explanation: |
+    The list `[1, 2]` was put in the bucket chosen from its hash code at that moment. After `key.add(3)`, the list's `hashCode()` changes, so `get` calculates a **different** hash and looks in the wrong place: it returns `null`. The entry is still inside, so `size()` is still `1`. This is exactly why map keys should be immutable.
+commonMistakes:
+  - "Overriding equals() but not hashCode(). Two 'equal' keys land in different buckets, so get() returns null and duplicates appear."
+  - "Using a mutable object (like a List or an object with setters) as a key and changing it after put. The entry becomes unreachable."
+  - "Saying the bucket index is hashCode() % n. Java uses (n - 1) & hash after spreading, which is why the capacity is always a power of 2."
+  - "Saying a bucket becomes a tree at exactly 8 in every case. It also needs the table length to be at least 64; otherwise HashMap resizes instead."
+  - "Saying HashMap keeps insertion order. It doesn't; use LinkedHashMap for that."
+  - "Thinking HashMap allows many null keys. Only one null key (it lives in bucket 0); values can be null many times."
+interviewBox:
+  why: "Why interviewers ask this: it tests whether you understand hashing, arrays, linked lists, trees and Big-O together, using a class you already use daily."
+  questions:
+    - q: "How does HashMap work internally?"
+      a: "HashMap keeps an array of buckets. When I put a key, it calls hashCode, mixes the bits with h XOR h>>>16, and finds the index with (n minus 1) AND hash. If the bucket is empty, it stores a new node. If not, it checks each node with equals: same key means replace the value, otherwise it adds a new node. get does the same steps and uses equals to find the right node."
+    - q: "What is a collision and how does HashMap handle it?"
+      a: "A collision is when two different keys get the same bucket index. HashMap stores them as a linked list in that bucket. Since Java 8, if a bucket gets more than 8 nodes and the table has at least 64 buckets, the list becomes a red-black tree, so the worst-case lookup is O(log n) instead of O(n)."
+    - q: "What is load factor and when does HashMap resize?"
+      a: "Load factor is how full the map can get before it grows. The default is 0.75. With the default capacity of 16, the threshold is 12, so when the size goes above 12 the table doubles to 32 and all entries are moved to their new buckets."
+    - q: "Why should HashMap keys be immutable?"
+      a: "Because the bucket is chosen from the hash code at the time of put. If the key changes later, its hash code changes, so get looks in a different bucket and can't find it. Immutable keys like String and Integer never change, so they are always found."
+    - q: "Can HashMap have a null key?"
+      a: "Yes, exactly one. Its hash is treated as 0, so it always goes to bucket 0. Values can be null many times. Hashtable and ConcurrentHashMap don't allow null keys or values."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "A HashMap has a table of length 16. Which formula does it use to find the bucket for a key?"
+    code: null
+    options: ["hashCode() % 16", "(16 - 1) & hash, where hash = h ^ (h >>> 16)", "hashCode() / 16", "Math.abs(hashCode()) % 15"]
+    answer: 1
+    explanation: "HashMap spreads the hash code with h ^ (h >>> 16) and then uses (n - 1) & hash. The modulo option is tempting because it gives the same idea, but % can return a negative number for negative hash codes and is slower; the bitmask works because n is always a power of 2."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      Map<String, Integer> m = new HashMap<>();
+      System.out.println(m.put("a", 1));
+      System.out.println(m.put("a", 2));
+      System.out.println(m.size() + " " + m.get("a"));
+    options: ["null\n1\n1 2", "1\n2\n2 2", "null\nnull\n2 2", "null\n1\n2 1"]
+    answer: 0
+    explanation: "put returns the OLD value: null the first time (nothing was there), then 1 when it is replaced by 2. The key 'a' exists only once, so size is 1 and get gives 2. Option 'null null 2 2' is the tempting wrong one: replacing a key does not add a second entry."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Both lines put an 'equal' Emp(7). Why does the map end up with size 2?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          static class Emp {
+              int id;
+              Emp(int id) { this.id = id; }
+              @Override public boolean equals(Object o) {
+                  return o instanceof Emp e && e.id == id;
+              }
+          }
+          public static void main(String[] args) {
+              Map<Emp, String> m = new HashMap<>();
+              m.put(new Emp(7), "Asha");
+              m.put(new Emp(7), "Asha again");
+              System.out.println(m.size());
+          }
+      }
+    options:
+      - "equals() is written wrongly; instanceof cannot be used there"
+      - "hashCode() is not overridden, so the two equal objects usually get different hash codes and go to different buckets"
+      - "HashMap cannot use custom classes as keys"
+      - "The id field must be final for HashMap to work"
+    answer: 1
+    explanation: "Without hashCode(), each object uses Object's identity hash, so the two Emp(7) objects almost always land in different buckets and equals() is never even called. The equals() itself is fine (pattern matching instanceof is valid Java 16+). Making id final is good practice but is not the cause here."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In Java 8+, a bucket is always converted into a red-black tree as soon as it holds more than 8 nodes."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Treeification also needs the table length to be at least 64 (MIN_TREEIFY_CAPACITY). If the table is smaller, HashMap resizes instead, because spreading the keys out is cheaper."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "With default settings, a new HashMap resizes when its size goes above 16 x ____ = 12. Fill in the default load factor."
+    code: |
+      int threshold = (int) (16 * ____);   // = 12
+    acceptedAnswers: ["0.75", "0.75f", ".75"]
+    explanation: "The default load factor is 0.75, so the threshold is 16 x 0.75 = 12. Above that, the table doubles to 32."
+  - id: q6
+    type: MATCH
+    prompt: "Match each HashMap term to its meaning"
+    pairs:
+      - left: "Bucket"
+        right: "One slot of the internal array"
+      - left: "Collision"
+        right: "Two different keys get the same bucket index"
+      - left: "Load factor"
+        right: "How full the table may get before it grows"
+      - left: "Rehashing"
+        right: "Moving all entries into a bigger table"
+      - left: "Treeification"
+        right: "Turning a long bucket list into a red-black tree"
+    explanation: "These five words are the vocabulary of any HashMap internals answer. Use them in your spoken answer."
+  - id: q7
+    type: MCQ
+    prompt: "Where does HashMap store the entry for the null key?"
+    code: null
+    options: ["It throws NullPointerException", "In bucket 0, because the hash of null is treated as 0", "In the last bucket", "In a separate special field outside the table"]
+    answer: 1
+    explanation: "HashMap's hash() method returns 0 for a null key, so it goes to bucket 0 like any other key. NullPointerException is what Hashtable and ConcurrentHashMap throw, which is why that option is tempting."
+explainBack:
+  prompt: "Explain to a friend how HashMap finds the value for a key in O(1), and what happens when two keys collide."
+  rubric:
+    - "I said HashMap is an array of buckets and the key's hash code picks the bucket"
+    - "I mentioned equals() is used to find the exact key inside a bucket"
+    - "I explained collisions (linked list, then red-black tree after 8 when the table is >= 64)"
+    - "I explained load factor 0.75 and resize by doubling"
+    - "I said why keys should be immutable"
+  modelAnswer: |
+    A HashMap is basically an array of buckets. When I put a key, Java calls its hashCode, mixes the bits, and uses (n minus 1) AND hash to get a bucket number, so it jumps straight to that slot. That's why it's O(1) on average. If two different keys land in the same bucket, that's a collision: they are kept in a small linked list, and equals is used to find the exact key. If one bucket grows beyond 8 entries and the table has at least 64 buckets, the list becomes a red-black tree. When the map is 75% full, it doubles its size and moves the entries. Keys should be immutable, otherwise their hash changes and they get lost.
+flashcards:
+  - front: "HashMap bucket index formula"
+    back: "hash = h ^ (h >>> 16); index = (n - 1) & hash, where n is the table length (a power of 2)."
+  - front: "Default capacity, load factor and first resize point"
+    back: "Capacity 16, load factor 0.75, so it resizes when size goes above 12. The table doubles."
+  - front: "When does a bucket become a red-black tree?"
+    back: "When it grows past 8 nodes AND the table length is at least 64. It turns back into a list at 6 or fewer."
+  - front: "Where does the null key go?"
+    back: "Bucket 0 (hash of null = 0). Only one null key is allowed; many null values are fine."
+  - front: "Worst-case get() in Java 8+ HashMap"
+    back: "O(log n), because long buckets are red-black trees. Before Java 8 it was O(n)."
+  - front: "Why must keys be immutable?"
+    back: "The bucket is fixed at put time. If the key's hashCode changes later, get() searches the wrong bucket and returns null."
+keyTakeaways:
+  - "HashMap = array of buckets; the spread hash code and (n - 1) & hash pick the bucket."
+  - "Collisions are chained in a list; a list longer than 8 becomes a red-black tree (if the table is >= 64)."
+  - "Load factor 0.75: the table doubles when size > capacity x 0.75, and entries are rehashed."
+  - "Always override equals() and hashCode() together, and use immutable keys."
+  - "Average O(1), worst O(log n) in Java 8+; one null key allowed; not thread-safe; no order guarantee."

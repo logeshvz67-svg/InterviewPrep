@@ -1,0 +1,313 @@
+slug: java-interview-150
+world: JAVA_CORE
+section: J
+order: 1
+title: "Top 150 Java practice questions"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Interview practice (practice questions, not actual test questions): a structured way to answer Java theory questions clearly in SP and DSE technical rounds."
+otherCompanies: "The same answering method works for TCS, Wipro, Cognizant, Accenture, Capgemini and product-company technical interviews."
+why: |
+  You may *know* Java and still lose marks because the answer comes out as a nervous jumble. Interviewers judge **clarity** as much as correctness.
+
+  This lesson teaches a simple, repeatable way to answer **any** Java theory question:
+
+  **Concept -> Example -> Use case** (we'll call it **C-E-U**).
+
+  - It keeps answers short (30-60 seconds), which is perfect if spoken English is not your strongest skill: you follow a fixed track instead of searching for words.
+  - It proves understanding, not memorising: the example and use case show you have actually used the idea.
+  - It works for all the common topics: OOP, Strings, Collections, Exceptions, Multithreading, Java 8, JVM memory.
+
+  At the end you'll have a map of the most common practice questions, grouped by topic, with the key point each answer must contain.
+analogy: |
+  Think of a **thali** at a South Indian mess.
+
+  - The **rice** is the **Concept**: the base. One or two clear sentences: what it is.
+  - The **sambar and poriyal** are the **Example**: they give taste. A tiny code line or a real-life comparison.
+  - The **payasam** at the end is the **Use case**: where you would actually use it in a project. It leaves a good final impression.
+
+  A plate with only rice (a dry definition) is boring. A plate with ten curries and no rice (rambling examples) is confusing. A good thali has all three, in the right order, in the right amount.
+visual:
+  diagram: |
+    QUESTION: "What is the difference between == and equals()?"
+
+    +-----------+   1-2 sentences: what it is / the difference
+    | CONCEPT   |   "== compares references; equals() compares
+    +-----------+    content (when the class overrides it)."
+          |
+          v
+    +-----------+   tiny code or real-life picture
+    | EXAMPLE   |   new String("hi") == new String("hi") -> false
+    +-----------+   .equals(...)                          -> true
+          |
+          v
+    +-----------+   where/why you use it
+    | USE CASE  |   "Always use equals() for Strings and for keys
+    +-----------+    in HashMap; override it with hashCode()."
+
+    Target length: 30-60 seconds. Then STOP and let them ask.
+  caption: "Every answer follows the same three steps: Concept, Example, Use case. Then stop; the follow-up question is your chance to show more."
+  visualizer: null
+explanation: |
+  ### The C-E-U method
+  1. **Concept** (1-2 sentences): define the term in plain words. If it is a "difference" question, state the main difference first.
+  2. **Example** (1-3 sentences): a tiny code example *or* an everyday comparison.
+  3. **Use case** (1 sentence): where you use it in real code, or a rule of thumb.
+  Then **stop**. Interviewers ask follow-ups. A short, clean answer invites a good follow-up; a long answer invites a hard one.
+
+  ### Handy sentence starters (memorise these, not answers)
+  | Step | Say this |
+  |---|---|
+  | Concept | "In simple words, X is ..." / "The main difference is ..." |
+  | Example | "For example, ..." / "In code, if I write ..., I get ..." |
+  | Use case | "I use it when ..." / "In my project, ..." / "So the rule is ..." |
+  | Unsure | "I'm not 100 percent sure, but I think ... because ..." |
+  | Need time | "Let me think for a second." (silence is fine) |
+
+  ### Worked example 1: "What is method overriding?"
+  - **Concept**: "Overriding is when a child class gives its own version of a method that is already in the parent, with the same name and parameters. Which version runs is decided at runtime."
+  - **Example**: "For example, Animal has sound(), and Dog overrides it to print Bark. If I write Animal a = new Dog(); a.sound(), it prints Bark."
+  - **Use case**: "We use it for runtime polymorphism, like different payment classes each overriding pay()."
+
+  ### Worked example 2: "Why is String immutable?"
+  - **Concept**: "Immutable means once a String object is created, its value can't change. Methods like toUpperCase return a new String."
+  - **Example**: "If s is \"java\" and I call s.toUpperCase() without assigning, s is still \"java\"."
+  - **Use case**: "This makes Strings safe to share between threads, safe as HashMap keys, and lets Java reuse them in the String pool."
+
+  ### The question map (practice by topic)
+  Below are the most common practice questions, grouped by topic, with the **one key point** your answer must contain. Each one has its own full lesson in earlier sections; use this as your revision checklist.
+
+  | Topic | Practice question | Key point you must say |
+  |---|---|---|
+  | Basics | JDK vs JRE vs JVM | JDK = JRE + tools; JRE = JVM + libraries |
+  | Basics | Why is main static? | JVM calls it without creating an object |
+  | OOP | Four pillars of OOP | Encapsulation, inheritance, polymorphism, abstraction |
+  | OOP | Overloading vs overriding | Same name, different params (compile time) vs same signature in child (runtime) |
+  | OOP | Abstract class vs interface | Abstract class can have state and constructors; a class can implement many interfaces |
+  | OOP | Why no multiple inheritance of classes? | Diamond problem: ambiguity |
+  | Strings | == vs equals() | Reference vs content |
+  | Strings | String vs StringBuilder vs StringBuffer | Immutable vs mutable; StringBuffer is synchronized |
+  | Strings | What is the String pool? | Literals are reused from a shared pool |
+  | Collections | ArrayList vs LinkedList | Fast index access vs fast insert/delete at ends |
+  | Collections | How does HashMap work? | hashCode picks the bucket, equals finds the key |
+  | Collections | HashMap vs Hashtable vs ConcurrentHashMap | Not synced / fully synced / thread-safe with fine-grained locking |
+  | Collections | Fail-fast iterator | Throws ConcurrentModificationException if the list changes during a loop |
+  | Exceptions | Checked vs unchecked | Compiler forces handling vs RuntimeException |
+  | Exceptions | final vs finally vs finalize | Keyword / always-run block / deprecated GC hook |
+  | Threads | Thread vs Runnable | Prefer Runnable: can still extend another class |
+  | Threads | synchronized and volatile | Lock for one-at-a-time vs visibility across threads |
+  | Java 8 | What is a lambda? | Short way to implement a functional interface |
+  | Java 8 | map vs filter in streams | Transform each item vs keep matching items |
+  | Java 8 | Optional | A box that may be empty, to avoid NullPointerException |
+  | Memory | Stack vs heap | Local variables/calls vs objects |
+  | Memory | Garbage collection | Frees objects with no references |
+
+  ### How to practise (this is the real secret)
+  1. Pick **5 questions a day** from the map.
+  2. Say the C-E-U answer **out loud**, recording on your phone. Aim for under 60 seconds.
+  3. Listen back once. Did you say the key point? Did you give an example?
+  4. Next day, re-do yesterday's weakest one first.
+  Speaking out loud matters: reading answers silently feels like learning, but the words don't come in the interview unless your mouth has practised them.
+
+  ### When you don't know
+  Never make things up confidently. Say what you **do** know and reason aloud: "I haven't used it, but I know it's related to X, so I'd guess ...". Interviewers respect honest reasoning far more than a wrong guess said with confidence.
+tinyCode:
+  code: |
+    public class EqualsAnswer {
+        public static void main(String[] args) {
+            // Use this as the EXAMPLE part of "== vs equals()"
+            String a = "java";
+            String b = "java";
+            String c = new String("java");
+
+            System.out.println(a == b);       // same pooled object
+            System.out.println(a == c);       // different objects
+            System.out.println(a.equals(c));  // same content
+        }
+    }
+  walkthrough: |
+    This program is the **Example** step for one of the most common questions.
+    - `a` and `b` are **literals** (text written directly in quotes). Java stores literals in the **String pool**, a shared area, and reuses them. So `a` and `b` point to the **same** object: `a == b` is `true`.
+    - `new String("java")` always creates a **new** object on the heap, so `a == c` is `false`.
+    - `equals` compares the **characters**, so `a.equals(c)` is `true`.
+
+    Output:
+    ```
+    true
+    false
+    true
+    ```
+    Full C-E-U answer: "**Concept**: == compares references, equals compares content. **Example**: two literals are == because of the String pool, but a new String is not ==, though equals is true. **Use case**: always use equals for Strings and for objects used as HashMap keys."
+tryIt:
+  instructions: "Type this. It is your EXAMPLE for \"How does HashMap work?\". Then say the full answer aloud: Concept (hashCode picks the bucket, equals finds the key), Example (this code), Use case (counting, caching, lookups)."
+  code: |
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class MapAnswer {
+        public static void main(String[] args) {
+            Map<String, Integer> stock = new HashMap<>();
+            stock.put("pen", 10);
+            stock.put("book", 4);
+            stock.put("pen", 12);          // same key: value replaced
+
+            System.out.println(stock.get("pen"));
+            System.out.println(stock.size());
+            System.out.println(stock.containsKey("bag"));
+            System.out.println(stock.getOrDefault("bag", 0));
+        }
+    }
+predict:
+  code: |
+    public class FinallyAnswer {
+        static String test() {
+            try {
+                return "try";
+            } finally {
+                System.out.println("finally runs");
+            }
+        }
+
+        public static void main(String[] args) {
+            System.out.println(test());
+        }
+    }
+  expectedOutput: |
+    finally runs
+    try
+  explanation: |
+    This is a great **Example** for "Does finally run if try has a return?". The return value "try" is prepared, but before the method actually returns, the `finally` block runs and prints "finally runs". Then `main` prints the returned "try". Finally is skipped only in rare cases like `System.exit()`.
+commonMistakes:
+  - "Giving only a dictionary definition with no example. The example is what proves understanding."
+  - "Talking for three minutes. Long answers lose the interviewer and invite tough follow-ups. Aim for 30-60 seconds, then stop."
+  - "Memorising answers word by word; one forgotten word and the whole answer collapses. Memorise the key point and the C-E-U order instead."
+  - "Bluffing when unsure. Say what you know and reason aloud instead."
+  - "Practising silently. Say answers out loud and record yourself; speaking is a separate skill from knowing."
+interviewBox:
+  why: "Why interviewers ask Java theory questions: they want to see that you understand the language you will code in every day, and that you can explain ideas clearly to teammates."
+  questions:
+    - q: "(OOP) What is the difference between an abstract class and an interface?"
+      a: "Concept: an abstract class is a partly built class; it can have fields, constructors and normal methods. An interface is a contract of methods; since Java 8 it can also have default and static methods, but no instance fields. A class can extend only one class but implement many interfaces. Example: Vehicle can be an abstract class with a speed field, and Flyable an interface. Use case: I use an interface for a capability many unrelated classes share, and an abstract class when classes share common state and code."
+    - q: "(Collections) How does HashMap work internally?"
+      a: "Concept: HashMap stores key-value pairs in an array of buckets. The key's hashCode decides the bucket, and equals finds the exact key inside the bucket. Example: put(\"pen\", 10) goes to the bucket for \"pen\".hashCode(); putting \"pen\" again replaces the value. Since Java 8, a very crowded bucket becomes a tree for speed. Use case: fast lookups in constant time on average, so I override both equals and hashCode for custom keys."
+    - q: "(Exceptions) What is the difference between checked and unchecked exceptions?"
+      a: "Concept: checked exceptions are checked by the compiler, so I must catch them or declare throws; unchecked exceptions are RuntimeException and its children, and the compiler does not force handling. Example: IOException is checked; NullPointerException and ArithmeticException are unchecked. Use case: checked exceptions for recoverable situations like a missing file, unchecked for programming mistakes."
+    - q: "(Strings) Why should we use StringBuilder in a loop?"
+      a: "Concept: String is immutable, so every plus in a loop creates a new String object. StringBuilder is mutable and changes the same object. Example: building a 10,000-number string with plus creates thousands of temporary objects; with append it uses one builder. Use case: any string built in a loop; StringBuffer only if many threads share it, since it is synchronized and slower."
+    - q: "(Java 8) What is a functional interface and a lambda?"
+      a: "Concept: a functional interface has exactly one abstract method, like Runnable or Comparator. A lambda is a short way to write the implementation of that one method. Example: (a, b) -> a - b is a Comparator for sorting numbers. Use case: streams, sorting and event handlers become much shorter and easier to read."
+    - q: "(Threads) What does the synchronized keyword do?"
+      a: "Concept: synchronized lets only one thread at a time run a block or method on the same lock, so shared data isn't corrupted. Example: two threads doing count++ on a shared counter can lose updates; making the increment method synchronized fixes it. Use case: protecting shared mutable data; for simple counters, AtomicInteger is often better."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which order makes the strongest spoken answer to a Java theory question?"
+    code: null
+    options: ["Use case -> Concept -> Example", "Concept -> Example -> Use case", "Example only, with lots of code", "A memorised textbook definition"]
+    answer: 1
+    explanation: "Start with a clear Concept so the listener knows what you're explaining, then an Example to prove it, then a Use case to show practical sense. Starting with a use case confuses the listener, and a bare definition shows memory, not understanding."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "(Strings) What does this print?"
+    code: |
+      String s1 = "java";
+      String s2 = new String("java");
+      System.out.println((s1 == s2) + " " + s1.equals(s2) + " " + (s1 == s2.intern()));
+    options: ["true true true", "false true false", "false true true", "false false true"]
+    answer: 2
+    explanation: "s2 is a new object, so s1 == s2 is false. equals compares content, so true. intern() returns the pooled copy of \"java\", which is exactly s1, so the last comparison is true. The tempting \"false true false\" forgets what intern() does."
+  - id: q3
+    type: MCQ
+    prompt: "(OOP) Which statement about overloading and overriding is correct?"
+    code: null
+    options:
+      - "Overloading is decided at runtime; overriding at compile time"
+      - "Overloading: same name, different parameters, decided at compile time. Overriding: same signature in a child class, decided at runtime"
+      - "Both need inheritance"
+      - "Overriding can change the parameter list"
+    answer: 1
+    explanation: "Overloading happens in the same class (or inherited) with different parameter lists and is chosen by the compiler. Overriding redefines a parent method with the same signature and is chosen at runtime by the actual object. Changing parameters makes it an overload, not an override."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "(Exceptions) A finally block runs even when the try block executes a return statement."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. finally runs before the method actually returns. It is skipped only in special cases such as System.exit() or the JVM crashing."
+  - id: q5
+    type: SPOT_THE_BUG
+    prompt: "(Collections) This should remove even numbers, but it crashes. Why?"
+    code: |
+      List<Integer> nums = new ArrayList<>(List.of(1, 2, 3, 4));
+      for (Integer n : nums) {
+          if (n % 2 == 0) nums.remove(n);
+      }
+      System.out.println(nums);
+    options:
+      - "remove(n) removes by index, so it removes the wrong element"
+      - "Changing the list inside a for-each loop makes the fail-fast iterator throw ConcurrentModificationException"
+      - "List.of creates an immutable list, so remove fails"
+      - "Integer cannot be used with %"
+    answer: 1
+    explanation: "The for-each loop uses an iterator that is fail-fast: after nums.remove(2) changes the list, the next call to next() throws ConcurrentModificationException. Fix: nums.removeIf(n -> n % 2 == 0) or use iterator.remove(). n is an Integer, so remove(Object) is used (not index), and the list is a mutable ArrayList copy of List.of."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "(Collections) HashMap uses hashCode() to find the bucket, and which method to find the exact key inside it?"
+    code: |
+      // bucket = hash(key.hashCode())
+      // inside bucket: existingKey.____(key)
+    acceptedAnswers: ["equals", "equals()"]
+    explanation: "hashCode narrows down to a bucket; equals confirms the exact key. That's why you must override both together for custom key classes."
+  - id: q7
+    type: MATCH
+    prompt: "Match each practice question to the key point the answer must contain"
+    pairs:
+      - left: "Why is main static?"
+        right: "The JVM can call it without creating an object"
+      - left: "String vs StringBuilder"
+        right: "Immutable vs mutable"
+      - left: "Stack vs heap"
+        right: "Method calls and locals vs objects"
+      - left: "What is Optional?"
+        right: "A container that may be empty, to avoid NullPointerException"
+    explanation: "Each answer is built around one key point. Say it in the Concept step, then add an example and a use case."
+  - id: q8
+    type: PREDICT_OUTPUT
+    prompt: "(Java 8) What does this print?"
+    code: |
+      List<Integer> marks = List.of(45, 78, 90, 33, 61);
+      long passed = marks.stream().filter(m -> m >= 50).count();
+      int top = marks.stream().mapToInt(Integer::intValue).max().getAsInt();
+      System.out.println(passed + " " + top);
+    options: ["3 90", "2 90", "5 90", "3 78"]
+    answer: 0
+    explanation: "filter keeps 78, 90 and 61 (three marks of 50 or more), so count is 3. max over all marks is 90. \"2 90\" would forget that 61 also passes."
+explainBack:
+  prompt: "Pick any Java question (for example \"What is method overloading?\") and answer it aloud using Concept -> Example -> Use case, in under 60 seconds."
+  rubric:
+    - "I started with a one or two sentence Concept in plain words"
+    - "I gave a concrete Example (tiny code or real-life comparison)"
+    - "I ended with a Use case or rule of thumb"
+    - "I finished in under 60 seconds and then stopped"
+    - "I used simple, short sentences"
+  modelAnswer: |
+    Question: what is method overloading? Concept: overloading means having more than one method with the same name in a class, but with different parameters, like a different number or type of arguments. The compiler decides which one to call, so it's compile-time polymorphism. Example: a Calculator class can have add(int a, int b) and add(double a, double b). Calling add(2, 3) uses the int version, and add(2.5, 1.5) uses the double version. Use case: it keeps APIs simple. For example, System.out.println is overloaded for int, String, double and more, so we just call println with anything.
+flashcards:
+  - front: "C-E-U answer method"
+    back: "Concept (1-2 sentences) -> Example (tiny code or real-life) -> Use case (where you use it). Then stop."
+  - front: "Ideal spoken answer length"
+    back: "30-60 seconds. Let follow-up questions bring out more."
+  - front: "What to say when unsure"
+    back: "\"I'm not 100 percent sure, but I think ... because ...\" and reason aloud. Never bluff."
+  - front: "Best way to practise theory answers"
+    back: "5 questions a day, out loud, recorded; listen back and check the key point."
+  - front: "Key point: How does HashMap work?"
+    back: "hashCode picks the bucket, equals finds the exact key."
+keyTakeaways:
+  - "Answer every theory question with Concept -> Example -> Use case."
+  - "Keep it to 30-60 seconds, then stop and let them follow up."
+  - "Memorise key points and sentence starters, not whole answers."
+  - "Practise out loud and record yourself; speaking is a skill."
+  - "When unsure, reason honestly instead of bluffing."

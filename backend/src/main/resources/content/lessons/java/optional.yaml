@@ -1,0 +1,302 @@
+slug: optional
+world: JAVA_CORE
+section: F
+order: 4
+title: "Optional"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Modern Java knowledge for SP and DSE rounds; the orElse vs orElseGet difference is a favourite tricky follow-up."
+otherCompanies: "Part of the 'Java 8 features' discussion at TCS, Wipro, Cognizant, Accenture, Capgemini; product companies and Spring Boot code (findById returns Optional) use it daily."
+why: |
+  The most common exception in Java is the **`NullPointerException`** (NPE): calling a method on something that is `null`. The inventor of null references, Tony Hoare, even called it his "billion-dollar mistake".
+
+  Java 8 added **`Optional<T>`**: a small box that **may or may not contain a value**. When a method returns `Optional`, it is telling you clearly: "the answer might be missing, please handle that".
+
+  You'll meet it everywhere:
+  - stream methods like `findFirst()`, `max()`, `reduce()` return `Optional`,
+  - Spring Data's `repository.findById(id)` returns `Optional`.
+
+  Interviewers ask what it is, how to use it **properly**, and the classic trap: **`orElse` vs `orElseGet`**.
+analogy: |
+  Think of ordering food online and getting a **delivery box**.
+
+  - Usually the box has your biryani inside (`Optional.of(biryani)`).
+  - Sometimes the restaurant is out of stock, and you get an **empty box** with a note (`Optional.empty()`), instead of the delivery person showing up with **nothing at all** (`null`) and you biting the air.
+
+  With a box, you can say: "If there's food, eat it (`ifPresent`); if the box is empty, make Maggi instead (`orElse`)". You never have to guess whether the delivery person even came.
+visual:
+  diagram: |
+    Two Optional<String> boxes
+    +----------------------+      +----------------------+
+    |  Optional.of("Ravi") |      |  Optional.empty()    |
+    |   +--------------+   |      |   +--------------+   |
+    |   |    "Ravi"    |   |      |   |   (nothing)  |   |
+    |   +--------------+   |      |   +--------------+   |
+    +----------------------+      +----------------------+
+       isPresent() -> true           isPresent() -> false
+       map(toUpperCase)              map(...) -> still empty
+          -> Optional["RAVI"]        orElse("Guest") -> "Guest"
+       orElse("Guest") -> "Ravi"     get() -> NoSuchElementException
+
+    Optional.ofNullable(x):  x == null ? empty() : of(x)
+  caption: "Optional is a box that holds one value or nothing. Operations on an empty box just pass the emptiness along, until you choose a fallback."
+  visualizer: null
+explanation: |
+  ### What is Optional?
+  `java.util.Optional<T>` is a **container** (wrapper) that holds **either one non-null value or nothing**. It forces the caller to think about the "missing" case instead of forgetting a null check.
+
+  ### Creating an Optional
+  | Method | When to use | If value is null |
+  |---|---|---|
+  | `Optional.of(value)` | you are sure it's not null | throws `NullPointerException` |
+  | `Optional.ofNullable(value)` | it might be null | returns `Optional.empty()` |
+  | `Optional.empty()` | you have no value | - |
+
+  ### Checking and reading
+  | Method | Meaning |
+  |---|---|
+  | `isPresent()` / `isEmpty()` (Java 11) | is there a value? |
+  | `get()` | return the value, or throw `NoSuchElementException` if empty (avoid!) |
+  | `orElseThrow()` (Java 10) | same as `get()` but the name is honest |
+  | `orElseThrow(() -> new XException())` | throw your own exception if empty |
+  | `ifPresent(consumer)` | run code only if there's a value |
+  | `ifPresentOrElse(consumer, runnable)` (Java 9) | value -> first; empty -> second |
+
+  ### Fallbacks: orElse vs orElseGet (the classic trap)
+  ```java
+  String name = opt.orElse(loadDefault());          // loadDefault() ALWAYS runs
+  String name = opt.orElseGet(() -> loadDefault()); // runs ONLY if empty
+  ```
+  - `orElse(x)` takes a **value**. Java must compute `x` **before** calling `orElse`, even if the Optional has a value and `x` is thrown away.
+  - `orElseGet(supplier)` takes a **Supplier** (a lambda), which is called **only when needed**. This is **lazy**.
+
+  For a constant like `orElse("Guest")` it doesn't matter. For something expensive (a database call, creating a big object), use `orElseGet`.
+
+  ### Transforming: map, filter, flatMap
+  These work like on a stream with 0 or 1 elements:
+  ```java
+  Optional<String> email = findUser(id)        // Optional<User>
+      .map(User::getEmail)                     // Optional<String>
+      .filter(e -> e.endsWith("@example.com"));  // empty if it doesn't match
+  ```
+  - `map(fn)`: if present, apply `fn` and wrap the result (if `fn` returns null, you get empty).
+  - `filter(pred)`: keep the value only if it matches.
+  - `flatMap(fn)`: use when `fn` itself returns an `Optional`, to avoid `Optional<Optional<T>>`.
+
+  This replaces "pyramids" of null checks:
+  ```java
+  // old style
+  String city = "Unknown";
+  if (user != null && user.getAddress() != null && user.getAddress().getCity() != null) {
+      city = user.getAddress().getCity();
+  }
+  // Optional style
+  String city = Optional.ofNullable(user)
+      .map(User::getAddress)
+      .map(Address::getCity)
+      .orElse("Unknown");
+  ```
+
+  ### Good and bad uses
+  | Do | Don't |
+  |---|---|
+  | Use as a **method return type** when "no result" is normal | Use as a **field** in a class (it's not Serializable, adds overhead) |
+  | Chain `map` / `filter` / `orElse` | Use as a **method parameter** (callers can still pass null) |
+  | Return `Optional.empty()` instead of null | Return `null` from a method whose type is Optional |
+  | Use `orElseThrow` when missing is an error | Call `get()` without checking, or write `if (opt.isPresent()) opt.get()` everywhere (that's just a null check in disguise) |
+  | Return an empty list for "no items" | Wrap collections: `Optional<List<T>>` |
+
+  ### Primitive versions
+  `OptionalInt`, `OptionalLong`, `OptionalDouble` avoid boxing. For example `IntStream.of(3, 9).max()` returns an `OptionalInt`, read with `getAsInt()` or `orElse(0)`.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class SafeLookup {
+        static Map<Integer, String> users = Map.of(1, "ravi", 2, "anu");
+
+        static Optional<String> findName(int id) {
+            return Optional.ofNullable(users.get(id));   // null becomes empty
+        }
+
+        public static void main(String[] args) {
+            System.out.println(findName(1));
+            System.out.println(findName(9));
+
+            String greeting = findName(2)
+                .map(String::toUpperCase)
+                .map(n -> "Hello " + n)
+                .orElse("Hello guest");
+            System.out.println(greeting);
+
+            findName(9).ifPresentOrElse(
+                n -> System.out.println("Found " + n),
+                () -> System.out.println("No user 9"));
+
+            try {
+                findName(9).orElseThrow(() -> new IllegalArgumentException("bad id"));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+    }
+  walkthrough: |
+    - `users.get(id)` returns `null` for a missing id. `Optional.ofNullable` turns that into `Optional.empty()` instead of passing null around.
+    - Printing an Optional shows `Optional[ravi]` or `Optional.empty`.
+    - For id 2: `map(String::toUpperCase)` gives `Optional[ANU]`, the next `map` gives `Optional[Hello ANU]`, and `orElse` unwraps it.
+    - For id 9: `ifPresentOrElse` runs the second part because the box is empty.
+    - `orElseThrow` with a supplier throws our own exception when empty.
+
+    Output:
+    ```
+    Optional[ravi]
+    Optional.empty
+    Hello ANU
+    No user 9
+    Error: bad id
+    ```
+tryIt:
+  instructions: "Type this program to feel the difference between orElse and orElseGet. Count how many times 'Loading default...' prints, then swap the two lines and count again."
+  code: |
+    import java.util.*;
+
+    public class Fallback {
+        static String loadDefault() {
+            System.out.println("Loading default...");
+            return "default-city";
+        }
+
+        public static void main(String[] args) {
+            Optional<String> city = Optional.of("Chennai");
+            Optional<String> none = Optional.empty();
+
+            System.out.println(city.orElse(loadDefault()));
+            System.out.println(city.orElseGet(() -> loadDefault()));
+            System.out.println(none.orElseGet(Fallback::loadDefault));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class OptPredict {
+        public static void main(String[] args) {
+            Optional<String> a = Optional.of("  java  ");
+            Optional<String> b = a.map(String::trim).filter(s -> s.length() > 5);
+            Optional<String> c = a.map(String::trim).filter(s -> s.length() == 4);
+            System.out.println(b.isPresent() + " " + c.orElse("none"));
+            System.out.println(Optional.ofNullable(null).map(Object::toString).orElse("empty"));
+        }
+    }
+  expectedOutput: |
+    false java
+    empty
+  explanation: |
+    `trim()` turns `"  java  "` into `"java"` (length 4). For `b`, the filter `length > 5` fails, so `b` is **empty**: `isPresent()` is `false`. For `c`, the filter `length == 4` passes, so `orElse` returns `"java"`. On the last line, `ofNullable(null)` is empty; `map` on an empty Optional does nothing, so `orElse` gives `"empty"`.
+commonMistakes:
+  - "Calling get() without checking. On an empty Optional it throws NoSuchElementException, which is just an NPE with a new name."
+  - "Using Optional.of(x) when x might be null: it throws NullPointerException. Use Optional.ofNullable(x)."
+  - "Using orElse(expensiveCall()) and being surprised it always runs. Use orElseGet(() -> expensiveCall())."
+  - "Using Optional as a class field or method parameter. It's designed for return values."
+  - "Returning null from a method declared to return Optional. Return Optional.empty()."
+  - "Writing if (opt.isPresent()) { use(opt.get()); } everywhere. Prefer ifPresent, map and orElse."
+interviewBox:
+  why: "Why interviewers ask this: Optional shows whether you write null-safe code, and the orElse/orElseGet question checks if you understand eager vs lazy evaluation."
+  questions:
+    - q: "What is Optional and why was it introduced?"
+      a: "Optional is a container that either holds one non-null value or is empty. It was added in Java 8 to make 'no result' explicit in the method's return type, so callers are forced to handle the missing case instead of getting a NullPointerException."
+    - q: "What is the difference between orElse and orElseGet?"
+      a: "orElse takes a ready value, so the expression is always evaluated, even if the Optional has a value. orElseGet takes a Supplier, which is called only if the Optional is empty. So for an expensive default, like a database call, orElseGet is better."
+    - q: "What is the difference between Optional.of and Optional.ofNullable?"
+      a: "Optional.of requires a non-null value and throws NullPointerException if you pass null. Optional.ofNullable accepts null and returns an empty Optional in that case."
+    - q: "Where should you not use Optional?"
+      a: "Not as a field in a class, not as a method parameter, and not to wrap collections. It's meant for return values. For no items I return an empty list, and I avoid calling get without checking."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      Optional<Integer> o = Optional.of(10);
+      System.out.println(o.map(x -> x * 3).filter(x -> x > 20).orElse(0));
+      System.out.println(o.filter(x -> x > 20).map(x -> x * 3).orElse(0));
+    options: ["30\n0", "30\n30", "0\n0", "0\n30"]
+    answer: 0
+    explanation: "Line 1: 10 * 3 = 30, which passes > 20, so 30. Line 2: 10 fails > 20 first, so the Optional becomes empty, map is skipped, and orElse gives 0. Order matters, which is why '30 30' is wrong."
+  - id: q2
+    type: MCQ
+    prompt: "Which call throws NullPointerException?"
+    code: null
+    options: ["Optional.empty()", "Optional.ofNullable(null)", "Optional.of(null)", "Optional.of(\"\")"]
+    answer: 2
+    explanation: "Optional.of requires a non-null value. ofNullable(null) safely returns empty, and an empty String is not null."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This method is called for an id that doesn't exist. What goes wrong?"
+    code: |
+      static String cityOf(Map<Integer, String> cities, int id) {
+          Optional<String> city = Optional.ofNullable(cities.get(id));
+          return city.get().toUpperCase();
+      }
+    options:
+      - "ofNullable cannot accept the result of Map.get"
+      - "get() on an empty Optional throws NoSuchElementException; use orElse, orElseGet or orElseThrow with a clear message"
+      - "toUpperCase cannot be called on a String from a Map"
+      - "Nothing; Optional prevents all exceptions"
+    answer: 1
+    explanation: "Wrapping in Optional and then calling get() blindly brings the crash right back. Use city.map(String::toUpperCase).orElse(\"UNKNOWN\") or orElseThrow. 'Optional prevents all exceptions' is the tempting myth."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In opt.orElse(compute()), compute() runs even when opt contains a value."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. orElse takes a value, so Java evaluates compute() before calling orElse. orElseGet(() -> compute()) would run it only when opt is empty."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that safely wraps a value that might be null."
+    code: |
+      Optional<String> nick = Optional.____(user.getNickname());
+    acceptedAnswers: ["ofNullable"]
+    explanation: "ofNullable returns Optional.empty() for null and Optional.of(value) otherwise. Optional.of would throw for a null nickname."
+  - id: q6
+    type: MATCH
+    prompt: "Match each Optional method to what it does"
+    pairs:
+      - left: "orElse(value)"
+        right: "Returns the value or a ready fallback (fallback always computed)"
+      - left: "orElseGet(supplier)"
+        right: "Returns the value or calls the supplier only if empty"
+      - left: "orElseThrow(supplier)"
+        right: "Returns the value or throws the given exception"
+      - left: "ifPresent(consumer)"
+        right: "Runs code only when a value exists"
+    explanation: "All four unwrap the box safely; choose based on what 'missing' should mean in your code."
+explainBack:
+  prompt: "Explain to a friend what Optional is, how it helps avoid NullPointerException, and the difference between orElse and orElseGet."
+  rubric:
+    - "I said Optional is a box that holds a value or nothing"
+    - "I explained of vs ofNullable vs empty"
+    - "I showed map/filter/orElse chaining instead of null checks"
+    - "I explained orElse is eager and orElseGet is lazy"
+    - "I said where not to use it (fields, parameters, calling get blindly)"
+  modelAnswer: |
+    Optional is like a delivery box that either has one item or is empty, instead of returning null. When a method returns Optional, the caller can see that the result might be missing and must handle it. I create one with Optional.of for sure values, ofNullable when it might be null, and empty for nothing. Instead of nested null checks, I chain map and filter and finish with orElse. The trap is orElse versus orElseGet: orElse always evaluates its fallback, even when there's a value, while orElseGet only calls its lambda when the box is empty. I use Optional for return values, not for fields or parameters, and I avoid calling get blindly.
+flashcards:
+  - front: "Optional.of vs ofNullable"
+    back: "of(null) throws NullPointerException; ofNullable(null) returns Optional.empty()."
+  - front: "orElse vs orElseGet"
+    back: "orElse(value): fallback always evaluated (eager). orElseGet(supplier): called only if empty (lazy)."
+  - front: "get() on an empty Optional"
+    back: "Throws NoSuchElementException. Prefer orElse, orElseGet, orElseThrow, ifPresent."
+  - front: "Where to use Optional"
+    back: "Method return types. Not fields, not parameters, not wrapping collections."
+  - front: "Replace user.getAddress().getCity() null checks"
+    back: "Optional.ofNullable(user).map(User::getAddress).map(Address::getCity).orElse(\"Unknown\")"
+keyTakeaways:
+  - "Optional is a box holding one non-null value or nothing; it makes 'no result' explicit."
+  - "Create with of (non-null), ofNullable (maybe null) or empty."
+  - "Chain map, filter, flatMap; finish with orElse, orElseGet, orElseThrow or ifPresent."
+  - "orElse is eager, orElseGet is lazy: use orElseGet for expensive fallbacks."
+  - "Use Optional for return values only; never call get() blindly."

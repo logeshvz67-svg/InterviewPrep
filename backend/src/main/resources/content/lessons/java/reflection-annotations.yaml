@@ -1,0 +1,350 @@
+slug: reflection-annotations
+world: JAVA_CORE
+section: I
+order: 4
+title: "Reflection and annotations"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+infosysRelevance: "The bridge to Spring Boot: understanding how @Component, @Autowired and @GetMapping work at runtime is useful for SP and DSE interviews that go into frameworks."
+otherCompanies: "Product companies often ask how frameworks work under the hood; reflection and custom annotations are the answer."
+why: |
+  When you write `@RestController` or `@Autowired` in Spring Boot, *who reads those `@` words* and acts on them? The answer is **reflection**.
+
+  - **Annotations** are labels you stick on classes, methods and fields.
+  - **Reflection** is Java's ability to look at a class **while the program is running**: list its methods, read its labels, create objects and call methods by name.
+
+  Put them together and you understand how Spring, JUnit and Hibernate work. Interviewers ask "how does @Autowired work?" or "what is @Retention?" to see if you understand frameworks, not just use them.
+analogy: |
+  Think of **luggage at an airport**.
+
+  - You stick **tags** on bags: "FRAGILE", "PRIORITY", "BLR". The tags don't move the bag; they are just information. Those are **annotations**.
+  - The **scanner and sorting staff** look at every bag, read the tags, and act: priority bags go first, fragile bags are handled gently. That is **reflection** (the framework reading your classes at runtime).
+  - Some tags are **removed at check-in** (only the counter staff see them). Others **stay on the bag all the way** to the destination. That is **retention**: `SOURCE` tags vanish after compiling, `RUNTIME` tags are still there while the program runs, so the framework can read them.
+visual:
+  diagram: |
+    Your code                          Spring at startup (reflection)
+    ---------------------------        -----------------------------------
+    @RestController                    1. scan classes, find @RestController
+    class OrderController {            2. clazz.getDeclaredConstructor()
+                                             .newInstance()  -> object
+      @Autowired                       3. field has @Autowired?
+      OrderService service;               field.setAccessible(true)
+                                          field.set(obj, serviceBean)
+      @GetMapping("/orders")           4. method has @GetMapping("/orders")?
+      List<Order> all() {...}             remember: "/orders" -> all()
+    }
+                                       On request GET /orders:
+                                          method.invoke(obj) -> JSON
+  caption: "Annotations are labels in your code; at runtime the framework uses reflection to find them, create objects, inject fields and call methods."
+  visualizer: null
+explanation: |
+  ### Part 1: Reflection
+  **Reflection** means inspecting and using classes, methods and fields **at runtime**, using their names, even if you didn't know them when you wrote the code.
+
+  Everything starts with a **Class object**, which describes a class:
+  ```java
+  Class<?> c1 = String.class;               // from the type
+  Class<?> c2 = "hello".getClass();         // from an object
+  Class<?> c3 = Class.forName("java.lang.String"); // from a name (text)
+  ```
+
+  What you can do with it:
+  | Goal | Code |
+  |---|---|
+  | Class name | `c.getName()`, `c.getSimpleName()` |
+  | All fields declared in the class (incl. private) | `c.getDeclaredFields()` |
+  | Public methods (incl. inherited) | `c.getMethods()` |
+  | All methods declared in the class (incl. private) | `c.getDeclaredMethods()` |
+  | Create an object | `c.getDeclaredConstructor().newInstance()` |
+  | Call a method | `method.invoke(object, args...)` |
+  | Read/write a private field | `field.setAccessible(true); field.get(obj)` |
+
+  Note the difference: **getMethods** = public only (including from parents); **getDeclaredMethods** = everything written in this class, including private.
+
+  ### Why is reflection useful, and what does it cost?
+  **Useful**: frameworks (Spring, Hibernate, JUnit), serializers like Jackson (JSON), IDE tools, plugins loaded by name.
+
+  **Costs**:
+  - **Slower** than normal calls.
+  - **Breaks encapsulation**: `setAccessible(true)` lets you touch private fields.
+  - **Errors move to runtime**: a misspelt method name compiles fine and fails later with `NoSuchMethodException`.
+  So in normal application code, avoid it; let frameworks use it.
+
+  ### Part 2: Annotations
+  An **annotation** is **metadata**: extra information about code, written with `@`. By itself it does nothing; some tool must read it.
+
+  Built-in ones you know:
+  - `@Override`: compiler checks you really override a parent method.
+  - `@Deprecated`: warns that something is old.
+  - `@FunctionalInterface`: compiler checks there is exactly one abstract method.
+  - `@SuppressWarnings("unchecked")`: hides a compiler warning.
+
+  ### Making your own annotation
+  ```java
+  @Retention(RetentionPolicy.RUNTIME)   // keep it while the program runs
+  @Target(ElementType.METHOD)           // may be put only on methods
+  @interface Run {
+      int times() default 1;            // an annotation "element"
+  }
+  ```
+  - `@interface` declares an annotation type.
+  - Elements look like methods with no body; `default` gives a default value.
+
+  ### Retention: how long the label lives
+  | Policy | Kept until | Reflection can see it? | Example |
+  |---|---|---|---|
+  | `SOURCE` | Removed by the compiler | No | `@Override` |
+  | `CLASS` (default) | In the .class file, not loaded at runtime | No | rarely used |
+  | `RUNTIME` | Available while running | **Yes** | `@Component`, `@Autowired` |
+
+  This is the classic trap: if you forget `@Retention(RetentionPolicy.RUNTIME)`, `isAnnotationPresent` returns `false`.
+
+  ### Part 3: How Spring reads your @Annotations
+  1. **Component scan**: at startup Spring looks through your packages for classes with `@Component`, `@Service`, `@RestController`...
+  2. **Create beans**: it creates one object per class using reflection (`getDeclaredConstructor().newInstance()` or a constructor with arguments) and keeps them in its container.
+  3. **Dependency injection**: for constructors or fields marked `@Autowired`, it finds a matching bean and passes it in (for fields, via `field.setAccessible(true)` and `field.set(...)`).
+  4. **Request mapping**: it remembers which method has `@GetMapping("/orders")`. When that URL is hit, it calls the method with `method.invoke(...)` and turns the result into JSON.
+
+  So annotations are the **instructions**, and reflection is the **reader** that follows them. You will write a tiny version of this below.
+tinyCode:
+  code: |
+    import java.lang.annotation.*;
+    import java.lang.reflect.*;
+    import java.util.*;
+
+    public class MiniFramework {
+        @Retention(RetentionPolicy.RUNTIME)
+        @Target(ElementType.METHOD)
+        @interface Run {
+            int times() default 1;
+        }
+
+        static class Tasks {
+            @Run(times = 2)
+            public void greet() { System.out.println("Namaste!"); }
+
+            @Run
+            public void report() { System.out.println("Report ready"); }
+
+            public void ignored() { System.out.println("never printed"); }
+        }
+
+        public static void main(String[] args) throws Exception {
+            Class<?> clazz = Tasks.class;
+            Object obj = clazz.getDeclaredConstructor().newInstance();
+
+            Method[] methods = clazz.getDeclaredMethods();
+            Arrays.sort(methods, Comparator.comparing(Method::getName));
+
+            for (Method m : methods) {
+                if (m.isAnnotationPresent(Run.class)) {
+                    int n = m.getAnnotation(Run.class).times();
+                    for (int i = 0; i < n; i++) {
+                        m.invoke(obj);
+                    }
+                }
+            }
+        }
+    }
+  walkthrough: |
+    - `@interface Run` creates our own annotation with one element, `times`, defaulting to 1.
+    - `@Retention(RUNTIME)` keeps the label alive while running, so reflection can see it. `@Target(METHOD)` allows it only on methods.
+    - `Tasks` has two labelled methods and one unlabelled method.
+    - `Tasks.class` gives the Class object. `getDeclaredConstructor().newInstance()` creates a `Tasks` object **without writing `new Tasks()`**, exactly like a framework.
+    - `getDeclaredMethods()` lists the methods. The JVM does not promise any order, so we sort by name to get the same output every time.
+    - `isAnnotationPresent(Run.class)` checks the label; `getAnnotation(Run.class).times()` reads its value.
+    - `m.invoke(obj)` calls the method by reflection.
+
+    Output:
+    ```
+    Namaste!
+    Namaste!
+    Report ready
+    ```
+    This is the same idea Spring uses for `@GetMapping`, and JUnit uses for `@Test`.
+tryIt:
+  instructions: "Type this. It lists the fields of a class, including private ones, and changes a private field from outside. Add another field to Employee and run again."
+  code: |
+    import java.lang.reflect.Field;
+
+    public class Peek {
+        static class Employee {
+            private String name = "Kiran";
+            private int salary = 30000;
+        }
+
+        public static void main(String[] args) throws Exception {
+            Employee e = new Employee();
+            Class<?> c = e.getClass();
+            System.out.println("Class: " + c.getSimpleName());
+
+            for (Field f : c.getDeclaredFields()) {
+                f.setAccessible(true);
+                System.out.println(f.getName() + " = " + f.get(e));
+            }
+
+            Field salary = c.getDeclaredField("salary");
+            salary.setAccessible(true);
+            salary.setInt(e, 45000);
+            System.out.println("New salary: " + salary.getInt(e));
+        }
+    }
+predict:
+  code: |
+    import java.lang.annotation.*;
+
+    public class Ret {
+        @interface Plain {}
+
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface Live {}
+
+        @Plain @Live
+        static class Target {}
+
+        public static void main(String[] args) {
+            System.out.println(Target.class.isAnnotationPresent(Plain.class));
+            System.out.println(Target.class.isAnnotationPresent(Live.class));
+        }
+    }
+  expectedOutput: |
+    false
+    true
+  explanation: |
+    `Plain` has no `@Retention`, so it uses the default, `CLASS`: it is stored in the .class file but not available at runtime, so reflection cannot see it and prints `false`. `Live` has `RUNTIME` retention, so it prints `true`. This is exactly why Spring's annotations are all `RUNTIME`.
+commonMistakes:
+  - "Forgetting @Retention(RetentionPolicy.RUNTIME) on a custom annotation, so reflection never finds it."
+  - "Thinking an annotation does something by itself. It is only a label; code (compiler, framework) must read it."
+  - "Using getMethod/getField for private members. They return public ones only; use getDeclaredMethod/getDeclaredField plus setAccessible(true)."
+  - "Using reflection in everyday business code. It is slower, breaks encapsulation and moves errors to runtime."
+  - "Saying @Override is needed for overriding. It is optional; it just asks the compiler to check."
+interviewBox:
+  why: "Why interviewers ask this: it shows whether you understand what frameworks like Spring do for you, instead of treating annotations as magic."
+  questions:
+    - q: "What is reflection in Java?"
+      a: "Reflection is the ability to inspect and use classes at runtime. Using the Class object, I can list fields and methods, create objects, call methods by name, and even read private fields with setAccessible. Frameworks like Spring, Hibernate and JUnit use it heavily."
+    - q: "What are the disadvantages of reflection?"
+      a: "It is slower than normal calls, it can break encapsulation by accessing private members, and mistakes like a wrong method name are found only at runtime, not by the compiler. So I avoid it in normal code and leave it to frameworks."
+    - q: "What is an annotation, and what is retention?"
+      a: "An annotation is metadata, a label like @Override on code. Retention says how long it lives: SOURCE means only the compiler sees it, CLASS means it is in the class file but not at runtime, and RUNTIME means reflection can read it while the program runs. Spring annotations are RUNTIME."
+    - q: "How does Spring's @Autowired work internally?"
+      a: "At startup Spring scans for classes with annotations like @Component and creates objects for them using reflection. Then it looks for constructors or fields marked @Autowired, finds a matching bean of that type, and injects it, for fields using setAccessible and set. So the annotation is the instruction and reflection does the work."
+    - q: "How do you create a custom annotation?"
+      a: "I declare it with @interface, add @Retention to say how long it lives and @Target to say where it can be used, and I can add elements like int times() default 1. Then I write code that reads it with reflection, for example method.isAnnotationPresent."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which call returns ALL methods written in a class, including private ones, but not inherited ones?"
+    code: null
+    options: ["getMethods()", "getDeclaredMethods()", "getAllMethods()", "getPublicMethods()"]
+    answer: 1
+    explanation: "getDeclaredMethods() returns every method declared in that class, private included. getMethods() returns only public methods, but includes inherited ones. getAllMethods and getPublicMethods do not exist."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "An annotation with no @Retention can be read with isAnnotationPresent at runtime."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The default retention is CLASS, which is not available at runtime. You need @Retention(RetentionPolicy.RUNTIME)."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.lang.reflect.Field;
+
+      public class Pin {
+          static class Secret { private int pin = 1234; }
+
+          public static void main(String[] args) throws Exception {
+              Secret s = new Secret();
+              Field f = Secret.class.getDeclaredField("pin");
+              f.setAccessible(true);
+              f.setInt(s, 9999);
+              System.out.println(s.getClass().getSimpleName() + " " + f.getInt(s));
+          }
+      }
+    options: ["Secret 1234", "Secret 9999", "Pin$Secret 9999", "IllegalAccessException"]
+    answer: 1
+    explanation: "setAccessible(true) switches off the private check, so setInt changes pin to 9999. getSimpleName() returns just \"Secret\"; getName() would give \"Pin$Secret\". Without setAccessible(true) you would get an IllegalAccessException."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This throws NoSuchMethodException. Why?"
+    code: |
+      import java.lang.reflect.Method;
+
+      public class Call {
+          static class Helper {
+              private void clean() { System.out.println("cleaned"); }
+          }
+
+          public static void main(String[] args) throws Exception {
+              Method m = Helper.class.getMethod("clean");
+              m.invoke(new Helper());
+          }
+      }
+    options:
+      - "invoke needs at least one argument"
+      - "getMethod only finds public methods; use getDeclaredMethod(\"clean\") and setAccessible(true)"
+      - "Static nested classes cannot be used with reflection"
+      - "The method name must include brackets: \"clean()\""
+    answer: 1
+    explanation: "getMethod searches public methods only, and clean() is private, so it throws NoSuchMethodException. getDeclaredMethod finds private methods; then setAccessible(true) allows the call. invoke with no extra arguments is fine for a no-argument method, and the name is given without brackets."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill the keyword used to declare a custom annotation type."
+    code: |
+      @Retention(RetentionPolicy.RUNTIME)
+      public @____ Audit {
+          String value();
+      }
+    acceptedAnswers: ["interface"]
+    explanation: "Annotations are declared with @interface. Here the blank comes after @, so the answer is interface."
+  - id: q6
+    type: MATCH
+    prompt: "Match each Spring step to the reflection idea behind it"
+    pairs:
+      - left: "Component scan finds @Service classes"
+        right: "Reading RUNTIME annotations on classes"
+      - left: "Spring creates the bean"
+        right: "getDeclaredConstructor().newInstance()"
+      - left: "@Autowired on a private field"
+        right: "field.setAccessible(true) then field.set(...)"
+      - left: "@GetMapping handles a request"
+        right: "method.invoke(controller, args)"
+    explanation: "Each Spring feature is reflection under the hood: read labels, create objects, set fields and call methods."
+  - id: q7
+    type: MCQ
+    prompt: "Which retention policy does @Override use, and why?"
+    code: null
+    options: ["RUNTIME, so Spring can read it", "SOURCE, because only the compiler needs it", "CLASS, so the JVM checks overriding", "It has no retention"]
+    answer: 1
+    explanation: "@Override is a message to the compiler (\"check that I really override\"). After compiling it is useless, so it has SOURCE retention. Nothing at runtime needs it."
+explainBack:
+  prompt: "Explain to a friend how Spring knows what to do when it sees @Autowired or @GetMapping in your code."
+  rubric:
+    - "I said annotations are only labels (metadata) and do nothing alone"
+    - "I said reflection lets code inspect classes, fields and methods at runtime"
+    - "I explained RUNTIME retention is needed for reflection to see a label"
+    - "I described Spring scanning, creating objects, injecting fields and invoking methods"
+    - "I used the airport luggage tag analogy or a similar one"
+  modelAnswer: |
+    Annotations like @Autowired are just labels, like tags on airport luggage. They don't do anything themselves. Spring is like the airport staff that reads the tags. At startup it uses reflection, which means looking at classes while the program runs. It scans my packages for classes tagged @Component or @RestController, creates objects of them using their constructors, then finds fields or constructors tagged @Autowired and plugs in the right objects. It also remembers which method has @GetMapping with which URL, and when a request comes, it calls that method using method.invoke. This only works because these annotations have RUNTIME retention, so they're still there when the program runs.
+flashcards:
+  - front: "What is reflection?"
+    back: "Inspecting and using classes, fields, methods and constructors at runtime through the Class object."
+  - front: "getMethods vs getDeclaredMethods"
+    back: "getMethods: public incl. inherited. getDeclaredMethods: all in this class incl. private, not inherited."
+  - front: "Three retention policies"
+    back: "SOURCE (compiler only), CLASS (default; in .class, not at runtime), RUNTIME (readable by reflection)."
+  - front: "How to declare a custom annotation"
+    back: "@Retention(RUNTIME) @Target(METHOD) @interface Name { int value() default 1; }"
+  - front: "How does @Autowired work?"
+    back: "Spring finds the annotated field/constructor via reflection and injects a matching bean (field.setAccessible(true); field.set(...))."
+keyTakeaways:
+  - "Annotations are labels; something must read them."
+  - "Reflection reads classes at runtime: create objects, read fields, call methods by name."
+  - "Only RUNTIME-retention annotations are visible to reflection."
+  - "Spring = component scan + reflection-based creation + injection + method.invoke."
+  - "Reflection is powerful but slow and unsafe for everyday code."

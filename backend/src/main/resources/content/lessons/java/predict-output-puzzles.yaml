@@ -1,0 +1,319 @@
+slug: predict-output-puzzles
+world: JAVA_CORE
+section: J
+order: 2
+title: "Predict-the-output puzzles"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Interview practice: output-prediction snippets are a common style in written MCQ rounds and technical interviews; this builds the habit of tracing code exactly."
+otherCompanies: "Predict-the-output questions are common in aptitude-style technical MCQs across service companies and in product-company phone screens."
+why: |
+  "What does this code print?" questions look easy, but they hide **traps**: a `char` that is secretly a number, an `Integer` that is cached, a `switch` that falls through.
+
+  They test whether you can run code **in your head** exactly like the JVM: a **mental compiler**. That skill also makes you much faster at debugging real code.
+
+  The good news: there are only about **ten classic traps**. Once you know them, most puzzles become simple. This lesson teaches the traps and a tracing method, and the quiz gives you 8 tricky puzzles, all verified by actually running them.
+analogy: |
+  Think of a **cricket umpire** watching a close run-out.
+
+  A fan watches the whole play and *feels* what happened. The umpire uses the **replay, frame by frame**, and decides by the rules, not by feelings.
+
+  Predict-the-output puzzles are designed to fool the fan's feeling. Your job is to be the umpire: go **line by line**, write down each variable's value (frame by frame), and apply the exact Java rule at every step.
+visual:
+  diagram: |
+    TRACE TABLE for:   int i = 5;  i = i++ + ++i;
+
+    step                     i (memory)   value used
+    -----------------------  ----------   ----------
+    start                        5
+    i++  : use 5, then +1        6            5
+    ++i  : +1 first, use it      7            7
+    5 + 7 = 12, assign to i     12
+                                         result: i = 12
+
+    LEFT-TO-RIGHT for "+":   1 + 2 + "3" + 4 + 5
+      (1 + 2)      = 3           int + int     -> number
+      3 + "3"      = "33"        int + String  -> text
+      "33" + 4     = "334"       text + anything -> text
+      "334" + 5    = "3345"
+  caption: "Trace like an umpire: write each variable's value step by step and apply one rule at a time. Here, i ends at 12 and the expression gives \"3345\"."
+  visualizer: null
+explanation: |
+  ### The tracing method
+  1. Read the code **top to bottom**, one statement at a time.
+  2. Keep a small **trace table**: one column per variable, one row per step.
+  3. For each expression, apply **operator precedence** (which operator goes first) and **left-to-right** evaluation.
+  4. Write the output **exactly**, including spaces and new lines (`print` vs `println`).
+  Never answer from the "feel" of the code. Most puzzles are built so that the feeling is wrong.
+
+  ### The 10 classic traps
+  **1. `+` with Strings is evaluated left to right.** Numbers add until the first String appears; after that, everything is joined as text.
+  `1 + 2 + "3"` is `"33"`, but `"1" + 2 + 3` is `"123"`.
+
+  **2. `char` is a number.** `'a'` is 97, `'b'` is 98. So `'a' + 'b'` is `195` (an int), not `"ab"`. Only once a String is involved does it become text: `"" + 'a' + 'b'` is `"ab"`.
+
+  **3. Integer division throws away the decimal.** `7 / 2` is `3`. `double d = 7 / 2;` gives `3.0`, because the division happens **in int first**, then the result is converted. Write `7 / 2.0` to get `3.5`. Also `%` keeps the sign of the left number: `-7 % 3` is `-1`.
+
+  **4. `i++` vs `++i`.** `i++` (post-increment) **uses the old value**, then adds 1. `++i` (pre-increment) adds 1 **first**, then uses the new value. And `i = i++;` leaves `i` **unchanged**.
+
+  **5. The Integer cache.** Java keeps ready-made `Integer` objects for values **-128 to 127**. So `Integer a = 127, b = 127;` gives `a == b` true (same cached object), but with 128 it is false (two new objects). Always compare wrapper objects with `equals`.
+
+  **6. Strings are immutable.** `s.toUpperCase()` or `s.concat("x")` returns a **new** String. If you don't assign it (`s = s.concat("x")`), `s` does not change.
+
+  **7. Overriding vs hiding.** With `Parent p = new Child();`:
+  | You access | Decided by | Gives |
+  |---|---|---|
+  | instance method `p.show()` | the **object** (runtime) | Child's version |
+  | field `p.name` | the **reference type** (compile time) | Parent's field |
+  | static method `p.info()` | the **reference type** | Parent's version |
+  Only instance methods are polymorphic.
+
+  **8. finally always runs, and can even replace the return value.** If `finally` has its own `return`, it **wins** over the return in `try`. (This is bad style, which is why it is a favourite puzzle.)
+
+  **9. switch fall-through.** In an old-style `switch` with `case X:`, execution continues into the next cases until a `break`. The new arrow form `case X ->` does not fall through.
+
+  **10. Overload and collection traps.**
+  - `list.remove(1)` on a `List<Integer>` removes the element **at index 1**, not the value 1. Use `list.remove(Integer.valueOf(1))` for the value.
+  - `m(null)` with `m(Object)` and `m(String)` calls `m(String)`: Java picks the **most specific** type.
+
+  ### Quick reference
+  | Expression | Result |
+  |---|---|
+  | `1 + 2 + "3"` | `"33"` |
+  | `'a' + 1` | `98` |
+  | `(char) ('a' + 1)` | `'b'` |
+  | `7 / 2` | `3` |
+  | `-7 % 3` | `-1` |
+  | `10 == 10.0` | `true` (int widened to double) |
+  | `0.1 + 0.2 == 0.3` | `false` (floating-point rounding) |
+tinyCode:
+  code: |
+    public class MentalCompiler {
+        public static void main(String[] args) {
+            System.out.println(1 + 2 + "3" + 4 + 5);
+            System.out.println("" + 'a' + 'b');
+            System.out.println('a' + 'b');
+            System.out.println(7 / 2 + " " + 7 / 2.0 + " " + 7 % 2);
+
+            int i = 5;
+            int j = i++ + ++i;
+            System.out.println(i + " " + j);
+        }
+    }
+  walkthrough: |
+    - Line 1: `1 + 2` is `3` (both ints), then `3 + "3"` is `"33"`, then `"334"`, then `"3345"`.
+    - Line 2: `"" + 'a'` is `"a"`, then `"ab"`. Starting with a String turns everything into text.
+    - Line 3: no String at all, so `'a' + 'b'` is `97 + 98 = 195`.
+    - Line 4: `7 / 2` is int division, `3`. `7 / 2.0` is `3.5`. `7 % 2` (remainder) is `1`.
+    - Line 5: `i++` gives 5 (then `i` becomes 6), `++i` makes `i` 7 and gives 7. `j = 5 + 7 = 12`, and `i` is 7.
+
+    Output:
+    ```
+    3345
+    ab
+    195
+    3 3.5 1
+    7 12
+    ```
+tryIt:
+  instructions: "Before running, write your predicted output on paper for each line. Then type and run it. Every line you got wrong points to one trap from the list."
+  code: |
+    public class Traps {
+        public static void main(String[] args) {
+            System.out.println("1" + 2 + 3);
+            System.out.println(1 + 2 + "3");
+            System.out.println((char) ('A' + 2));
+
+            double d = 9 / 4;
+            System.out.println(d);
+
+            int x = 10;
+            x = x++;
+            System.out.println(x);
+
+            Integer a = 100, b = 100;
+            Integer c = 1000, e = 1000;
+            System.out.println((a == b) + " " + (c == e) + " " + c.equals(e));
+        }
+    }
+predict:
+  code: |
+    public class Immutable {
+        public static void main(String[] args) {
+            String s = "hello";
+            s.concat(" world");
+            s.toUpperCase();
+            System.out.println(s);
+            s = s.concat("!");
+            System.out.println(s.length());
+        }
+    }
+  expectedOutput: |
+    hello
+    6
+  explanation: |
+    Strings are immutable. `concat` and `toUpperCase` return **new** Strings, but the results are thrown away, so `s` is still "hello". The line `s = s.concat("!")` assigns the new String "hello!" back to `s`, so its length is 6.
+commonMistakes:
+  - "Answering from the 'feel' of the code instead of tracing line by line."
+  - "Forgetting that + works left to right: numbers add first, then become text once a String appears."
+  - "Treating char as text in arithmetic. 'a' + 'b' is the number 195."
+  - "Comparing Integer objects with ==. It works only inside the cache range -128 to 127."
+  - "Expecting fields and static methods to be polymorphic. Only instance methods use the object's runtime type."
+  - "Ignoring print vs println, so the line breaks in your answer are wrong."
+interviewBox:
+  why: "Why interviewers ask this: output questions check precise knowledge of Java rules in a few seconds, and show whether you can debug by reading code."
+  questions:
+    - q: "Why does 1 + 2 + \"3\" give \"33\" but \"1\" + 2 + 3 give \"123\"?"
+      a: "The plus operator is evaluated left to right. In the first case, 1 + 2 are both ints, so they add to 3, and then 3 plus the String \"3\" joins as text, giving \"33\". In the second case, the first operand is already a String, so every plus after it is text joining, giving \"123\"."
+    - q: "Integer a = 127, b = 127 gives a == b true, but with 128 it's false. Why?"
+      a: "Java caches Integer objects from -128 to 127. Autoboxing 127 reuses the same cached object, so == is true. 128 is outside the cache, so two different objects are created and == compares references, giving false. That's why we compare wrapper objects with equals."
+    - q: "What happens if both try and finally have a return statement?"
+      a: "finally always runs before the method returns, and if it has its own return, that value replaces the one from try. So the method returns the finally value. It's considered bad practice because it hides the real result and can even swallow exceptions."
+    - q: "With Parent p = new Child(), which runs for p.show() and which field do you get for p.name?"
+      a: "For the instance method show, Java looks at the actual object at runtime, so Child's version runs. Fields are not polymorphic; they are chosen by the reference type at compile time, so p.name gives Parent's field. Static methods are also chosen by the reference type."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Puzzle 1 (Wrappers). What does this print?"
+    code: |
+      Integer a = 127, b = 127;
+      Integer c = 128, d = 128;
+      System.out.println((a == b) + " " + (c == d));
+    options: ["true true", "true false", "false false", "false true"]
+    answer: 1
+    explanation: "127 is inside the Integer cache (-128 to 127), so a and b are the same object: true. 128 is outside, so c and d are two different objects and == compares references: false. \"true true\" assumes == compares values for wrappers; it doesn't."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Puzzle 2 (Strings and chars). What does this print?"
+    code: |
+      System.out.println('a' + 'b' + "c");
+      System.out.println("c" + 'a' + 'b');
+    options: ["abc\ncab", "195c\ncab", "195c\nc195", "abc\nc195"]
+    answer: 1
+    explanation: "Left to right: 'a' + 'b' are both chars, so they add as numbers 97 + 98 = 195, then + \"c\" gives \"195c\". In the second line the String comes first, so each char is joined as text: \"cab\". \"c195\" is wrong because after a String, + never does arithmetic on the following chars."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "Puzzle 3 (Operators). What does this print?"
+    code: |
+      int i = 5;
+      i = i++ + ++i;
+      int k = 3;
+      k = k++;
+      System.out.println(i + " " + k);
+    options: ["12 3", "11 4", "12 4", "13 3"]
+    answer: 0
+    explanation: "i++ uses 5 (i becomes 6), ++i makes i 7 and uses 7, so i = 5 + 7 = 12. For k = k++: the old value 3 is saved, k becomes 4, then the saved 3 is assigned back, so k stays 3. \"12 4\" is the common trap for k."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "Puzzle 4 (OOP). What does this print?"
+    code: |
+      public class Hide {
+          static class Parent {
+              String name = "Parent";
+              void show() { System.out.print("P-show "); }
+              static void info() { System.out.print("P-info "); }
+          }
+          static class Child extends Parent {
+              String name = "Child";
+              void show() { System.out.print("C-show "); }
+              static void info() { System.out.print("C-info "); }
+          }
+
+          public static void main(String[] args) {
+              Parent p = new Child();
+              p.show();
+              p.info();
+              System.out.println(p.name);
+          }
+      }
+    options: ["C-show C-info Child", "C-show P-info Parent", "P-show P-info Parent", "C-show C-info Parent"]
+    answer: 1
+    explanation: "Only instance methods are overridden: show() uses the real object, Child, so C-show. Static methods are hidden, not overridden, and are chosen by the reference type Parent: P-info. Fields are also chosen by the reference type: Parent. \"C-show C-info Child\" assumes everything is polymorphic."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "Puzzle 5 (Collections). What does this print?"
+    code: |
+      List<Integer> list = new ArrayList<>(List.of(10, 20, 30, 1));
+      list.remove(1);
+      list.remove(Integer.valueOf(1));
+      System.out.println(list);
+    options: ["[20, 30]", "[10, 30]", "[10, 20, 30]", "[30, 1]"]
+    answer: 1
+    explanation: "remove(1) with an int calls remove(int index), so it removes the element at index 1, which is 20. remove(Integer.valueOf(1)) calls remove(Object), so it removes the value 1. What is left is [10, 30]. \"[10, 20, 30]\" assumes remove(1) removes the value 1."
+  - id: q6
+    type: PREDICT_OUTPUT
+    prompt: "Puzzle 6 (Exceptions). What does this print?"
+    code: |
+      public class Fin {
+          static int value() {
+              try {
+                  return 1;
+              } finally {
+                  return 2;
+              }
+          }
+
+          public static void main(String[] args) {
+              System.out.println(value());
+          }
+      }
+    options: ["1", "2", "1 then 2 on the next line", "Compile error: unreachable return"]
+    answer: 1
+    explanation: "finally always runs before the method returns, and a return inside finally replaces the pending return value from try. So the method returns 2. Only one value is ever returned, and the code compiles (javac only gives a lint warning)."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "Puzzle 7 (Numbers). This code prints 3.5"
+    code: |
+      double d = 7 / 2;
+      System.out.println(d);
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False, it prints 3.0. 7 / 2 is calculated with ints first, which gives 3 (the decimal is thrown away); only then is 3 converted to the double 3.0. Write 7 / 2.0 or (double) 7 / 2 to get 3.5."
+  - id: q8
+    type: FILL_THE_CODE
+    prompt: "Puzzle 8 (Control flow). Type exactly what this prints."
+    code: |
+      int day = 2;
+      String s = "";
+      switch (day) {
+          case 1: s += "A";
+          case 2: s += "B";
+          case 3: s += "C"; break;
+          default: s += "D";
+      }
+      System.out.println(s); // prints: ____
+    acceptedAnswers: ["BC"]
+    explanation: "The switch jumps to case 2 and adds B. There is no break, so it falls through into case 3 and adds C, then hits break. default is never reached. So it prints BC, not just B."
+explainBack:
+  prompt: "Explain to a friend how you solve a predict-the-output question, and describe any three classic traps."
+  rubric:
+    - "I described tracing line by line with a table of variable values"
+    - "I explained left-to-right + with Strings (1 + 2 + \"3\")"
+    - "I explained at least two more traps (char arithmetic, Integer cache, i++, integer division, fall-through, finally)"
+    - "I said to check print vs println and exact spacing"
+    - "I used the umpire replay analogy or similar"
+  modelAnswer: |
+    I don't trust my first feeling. I act like an umpire watching a replay: I go line by line and keep a small table with each variable's value. Then I apply Java's exact rules. Three classic traps: first, plus is evaluated left to right, so 1 + 2 + "3" gives "33", because numbers add until a String appears. Second, a char is really a number, so 'a' + 'b' prints 195. Third, Integer objects between -128 and 127 are cached, so == works there but fails for 128. I also watch for integer division, i++ versus ++i, and missing breaks in switch, and finally I check print versus println for exact line breaks.
+flashcards:
+  - front: "1 + 2 + \"3\" vs \"1\" + 2 + 3"
+    back: "\"33\" vs \"123\". + goes left to right; numbers add until a String appears."
+  - front: "'a' + 'b'"
+    back: "195 (chars are numbers: 97 + 98)."
+  - front: "Integer cache range"
+    back: "-128 to 127. Inside it, == on autoboxed Integers is true; outside, false. Use equals."
+  - front: "double d = 7 / 2; prints?"
+    back: "3.0 (int division happens first)."
+  - front: "return in try AND in finally?"
+    back: "The finally return wins."
+  - front: "list.remove(1) on List<Integer>"
+    back: "Removes index 1, not the value 1. Use remove(Integer.valueOf(1)) for the value."
+keyTakeaways:
+  - "Trace line by line with a table; never answer by feel."
+  - "+ is left to right; chars are numbers; int division drops decimals."
+  - "i++ uses the old value; ++i uses the new one; i = i++ changes nothing."
+  - "Wrapper == works only in the cache range; use equals."
+  - "Only instance methods are polymorphic; fields and static methods follow the reference type."
+  - "finally always runs; old-style switch falls through without break."

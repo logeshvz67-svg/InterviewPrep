@@ -1,0 +1,307 @@
+slug: list-implementations
+world: JAVA_CORE
+section: E
+order: 4
+title: "ArrayList vs LinkedList vs Vector vs Stack"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A top comparison question for SP and DSE; knowing the Big-O of each list operation also helps you justify choices in coding rounds."
+otherCompanies: "'ArrayList vs LinkedList' is among the most common Java questions at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  **"ArrayList vs LinkedList?"** is one of the most asked Java questions anywhere. Most people answer "LinkedList is faster for insertion" and stop. That answer is only half true, and interviewers know it.
+
+  To answer well you need to know **what is inside** each class, the **Big-O** (how the time grows as the list grows) of each operation, and **why ArrayList wins in most real programs**.
+
+  Vector and Stack are old (legacy) classes, but they still appear in questions: "Vector vs ArrayList?" and "Why not use Stack?". After this lesson you can answer all four in one breath.
+analogy: |
+  Think of **two ways to seat 100 people**.
+
+  - **ArrayList** is a **row of numbered cinema seats**. To find seat 57, walk straight to it: instant. Adding someone at the end is easy. But squeezing someone into seat 3 means **everyone from seat 3 onwards shifts one seat right**.
+  - **LinkedList** is a **treasure hunt with chits**: each person only knows who is next and who is before. Adding someone in the middle is just changing two chits, **but first you must walk the chain from the start to find that spot**. Finding person 57 means asking 57 people one by one.
+  - **Vector** is the cinema row with a **security guard** who lets only one person move at a time (synchronized): safe, but slow.
+  - **Stack** is a **pile of plates** built on top of that guarded row: last plate in, first plate out.
+visual:
+  diagram: |
+    ArrayList (resizable array, one block of memory)
+      index:   0     1     2     3     4    (spare capacity)
+            +-----+-----+-----+-----+-----+-----+-----+
+            |  A  |  B  |  C  |  D  |  E  |     |     |
+            +-----+-----+-----+-----+-----+-----+-----+
+      get(3) -> jump straight to slot 3          O(1)
+      add(1, X) -> shift B,C,D,E right by one    O(n)
+      full? -> new array 1.5x bigger, copy all
+
+    LinkedList (doubly linked nodes, scattered in memory)
+      head                                         tail
+       |                                            |
+      [A] <-> [B] <-> [C] <-> [D] <-> [E]
+      each node = prev pointer + value + next pointer
+      get(3) -> walk A, B, C, D                  O(n)
+      addFirst(X) / addLast(X) -> relink         O(1)
+  caption: "ArrayList stores elements side by side, so index access is instant but middle inserts shift elements. LinkedList stores separate nodes, so ends are cheap but finding a position means walking the chain."
+  visualizer: null
+explanation: |
+  ### ArrayList: a resizable array
+  Inside, an `ArrayList` keeps a normal **array** (`Object[] elementData`) and a `size` counter.
+  - **Capacity** = length of the inside array. **Size** = how many elements you actually stored.
+  - `new ArrayList<>()` starts with an empty array; the first `add` creates capacity **10**.
+  - When the array is full, it creates a new array about **1.5 times bigger** (`old + old/2`) and copies everything. Copying is O(n), but it happens rarely, so adding at the end is **O(1) amortized** (on average over many adds).
+  - Tip: if you know the size, use `new ArrayList<>(1000)` to avoid repeated growing.
+
+  ### LinkedList: a doubly linked list
+  A `LinkedList` stores each element in a separate **node** object with three fields: `prev`, `item`, `next`. It remembers `first` and `last`.
+  - Adding/removing at the **ends** is O(1): just relink pointers.
+  - `get(i)` must **walk** from the nearer end (Java starts from the end closer to `i`), so it is O(n).
+  - It implements both `List` and `Deque`, so it has `addFirst`, `pollLast`, etc.
+
+  ### Big-O comparison
+  | Operation | ArrayList | LinkedList |
+  |---|---|---|
+  | `get(i)` / `set(i, x)` | **O(1)** | O(n) |
+  | `add(x)` at end | O(1) amortized | O(1) |
+  | `add(0, x)` at start | O(n) (shift all) | **O(1)** |
+  | `add(i, x)` / `remove(i)` in middle | O(n) (shift) | O(n) (walk) + O(1) (relink) |
+  | `remove` last | O(1) | O(1) |
+  | `contains(x)` / `indexOf(x)` | O(n) | O(n) |
+  | Extra memory per element | ~1 reference | a whole node (2 extra references + object header) |
+
+  ### Why ArrayList usually wins
+  1. **Most code reads by index or loops**, where ArrayList is O(1) per access.
+  2. **"LinkedList inserts are O(1)" is misleading**: inserting at position `i` still needs O(n) to *find* position `i`. Only inserts at the ends, or through an iterator you already hold, are truly O(1).
+  3. **CPU cache**: ArrayList's elements sit side by side in memory, so the CPU reads them in fast chunks. LinkedList nodes are scattered, so each step may be a slow memory fetch. Even ArrayList's "slow" shifting uses a very fast `System.arraycopy`.
+  4. **Memory**: each LinkedList node costs much more memory than one array slot, which also means more garbage collection.
+
+  **Rule of thumb:** use `ArrayList` by default. If you need fast add/remove at **both ends** (a queue or stack), use **`ArrayDeque`**, not LinkedList. LinkedList is rarely the best choice in modern Java.
+
+  ### Vector: the old synchronized ArrayList
+  `Vector` (Java 1.0) is also a resizable array, but:
+  - every method is **synchronized** (only one thread at a time can use it), which makes it slower even in single-threaded code;
+  - it **doubles** its capacity when full (ArrayList grows by 1.5x).
+  For thread safety today, use `Collections.synchronizedList(new ArrayList<>())` or `CopyOnWriteArrayList`.
+
+  ### Stack: LIFO on top of Vector
+  `Stack` extends `Vector` and adds `push`, `pop`, `peek`, `empty`, `search`. **LIFO** means Last In, First Out.
+  Problems: it is synchronized (slow), and because it **extends Vector** it also exposes `get(i)` and `add(i, x)`, which break the "only touch the top" idea. Java's own docs recommend `Deque<Integer> stack = new ArrayDeque<>();` instead (next lesson).
+
+  ### Summary table
+  | | ArrayList | LinkedList | Vector | Stack |
+  |---|---|---|---|---|
+  | Inside | Array | Doubly linked nodes | Array | Array (extends Vector) |
+  | Index access | O(1) | O(n) | O(1) | O(1) |
+  | Synchronized | No | No | Yes | Yes |
+  | Growth | 1.5x | per node | 2x | 2x |
+  | Status | Default choice | Rarely best | Legacy | Legacy: use ArrayDeque |
+
+  ### Trap: remove(int) vs remove(Object)
+  On a `List<Integer>`, `list.remove(1)` removes **index 1**, not the value 1, because `remove(int index)` matches an `int` exactly. To remove the value, write `list.remove(Integer.valueOf(1))`.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Seats {
+        public static void main(String[] args) {
+            List<String> row = new ArrayList<>(List.of("A", "B", "C", "D"));
+            row.add(1, "X");              // shift B, C, D to the right
+            System.out.println(row + " get(2)=" + row.get(2));
+
+            LinkedList<String> chain = new LinkedList<>(List.of("A", "B", "C"));
+            chain.addFirst("start");     // O(1): relink at the head
+            chain.addLast("end");        // O(1): relink at the tail
+            System.out.println(chain + " first=" + chain.getFirst());
+
+            Stack<Integer> plates = new Stack<>();
+            plates.push(1); plates.push(2); plates.push(3);
+            System.out.println("pop=" + plates.pop() + " peek=" + plates.peek());
+            System.out.println("Stack is a Vector? " + (plates instanceof Vector));
+        }
+    }
+  walkthrough: |
+    - `row.add(1, "X")` inserts at index 1; B, C and D each shift one place right. `get(2)` jumps straight to index 2, which is now "B".
+    - `LinkedList` has `addFirst` and `addLast`; both just relink pointers at the ends.
+    - `Stack` is LIFO: after pushing 1, 2, 3, `pop()` removes 3, and `peek()` looks at the new top, 2, without removing it.
+    - `instanceof Vector` is `true`, because `Stack extends Vector`. That's why it is synchronized and why it also allows unsafe index operations.
+
+    Output:
+    ```
+    [A, X, B, C, D] get(2)=B
+    [start, A, B, C, end] first=start
+    pop=3 peek=2
+    Stack is a Vector? true
+    ```
+tryIt:
+  instructions: "Type this timing experiment. It reads every element by index from an ArrayList and a LinkedList of the same size. Run it and compare the times (exact numbers depend on your computer)."
+  code: |
+    import java.util.*;
+
+    public class Race {
+        static long timeGets(List<Integer> list) {
+            long start = System.nanoTime();
+            long sum = 0;
+            for (int i = 0; i < list.size(); i++) {
+                sum += list.get(i);
+            }
+            long ms = (System.nanoTime() - start) / 1_000_000;
+            System.out.println(list.getClass().getSimpleName() + " sum=" + sum + " time=" + ms + " ms");
+            return ms;
+        }
+        public static void main(String[] args) {
+            List<Integer> array = new ArrayList<>();
+            List<Integer> linked = new LinkedList<>();
+            for (int i = 0; i < 50_000; i++) {
+                array.add(i);
+                linked.add(i);
+            }
+            timeGets(array);
+            timeGets(linked);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class RemoveTrap {
+        public static void main(String[] args) {
+            List<Integer> nums = new ArrayList<>(List.of(10, 1, 20, 1, 30));
+            nums.remove(1);
+            System.out.println(nums);
+            nums.remove(Integer.valueOf(1));
+            System.out.println(nums);
+            nums.add(0, 5);
+            System.out.println(nums + " size=" + nums.size());
+        }
+    }
+  expectedOutput: |
+    [10, 20, 1, 30]
+    [10, 20, 30]
+    [5, 10, 20, 30] size=4
+  explanation: |
+    `nums.remove(1)` calls `remove(int index)`, so it removes the element at **index 1** (the first `1`), not "the value 1". `remove(Integer.valueOf(1))` calls `remove(Object)` and removes the first element **equal** to 1. `add(0, 5)` inserts at the front and shifts everything right.
+commonMistakes:
+  - "Saying LinkedList insertion is always O(1). Inserting at index i needs O(n) to walk there first."
+  - "Choosing LinkedList for random access with get(i). It's O(n) per call, so a loop with get(i) becomes O(n²)."
+  - "Confusing capacity with size. Capacity is the inside array length; size is the number of stored elements."
+  - "Calling list.remove(1) on a List<Integer> expecting to remove the value 1. It removes index 1."
+  - "Using Vector or Stack in new code. Use ArrayList, and ArrayDeque for stacks."
+interviewBox:
+  why: "Why interviewers ask this: it checks whether you know data structure internals and can choose the right tool, instead of repeating a half-true rule."
+  questions:
+    - q: "What is the difference between ArrayList and LinkedList?"
+      a: "ArrayList uses a resizable array, so get by index is O(1), adding at the end is amortized O(1), but inserting or removing in the middle shifts elements, O(n). LinkedList uses doubly linked nodes, so adding or removing at the ends is O(1), but get by index is O(n) because it walks the chain. In practice ArrayList is usually faster because of cache-friendly memory and lower memory use."
+    - q: "How does ArrayList grow internally?"
+      a: "It keeps an Object array. The default capacity becomes 10 on the first add. When it's full, it creates a new array about 1.5 times bigger and copies the elements over. Because this happens rarely, adding at the end is O(1) amortized."
+    - q: "Difference between ArrayList and Vector?"
+      a: "Both are resizable arrays. Vector is a legacy class whose methods are synchronized, so it's thread-safe but slower, and it doubles in size when full. ArrayList is not synchronized and grows by 1.5 times. Today we use ArrayList, or a concurrent list if we need thread safety."
+    - q: "Why is Stack not recommended?"
+      a: "Stack extends Vector, so it's synchronized and slower, and it inherits index methods like get and add at position, which break the stack idea. The Java docs recommend using a Deque, like ArrayDeque, with push, pop and peek."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the time complexity of list.get(i) for an ArrayList and a LinkedList?"
+    code: null
+    options: ["O(1) and O(1)", "O(1) and O(n)", "O(n) and O(1)", "O(n) and O(n)"]
+    answer: 1
+    explanation: "ArrayList jumps straight to the array slot, O(1). LinkedList must walk node by node from one end, O(n)."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              List<Integer> list = new ArrayList<>(List.of(5, 6, 7, 8));
+              list.remove(2);
+              list.remove(Integer.valueOf(5));
+              System.out.println(list);
+          }
+      }
+    options: ["[6, 7, 8]", "[6, 8]", "[5, 6, 8]", "[7, 8]"]
+    answer: 1
+    explanation: "remove(2) removes index 2 (the value 7), giving [5, 6, 8]. remove(Integer.valueOf(5)) removes the value 5, giving [6, 8]. '[6, 7, 8]' is the trap: it treats remove(2) as removing the value 2, which isn't even in the list."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "Inserting into the middle of a LinkedList by index is O(1) because only two pointers change."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Relinking is O(1), but first the list must walk to that index, which is O(n). So add(i, x) on a LinkedList is O(n) overall."
+  - id: q4
+    type: MATCH
+    prompt: "Match each class with its description"
+    pairs:
+      - left: "ArrayList"
+        right: "Resizable array, grows 1.5x, not synchronized"
+      - left: "LinkedList"
+        right: "Doubly linked nodes, also a Deque"
+      - left: "Vector"
+        right: "Legacy synchronized array, grows 2x"
+      - left: "Stack"
+        right: "Legacy LIFO class that extends Vector"
+    explanation: "These four lines are the complete short answer to 'compare ArrayList, LinkedList, Vector and Stack'."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              Stack<String> s = new Stack<>();
+              s.push("a");
+              s.push("b");
+              s.push("c");
+              s.add(0, "z");
+              System.out.println(s.pop() + " " + s.peek() + " " + s);
+          }
+      }
+    options: ["c b [z, a, b]", "z c [a, b, c]", "c b [a, b]", "Compile error: Stack has no add(int, E)"]
+    answer: 0
+    explanation: "Because Stack extends Vector, add(0, \"z\") is allowed and puts z at the bottom: [z, a, b, c]. pop() removes c, peek() shows b, leaving [z, a, b]. This is exactly why Stack is considered badly designed: it lets you break LIFO."
+  - id: q6
+    type: MCQ
+    prompt: "You need a list where you mostly loop over elements and read them by index. Which is best?"
+    code: null
+    options: ["LinkedList", "ArrayList", "Vector", "Stack"]
+    answer: 1
+    explanation: "ArrayList gives O(1) index access and fast, cache-friendly loops. LinkedList's get(i) is O(n). Vector and Stack add unneeded synchronization."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the call that removes the VALUE 3 (not index 3) from a List<Integer>."
+    code: |
+      List<Integer> list = new ArrayList<>(List.of(1, 2, 3, 4, 5));
+      list.remove(____);
+      System.out.println(list);   // [1, 2, 4, 5]
+    acceptedAnswers: ["Integer.valueOf(3)", "(Integer) 3", "(Object) 3"]
+    explanation: "Passing an Integer object selects remove(Object), which removes the value. Plain remove(3) would remove index 3 (the value 4)."
+explainBack:
+  prompt: "Explain ArrayList vs LinkedList to a friend, including why ArrayList is usually the better choice, and why Vector and Stack are avoided."
+  rubric:
+    - "I said ArrayList is a resizable array with O(1) get and grows 1.5x"
+    - "I said LinkedList is doubly linked with O(1) ends but O(n) get"
+    - "I explained that middle inserts still cost O(n) in LinkedList (walking)"
+    - "I mentioned cache-friendliness and memory as reasons ArrayList wins"
+    - "I said Vector/Stack are legacy and synchronized; use ArrayDeque for stacks"
+  modelAnswer: |
+    ArrayList keeps elements in a resizable array, like numbered cinema seats. Getting element i is instant, O(1), and adding at the end is usually O(1); when it's full it makes a 1.5 times bigger array and copies. Inserting in the middle shifts elements, O(n). LinkedList is a chain of nodes with previous and next pointers. Adding at either end is O(1), but getting element i means walking the chain, O(n), and even a middle insert must walk first. In real programs ArrayList usually wins because its memory is side by side, which the CPU loves, and it uses less memory. Vector and Stack are old synchronized classes; for a stack I'd use ArrayDeque.
+flashcards:
+  - front: "ArrayList get(i) vs LinkedList get(i)"
+    back: "O(1) vs O(n)."
+  - front: "How does ArrayList grow?"
+    back: "New array about 1.5x bigger, copy elements. Default capacity 10 on first add. add at end = O(1) amortized."
+  - front: "Why does ArrayList usually beat LinkedList?"
+    back: "O(1) index access, cache-friendly contiguous memory, less memory per element; LinkedList middle inserts still need O(n) walking."
+  - front: "Vector vs ArrayList"
+    back: "Vector: legacy, synchronized, grows 2x. ArrayList: not synchronized, grows 1.5x, preferred."
+  - front: "list.remove(1) on List<Integer>?"
+    back: "Removes INDEX 1. Use list.remove(Integer.valueOf(1)) to remove the value 1."
+  - front: "What to use instead of Stack?"
+    back: "Deque<T> stack = new ArrayDeque<>(); with push, pop, peek."
+keyTakeaways:
+  - "ArrayList = resizable array: O(1) get, O(1) amortized add at end, O(n) middle insert."
+  - "LinkedList = doubly linked nodes: O(1) at ends, O(n) get and O(n) to reach a middle position."
+  - "ArrayList usually wins thanks to cache-friendly memory and lower overhead."
+  - "Vector and Stack are legacy synchronized classes; Stack wrongly exposes index methods."
+  - "Use ArrayDeque for stacks and queues."
+  - "remove(int) removes by index; remove(Object) removes by value."

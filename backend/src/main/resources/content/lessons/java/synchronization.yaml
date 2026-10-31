@@ -1,0 +1,384 @@
+slug: synchronization
+world: JAVA_CORE
+section: G
+order: 3
+title: "synchronized, volatile, wait/notify"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, TCS]
+infosysRelevance: "Depth topic for SP: expect follow-up questions on race conditions, synchronized vs volatile, and wait/notify."
+otherCompanies: "Important for product companies and TCS technical rounds; also appears in output-prediction and bug-spotting practice."
+why: |
+  Threads share the heap. That is powerful, but dangerous: when two threads change the **same variable at the same time**, updates can get lost. This bug is called a **race condition**, and it is one of the hardest bugs to find because it appears only *sometimes*.
+
+  In this lesson you'll learn the three classic tools Java gives you:
+  - **`synchronized`**: only one thread at a time may run a piece of code.
+  - **`volatile`**: every thread sees the latest value of a variable.
+  - **`wait()` / `notify()`**: one thread sleeps until another thread says "ready!"
+
+  Interview favourites: **"Why is `count++` not thread-safe?"**, **"synchronized vs volatile?"** and **"Why must `wait()` be called in a while loop?"**
+analogy: |
+  Think of a **single bathroom in a PG (paying guest) hostel** with one key.
+
+  - **`synchronized`**: whoever holds the key goes in; everyone else waits outside (BLOCKED). When they come out, they hand over the key. Only one person inside at a time.
+  - **Race condition**: no lock on the door. Two people walk in together. Chaos.
+  - **`volatile`**: a **notice board** in the corridor. When the warden writes "Water is off", everybody reads the latest notice, not an old photo of it on their phone. But a notice board does not stop two people from walking in together.
+  - **`wait()`/`notify()`**: you are in the bathroom (holding the key) and find there's no water. You **give back the key and wait on the sofa** (`wait()`). When the warden fixes the water, they shout "Water's back!" (`notifyAll()`). You wake up, take the key again, and **check the tap again** before bathing (the while loop), because someone may have used it all up already.
+visual:
+  diagram: |
+    RACE CONDITION: count++ is really 3 steps
+    (read count -> add 1 -> write count back)
+
+    count in heap = 5
+    Thread A              Thread B             count
+    ---------------------------------------------------
+    read  count (5)                              5
+                          read  count (5)        5
+    add 1  -> 6                                  5
+                          add 1  -> 6            5
+    write 6                                      6
+                          write 6                6  <- should be 7!
+
+    WITH synchronized: only one thread inside at a time
+    A: [read 5, add, write 6]  then  B: [read 6, add, write 7]
+  caption: "count++ is read-modify-write. If two threads interleave the steps, one update is lost. synchronized makes the three steps happen as one unit."
+  visualizer: null
+explanation: |
+  ### 1. The race condition
+  A **race condition** happens when the result depends on the *timing* of threads. The classic example:
+  ```java
+  static int count = 0;
+  // two threads each run this 100000 times:
+  count++;
+  ```
+  You expect 200000, but you often get less (e.g. 173851), and a different number each run.
+
+  **Why?** `count++` looks like one step, but it is three: **read** the value, **add 1**, **write** it back. If two threads read the same old value, both write the same new value, and one increment is lost (see the diagram). An operation that happens fully or not at all, with no one able to see it half-done, is called **atomic**. `count++` is **not atomic**.
+
+  The piece of code that touches shared data is called the **critical section**. We must let only one thread into it at a time.
+
+  ### 2. synchronized
+  Every Java object has a hidden **lock** (also called a **monitor**). `synchronized` means "take this lock before running, release it after".
+  ```java
+  public synchronized void increment() {  // lock = this object
+      count++;
+  }
+  ```
+  Or lock only the part that needs it with a **synchronized block**:
+  ```java
+  private final Object lock = new Object();
+  void add() {
+      synchronized (lock) {   // lock = the 'lock' object
+          count++;
+      }
+  }
+  ```
+  | Form | Which lock is used |
+  |---|---|
+  | `synchronized` instance method | `this` (the current object) |
+  | `synchronized` **static** method | The class object, e.g. `Counter.class` |
+  | `synchronized (obj) { ... }` | `obj` |
+
+  What `synchronized` gives you:
+  - **Mutual exclusion**: only one thread holds a given lock at a time. Others go to the **BLOCKED** state.
+  - **Visibility**: when a thread releases the lock, its changes become visible to the next thread that takes the same lock.
+  - It is **reentrant**: a thread already holding a lock can enter another `synchronized` method on the same lock without blocking itself.
+
+  Two threads only block each other if they use the **same lock object**. Synchronizing on two different objects protects nothing shared.
+
+  ### 3. volatile: visibility, not atomicity
+  For speed, each CPU core may keep a **cached copy** of a variable. One thread may keep reading its old copy and never see another thread's update. Marking a field `volatile` tells Java: always read and write it from **main memory**, so every thread sees the latest value.
+  ```java
+  private volatile boolean running = true;
+
+  // worker thread
+  while (running) { /* work */ }
+
+  // another thread
+  running = false;   // worker WILL see this and stop
+  ```
+  Without `volatile`, the worker might loop forever.
+
+  **But:** `volatile` does **not** make `count++` safe. Each read and each write is visible, but two threads can still read the same value and overwrite each other.
+
+  | | synchronized | volatile |
+  |---|---|---|
+  | Applies to | Methods and blocks | Fields (variables) only |
+  | Mutual exclusion (one at a time) | Yes | No |
+  | Visibility of latest value | Yes | Yes |
+  | Makes `count++` safe | Yes | **No** |
+  | Can block a thread | Yes | Never |
+  | Good for | Compound actions (read-modify-write) | Simple flags like `running`, `ready` |
+
+  ### 4. wait(), notify(), notifyAll()
+  Sometimes a thread must **wait until a condition is true** (e.g. "a message has arrived"). These methods are defined in `Object`:
+  - `wait()`: release the lock and sleep (state WAITING) until notified.
+  - `notify()`: wake up **one** waiting thread (you can't choose which).
+  - `notifyAll()`: wake up **all** waiting threads. Safer in most cases.
+
+  **Rule 1: call them only while holding the lock** of that object (inside `synchronized`). Otherwise Java throws `IllegalMonitorStateException`.
+
+  **Rule 2: always wait inside a `while` loop, never an `if`.**
+  ```java
+  synchronized String take() throws InterruptedException {
+      while (!ready) {   // NOT if
+          wait();
+      }
+      return message;
+  }
+  ```
+  Why a loop?
+  - **Spurious wakeup**: a thread may wake up even though nobody called notify. Java allows this.
+  - **Someone else got there first**: with `notifyAll()`, several waiting threads wake up; the first one may consume the item, and when your thread finally gets the lock, the condition is false again.
+  A `while` loop re-checks the condition after every wakeup. An `if` checks only once and then carries on with wrong data.
+
+  ### 5. sleep() vs wait()
+  | | `Thread.sleep(ms)` | `obj.wait()` |
+  |---|---|---|
+  | Defined in | `Thread` (static) | `Object` |
+  | Releases the lock? | **No** | **Yes** |
+  | Needs `synchronized`? | No | Yes |
+  | Wakes up when | Time is over | `notify`/`notifyAll` (or timeout) |
+
+  > Modern code often uses ready-made tools like `AtomicInteger`, `ReentrantLock` and `BlockingQueue` (lessons 5 and 6). But interviews still expect you to understand these basics.
+tinyCode:
+  code: |
+    public class SafeCounter {
+        private int count = 0;
+
+        public synchronized void increment() {
+            count++;
+        }
+
+        public static void main(String[] args) throws InterruptedException {
+            SafeCounter c = new SafeCounter();
+            Runnable task = () -> {
+                for (int i = 0; i < 10000; i++) {
+                    c.increment();
+                }
+            };
+            Thread t1 = new Thread(task);
+            Thread t2 = new Thread(task);
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+            System.out.println("Count = " + c.count);
+        }
+    }
+  walkthrough: |
+    - `count` lives in the heap inside one `SafeCounter` object, so **both threads share it**.
+    - `synchronized void increment()` means a thread must hold the lock of `c` (the object) to run it. Only one thread can be inside at a time, so the read-add-write steps never mix.
+    - Both threads run the same `task`: 10000 increments each.
+    - `t1.join(); t2.join();` make main wait until both finish, so we print the final value.
+    - The output is **always** `Count = 20000`. Remove the word `synchronized` and run it a few times: you may see smaller numbers.
+tryIt:
+  instructions: "Type this UNSAFE version and run it 4-5 times. Write down each result. You'll likely see a different number each time, usually below 200000. That is a race condition you can see with your own eyes. Then add a synchronized method (like the tiny code) and see it become 200000 every time."
+  code: |
+    public class RaceDemo {
+        static int count = 0;
+
+        public static void main(String[] args) throws InterruptedException {
+            Runnable task = () -> {
+                for (int i = 0; i < 100000; i++) {
+                    count++;
+                }
+            };
+            Thread t1 = new Thread(task);
+            Thread t2 = new Thread(task);
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+            System.out.println("Expected 200000, got " + count);
+        }
+    }
+predict:
+  code: |
+    public class Mailbox {
+        private String message;
+        private boolean ready = false;
+
+        public synchronized void put(String m) {
+            message = m;
+            ready = true;
+            notifyAll();
+        }
+
+        public synchronized String take() throws InterruptedException {
+            while (!ready) {
+                wait();
+            }
+            return message;
+        }
+
+        public static void main(String[] args) throws InterruptedException {
+            Mailbox box = new Mailbox();
+            Thread reader = new Thread(() -> {
+                try {
+                    System.out.println("Got: " + box.take());
+                } catch (InterruptedException e) { }
+            });
+            reader.start();
+            System.out.println("Main: sending");
+            box.put("hello");
+            reader.join();
+            System.out.println("Done");
+        }
+    }
+  expectedOutput: |
+    Main: sending
+    Got: hello
+    Done
+  explanation: |
+    This order is guaranteed even with two threads. The reader can only print after `take()` returns, and `take()` keeps waiting in the while loop until `ready` is true. `ready` becomes true only in `put()`, which main calls **after** printing "Main: sending". Then `notifyAll()` wakes the reader, it re-checks `ready` (true now) and prints "Got: hello". Finally `join()` makes main wait for the reader before printing "Done". If the reader happens to call `take()` after `put()`, the loop condition is already false, it doesn't wait at all, and the output is the same.
+commonMistakes:
+  - "Believing count++ is one atomic step. It is read, add, write."
+  - "Using volatile to fix a counter. volatile gives visibility, not atomicity; use synchronized or AtomicInteger."
+  - "Calling wait() or notify() outside a synchronized block on the same object: IllegalMonitorStateException."
+  - "Waiting with if (!ready) wait(); instead of while. Spurious wakeups and other consumers make the condition false again."
+  - "Synchronizing two threads on different lock objects, which protects nothing."
+  - "Thinking sleep() releases the lock. It does not; wait() does."
+interviewBox:
+  why: "Why interviewers ask this: thread-safety bugs are expensive in real systems, and these questions quickly show whether you understand shared memory or only memorised keywords."
+  questions:
+    - q: "What is a race condition? Give an example."
+      a: "A race condition is when the result depends on the timing of threads. For example, two threads doing count++ on a shared variable. count++ is read, add, write, so both can read the same value and one update is lost. We fix it with synchronized or an AtomicInteger."
+    - q: "What is the difference between synchronized and volatile?"
+      a: "synchronized gives mutual exclusion and visibility: only one thread runs the block at a time, and changes are visible afterwards. volatile only gives visibility: every thread reads the latest value from main memory. volatile is good for simple flags, but it does not make count++ atomic."
+    - q: "Why should wait() be called inside a while loop?"
+      a: "Because a thread can wake up even when the condition is still false, either due to a spurious wakeup or because another thread consumed the item first. A while loop checks the condition again after every wakeup, so the thread only continues when it is really true."
+    - q: "Difference between sleep() and wait()?"
+      a: "sleep is a static method of Thread; it pauses for some time and keeps any lock it holds. wait is a method of Object; it must be called inside synchronized, it releases the lock and waits until notify or notifyAll."
+    - q: "What lock does a synchronized static method use?"
+      a: "It locks on the Class object, for example Counter.class, not on any instance. So a static synchronized method and an instance synchronized method do not block each other."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "count is a plain static int starting at 0, with no synchronization. Two threads each run the loop, then main joins both and prints count. What is printed?"
+    code: |
+      Runnable task = () -> {
+          for (int i = 0; i < 100000; i++) {
+              count++;
+          }
+      };
+      // start t1 and t2 with task, then join both
+      System.out.println(count);
+    options:
+      - "Always 200000"
+      - "Always 100000"
+      - "Any value up to 200000; often less, and it can change each run"
+      - "Compile error: count++ is not allowed in a lambda"
+    answer: 2
+    explanation: "count++ is read-add-write, so increments can be lost when threads interleave. The result is unpredictable and usually below 200000. join() only waits for the threads to finish; it does not fix the lost updates. A static field can be changed inside a lambda (the 'effectively final' rule applies to local variables only)."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "Marking count as volatile makes count++ thread-safe."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. volatile guarantees every thread sees the latest value, but count++ is still three steps, so two threads can still read the same value and overwrite each other. Use synchronized or AtomicInteger."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Several consumer threads call take(). Producers call notifyAll() after adding an item. What is the bug?"
+    code: |
+      synchronized Item take() throws InterruptedException {
+          if (queue.isEmpty()) {
+              wait();
+          }
+          return queue.remove();
+      }
+    options:
+      - "wait() must be called outside synchronized"
+      - "It should use if/else instead of only if"
+      - "It should be while (queue.isEmpty()) so the condition is re-checked after waking up"
+      - "remove() cannot be used inside a synchronized method"
+    answer: 2
+    explanation: "After notifyAll() several consumers wake up. The first takes the item; the next one, using 'if', does not re-check and calls remove() on an empty queue. Spurious wakeups cause the same problem. A while loop re-checks. wait() must be INSIDE synchronized, so option A is backwards."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (Single thread, so the output is fixed.)"
+    code: |
+      Object lock = new Object();
+      try {
+          lock.wait();
+      } catch (IllegalMonitorStateException e) {
+          System.out.println("IllegalMonitorStateException");
+      } catch (InterruptedException e) {
+          System.out.println("Interrupted");
+      }
+    options: ["Nothing; it waits forever", "IllegalMonitorStateException", "Interrupted", "Compile error"]
+    answer: 1
+    explanation: "wait() may only be called by a thread that holds the object's lock (inside synchronized (lock)). Here it doesn't, so Java throws IllegalMonitorStateException right away. 'Waits forever' is tempting, but the call never gets to wait."
+  - id: q5
+    type: MCQ
+    prompt: "Which lock does a synchronized STATIC method use?"
+    code: null
+    options: ["this", "The Class object, e.g. Counter.class", "No lock; static methods can't be synchronized", "A new lock for each call"]
+    answer: 1
+    explanation: "Static methods have no 'this', so they lock on the Class object. That's why a static synchronized method and an instance synchronized method can run at the same time: they use different locks."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword so the worker thread always sees the latest value of the flag."
+    code: |
+      private ____ boolean running = true;
+
+      void work() {
+          while (running) { /* do work */ }
+      }
+    acceptedAnswers: ["volatile"]
+    explanation: "volatile makes reads and writes go to main memory, so when another thread sets running = false, the worker sees it and stops. For a simple flag that is only set (not read-modify-written), volatile is enough."
+  - id: q7
+    type: MATCH
+    prompt: "Match each tool to what it does"
+    pairs:
+      - left: "synchronized"
+        right: "Only one thread at a time, plus visibility"
+      - left: "volatile"
+        right: "Latest value visible to all threads, no locking"
+      - left: "wait()"
+        right: "Release the lock and sleep until notified"
+      - left: "notifyAll()"
+        right: "Wake up every thread waiting on this object"
+      - left: "Thread.sleep()"
+        right: "Pause for a time while keeping any lock held"
+    explanation: "synchronized locks; volatile only shares the latest value; wait releases the lock, sleep doesn't; notifyAll wakes all waiters, which then compete for the lock."
+  - id: q8
+    type: MCQ
+    prompt: "Thread A runs a synchronized block on lockA; Thread B runs a synchronized block on lockB. Both blocks change the same counter. What happens?"
+    code: null
+    options:
+      - "They take turns, so the counter is safe"
+      - "They don't block each other, so the race condition remains"
+      - "Compile error"
+      - "Deadlock always happens"
+    answer: 1
+    explanation: "Threads only exclude each other if they use the SAME lock object. Different locks mean both can be inside at once, so updates can still be lost. No deadlock: each thread only holds one lock."
+explainBack:
+  prompt: "Explain to a friend why two threads doing count++ can give a wrong answer, and how synchronized, volatile and wait/notify help."
+  rubric:
+    - "I said count++ is three steps (read, add, write) and updates can be lost"
+    - "I said synchronized lets only one thread in at a time using an object's lock"
+    - "I said volatile gives visibility but not atomicity"
+    - "I said wait() releases the lock and must be in a while loop, called inside synchronized"
+    - "I used an analogy like a single bathroom with one key"
+  modelAnswer: |
+    count++ looks like one step but it's three: read, add one, write back. If two threads read the same value at the same time, both write the same result and one increment is lost. That's a race condition. synchronized fixes it like a bathroom with one key: only the thread holding the object's lock can enter, the others wait. volatile is different: it only makes sure everyone sees the latest value, like a notice board, so it's fine for a stop flag but not for count++. wait and notify let a thread give up the lock and sleep until another thread says the condition changed, and we always re-check in a while loop.
+flashcards:
+  - front: "Why is count++ not thread-safe?"
+    back: "It is three steps: read, add 1, write. Two threads can interleave and lose an update."
+  - front: "synchronized vs volatile"
+    back: "synchronized = mutual exclusion + visibility. volatile = visibility only (no atomicity)."
+  - front: "Why call wait() in a while loop?"
+    back: "Spurious wakeups and other threads consuming first; the loop re-checks the condition after each wakeup."
+  - front: "What happens if wait() is called without holding the lock?"
+    back: "IllegalMonitorStateException."
+  - front: "sleep() vs wait() and the lock"
+    back: "sleep() keeps the lock; wait() releases it."
+keyTakeaways:
+  - "Shared mutable data + multiple threads = race conditions; count++ is not atomic."
+  - "synchronized uses an object's lock: one thread at a time, and changes become visible."
+  - "Instance methods lock on this, static methods on the Class object, blocks on the object you choose."
+  - "volatile = visibility, not atomicity; good for flags."
+  - "wait/notify must be called inside synchronized; always wait in a while loop."

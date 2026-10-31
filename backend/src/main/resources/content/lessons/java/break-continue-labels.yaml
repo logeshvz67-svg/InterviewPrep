@@ -1,0 +1,369 @@
+slug: break-continue-labels
+world: JAVA_CORE
+section: A
+order: 9
+title: "break, continue and labeled loops"
+version: 1
+estimatedMinutes: 25
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Appears in output-tracing questions; using break to stop early (for example, once an answer is found) keeps SP solutions within time limits."
+otherCompanies: "break/continue inside nested loops is a common output MCQ at TCS, Wipro, Cognizant, Accenture and Capgemini. Labeled break is a nice-to-know detail in product-company interviews."
+why: |
+  Normal loops run from start to end. But often you want to **stop early** ("I found the number, no need to search further") or **skip one round** ("ignore negative values").
+
+  Java gives you three tools:
+  - **`break`**: leave the loop right now.
+  - **`continue`**: skip the rest of this round and go to the next one.
+  - **labeled `break` / `continue`**: do the same for an **outer** loop when you are inside nested loops.
+
+  These appear constantly in output-tracing questions, and the question is almost always: *"Which loop does this break actually leave?"* Stopping early with `break` is also a simple way to make search code faster.
+analogy: |
+  Think of **checking answer sheets in an exam hall**.
+
+  - **continue** is like seeing a **blank page**: you skip it and move to the next page of the same answer sheet.
+  - **break** is like finding that the whole answer sheet is **copied**: you stop checking this sheet completely and put it aside, then move on to the next student.
+  - **Labeled break** is like the invigilator announcing **"Fire alarm! Everyone out!"**: you stop checking pages *and* students *and* leave the hall entirely. You jump out of every loop up to the labeled one.
+visual:
+  diagram: |
+    outer:                                  <- label names the loop
+    for (i = 1; i <= 3; i++) {   ...........  OUTER loop
+        for (j = 1; j <= 3; j++) { ........   INNER loop
+            if (j == 2) continue;      --> jump to inner j++
+            if (i == 2) break;         --> leave INNER only
+            if (i == 3) break outer;   --> leave BOTH loops
+            print(i, j)
+        }
+    }
+    after loops  <------------------------ break outer lands here
+
+    +-----------------+---------------------------------------+
+    | statement       | goes to                               |
+    +-----------------+---------------------------------------+
+    | break           | first line after the innermost loop   |
+    | continue        | next round (update / check) of it     |
+    | break label     | first line after the labeled loop     |
+    | continue label  | next round of the labeled loop        |
+    +-----------------+---------------------------------------+
+  caption: "Plain break and continue only affect the innermost loop. Add a label to control an outer loop."
+  visualizer: null
+explanation: |
+  ### break: leave the loop now
+  When Java meets `break` inside a loop, it **stops that loop immediately** and continues with the first statement after the loop.
+  ```java
+  int[] arr = {4, 7, 1, 9, 3};
+  int target = 1, index = -1;
+  for (int i = 0; i < arr.length; i++) {
+      if (arr[i] == target) {
+          index = i;
+          break;        // found it, stop searching
+      }
+  }
+  // index is 2
+  ```
+  `break` is also used in a classic `switch` to stop fall-through (see the if/switch lesson). A `break` inside a `switch` that sits inside a loop leaves **only the switch**, not the loop.
+
+  ### continue: skip to the next round
+  `continue` skips the **rest of the current pass** and jumps to the next one.
+  - In a `for` loop, it jumps to the **update** (`i++`), then the condition.
+  - In a `while` or `do-while` loop, it jumps straight to the **condition**.
+  ```java
+  for (int i = 1; i <= 5; i++) {
+      if (i % 2 == 0) continue;   // skip even numbers
+      System.out.print(i + " ");  // prints 1 3 5
+  }
+  ```
+
+  ### The while + continue trap
+  In a `while` loop, if the update (`i++`) is **after** the `continue`, it gets skipped too, and the loop can run forever:
+  ```java
+  int i = 0;
+  while (i < 5) {
+      if (i == 2) continue;   // i stays 2 forever: infinite loop!
+      System.out.println(i);
+      i++;
+  }
+  ```
+  Fix: update before the `continue`, or use a `for` loop, where the update always runs.
+
+  ### Nested loops: only the innermost loop is affected
+  Plain `break` and `continue` work on the **innermost loop that contains them**. This is the number one source of wrong answers in output questions:
+  ```java
+  for (int i = 1; i <= 3; i++) {
+      for (int j = 1; j <= 3; j++) {
+          if (j == 2) break;      // leaves the j loop only
+          System.out.print(i + "" + j + " ");
+      }
+  }
+  // prints 11 21 31
+  ```
+
+  ### Labeled break and continue
+  A **label** is a name followed by a colon, written just before a loop: `outer:`. Then:
+  - `break outer;` leaves the **labeled** loop completely (and all loops inside it).
+  - `continue outer;` skips to the **next round of the labeled** loop.
+  ```java
+  int[][] grid = {{1, 2}, {3, 4}, {5, 6}};
+  boolean found = false;
+  search:
+  for (int r = 0; r < grid.length; r++) {
+      for (int c = 0; c < grid[r].length; c++) {
+          if (grid[r][c] == 4) {
+              found = true;
+              break search;   // leave both loops at once
+          }
+      }
+  }
+  ```
+  Without a label, you would need an extra flag variable and a second `break` in the outer loop.
+
+  Rules:
+  - The label must be placed on the loop (or block) **directly**, and `break label` must be **inside** that labeled statement. Otherwise it is a compile error ("undefined label").
+  - Label names follow normal naming rules. Common names: `outer`, `search`, `loop`.
+  - Java has **no `goto`**. `goto` is a reserved word that does nothing. Labeled break is Java's safe, limited replacement.
+
+  ### return: the strongest exit
+  `return` leaves the **whole method**, so all loops in it end too. When search code sits in its own method, `return` is often cleaner than a labeled break:
+  ```java
+  static boolean contains(int[][] g, int x) {
+      for (int[] row : g)
+          for (int v : row)
+              if (v == x) return true;
+      return false;
+  }
+  ```
+
+  ### Summary table
+  | Keyword | Effect |
+  |---|---|
+  | `break` | Exit the innermost loop (or switch) |
+  | `continue` | Skip to the next pass of the innermost loop |
+  | `break label` | Exit the labeled loop and everything inside it |
+  | `continue label` | Skip to the next pass of the labeled loop |
+  | `return` | Exit the whole method |
+
+  ### Unreachable code
+  A statement written directly after `break` or `continue` in the same block can never run. Java reports it as a **compile error**: "unreachable statement".
+tinyCode:
+  code: |
+    public class Jumps {
+        public static void main(String[] args) {
+            for (int i = 1; i <= 6; i++) {
+                if (i == 3) continue;
+                if (i == 5) break;
+                System.out.print(i + " ");
+            }
+            System.out.println();
+
+            outer:
+            for (int i = 1; i <= 3; i++) {
+                for (int j = 1; j <= 3; j++) {
+                    if (j == 3) continue outer;
+                    if (i == 3) break outer;
+                    System.out.print(i + "" + j + " ");
+                }
+            }
+            System.out.println();
+            System.out.println("done");
+        }
+    }
+  walkthrough: |
+    First loop:
+    - i = 1, 2: printed. i = 3: `continue` skips the print. i = 4: printed. i = 5: `break` ends the loop, so 5 and 6 never print. Output `1 2 4 `.
+
+    Second (labeled) loop:
+    - i = 1: j = 1 prints `11`, j = 2 prints `12`, j = 3 hits `continue outer`, which jumps to the next i (it does not finish the inner loop).
+    - i = 2: prints `21`, `22`, then `continue outer` again.
+    - i = 3: j = 1, `j == 3` is false, but `i == 3` is true, so `break outer` leaves both loops.
+    - Then `done` prints.
+
+    Output (each printed number is followed by a space):
+    ```
+    1 2 4
+    11 12 21 22
+    done
+    ```
+tryIt:
+  instructions: "Type this program that finds the first pair of numbers adding up to a target. Change target to 100 (no pair) and see how the found flag handles that case."
+  code: |
+    public class FirstPair {
+        public static void main(String[] args) {
+            int[] nums = {8, 3, 11, 5, 7};
+            int target = 12;
+            boolean found = false;
+            search:
+            for (int i = 0; i < nums.length; i++) {
+                for (int j = i + 1; j < nums.length; j++) {
+                    if (nums[i] + nums[j] == target) {
+                        System.out.println("Pair: " + nums[i] + " + " + nums[j]);
+                        found = true;
+                        break search;
+                    }
+                }
+            }
+            if (!found) {
+                System.out.println("No pair found");
+            }
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int count = 0;
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    if (j > i) break;
+                    count++;
+                }
+            }
+            System.out.println(count);
+            int k = 0, sum = 0;
+            while (k < 6) {
+                k++;
+                if (k % 3 == 0) continue;
+                sum += k;
+            }
+            System.out.println(sum);
+        }
+    }
+  expectedOutput: |
+    10
+    12
+  explanation: |
+    - The inner loop counts j from 0 up to i, then `break` stops it (only the inner loop). So it counts 1 + 2 + 3 + 4 = `10`.
+    - In the while loop, k is increased **before** the continue, so there is no infinite loop. k takes 1 to 6; multiples of 3 (3 and 6) are skipped. The sum is 1 + 2 + 4 + 5 = `12`. If you got 21, you forgot that continue skips the `sum += k` line.
+commonMistakes:
+  - "Thinking a plain break inside an inner loop leaves all the loops. It leaves only the innermost one."
+  - "Putting the update (i++) after continue in a while loop, which causes an infinite loop."
+  - "Expecting break inside a switch (which is inside a loop) to stop the loop. It only leaves the switch."
+  - "Writing code directly after break or continue in the same block, which is an unreachable-statement compile error."
+  - "Placing a label on a statement that does not contain the break, giving an 'undefined label' error."
+interviewBox:
+  why: "Why interviewers ask this: break and continue in nested loops test whether you trace control flow precisely. Labeled break shows deeper knowledge of the language."
+  questions:
+    - q: "What is the difference between break and continue?"
+      a: "break stops the loop completely and moves to the code after the loop. continue only skips the rest of the current round and moves on to the next round of the same loop."
+    - q: "How do you exit from nested loops at once in Java?"
+      a: "I put a label before the outer loop, like outer colon, and inside the inner loop I write break outer. That leaves both loops at once. Another clean option is to put the loops in a method and use return."
+    - q: "Does Java have goto?"
+      a: "No. goto is a reserved keyword but it is not used. Java gives labeled break and continue instead, which are safer because they can only jump out of loops, not anywhere in the code."
+    - q: "What happens with continue inside a while loop?"
+      a: "It jumps straight back to the condition check. So if the variable update is written after continue, it is skipped and the loop may never end. In a for loop, continue still runs the update part."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      for (int i = 1; i <= 5; i++) {
+          if (i == 2) continue;
+          if (i == 4) break;
+          System.out.print(i);
+      }
+    options: ["13", "135", "1345", "134"]
+    answer: 0
+    explanation: "i = 1 prints 1. i = 2 is skipped by continue. i = 3 prints 3. At i = 4, break ends the loop, so 4 and 5 never print. 135 would need continue at 4 instead of break."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      for (int i = 1; i <= 3; i++) {
+          for (int j = 1; j <= 3; j++) {
+              if (j == 2) break;
+              System.out.print(i * j + " ");
+          }
+      }
+    options: ["1 ", "1 2 3 ", "1 2 3 2 4 6 3 6 9 ", "1 2 "]
+    answer: 1
+    explanation: "break leaves only the inner loop. For each i, j = 1 prints i * 1, then j = 2 breaks. The outer loop keeps going, so we get 1 2 3. Answer '1 ' is what you would get if break left both loops."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This loop never ends. Why?"
+    code: |
+      int i = 0;
+      while (i < 5) {
+          if (i == 3) {
+              continue;
+          }
+          System.out.println(i);
+          i++;
+      }
+    options:
+      - "while loops cannot use continue"
+      - "When i is 3, continue skips i++, so i stays 3 forever"
+      - "The condition should be i <= 5"
+      - "println must come after i++"
+    answer: 1
+    explanation: "continue jumps back to the condition, skipping i++. With i stuck at 3, i < 5 is always true. Moving i++ before the if (or using a for loop) fixes it. while loops can use continue perfectly well."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "A plain break inside an inner loop exits both the inner and the outer loop."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A plain break only exits the innermost loop that contains it. To leave the outer loop too, use a labeled break like break outer;."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the statement that leaves BOTH loops when the value is found."
+    code: |
+      outer:
+      for (int r = 0; r < 3; r++) {
+          for (int c = 0; c < 3; c++) {
+              if (grid[r][c] == key) {
+                  ____;
+              }
+          }
+      }
+    acceptedAnswers: ["break outer", "break outer;"]
+    explanation: "break outer exits the loop labeled outer, which also ends the inner loop. A plain break would only stop the inner loop, and the search would continue on the next row."
+  - id: q6
+    type: MCQ
+    prompt: "In a for loop, where does continue jump to?"
+    code: null
+    options:
+      - "The initialization part"
+      - "The update part (like i++), then the condition"
+      - "The statement after the loop"
+      - "The start of the body, without checking the condition"
+    answer: 1
+    explanation: "In a for loop, continue runs the update and then checks the condition. That is why for loops do not have the while-loop infinite-loop trap. Jumping after the loop is what break does."
+  - id: q7
+    type: MATCH
+    prompt: "Match each keyword to its effect"
+    pairs:
+      - left: "break"
+        right: "Exit the innermost loop or switch"
+      - left: "continue"
+        right: "Skip to the next round of the innermost loop"
+      - left: "break outer"
+        right: "Exit the loop labeled outer"
+      - left: "return"
+        right: "Exit the whole method"
+    explanation: "Each one jumps a different distance: continue the shortest (one round), break one loop, labeled break the named loop, and return the entire method."
+explainBack:
+  prompt: "Explain break, continue and labeled break to a friend using a real-life example."
+  rubric:
+    - "I said break leaves the loop and continue skips one round"
+    - "I said plain break/continue only affect the innermost loop"
+    - "I explained how a label lets you leave an outer loop"
+    - "I mentioned the while + continue infinite loop trap"
+    - "I used an everyday analogy"
+  modelAnswer: |
+    Imagine checking answer sheets. If a page is blank, I skip it and go to the next page: that is continue. If the whole sheet is copied, I stop checking that sheet completely: that is break. In nested loops, a normal break or continue only affects the innermost loop. If I want to leave the outer loop too, like when a fire alarm rings and I stop everything, I put a label like outer before the outer loop and write break outer. One trap: in a while loop, if I write continue before increasing my counter, the counter never changes and the loop runs forever.
+flashcards:
+  - front: "break vs continue"
+    back: "break: leave the loop. continue: skip the rest of this round, go to the next."
+  - front: "Which loop does a plain break leave?"
+    back: "Only the innermost loop (or switch) containing it."
+  - front: "How to leave nested loops at once?"
+    back: "Label the outer loop (outer:) and use break outer; or return from a method."
+  - front: "continue in a while loop jumps to?"
+    back: "The condition. Updates written after continue are skipped (infinite loop risk)."
+  - front: "Does Java support goto?"
+    back: "No. goto is reserved but unused; labeled break/continue replace it."
+keyTakeaways:
+  - "break exits the innermost loop or switch; continue skips to its next round."
+  - "In a for loop, continue still runs the update; in a while loop it jumps straight to the condition."
+  - "Labeled break/continue control an outer loop in nested loops."
+  - "return exits the whole method, which is often the cleanest way out of nested searches."
+  - "Code directly after break or continue in the same block is unreachable and does not compile."

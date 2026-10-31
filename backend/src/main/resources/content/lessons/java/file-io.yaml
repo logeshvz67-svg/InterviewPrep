@@ -1,0 +1,320 @@
+slug: file-io
+world: JAVA_CORE
+section: I
+order: 1
+title: "File IO"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+infosysRelevance: "Practical knowledge for DSE-style technical rounds: reading and writing files, streams and try-with-resources come up as common basic questions."
+otherCompanies: "A common basic question at TCS, Wipro and Cognizant (difference between byte and character streams, BufferedReader, closing resources)."
+why: |
+  Almost every real program reads or writes something: a config file, a CSV report, a log. **File IO** (Input/Output) is how Java talks to files.
+
+  Interviewers like this topic because it quickly shows:
+  - whether you know the difference between **byte streams** and **character streams**,
+  - whether you **close resources** properly (a very common real bug),
+  - whether you know the modern, short way: `java.nio.file.Files`.
+
+  It also connects to later topics: serialization writes objects to files, and JDBC uses the same "open, use, close" idea with try-with-resources.
+analogy: |
+  Think of a **water tank on the roof** and the **pipe** to your kitchen tap.
+
+  - The **file** is the tank. It just stores data.
+  - A **stream** is the pipe. Data flows through it one drop (byte) at a time, in **one direction**: an *input* pipe brings water to you, an *output* pipe sends water to the tank.
+  - A **buffer** is a bucket. Instead of running to the tap for every drop, you fill a bucket and carry many drops at once. That is why `BufferedReader` is faster.
+  - **Closing** the stream is turning off the tap. If you forget, water (memory, file handles) keeps leaking, and the last bucket may never be emptied into the tank (your data is lost).
+visual:
+  diagram: |
+    WRITING (output)                      READING (input)
+    your program                          your program
+        |  write("Hi")                        ^  readLine() -> "Hi"
+        v                                     |
+    +----------------+                    +----------------+
+    | BufferedWriter |  bucket            | BufferedReader |  bucket
+    +----------------+                    +----------------+
+        |                                     ^
+        v                                     |
+    +----------------+                    +----------------+
+    |   FileWriter   |  pipe (chars)      |   FileReader   |  pipe
+    +----------------+                    +----------------+
+        |                                     ^
+        v                                     |
+    [ notes.txt on disk ] ------------------ [ notes.txt ]
+
+    Bytes  (images, any file): InputStream / OutputStream
+    Chars  (text files)      : Reader      / Writer
+  caption: "A stream is a one-way pipe. Wrapping it in a Buffered class adds a bucket so data moves in big chunks instead of one piece at a time."
+  visualizer: null
+explanation: |
+  ### Key words first
+  - **IO** = Input/Output. *Input* means reading data into your program; *output* means writing data out.
+  - **Stream** = a one-way flow of data, piece by piece.
+  - **Checked exception** = an exception the compiler forces you to handle. File methods throw `IOException`, which is checked, so you must use `try/catch` or add `throws IOException`.
+
+  ### Two families of streams (java.io)
+  | | Works with | Read class | Write class | Use for |
+  |---|---|---|---|---|
+  | **Byte streams** | raw bytes (0-255) | `InputStream`, `FileInputStream` | `OutputStream`, `FileOutputStream` | images, PDFs, any binary file |
+  | **Character streams** | characters (text) | `Reader`, `FileReader` | `Writer`, `FileWriter` | `.txt`, `.csv`, `.json` |
+
+  Simple rule: **text = Reader/Writer, everything else = InputStream/OutputStream.** Character streams handle the *encoding* (how letters become bytes, for example UTF-8) for you.
+
+  ### Buffering: the speed trick
+  Reading one character at a time from disk is slow. **Buffered** classes read a big block into memory and hand it out piece by piece.
+  ```java
+  BufferedReader br = new BufferedReader(new FileReader("notes.txt"));
+  String line = br.readLine(); // one full line, or null at end of file
+  ```
+  Wrapping one stream inside another like this is called the **decorator** idea: each layer adds a feature.
+
+  ### Always close: try-with-resources
+  An open file holds an operating-system **file handle**. If you never close it, you leak handles, and a `BufferedWriter` may never **flush** (push its bucket to disk), so your file stays empty.
+
+  **Try-with-resources** (Java 7+) closes things automatically, even if an exception happens:
+  ```java
+  try (BufferedWriter bw = new BufferedWriter(new FileWriter("out.txt"))) {
+      bw.write("Hello");
+      bw.newLine();
+  } // bw.close() is called here automatically
+  ```
+  Any class that implements `AutoCloseable` can go in those brackets.
+
+  ### Overwrite vs append
+  `new FileWriter("log.txt")` **overwrites** (empties the file first). To add to the end, use `new FileWriter("log.txt", true)`. The `true` means *append*.
+
+  ### The modern way: java.nio.file
+  Java 7 added **NIO** (New IO). For small and medium files it is much shorter:
+  ```java
+  Path p = Path.of("notes.txt");            // a path to a file
+  Files.writeString(p, "line1\nline2\n");   // write (overwrites)
+  List<String> lines = Files.readAllLines(p); // read all lines
+  String all = Files.readString(p);          // read whole file
+  boolean there = Files.exists(p);
+  ```
+  - `Files.lines(p)` gives a `Stream<String>` for big files (read lazily, close it with try-with-resources).
+  - Add `StandardOpenOption.APPEND` to append instead of overwrite.
+
+  ### The File class
+  `java.io.File` represents a **path**, not the content. Use it for checks like `exists()`, `isDirectory()`, `length()`, `delete()`, `listFiles()`. Newer code prefers `Path` + `Files`.
+
+  ### Which one should I use?
+  | Situation | Good choice |
+  |---|---|
+  | Small text file, read all at once | `Files.readAllLines` / `Files.readString` |
+  | Huge text file, line by line | `BufferedReader` or `Files.lines` |
+  | Image / binary file | `FileInputStream` / `Files.readAllBytes` |
+  | Read user input from keyboard | `Scanner(System.in)` or `BufferedReader(new InputStreamReader(System.in))` |
+
+  ### Fast input in coding rounds
+  In online coding tests, `BufferedReader` with `InputStreamReader(System.in)` is faster than `Scanner` for very large inputs. This is the same buffering idea applied to the keyboard.
+tinyCode:
+  code: |
+    import java.io.*;
+    import java.nio.file.*;
+    import java.util.List;
+
+    public class FileDemo {
+        public static void main(String[] args) throws IOException {
+            Path path = Path.of("fruits.txt");
+
+            // 1. Write three lines (creates or overwrites the file)
+            try (BufferedWriter bw = Files.newBufferedWriter(path)) {
+                bw.write("mango");
+                bw.newLine();
+                bw.write("banana");
+                bw.newLine();
+                bw.write("guava");
+            }
+
+            // 2. Read line by line with BufferedReader
+            try (BufferedReader br = new BufferedReader(new FileReader("fruits.txt"))) {
+                String line;
+                int n = 1;
+                while ((line = br.readLine()) != null) {
+                    System.out.println(n + ": " + line);
+                    n++;
+                }
+            }
+
+            // 3. The short NIO way
+            List<String> all = Files.readAllLines(path);
+            System.out.println("Total lines = " + all.size());
+        }
+    }
+  walkthrough: |
+    - `Path.of("fruits.txt")` makes a path to a file in the current folder.
+    - `Files.newBufferedWriter(path)` opens a buffered writer. It **creates** the file, or **overwrites** it if it exists.
+    - `try ( ... )` is **try-with-resources**: when the block ends, `bw.close()` runs automatically, which also **flushes** the buffer to disk.
+    - `newLine()` writes a line break.
+    - `new BufferedReader(new FileReader(...))`: a reader pipe wrapped in a bucket.
+    - `while ((line = br.readLine()) != null)` is the classic loop: read a line, store it in `line`, and stop when `readLine()` returns `null` (end of file).
+    - `Files.readAllLines(path)` reads everything into a `List<String>` in one call.
+
+    Output:
+    ```
+    1: mango
+    2: banana
+    3: guava
+    Total lines = 3
+    ```
+tryIt:
+  instructions: "Type this program. It writes a small marks file and then reads it back to compute the total. Change a mark, run again, and see the total change."
+  code: |
+    import java.nio.file.*;
+    import java.util.List;
+
+    public class Marks {
+        public static void main(String[] args) throws Exception {
+            Path p = Path.of("marks.txt");
+            Files.writeString(p, "Asha,78\nRavi,91\nMeena,85\n");
+
+            List<String> lines = Files.readAllLines(p);
+            int total = 0;
+            for (String line : lines) {
+                String[] parts = line.split(",");
+                int mark = Integer.parseInt(parts[1]);
+                System.out.println(parts[0] + " scored " + mark);
+                total += mark;
+            }
+            System.out.println("Total = " + total);
+        }
+    }
+predict:
+  code: |
+    import java.nio.file.*;
+
+    public class Overwrite {
+        public static void main(String[] args) throws Exception {
+            Path p = Path.of("demo.txt");
+            Files.writeString(p, "first\n");
+            Files.writeString(p, "second\n");
+            Files.writeString(p, "third\n", StandardOpenOption.APPEND);
+            System.out.print(Files.readString(p));
+            System.out.println(Files.readAllLines(p).size());
+        }
+    }
+  expectedOutput: |
+    second
+    third
+    2
+  explanation: |
+    `Files.writeString` **overwrites** by default, so writing "second" wipes out "first". The third call uses `APPEND`, so "third" is added after "second". The file has 2 lines, so `readAllLines(p).size()` is 2.
+commonMistakes:
+  - "Forgetting to close (or flush) a BufferedWriter: the data stays in the buffer and the file ends up empty. Use try-with-resources."
+  - "Using FileWriter without `true` and being surprised that old content disappeared. The default is overwrite."
+  - "Using Reader/Writer for images or PDFs. Binary files need byte streams (InputStream/OutputStream)."
+  - "Ignoring IOException with an empty catch block. At least print or log it, or declare `throws IOException`."
+  - "Using Files.readAllLines on a huge file (gigabytes): it loads everything into memory. Read line by line instead."
+interviewBox:
+  why: "Why interviewers ask this: file handling shows if you understand checked exceptions, resource cleanup and choosing the right tool, which are everyday skills in a service-company project."
+  questions:
+    - q: "What is the difference between byte streams and character streams?"
+      a: "Byte streams, like FileInputStream and FileOutputStream, read and write raw bytes, so they work for any file, like images. Character streams, like FileReader and FileWriter, work with characters and handle text encoding for us, so we use them for text files."
+    - q: "Why do we use BufferedReader?"
+      a: "Reading from disk one character at a time is slow. BufferedReader reads a big block into memory and gives it to us piece by piece. It also gives a handy readLine method that returns one full line, or null at the end of the file."
+    - q: "What is try-with-resources?"
+      a: "It is a try block with brackets where we open resources like files or database connections. Java closes them automatically at the end, even if an exception happens. It works for any class that implements AutoCloseable, and it removes the need for a finally block."
+    - q: "How do you append to a file instead of overwriting it?"
+      a: "With FileWriter I pass true as the second argument, like new FileWriter(name, true). With the NIO Files class I pass StandardOpenOption.APPEND."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "You need to copy a .jpg photo file byte for byte. Which pair of classes fits best?"
+    code: null
+    options: ["FileReader / FileWriter", "FileInputStream / FileOutputStream", "Scanner / PrintWriter", "BufferedReader / BufferedWriter"]
+    answer: 1
+    explanation: "A photo is binary data, so you need byte streams: FileInputStream and FileOutputStream. FileReader/FileWriter and the Buffered text classes are character streams; they try to decode bytes as text and can corrupt a binary file."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "new FileWriter(\"log.txt\") adds new text to the end of log.txt if the file already exists."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. By default FileWriter overwrites (empties the file first). You must pass true, as in new FileWriter(\"log.txt\", true), to append."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "StringReader lets a BufferedReader read from a String as if it were a file. What does this print?"
+    code: |
+      BufferedReader br = new BufferedReader(new StringReader("one\ntwo"));
+      String line;
+      int count = 0;
+      while ((line = br.readLine()) != null) {
+          count++;
+          System.out.print(line.length());
+      }
+      System.out.println(" " + count);
+    options: ["33 2", "3 1", "6 2", "33 3"]
+    answer: 0
+    explanation: "readLine returns \"one\" (length 3) and then \"two\" (length 3), printed next to each other as 33. Then readLine returns null and the loop stops, so count is 2. readLine never includes the newline character, which is why it is not 3 and 4."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This program writes \"hello\" and then reads the file. It prints 0. Why?"
+    code: |
+      BufferedWriter w = new BufferedWriter(new FileWriter("out.txt"));
+      w.write("hello");
+      System.out.println(Files.readString(Path.of("out.txt")).length());
+    options:
+      - "write() needs a newline to work"
+      - "The writer was never flushed or closed, so \"hello\" is still in the buffer, not on disk"
+      - "Files.readString cannot read files made by FileWriter"
+      - "FileWriter must be given true to create a new file"
+    answer: 1
+    explanation: "BufferedWriter keeps data in memory until the buffer is full, flush() is called, or the writer is closed. Nothing reached the disk, so the file is empty and the length is 0. Wrapping the writer in try-with-resources fixes it. A newline is not required, and FileWriter creates the file without true."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill the keyword so the reader is closed automatically."
+    code: |
+      ____ (BufferedReader br = new BufferedReader(new FileReader("a.txt"))) {
+          System.out.println(br.readLine());
+      }
+    acceptedAnswers: ["try"]
+    explanation: "try ( resource ) { ... } is try-with-resources. The reader is closed automatically when the block ends, even if an exception is thrown."
+  - id: q6
+    type: MATCH
+    prompt: "Match each class or method to what it does"
+    pairs:
+      - left: "BufferedReader.readLine()"
+        right: "Returns one line of text, or null at end of file"
+      - left: "Files.readAllLines(path)"
+        right: "Reads every line into a List<String>"
+      - left: "FileOutputStream"
+        right: "Writes raw bytes to a file"
+      - left: "java.io.File"
+        right: "Represents a path; checks exists(), length(), delete()"
+    explanation: "readLine and readAllLines are for text; FileOutputStream is a byte stream; File describes a path but does not hold the content."
+  - id: q7
+    type: MCQ
+    prompt: "Why must most file methods be inside try/catch or in a method that declares throws IOException?"
+    code: null
+    options: ["Because IOException is a checked exception", "Because files are always missing", "Because IOException is a RuntimeException", "Because the JVM cannot open files without catch"]
+    answer: 0
+    explanation: "IOException is checked, so the compiler forces you to handle or declare it. It is not a RuntimeException; those are unchecked and the compiler does not force handling."
+explainBack:
+  prompt: "Explain to a friend how a Java program writes a line to a file and reads it back, and why closing matters."
+  rubric:
+    - "I said a stream is a one-way flow of data (input or output)"
+    - "I explained the difference between byte streams and character streams"
+    - "I explained buffering and why a BufferedWriter must be flushed or closed"
+    - "I mentioned try-with-resources"
+    - "I used an analogy like a water tank, pipe and bucket"
+  modelAnswer: |
+    A file is like a water tank, and a stream is a one-way pipe. To write text I open a writer pipe, usually a BufferedWriter, which collects text in a bucket and pours it to the disk in big chunks. To read I open a reader, like BufferedReader, and call readLine until it returns null. For text I use Reader and Writer; for images I use byte streams. The important part is closing: if I don't close a buffered writer, the last bucket never reaches the disk and the file can stay empty. So I open files inside try-with-resources, and Java closes them for me automatically.
+flashcards:
+  - front: "Byte stream vs character stream"
+    back: "Byte streams (InputStream/OutputStream) move raw bytes, for any file. Character streams (Reader/Writer) move text and handle encoding."
+  - front: "What does BufferedReader.readLine() return at end of file?"
+    back: "null"
+  - front: "How to append with FileWriter?"
+    back: "new FileWriter(name, true). The true means append; the default overwrites."
+  - front: "Why use try-with-resources?"
+    back: "It closes AutoCloseable resources automatically, even on exceptions, so files are flushed and handles are not leaked."
+  - front: "Shortest way to read a small text file?"
+    back: "Files.readAllLines(Path.of(name)) or Files.readString(path)."
+keyTakeaways:
+  - "Text uses Reader/Writer; binary uses InputStream/OutputStream."
+  - "Buffered classes make IO fast; BufferedReader.readLine() returns null at the end."
+  - "Always close resources; try-with-resources does it for you."
+  - "FileWriter overwrites by default; pass true (or APPEND) to add to the end."
+  - "java.nio.file.Files gives short one-line methods for everyday file work."

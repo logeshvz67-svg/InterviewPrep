@@ -1,0 +1,357 @@
+slug: two-pointers
+world: DSA
+section: DSA
+order: 2
+title: "Two pointers"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: TWO_POINTERS
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE coding rounds: many array and string problems (pair sums, duplicates, palindromes, reversing) become O(n) with two pointers."
+otherCompanies: "A must-know pattern for TCS coding questions and for product-company interviews (pair sum, remove duplicates, container with most water, 3-sum)."
+why: |
+  Many array and string problems have an obvious **brute-force** solution: try every pair with two nested loops. That is **O(n^2)**, and it times out for big inputs.
+
+  The **two pointers** pattern uses two index variables that move through the array **intelligently**, so each element is visited about once: **O(n)** time and **O(1)** extra space.
+
+  It is one of the most common patterns in coding rounds: pair with a given sum, remove duplicates, reverse, palindrome check, merging two sorted arrays, moving zeros, 3-sum. Learn the two templates here and you can solve all of them.
+analogy: |
+  Think of **two people searching for a pair of shoes** in a long rack sorted by price, cheapest on the left, costliest on the right. They want two pairs that cost exactly Rs. 1500 together.
+
+  - One person stands at the **cheap end**, the other at the **expensive end**.
+  - If the two prices add up to **more** than 1500, the expensive-end person steps **left** (to something cheaper).
+  - If they add up to **less**, the cheap-end person steps **right** (to something costlier).
+  - They walk towards each other and **never need to go back**. That is why it's fast.
+
+  The second variant is like a **slow reader and a fast reader** walking the same direction: the fast one scouts ahead, and the slow one writes down only what's worth keeping.
+visual:
+  diagram: |
+    VARIANT 1: opposite ends (sorted array, target = 15)
+
+    index:   0   1   2   3   4    5
+    arr:   [ 1,  2,  4,  7, 11,  15 ]
+             L                    R    1+15 = 16 > 15  -> R--
+             L                R        1+11 = 12 < 15  -> L++
+                 L            R        2+11 = 13 < 15  -> L++
+                     L        R        4+11 = 15  FOUND (2, 4)
+
+    VARIANT 2: same direction (remove duplicates, sorted)
+
+    arr:   [ 1,  1,  2,  2,  3 ]
+             S   F                 arr[F]==arr[S]  -> F++ only
+             S       F             new value 2: S++, arr[S]=2
+                 S       F         same as arr[S]  -> F++ only
+                 S           F     new value 3: S++, arr[S]=3
+    result: [ 1,  2,  3, ...]  k = S + 1 = 3
+  caption: "Opposite ends: L and R move towards each other based on the sum. Same direction: the fast pointer F scouts, the slow pointer S keeps only new values."
+  visualizer: two-pointers
+explanation: |
+  ### What is a pointer here?
+  A **pointer** here is just an **int index** into an array or String (not a memory pointer like in C). "Moving a pointer" means `left++` or `right--`.
+
+  ### Variant 1: opposite ends
+  Start one pointer at the **start** and one at the **end**, and move them **towards each other**. Stop when they meet.
+
+  **Pair with target sum in a SORTED array**
+  ```java
+  int left = 0, right = arr.length - 1;
+  while (left < right) {
+      int sum = arr[left] + arr[right];
+      if (sum == target) return new int[]{left, right};
+      else if (sum < target) left++;    // need a bigger sum
+      else right--;                     // need a smaller sum
+  }
+  return new int[]{-1, -1};             // no pair
+  ```
+  **Why is it safe to skip?** The array is sorted. If `sum < target`, then `arr[left]` paired with **any** element at or before `right` is also too small, so `arr[left]` can never be part of the answer. We drop it with `left++`. The same logic applies to `right--`. Every step removes one candidate, so at most n steps: **O(n)**.
+
+  > The array **must be sorted** for this. Unsorted? Sort first (O(n log n)), or use a HashMap (lesson on hashing).
+
+  **Reverse an array in place**
+  ```java
+  int l = 0, r = arr.length - 1;
+  while (l < r) {
+      int tmp = arr[l]; arr[l] = arr[r]; arr[r] = tmp;
+      l++; r--;
+  }
+  ```
+  **In place** means using the same array, with no new array: O(1) extra space.
+
+  **Palindrome check**: compare `s.charAt(l)` and `s.charAt(r)` moving inwards; any mismatch means "not a palindrome".
+
+  ### Variant 2: same direction (slow and fast)
+  Both pointers start at the left. The **fast** pointer reads every element; the **slow** pointer marks where the next "kept" element should be written.
+
+  **Remove duplicates from a SORTED array** (return the count of unique values; they are moved to the front)
+  ```java
+  int slow = 0;
+  for (int fast = 1; fast < arr.length; fast++) {
+      if (arr[fast] != arr[slow]) {
+          slow++;
+          arr[slow] = arr[fast];
+      }
+  }
+  return slow + 1;   // number of unique elements (array must be non-empty)
+  ```
+  Other same-direction problems: move all zeros to the end, remove a given value, merge two sorted arrays (one pointer in each array).
+
+  ### The general template
+  ```java
+  // opposite ends
+  int l = 0, r = n - 1;
+  while (l < r) {
+      if (condition met) { record answer; /* move one or both */ }
+      else if (need bigger) l++;
+      else r--;
+  }
+
+  // same direction
+  int slow = 0;
+  for (int fast = 0; fast < n; fast++) {
+      if (arr[fast] should be kept) arr[slow++] = arr[fast];
+  }
+  ```
+
+  ### How to recognise a two-pointer problem
+  | Clue in the question | Variant |
+  |---|---|
+  | "sorted array" + "pair / triplet with sum" | opposite ends |
+  | "reverse", "palindrome", "in place from both sides" | opposite ends |
+  | "remove duplicates / remove element / move zeros in place" | same direction |
+  | "merge two sorted arrays/lists" | one pointer per array |
+  | "O(1) extra space" required | very likely two pointers |
+
+  ### Complexity
+  | Approach | Time | Space |
+  |---|---|---|
+  | Brute force (all pairs) | O(n^2) | O(1) |
+  | Two pointers | O(n) | O(1) |
+  | Sort + two pointers (unsorted input) | O(n log n) | O(1) to O(n) depending on the sort |
+tinyCode:
+  code: |
+    import java.util.Arrays;
+
+    public class TwoPointers {
+        // opposite ends: pair with target sum in a sorted array
+        static int[] pairSum(int[] arr, int target) {
+            int left = 0, right = arr.length - 1;
+            while (left < right) {
+                int sum = arr[left] + arr[right];
+                if (sum == target) return new int[]{left, right};
+                else if (sum < target) left++;
+                else right--;
+            }
+            return new int[]{-1, -1};
+        }
+
+        // same direction: remove duplicates from a sorted array
+        static int removeDuplicates(int[] arr) {
+            int slow = 0;
+            for (int fast = 1; fast < arr.length; fast++) {
+                if (arr[fast] != arr[slow]) {
+                    slow++;
+                    arr[slow] = arr[fast];
+                }
+            }
+            return slow + 1;
+        }
+
+        public static void main(String[] args) {
+            int[] sorted = {1, 2, 4, 7, 11, 15};
+            System.out.println(Arrays.toString(pairSum(sorted, 15)));
+
+            int[] dup = {1, 1, 2, 2, 3};
+            int k = removeDuplicates(dup);
+            System.out.println(k + " " + Arrays.toString(Arrays.copyOf(dup, k)));
+        }
+    }
+  walkthrough: |
+    **pairSum** (opposite ends):
+    - `left` starts at index 0, `right` at the last index.
+    - If the sum is too small, only moving `left` right can increase it. If too big, only moving `right` left can decrease it.
+    - For target 15: (1,15)=16 too big, (1,11)=12 too small, (2,11)=13 too small, (4,11)=15 found at indexes 2 and 4.
+
+    **removeDuplicates** (same direction):
+    - `slow` points to the last unique value written; `fast` scans everything.
+    - When `fast` finds a value different from `arr[slow]`, we move `slow` forward and copy the new value there.
+    - The first `k = slow + 1` positions now hold the unique values.
+
+    Output:
+    ```
+    [2, 4]
+    3 [1, 2, 3]
+    ```
+    Both run in **O(n)** time and **O(1)** extra space.
+tryIt:
+  instructions: "Type this palindrome checker that uses two pointers from both ends. Then try \"madam\", \"level\" and \"code\". Bonus: make it ignore uppercase/lowercase."
+  code: |
+    public class Palindrome {
+        static boolean isPalindrome(String s) {
+            int left = 0, right = s.length() - 1;
+            while (left < right) {
+                if (s.charAt(left) != s.charAt(right)) {
+                    return false;
+                }
+                left++;
+                right--;
+            }
+            return true;
+        }
+
+        public static void main(String[] args) {
+            System.out.println(isPalindrome("racecar"));
+            System.out.println(isPalindrome("java"));
+            System.out.println(isPalindrome("abba"));
+        }
+    }
+predict:
+  code: |
+    public class Trace {
+        public static void main(String[] args) {
+            int[] arr = {1, 3, 5, 8, 10};
+            int target = 13, left = 0, right = arr.length - 1, steps = 0;
+            while (left < right) {
+                steps++;
+                int sum = arr[left] + arr[right];
+                if (sum == target) break;
+                if (sum < target) left++;
+                else right--;
+            }
+            System.out.println(left + " " + right + " " + steps);
+        }
+    }
+  expectedOutput: |
+    1 4 2
+  explanation: |
+    Step 1: arr[0] + arr[4] = 1 + 10 = 11 < 13, so left becomes 1. Step 2: arr[1] + arr[4] = 3 + 10 = 13, found, break. So left = 1, right = 4 and it took 2 steps. (5 + 8 is also 13, but the pointers meet 3 + 10 first.)
+commonMistakes:
+  - "Using opposite-end two pointers on an UNSORTED array. The skip logic only works when the array is sorted."
+  - "Writing while (left <= right) for pair problems; when left == right you'd pair an element with itself."
+  - "Forgetting to move a pointer inside the loop, causing an infinite loop."
+  - "In remove duplicates, returning slow instead of slow + 1 (slow is an index, the count is one more)."
+  - "Reversing with for (i = 0; i < n; i++) swap(i, n-1-i): it swaps everything twice and the array ends up unchanged. Stop at the middle."
+interviewBox:
+  why: "Why interviewers ask this: two pointers turns many O(n^2) brute-force solutions into O(n) with O(1) space; it shows you can optimise, not just solve."
+  questions:
+    - q: "How do you find a pair with a given sum in a sorted array?"
+      a: "I use two pointers, one at the start and one at the end. If the sum is equal to the target, I return the pair. If it's smaller, I move the left pointer right to get a bigger number; if it's bigger, I move the right pointer left. Because the array is sorted, each move safely discards one element, so it's O(n) time and O(1) space."
+    - q: "Why does the two pointer approach need a sorted array for pair sum?"
+      a: "The decision to move left or right depends on order. If the sum is too small, I know every pair using the current left element with anything up to the right pointer is also too small, only because the array is sorted. Without sorting, I can't discard elements safely, so I'd use a HashMap instead."
+    - q: "How do you remove duplicates from a sorted array in place?"
+      a: "I use a slow and a fast pointer. The slow one marks the last unique value I kept, and the fast one scans the array. Whenever fast finds a value different from the value at slow, I move slow forward and copy that value there. At the end, slow plus one is the number of unique elements. It's O(n) time, O(1) space."
+    - q: "What are the two types of two pointer technique?"
+      a: "Opposite ends, where pointers start at both ends and move towards each other, used for pair sums, reversing and palindromes. And same direction, or slow and fast, where both move forward at different speeds, used for removing duplicates, moving zeros and merging sorted arrays."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the time and extra space complexity of the two-pointer pair-sum on a sorted array of size n?"
+    code: null
+    options: ["O(n^2) time, O(1) space", "O(n) time, O(1) space", "O(n log n) time, O(n) space", "O(n) time, O(n) space"]
+    answer: 1
+    explanation: "Each step moves one pointer, so there are at most n steps: O(n). Only a few int variables are used: O(1) space. O(n^2) is the brute-force pair check; O(n) space would need something like a HashMap."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "This is the remove-duplicates algorithm. What does it print?"
+    code: |
+      int[] a = {2, 2, 2, 5, 7, 7, 9};
+      int slow = 0;
+      for (int fast = 1; fast < a.length; fast++) {
+          if (a[fast] != a[slow]) {
+              slow++;
+              a[slow] = a[fast];
+          }
+      }
+      System.out.println((slow + 1) + " " + Arrays.toString(a));
+    options: ["4 [2, 5, 7, 9, 7, 7, 9]", "4 [2, 5, 7, 9]", "3 [2, 5, 7, 9, 7, 7, 9]", "7 [2, 2, 2, 5, 7, 7, 9]"]
+    answer: 0
+    explanation: "Unique values 2, 5, 7, 9 are copied to the front, so the count is 4. The array is not shortened: positions 4 to 6 keep their old values 7, 7, 9. That's why the method returns k and you only read the first k elements. \"4 [2, 5, 7, 9]\" forgets that Java arrays can't shrink."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This should reverse the array, but it prints [1, 2, 3, 4, 5]. What is wrong?"
+    code: |
+      int[] arr = {1, 2, 3, 4, 5};
+      int n = arr.length;
+      for (int i = 0; i < n; i++) {
+          int tmp = arr[i];
+          arr[i] = arr[n - 1 - i];
+          arr[n - 1 - i] = tmp;
+      }
+      System.out.println(Arrays.toString(arr));
+    options:
+      - "The swap uses tmp in the wrong place"
+      - "The loop goes all the way to n, so every pair is swapped twice and returns to the original; it should stop at i < n / 2"
+      - "arr.length should be arr.length - 1"
+      - "Arrays.toString prints in reverse order"
+    answer: 1
+    explanation: "In the first half, the pairs (0,4) and (1,3) get swapped; in the second half, the same pairs are swapped back. The fix is i < n / 2, or the two-pointer form while (l < r). The swap itself is correct."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "The opposite-ends pair-sum technique works correctly on an unsorted array."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Moving left or right relies on the order of values. In an unsorted array, moving left++ might skip the element you needed. Sort first, or use a HashSet/HashMap."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Pair sum on a sorted array: the sum is too small. Fill the pointer move."
+    code: |
+      int sum = arr[left] + arr[right];
+      if (sum == target) return true;
+      else if (sum < target) ____;
+      else right--;
+    acceptedAnswers: ["left++", "++left", "left+=1", "left=left+1"]
+    explanation: "A small sum needs a bigger number, and only moving left to the right (left++) gives a bigger value in a sorted array. right-- would make the sum even smaller."
+  - id: q6
+    type: MATCH
+    prompt: "Match each problem to the two-pointer variant that fits"
+    pairs:
+      - left: "Check if a string is a palindrome"
+        right: "Opposite ends, moving inward"
+      - left: "Move all zeros to the end in place"
+        right: "Same direction: slow writes, fast reads"
+      - left: "Merge two sorted arrays"
+        right: "One pointer in each array"
+      - left: "Pair with sum X in a sorted array"
+        right: "Opposite ends, move based on the sum"
+    explanation: "Comparing from both sides needs opposite ends; filtering in place needs slow/fast; merging needs one pointer per input."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "Move zeros to the end (same-direction pointers). What is printed?"
+    code: |
+      int[] a = {0, 4, 0, 3, 12};
+      int slow = 0;
+      for (int fast = 0; fast < a.length; fast++) {
+          if (a[fast] != 0) a[slow++] = a[fast];
+      }
+      while (slow < a.length) a[slow++] = 0;
+      System.out.println(Arrays.toString(a));
+    options: ["[4, 3, 12, 0, 0]", "[12, 3, 4, 0, 0]", "[0, 0, 4, 3, 12]", "[4, 3, 12, 3, 12]"]
+    answer: 0
+    explanation: "fast copies every non-zero value (4, 3, 12) forward in order to positions 0, 1, 2. Then the while loop fills the rest with zeros. Order of non-zero elements is kept. \"[4, 3, 12, 3, 12]\" is what you'd get without the final fill loop."
+explainBack:
+  prompt: "Explain the two pointers pattern to a friend using the shoe rack example, and describe both variants."
+  rubric:
+    - "I explained opposite-end pointers moving based on the sum"
+    - "I said the array must be sorted for pair sum, and why"
+    - "I explained the slow/fast same-direction variant with an example"
+    - "I stated O(n) time and O(1) space versus O(n^2) brute force"
+    - "I named at least three problems that use this pattern"
+  modelAnswer: |
+    Two pointers means using two indexes that move smartly instead of checking every pair. For a pair with a target sum in a sorted array, I put one pointer at each end, like two people at the cheap and expensive ends of a sorted shoe rack. If the sum is too big, the right one moves left; if too small, the left one moves right. Because it's sorted, each move safely discards one item, so it's O(n) instead of O(n squared), with O(1) space. The other variant is slow and fast pointers going the same way: fast reads every element and slow writes only the ones to keep, like removing duplicates or moving zeros. I also use it for reversing and palindromes.
+flashcards:
+  - front: "Two pointers: complexity"
+    back: "O(n) time, O(1) extra space (vs O(n^2) brute force)."
+  - front: "Pair sum in sorted array: sum < target?"
+    back: "left++ (need a bigger value)."
+  - front: "Precondition for opposite-end pair sum"
+    back: "The array must be sorted."
+  - front: "Remove duplicates (sorted): return value?"
+    back: "slow + 1 = count of unique values, moved to the front."
+  - front: "Loop condition for pair problems"
+    back: "while (left < right), not <=, so an element isn't paired with itself."
+keyTakeaways:
+  - "Two pointers = two indexes moving smartly; each element is visited about once."
+  - "Opposite ends: pair sums (sorted!), reverse, palindrome."
+  - "Same direction (slow/fast): remove duplicates, move zeros, filter in place."
+  - "O(n) time, O(1) space instead of O(n^2)."
+  - "Use while (left < right) and make sure every iteration moves a pointer."

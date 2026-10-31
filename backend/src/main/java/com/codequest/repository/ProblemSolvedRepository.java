@@ -26,4 +26,9 @@ public interface ProblemSolvedRepository extends JpaRepository<ProblemSolved, Lo
     List<ProblemSolved> findAllByUserId(Long userId);
 
     long countByUserId(Long userId);
+
+    long countByUserIdAndCreatedAtGreaterThanEqual(Long userId, java.time.Instant since);
+
+    @Query("select p.bankProblemId from ProblemSolved p where p.userId = :userId and p.bankProblemId is not null")
+    List<Long> solvedBankIds(Long userId);
 }

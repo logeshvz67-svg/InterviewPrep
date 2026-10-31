@@ -1,0 +1,334 @@
+slug: queue-deque
+world: JAVA_CORE
+section: E
+order: 5
+title: "Queue, Deque, ArrayDeque"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Directly used in SP-level coding: BFS on graphs and grids needs a queue, and bracket matching, next-greater-element and undo problems need a stack."
+otherCompanies: "Queues and stacks appear in DSA rounds everywhere: TCS, Wipro, Cognizant, Accenture, Capgemini and product companies. 'Why ArrayDeque over Stack?' is a common follow-up."
+why: |
+  Two of the most useful shapes in coding problems are:
+  - the **queue** (first come, first served), used in **BFS** (breadth-first search), level-order tree traversal and task scheduling;
+  - the **stack** (last in, first out), used in **bracket matching**, **undo**, **next greater element** and DFS.
+
+  In Java, one class does both jobs, and does them fast: **`ArrayDeque`**. Many students still write `new Stack<>()` or `new LinkedList<>()` out of habit. Interviewers notice, and ask **"Why is ArrayDeque better than Stack?"**
+
+  You will also learn the method pairs (`offer`/`add`, `poll`/`remove`, `peek`/`element`) whose difference is a favourite trick question.
+analogy: |
+  - A **Queue** is the line at a **railway ticket counter**: people join at the **back** and are served from the **front**. First In, First Out (**FIFO**).
+  - A **Stack** is a **pile of chapatis** on a plate: you put the new hot one on **top**, and you also eat from the **top**. Last In, First Out (**LIFO**).
+  - A **Deque** (say "deck", **D**ouble-**E**nded **QUE**ue) is a **local bus with doors at both ends**: people can get in or out from the front door or the back door. Use only one door for both, and it's a stack; enter at the back and leave from the front, and it's a queue.
+visual:
+  diagram: |
+    QUEUE (FIFO)  offer at tail, poll from head
+       poll() <-  [ A | B | C | D ]  <- offer(E)
+                   head        tail
+
+    STACK (LIFO) with a Deque: push/pop/peek all at the HEAD
+       push(E) -> [ E | D | C | B | A ]
+       pop()   <-   ^ top (head)
+
+    ArrayDeque inside: a circular array (head and tail wrap around)
+       index:  0    1    2    3    4    5    6    7
+             [ C  | D  |    |    |    |    | A  | B  ]
+                        ^tail                ^head
+       order seen: A, B, C, D   (no shifting, ever)
+  caption: "A queue adds at the tail and removes from the head; a stack adds and removes at the head. ArrayDeque stores both in a circular array, so every end operation is O(1) without shifting."
+  visualizer: stack-queue
+explanation: |
+  ### The Queue interface
+  `Queue<E>` is a waiting line. Each operation comes in **two versions**: one throws an exception when it fails, the other returns a special value (`false` or `null`).
+  | Action | Throws exception | Returns special value |
+  |---|---|---|
+  | Add at tail | `add(e)` | `offer(e)` → `false` if full |
+  | Remove from head | `remove()` → `NoSuchElementException` if empty | `poll()` → `null` if empty |
+  | Look at head | `element()` → `NoSuchElementException` if empty | `peek()` → `null` if empty |
+
+  In coding rounds, use **`offer`, `poll`, `peek`**: an empty queue gives `null` instead of crashing, which is easy to check.
+  ```java
+  Queue<Integer> q = new ArrayDeque<>();
+  q.offer(1); q.offer(2);
+  q.poll();     // 1 (first in, first out)
+  q.peek();     // 2
+  ```
+
+  ### The Deque interface
+  `Deque<E>` extends Queue and adds operations at **both ends**:
+  | | Front (head) | Back (tail) |
+  |---|---|---|
+  | Add | `offerFirst(e)` / `addFirst(e)` | `offerLast(e)` / `addLast(e)` |
+  | Remove | `pollFirst()` / `removeFirst()` | `pollLast()` / `removeLast()` |
+  | Look | `peekFirst()` / `getFirst()` | `peekLast()` / `getLast()` |
+
+  It also has **stack methods**, which all work at the **head (front)**:
+  - `push(e)` = `addFirst(e)`
+  - `pop()` = `removeFirst()` (throws `NoSuchElementException` if empty)
+  - `peek()` = `peekFirst()` (returns `null` if empty)
+
+  And the **queue methods** `offer(e)` = `offerLast(e)` and `poll()` = `pollFirst()`.
+
+  ### ArrayDeque: how it works
+  `ArrayDeque` stores elements in a **circular array**: it keeps a `head` and `tail` index, and when an index reaches the end of the array it **wraps around** to 0. So adding or removing at either end never shifts elements: **O(1)** (amortized; it grows its array when full).
+  - **No `null` elements** allowed (`NullPointerException`), because `null` is used to mean "empty" by `poll` and `peek`.
+  - **Not thread-safe** (no synchronization), which is exactly why it's fast.
+  - No index access: no `get(i)`.
+
+  ### Why ArrayDeque beats Stack
+  | | `Stack` | `ArrayDeque` |
+  |---|---|---|
+  | Parent | Extends `Vector` (legacy, Java 1.0) | Implements `Deque` (Java 6) |
+  | Synchronized | Yes, every call takes a lock (slower) | No (faster) |
+  | Breaks LIFO? | Yes: inherits `get(i)`, `add(i, e)`, `remove(i)` | No index methods |
+  | Interface | A class only | Program to `Deque<E>` |
+  | Java docs say | "Use Deque instead" | Recommended |
+
+  So for a stack write: `Deque<Character> stack = new ArrayDeque<>();`
+
+  ### Why ArrayDeque beats LinkedList (as a queue)
+  `LinkedList` also implements `Deque`, but every element needs a separate node object (more memory, scattered in memory, more garbage collection). ArrayDeque uses one compact array. The Java docs say ArrayDeque is "likely to be faster than Stack when used as a stack, and faster than LinkedList when used as a queue". Use LinkedList only if you truly need `null` elements or List methods too.
+
+  ### A printing trap
+  `Stack` prints bottom to top (`[1, 2, 3]`, top is last), but an `ArrayDeque` used as a stack prints **head first**, so top is first (`[3, 2, 1]`). Same pushes, different print order.
+
+  ### Where you'll use them
+  - **BFS**: `Queue<int[]> q = new ArrayDeque<>(); q.offer(start); while (!q.isEmpty()) { int[] cur = q.poll(); ... }`
+  - **Valid parentheses**: push opening brackets, pop and compare on closing brackets.
+  - **Sliding window maximum**: a deque of indexes, adding at the back and removing from both ends.
+  - **PriorityQueue** is also a `Queue`, but removes the **smallest** element first (a heap), not FIFO. It gets its own lesson.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Counter {
+        public static void main(String[] args) {
+            Queue<String> line = new ArrayDeque<>();
+            line.offer("Asha");
+            line.offer("Ravi");
+            line.offer("Meena");
+            System.out.println("Served: " + line.poll());
+            System.out.println("Next: " + line.peek() + ", waiting " + line);
+
+            Deque<Integer> plates = new ArrayDeque<>();
+            plates.push(1);
+            plates.push(2);
+            plates.push(3);
+            System.out.println("Stack: " + plates + ", top " + plates.peek());
+            System.out.println("Popped: " + plates.pop());
+
+            Queue<Integer> empty = new ArrayDeque<>();
+            System.out.println("poll on empty: " + empty.poll());
+        }
+    }
+  walkthrough: |
+    - `Queue<String> line = new ArrayDeque<>()`: we use ArrayDeque as a **FIFO queue**.
+    - `offer` adds at the back. `poll` removes from the front: Asha, the first to join, is served first. `peek` looks at the new front, Ravi, without removing him.
+    - `Deque<Integer> plates`: the same class as a **stack**. `push` adds at the head, so after pushing 1, 2, 3 the deque prints `[3, 2, 1]` with the top first. `pop` removes 3.
+    - `poll()` on an empty queue returns `null` instead of throwing.
+
+    Output:
+    ```
+    Served: Asha
+    Next: Ravi, waiting [Ravi, Meena]
+    Stack: [3, 2, 1], top 3
+    Popped: 3
+    poll on empty: null
+    ```
+tryIt:
+  instructions: "Type this classic bracket checker using ArrayDeque as a stack. Run it, then add your own test strings like \"(]\" or \"{[()()]}\"."
+  code: |
+    import java.util.*;
+
+    public class Brackets {
+        static boolean isValid(String s) {
+            Deque<Character> stack = new ArrayDeque<>();
+            for (char c : s.toCharArray()) {
+                if (c == '(' || c == '[' || c == '{') {
+                    stack.push(c);
+                } else {
+                    if (stack.isEmpty()) return false;
+                    char open = stack.pop();
+                    if (c == ')' && open != '(') return false;
+                    if (c == ']' && open != '[') return false;
+                    if (c == '}' && open != '{') return false;
+                }
+            }
+            return stack.isEmpty();
+        }
+        public static void main(String[] args) {
+            System.out.println(isValid("({[]})"));
+            System.out.println(isValid("(]"));
+            System.out.println(isValid("(("));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class BothEnds {
+        public static void main(String[] args) {
+            Deque<Integer> d = new ArrayDeque<>();
+            d.offerLast(1);
+            d.offerLast(2);
+            d.offerFirst(0);
+            d.push(9);
+            System.out.println(d);
+            System.out.println(d.pollLast() + " " + d.pop() + " " + d.peek());
+            System.out.println(d);
+        }
+    }
+  expectedOutput: |
+    [9, 0, 1, 2]
+    2 9 0
+    [0, 1]
+  explanation: |
+    `offerLast(1)`, `offerLast(2)` give `[1, 2]`. `offerFirst(0)` adds at the front: `[0, 1, 2]`. `push(9)` also adds at the **front** (stack methods use the head): `[9, 0, 1, 2]`. Then `pollLast()` removes 2 from the back, `pop()` removes 9 from the front, and `peek()` shows the new front, 0. What remains is `[0, 1]`.
+commonMistakes:
+  - "Using Stack for a stack. Use Deque<T> stack = new ArrayDeque<>() instead."
+  - "Using remove()/element() in loops and crashing on an empty queue. poll()/peek() return null instead."
+  - "Thinking push adds at the back of a Deque. push, pop and peek all work at the head (front)."
+  - "Adding null to an ArrayDeque. It throws NullPointerException."
+  - "Expecting PriorityQueue to be FIFO. It removes the smallest element first."
+  - "Expecting an ArrayDeque stack to print like Stack. ArrayDeque prints top first; Stack prints bottom first."
+interviewBox:
+  why: "Why interviewers ask this: queues and stacks power BFS and many classic problems, and picking ArrayDeque shows modern, efficient Java habits."
+  questions:
+    - q: "What is the difference between Queue and Deque?"
+      a: "A Queue is a FIFO line: add at the tail, remove from the head. A Deque, or double-ended queue, allows adding and removing at both ends, so it can work as a queue or as a stack. Deque extends Queue."
+    - q: "Why is ArrayDeque preferred over Stack?"
+      a: "Stack is a legacy class that extends Vector, so every method is synchronized, which is slower, and it inherits index methods like get and add at position that break LIFO. ArrayDeque is a fast, unsynchronized circular array with O(1) push and pop, and the Java docs themselves recommend Deque over Stack."
+    - q: "What is the difference between poll() and remove() in a Queue?"
+      a: "Both remove the head. If the queue is empty, poll returns null but remove throws NoSuchElementException. Similarly, peek returns null and element throws, and offer returns false while add throws if the queue can't accept the element."
+    - q: "How is ArrayDeque implemented?"
+      a: "As a resizable circular array with head and tail indexes that wrap around. Adding or removing at either end is O(1) amortized with no shifting. It doesn't allow nulls and isn't thread-safe."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              Queue<Integer> q = new ArrayDeque<>();
+              q.offer(10);
+              q.offer(20);
+              q.offer(30);
+              q.poll();
+              q.offer(40);
+              System.out.println(q.peek() + " " + q);
+          }
+      }
+    options: ["10 [20, 30, 40]", "20 [20, 30, 40]", "40 [40, 30, 20]", "30 [10, 20, 30]"]
+    answer: 1
+    explanation: "A queue is FIFO: poll removes 10, the first one in. 40 joins at the back. peek shows the new front, 20. '40 [40, 30, 20]' would be stack (LIFO) behaviour."
+  - id: q2
+    type: MCQ
+    prompt: "On an EMPTY queue, which call returns null instead of throwing an exception?"
+    code: null
+    options: ["remove()", "element()", "poll()", "pop()"]
+    answer: 2
+    explanation: "poll() returns null when empty (so does peek()). remove(), element() and pop() throw NoSuchElementException."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              Stack<Integer> s = new Stack<>();
+              Deque<Integer> d = new ArrayDeque<>();
+              for (int i = 1; i <= 3; i++) {
+                  s.push(i);
+                  d.push(i);
+              }
+              System.out.println(s + " " + d);
+              System.out.println(s.peek() + " " + d.peek());
+          }
+      }
+    options:
+      - "[1, 2, 3] [1, 2, 3]\n3 3"
+      - "[1, 2, 3] [3, 2, 1]\n3 3"
+      - "[3, 2, 1] [3, 2, 1]\n3 3"
+      - "[1, 2, 3] [3, 2, 1]\n1 3"
+    answer: 1
+    explanation: "Both behave as stacks, so peek() gives 3 for both. But Stack prints like a Vector, bottom first: [1, 2, 3]. ArrayDeque pushes at the head and prints head first: [3, 2, 1]."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In a Deque, push(e) adds the element at the tail (end)."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. push is the same as addFirst: it adds at the head. pop and peek also use the head, so the head is the top of the stack. offer adds at the tail."
+  - id: q5
+    type: MATCH
+    prompt: "Match the Deque stack/queue method to its equivalent"
+    pairs:
+      - left: "push(e)"
+        right: "addFirst(e)"
+      - left: "pop()"
+        right: "removeFirst()"
+      - left: "offer(e)"
+        right: "offerLast(e)"
+      - left: "poll()"
+        right: "pollFirst()"
+    explanation: "Stack methods (push, pop) and queue removal (poll) work at the head; queue insertion (offer) works at the tail. That's how one Deque serves as both."
+  - id: q6
+    type: SPOT_THE_BUG
+    prompt: "This BFS-style code crashes at run time. Why?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              Queue<String> q = new ArrayDeque<>();
+              q.offer("start");
+              q.offer(null);
+              System.out.println(q.size());
+          }
+      }
+    options:
+      - "offer can only be called once"
+      - "ArrayDeque does not allow null elements, so offer(null) throws NullPointerException"
+      - "Queue must be created with new Queue<>()"
+      - "size() is not a Queue method"
+    answer: 1
+    explanation: "ArrayDeque forbids null because poll() and peek() use null to mean 'empty'. Adding null throws NullPointerException. Queue is an interface, so new Queue<>() wouldn't even compile."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the class name for the recommended way to create a stack in modern Java."
+    code: |
+      Deque<Character> stack = new ____<>();
+      stack.push('(');
+    acceptedAnswers: ["ArrayDeque", "java.util.ArrayDeque"]
+    explanation: "ArrayDeque is fast (circular array, no locking) and the Java docs recommend it over Stack. LinkedList would also compile, but it is slower and uses more memory."
+explainBack:
+  prompt: "Explain to a friend the difference between a queue, a stack and a deque, and why Java programmers use ArrayDeque instead of Stack."
+  rubric:
+    - "I explained FIFO (queue) and LIFO (stack) with an example"
+    - "I said a Deque allows adding/removing at both ends"
+    - "I explained offer/poll/peek vs add/remove/element"
+    - "I gave reasons ArrayDeque beats Stack (synchronized, extends Vector, breaks LIFO)"
+    - "I mentioned a real use: BFS or bracket matching"
+  modelAnswer: |
+    A queue is like a ticket counter line: first in, first out. I add with offer and take from the front with poll. A stack is like a pile of chapatis: last in, first out, using push, pop and peek. A deque is a double-ended queue, open at both ends, so the same object can act as a queue or a stack. In Java I use ArrayDeque for both. It's a circular array, so both ends are O(1) with no shifting. The old Stack class extends Vector, so it's synchronized and slower, and it even lets you insert in the middle, which breaks the stack idea. I use queues for BFS and stacks for bracket matching.
+flashcards:
+  - front: "Queue: methods that throw vs return special value"
+    back: "add/offer, remove/poll, element/peek. The second of each pair returns false/null instead of throwing."
+  - front: "Where do push, pop and peek work in a Deque?"
+    back: "At the head (front). push = addFirst, pop = removeFirst, peek = peekFirst."
+  - front: "Why ArrayDeque over Stack?"
+    back: "Stack extends Vector: synchronized (slow) and exposes index methods that break LIFO. ArrayDeque is fast and docs recommend it."
+  - front: "How is ArrayDeque built?"
+    back: "A resizable circular array with head/tail indexes; O(1) amortized at both ends; no nulls; not thread-safe."
+  - front: "Recommended stack declaration"
+    back: "Deque<T> stack = new ArrayDeque<>();"
+keyTakeaways:
+  - "Queue = FIFO (offer, poll, peek); Stack = LIFO (push, pop, peek)."
+  - "Deque allows both ends, so it can be a queue or a stack."
+  - "ArrayDeque is a circular array: O(1) at both ends, no nulls, not synchronized."
+  - "Prefer ArrayDeque over Stack (legacy, synchronized, breaks LIFO) and over LinkedList (more memory)."
+  - "poll/peek return null on empty; remove/element/pop throw NoSuchElementException."

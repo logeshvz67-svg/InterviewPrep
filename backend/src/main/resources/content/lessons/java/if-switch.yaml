@@ -1,0 +1,374 @@
+slug: if-switch
+world: JAVA_CORE
+section: A
+order: 7
+title: "Decisions: if and switch"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Basic logic used in every problem; clean if/else ladders and correct edge-case checks decide whether hidden test cases pass in SP and DSE coding rounds."
+otherCompanies: "switch fall-through and allowed switch types are popular MCQs at TCS, Wipro, Cognizant, Accenture and Capgemini. Modern arrow switch is a nice plus in product-company interviews."
+why: |
+  Programs need to **make decisions**: pass or fail, even or odd, which discount to give, which menu option the user picked. Java gives you two main tools: **`if`** and **`switch`**.
+
+  Why this lesson matters:
+  - Almost every coding problem has edge cases ("if the array is empty", "if n is 0"). Getting the order of conditions right is what makes hidden test cases pass.
+  - MCQs love **switch fall-through** (forgetting `break`), **which types switch accepts**, and sneaky bugs like a stray semicolon after `if`.
+  - Modern Java has a cleaner **arrow switch** (`case 1 -> ...`). Using it shows you write up-to-date code.
+analogy: |
+  Think of a **railway station enquiry counter**.
+
+  - An **if/else-if ladder** is like the clerk asking questions in order: "Do you have a reservation? If not, is it tatkal? If not, general ticket." He stops at the **first** "yes".
+  - A **switch** is like the **platform number board**: you look up one value (the train number) and jump straight to the matching platform.
+  - **Fall-through** is like a passenger who gets off at platform 2 but, because nobody stopped him (no `break`), keeps walking through platforms 3 and 4 as well.
+visual:
+  diagram: |
+    if / else-if ladder (first true wins, rest skipped)
+
+      marks = 72
+      [marks >= 90?] --no--> [marks >= 75?] --no--> [marks >= 60?]
+           |yes                   |yes                   |yes
+           v                      v                      v
+          "A"                    "B"                    "C"  <- runs
+                                                     (rest skipped)
+
+    switch with fall-through (no break in case 2)
+
+      day = 2
+      case 1: print "Mon"; break;
+      case 2: print "Tue";          <- jump here, runs
+      case 3: print "Wed"; break;   <- falls into this too, stops
+      default: print "?";
+
+      Output: TueWed
+  caption: "An if-ladder checks conditions top to bottom and runs only the first true branch. A switch jumps to the matching case and keeps running until it meets break."
+  visualizer: null
+explanation: |
+  ### The if statement
+  ```java
+  if (condition) {
+      // runs when condition is true
+  } else {
+      // runs when condition is false
+  }
+  ```
+  - The **condition** must be a `boolean` (true or false). In Java, `if (1)` or `if (x)` with an int is a **compile error**, unlike C.
+  - **Braces** `{ }` group statements. Without braces, only the **one next statement** belongs to the `if`. Always use braces; it prevents bugs.
+
+  ### The else-if ladder
+  ```java
+  if (marks >= 90)      grade = 'A';
+  else if (marks >= 75) grade = 'B';
+  else if (marks >= 60) grade = 'C';
+  else                  grade = 'F';
+  ```
+  Conditions are checked **top to bottom**, and only the **first true** branch runs. Order matters: if you check `marks >= 60` first, a 95 would get 'C'.
+
+  ### Nested if and the dangling else
+  An `if` inside another `if` is **nested**. An `else` always belongs to the **nearest** `if` that has no else, no matter how you indent:
+  ```java
+  if (a > 0)
+      if (b > 0)
+          System.out.println("both positive");
+  else
+      System.out.println("?");   // belongs to if (b > 0), not if (a > 0)!
+  ```
+  Braces fix this confusion.
+
+  ### Two classic if traps
+  1. **Stray semicolon:** `if (x > 10);` ends the if right there. The block after it always runs.
+  2. **= instead of ==:** `if (x = 5)` does not compile for an int. But for a boolean, `if (done = true)` **compiles** and is always true, because it assigns true and then tests it.
+
+  ### The switch statement
+  `switch` compares one value against many fixed **case labels**:
+  ```java
+  switch (day) {
+      case 1:
+          System.out.println("Mon");
+          break;
+      case 2:
+          System.out.println("Tue");
+          break;
+      default:
+          System.out.println("Other");
+  }
+  ```
+  Rules to remember for exams:
+  | Rule | Detail |
+  |---|---|
+  | Allowed types | `byte`, `short`, `char`, `int`, their wrappers (`Integer`...), `String`, `enum` |
+  | Not allowed (classic switch) | `long`, `float`, `double`, `boolean` |
+  | Case labels | Must be **constants** (literals or `final` constants), no duplicates |
+  | `break` | Stops the switch. Without it, execution **falls through** into the next case |
+  | `default` | Runs if no case matches. Optional, can be anywhere, but usually last |
+  | String switch | Compares with `equals()` (case-sensitive). A `null` String throws `NullPointerException` |
+
+  ### Fall-through: bug or feature?
+  Usually forgetting `break` is a bug. But sometimes you want it, to group cases:
+  ```java
+  switch (ch) {
+      case 'a': case 'e': case 'i': case 'o': case 'u':
+          System.out.println("vowel");
+          break;
+      default:
+          System.out.println("consonant");
+  }
+  ```
+
+  ### Modern switch (Java 14+): arrow form and switch expressions
+  The **arrow form** `case X ->` has **no fall-through**, so no `break` is needed. You can list several labels with commas:
+  ```java
+  switch (day) {
+      case 1, 7 -> System.out.println("Weekend");
+      case 2, 3, 4, 5, 6 -> System.out.println("Weekday");
+      default -> System.out.println("Invalid");
+  }
+  ```
+  A **switch expression** gives back a value, so you can assign it:
+  ```java
+  String type = switch (day) {
+      case 1, 7 -> "Weekend";
+      default -> {
+          String t = "Weekday";
+          yield t;   // yield returns a value from a block
+      }
+  };
+  ```
+  A switch expression must be **exhaustive**: every possible value must be covered, which usually means a `default`.
+
+  ### if or switch?
+  - Use **if** for ranges (`marks >= 90`), complex conditions (`a > 0 && b < 5`), or types switch does not accept.
+  - Use **switch** when comparing one variable with many exact values (menu options, days, operators like `'+'`, `'-'`).
+  - For a simple two-way choice that produces a value, the **ternary** `cond ? a : b` is shortest.
+tinyCode:
+  code: |
+    public class Decide {
+        public static void main(String[] args) {
+            int marks = 72;
+            char grade;
+            if (marks >= 90) {
+                grade = 'A';
+            } else if (marks >= 75) {
+                grade = 'B';
+            } else if (marks >= 60) {
+                grade = 'C';
+            } else {
+                grade = 'F';
+            }
+            System.out.println("Grade: " + grade);
+
+            switch (grade) {
+                case 'A':
+                case 'B':
+                    System.out.println("Excellent");
+                    break;
+                case 'C':
+                    System.out.println("Good");
+                    break;
+                default:
+                    System.out.println("Work harder");
+            }
+
+            String result = switch (grade) {
+                case 'A', 'B', 'C' -> "Pass";
+                default -> "Fail";
+            };
+            System.out.println(result);
+        }
+    }
+  walkthrough: |
+    - The ladder checks `72 >= 90` (no), `72 >= 75` (no), `72 >= 60` (yes), so `grade` becomes `'C'` and the last `else` is skipped.
+    - The classic switch jumps to `case 'C'`, prints `Good`, and `break` stops it. Note how `'A'` and `'B'` share one block using fall-through on purpose.
+    - The switch **expression** uses arrows, so no `break` is needed. `'C'` matches the first arrow and gives `"Pass"`, which is stored in `result`.
+
+    Output:
+    ```
+    Grade: C
+    Good
+    Pass
+    ```
+tryIt:
+  instructions: "Type this simple calculator. Change op to '-', '*', '/', and '%' and predict the output before you run it each time. Then try op = '/' with b = 0."
+  code: |
+    public class Calc {
+        public static void main(String[] args) {
+            int a = 17, b = 5;
+            char op = '%';
+            switch (op) {
+                case '+' -> System.out.println(a + b);
+                case '-' -> System.out.println(a - b);
+                case '*' -> System.out.println(a * b);
+                case '/' -> {
+                    if (b == 0) {
+                        System.out.println("Cannot divide by zero");
+                    } else {
+                        System.out.println(a / b);
+                    }
+                }
+                case '%' -> System.out.println(a % b);
+                default -> System.out.println("Unknown operator");
+            }
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int x = 3;
+            switch (x) {
+                case 1:
+                    System.out.print("one,");
+                case 3:
+                    System.out.print("three,");
+                case 4:
+                    System.out.print("four,");
+                    break;
+                default:
+                    System.out.print("default,");
+            }
+            System.out.println();
+            int y = 20;
+            if (y > 50);
+            {
+                System.out.println("big");
+            }
+        }
+    }
+  expectedOutput: |
+    three,four,
+    big
+  explanation: |
+    - `x` is 3, so the switch jumps to `case 3` and prints `three,`. There is no `break`, so it **falls through** into `case 4`, prints `four,`, and only then stops at `break`. `default` is not reached.
+    - `if (y > 50);` has a semicolon, which is an empty statement. The `if` controls only that empty statement. The block `{ ... }` after it is just a normal block, so `big` always prints, even though 20 is not greater than 50.
+commonMistakes:
+  - "Forgetting break in a classic switch, so the code falls through into the next cases."
+  - "Putting a semicolon right after if (...); which makes the following block run always."
+  - "Writing if (flag = true) instead of if (flag == true) (or just if (flag)); it compiles for booleans and is always true."
+  - "Ordering an else-if ladder wrongly, like checking marks >= 60 before marks >= 90."
+  - "Trying to switch on long, double, float or boolean; classic switch does not allow them."
+  - "Switching on a String that might be null, which throws NullPointerException."
+interviewBox:
+  why: "Why interviewers ask this: decision-making is the base of every program. Fall-through and switch rules are quick ways to check if you know Java precisely rather than roughly."
+  questions:
+    - q: "What is fall-through in a switch statement?"
+      a: "When a case matches and there is no break, Java keeps running the code of the following cases too, until it finds a break or the end of the switch. It is usually a bug, but we use it on purpose to group cases, like all vowels sharing one block."
+    - q: "Which data types can be used in a switch?"
+      a: "byte, short, char and int, their wrapper classes, String from Java 7, and enums. long, float, double and boolean are not allowed in a classic switch."
+    - q: "What is the difference between the old switch and the arrow switch?"
+      a: "The arrow form, case X ->, has no fall-through, so we do not need break, and we can list many labels with commas. It can also be used as a switch expression that returns a value, using yield inside a block."
+    - q: "When would you choose if-else over switch?"
+      a: "I use if-else for ranges and complex conditions, like marks greater than 90 or two conditions joined with &&. I use switch when one variable is compared with many exact values, like menu choices or operator characters."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int n = 2;
+      switch (n) {
+          case 1: System.out.print("A");
+          case 2: System.out.print("B");
+          case 3: System.out.print("C");
+          default: System.out.print("D");
+      }
+    options: ["B", "BC", "BCD", "ABCD"]
+    answer: 2
+    explanation: "The switch jumps to case 2 and prints B. With no break anywhere it falls through case 3 and default too, printing C and D. Just B would be right only with a break after it."
+  - id: q2
+    type: MCQ
+    prompt: "Which type CANNOT be used in a classic switch statement?"
+    code: null
+    options: ["char", "String", "long", "Integer"]
+    answer: 2
+    explanation: "long is not allowed (nor float, double, boolean). char, String (since Java 7) and wrapper types like Integer are all allowed."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This prints 'Eligible to vote' even for age 15. Why?"
+    code: |
+      int age = 15;
+      if (age >= 18);
+      {
+          System.out.println("Eligible to vote");
+      }
+    options:
+      - ">= should be >"
+      - "The semicolon after the if condition ends the if, so the block always runs"
+      - "age must be declared as long"
+      - "The braces must be on the same line as the if"
+    answer: 1
+    explanation: "if (age >= 18); controls only an empty statement. The block below is independent and always runs. Brace position does not matter in Java, and the comparison itself is fine."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In the arrow form of switch (case 1 -> ...), you need break to stop fall-through."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Arrow cases never fall through; only the matching case runs. break is needed only in the old colon form (case 1:)."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int a = 5, b = -3;
+      if (a > 0)
+          if (b > 0)
+              System.out.println("X");
+      else
+          System.out.println("Y");
+      System.out.println("Z");
+    options: ["X\nZ", "Y\nZ", "Z", "Y"]
+    answer: 1
+    explanation: "The else belongs to the nearest if, which is if (b > 0), despite the indentation. a > 0 is true, b > 0 is false, so the else runs and prints Y, then Z always prints. Answer Z alone is what you get if you trust the misleading indentation."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword that returns a value from a block inside a switch expression."
+    code: |
+      int code = 2;
+      String s = switch (code) {
+          case 1 -> "one";
+          default -> {
+              String t = "many";
+              ____ t;
+          }
+      };
+    acceptedAnswers: ["yield"]
+    explanation: "yield gives the value of a block in a switch expression. return would try to leave the whole method, which is not allowed there."
+  - id: q7
+    type: MATCH
+    prompt: "Match each situation to the best tool"
+    pairs:
+      - left: "Grade from marks ranges (90+, 75+, 60+)"
+        right: "if / else-if ladder"
+      - left: "Menu choice 1 to 5"
+        right: "switch"
+      - left: "Pick the bigger of two numbers in one line"
+        right: "ternary ? :"
+      - left: "Group all vowels into one branch"
+        right: "switch with grouped cases"
+    explanation: "Ranges need if. Exact values fit switch. A two-way choice that produces a value fits the ternary. Grouping several exact values uses switch labels sharing one block."
+explainBack:
+  prompt: "Explain to a friend when to use if-else and when to use switch, and what fall-through means."
+  rubric:
+    - "I said if-else checks conditions top to bottom and the first true wins"
+    - "I said switch compares one value with exact case labels"
+    - "I explained fall-through and the role of break"
+    - "I named allowed and disallowed switch types"
+    - "I mentioned the arrow switch has no fall-through"
+  modelAnswer: |
+    I use if-else when I check ranges or complex conditions, like marks above 90. Java checks each condition from top to bottom and runs only the first one that is true. I use switch when I compare one variable with many exact values, like a menu option. Switch works with int, char, String, enums and wrappers, but not long, double or boolean. In the old switch, if I forget break, Java falls through and runs the next cases too. That is called fall-through. Sometimes it is useful for grouping cases. The newer arrow switch never falls through, so it is safer and can even return a value.
+flashcards:
+  - front: "Fall-through"
+    back: "Without break, a classic switch keeps running the next cases until break or the end."
+  - front: "Types allowed in switch"
+    back: "byte, short, char, int, wrappers, String, enum. Not long, float, double, boolean."
+  - front: "if (x > 5); { ... } does what?"
+    back: "The ; ends the if. The block always runs."
+  - front: "Dangling else rule"
+    back: "An else belongs to the nearest if without an else, ignoring indentation."
+  - front: "Return a value from a block in a switch expression"
+    back: "Use yield value; inside the block."
+keyTakeaways:
+  - "if conditions must be boolean; an else-if ladder runs only the first true branch."
+  - "Always use braces; watch for stray semicolons and = vs ==."
+  - "Classic switch falls through without break; use it on purpose only to group cases."
+  - "switch accepts byte, short, char, int, wrappers, String and enum, with constant case labels."
+  - "Arrow switch (Java 14+) has no fall-through and can return values with yield."

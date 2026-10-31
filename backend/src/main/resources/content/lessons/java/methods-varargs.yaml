@@ -1,0 +1,388 @@
+slug: methods-varargs
+world: JAVA_CORE
+section: A
+order: 10
+title: "Methods and varargs"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Foundation for clean coding solutions: SP and DSE problems are easier to debug when split into small helper methods like isPrime or gcd, and many platforms ask you to complete a given method signature."
+otherCompanies: "Method signatures, return types, overloading and varargs rules are common MCQs at TCS, Wipro, Cognizant, Accenture and Capgemini. Product companies expect clean helper methods in coding rounds."
+why: |
+  A **method** is a named block of code that does one job. You write it once and **call** (use) it as many times as you like.
+
+  Why this matters:
+  - In coding tests, many platforms give you a method to complete, like `public static int solve(int[] arr)`. You must understand parameters and return values to fill it correctly.
+  - Splitting a problem into small methods (`isPrime`, `gcd`, `reverse`) makes your code easier to test and debug under time pressure.
+  - Interview MCQs ask about **method signatures**, **overloading** (same name, different parameters), **varargs** (`int... nums`), and what happens to a variable after you pass it to a method.
+analogy: |
+  Think of a **mixer grinder** in an Indian kitchen.
+
+  - The grinder is the **method**. It has a name ("grinder") and a job (grinding).
+  - What you put in (rice, dal) are the **arguments**. The type of jar it accepts is the **parameter list**.
+  - What comes out (batter) is the **return value**. Some machines, like a fan, return nothing: that is `void`.
+  - **Overloading** is having different jars for the same grinder: a small chutney jar and a big batter jar. Same name, different inputs.
+  - **Varargs** is a jar that accepts **any number of items**: one tomato or ten tomatoes, the same jar handles it.
+visual:
+  diagram: |
+    METHOD ANATOMY
+      public static  int    add  (int a, int b)  {  return a + b;  }
+      \____________/ \___/  \__/  \___________/     \___________/
+        modifiers    return  name   parameters          body
+                      type   \___________________/
+                               signature = name + parameter types
+
+    CALL STACK while running add(2, 3) from main
+      +----------------------+
+      | add:  a=2  b=3       |  <- top: runs now, then returns 5
+      +----------------------+
+      | main: x = add(2, 3)  |  <- waits for the result
+      +----------------------+
+
+    PASS BY VALUE: the method gets a COPY
+      main: n = 10  ----copy---->  change(int n): n = 99
+      after call: main's n is still 10
+  caption: "A method has modifiers, a return type, a name and parameters. Each call gets its own frame on the call stack, and arguments are copied in."
+  visualizer: null
+explanation: |
+  ### Writing a method
+  ```java
+  public static int add(int a, int b) {
+      return a + b;
+  }
+  ```
+  | Part | Meaning |
+  |---|---|
+  | `public` | **Access modifier**: who can call it (covered fully in the OOP section) |
+  | `static` | Belongs to the class, so `main` (also static) can call it directly without an object |
+  | `int` | **Return type**: the kind of value it sends back. `void` means nothing comes back |
+  | `add` | Method name, in camelCase, usually a verb (`calculateTotal`, `isPrime`) |
+  | `(int a, int b)` | **Parameters**: variables that receive the input values |
+  | `return a + b;` | Sends the value back to the caller and **ends** the method |
+
+  **Parameter vs argument:** parameters are the variables in the method definition (`a`, `b`). Arguments are the actual values you pass when calling (`add(2, 3)`: 2 and 3).
+
+  ### Calling a method
+  ```java
+  int total = add(2, 3);           // use the returned value
+  System.out.println(add(10, 20)); // or use it directly
+  add(1, 1);                       // allowed, the result is just thrown away
+  ```
+  For now, while all our code is inside one class, mark helper methods `static` so `main` can call them. Calling a non-static method from `main` without an object gives the compile error *"non-static method cannot be referenced from a static context"*.
+
+  ### return rules
+  - A non-void method must return a value on **every possible path**. This fails to compile:
+  ```java
+  static int sign(int n) {
+      if (n > 0) return 1;
+      else if (n < 0) return -1;
+      // missing return for n == 0 -> "missing return statement"
+  }
+  ```
+  - A `void` method can use `return;` (with no value) to exit early.
+  - Code after `return` in the same block is unreachable, which is a compile error.
+
+  ### Java is pass-by-value
+  When you call a method, Java **copies** each argument into the parameter. Changing the parameter inside the method does **not** change the caller's variable:
+  ```java
+  static void tryChange(int n) { n = 99; }
+
+  int x = 10;
+  tryChange(x);
+  System.out.println(x);   // 10
+  ```
+  With arrays and objects, the **reference** (the address) is copied. Both copies point to the same array, so changing an **element** inside the method is visible outside. Section C covers this deeply in "Java is pass-by-value".
+
+  ### Local variables and scope
+  Variables declared inside a method (including parameters) are **local**: they exist only while that method runs. Each call gets its own fresh copies, stored in a **stack frame** on the **call stack** (a pile of "currently running" methods; the top one runs, the others wait).
+
+  ### Method overloading (preview)
+  **Overloading** means several methods with the **same name** but **different parameter lists** (different number, types, or order of types):
+  ```java
+  static int area(int side)            { return side * side; }
+  static int area(int l, int w)        { return l * w; }
+  static double area(double r)         { return 3.14159 * r * r; }
+  ```
+  - Java picks the version by the **arguments** at compile time.
+  - Changing **only the return type** is **not** overloading; it is a compile error ("method already defined").
+  - If no exact match exists, Java tries **widening** (int to long or double) before boxing and varargs.
+
+  The full story of overloading vs overriding is in Section C.
+
+  ### Varargs: any number of arguments
+  **Varargs** (variable arguments) lets a method accept zero or more values of one type. Write the type, three dots, then the name:
+  ```java
+  static int sum(int... nums) {
+      int total = 0;
+      for (int n : nums) total += n;
+      return total;
+  }
+
+  sum();              // 0  (nums is an empty array)
+  sum(5);             // 5
+  sum(1, 2, 3, 4);    // 10
+  sum(new int[]{7, 8}); // 15 (you can pass an array too)
+  ```
+  Inside the method, `nums` is just an **array** (`int[]`).
+
+  Varargs rules (popular MCQs):
+  - Only **one** varargs parameter per method.
+  - It must be the **last** parameter: `void log(String tag, int... values)` is fine; `void bad(int... a, String s)` does not compile.
+  - When overloading, Java prefers an exact or widening match over varargs. Varargs is the **last choice**.
+  - `main(String... args)` is a valid main method because varargs is an array.
+
+  ### Good habits
+  - One method, one job. If a method needs a comment saying "and also...", split it.
+  - Name methods with verbs; name boolean methods like questions: `isEven`, `hasDuplicate`.
+  - Prefer returning a value over printing inside helper methods; it keeps them reusable and testable.
+tinyCode:
+  code: |
+    public class Methods {
+        static int square(int n) {
+            return n * n;
+        }
+
+        static boolean isEven(int n) {
+            return n % 2 == 0;
+        }
+
+        static int max(int... nums) {
+            int best = Integer.MIN_VALUE;
+            for (int x : nums) {
+                if (x > best) best = x;
+            }
+            return best;
+        }
+
+        static void greet(String name) {
+            if (name.isEmpty()) return;
+            System.out.println("Hi " + name);
+        }
+
+        public static void main(String[] args) {
+            System.out.println(square(7));
+            System.out.println(isEven(10) + " " + isEven(7));
+            System.out.println(max(4, 19, 2, 11));
+            System.out.println(max(5));
+            greet("");
+            greet("Priya");
+        }
+    }
+  walkthrough: |
+    - `square(7)` copies 7 into `n`, computes 49, and returns it. `println` prints `49`.
+    - `isEven` returns a boolean directly from the expression `n % 2 == 0`: `true false`.
+    - `max(4, 19, 2, 11)`: Java packs the four numbers into an array `nums`. The loop finds 19.
+    - `max(5)`: varargs with one value works too, giving 5.
+    - `greet("")` hits `return;` early because the name is empty, so nothing prints.
+    - `greet("Priya")` prints `Hi Priya`.
+
+    Output:
+    ```
+    49
+    true false
+    19
+    5
+    Hi Priya
+    ```
+tryIt:
+  instructions: "Type these helper methods and run the program. Then add your own overloaded method average(int a, int b) and call it from main."
+  code: |
+    public class Helpers {
+        static int gcd(int a, int b) {
+            while (b != 0) {
+                int r = a % b;
+                a = b;
+                b = r;
+            }
+            return a;
+        }
+
+        static double average(int... marks) {
+            if (marks.length == 0) return 0;
+            int total = 0;
+            for (int m : marks) total += m;
+            return (double) total / marks.length;
+        }
+
+        public static void main(String[] args) {
+            System.out.println("gcd(36, 60) = " + gcd(36, 60));
+            System.out.println("Average = " + average(70, 85, 90));
+            System.out.println("Empty = " + average());
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static void change(int n, int[] arr) {
+            n = n * 2;
+            arr[0] = arr[0] * 2;
+        }
+
+        static void show(int x) { System.out.println("int " + x); }
+        static void show(long x) { System.out.println("long " + x); }
+        static void show(int... x) { System.out.println("varargs " + x.length); }
+
+        public static void main(String[] args) {
+            int n = 5;
+            int[] arr = {5};
+            change(n, arr);
+            System.out.println(n + " " + arr[0]);
+            show(3);
+            byte b = 4;
+            show(b);
+            show(3L);
+            show();
+        }
+    }
+  expectedOutput: |
+    5 10
+    int 3
+    int 4
+    long 3
+    varargs 0
+  explanation: |
+    - `n` is copied into the method, so doubling the copy does not change main's `n` (still 5). The array **reference** is copied, but it points to the same array, so `arr[0]` really becomes 10.
+    - `show(3)`: exact match with `int`.
+    - `show(b)` with a byte: there is no `byte` version, so Java **widens** byte to int (the closest), giving `int 4`. Varargs is only used as a last resort.
+    - `show(3L)`: exact match with `long`.
+    - `show()`: only varargs accepts zero arguments; `x` is an empty array, so its length is 0.
+commonMistakes:
+  - "Forgetting static on helper methods and calling them from main, which causes 'non-static method cannot be referenced from a static context'."
+  - "Missing a return on some path in a non-void method (missing return statement)."
+  - "Expecting a method to change a primitive variable passed to it. Java passes a copy."
+  - "Trying to overload by changing only the return type; it is a compile error."
+  - "Putting the varargs parameter before other parameters, or using two varargs in one method."
+  - "Printing inside a helper instead of returning the value, which makes it hard to reuse."
+interviewBox:
+  why: "Why interviewers ask this: methods are how you structure every solution. Questions on signatures, overloading and varargs check that you know the precise rules, not just the idea."
+  questions:
+    - q: "What is a method signature in Java?"
+      a: "The method signature is the method name plus the parameter list, meaning the number, types and order of parameters. The return type is not part of the signature, which is why two methods cannot differ only by return type."
+    - q: "What is varargs, and what are its rules?"
+      a: "Varargs lets a method take any number of arguments of one type, written like int... nums. Inside the method it is an array. A method can have only one varargs parameter, and it must be the last parameter."
+    - q: "Is Java pass-by-value or pass-by-reference?"
+      a: "Java is always pass-by-value. For primitives, the value is copied, so changes inside the method do not affect the caller. For objects and arrays, the reference is copied, so the method can change the object's contents, but it cannot make the caller's variable point to a different object."
+    - q: "Can we overload a method by changing only its return type?"
+      a: "No. Java chooses which method to call using the name and the arguments. If only the return type is different, the compiler cannot decide, so it gives an error that the method is already defined."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      static int triple(int x) {
+          x = x * 3;
+          return x;
+      }
+      public static void main(String[] args) {
+          int a = 4;
+          int b = triple(a);
+          System.out.println(a + " " + b);
+      }
+    options: ["12 12", "4 12", "4 4", "12 4"]
+    answer: 1
+    explanation: "a's value 4 is copied into x. Tripling x does not touch a, so a stays 4, while the returned 12 is stored in b. 12 12 is the pass-by-reference misunderstanding."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      static int grade(int marks) {
+          if (marks >= 40) {
+              return 1;
+          } else if (marks < 40) {
+              return 0;
+          }
+      }
+      public static void main(String[] args) {
+          System.out.println(grade(50));
+      }
+    options:
+      - "else if cannot contain return"
+      - "The compiler sees a path with no return statement"
+      - "int methods cannot return 0"
+      - "grade must be void"
+    answer: 1
+    explanation: "We know the two conditions cover every case, but the compiler does not reason about values; it only sees if / else-if with no final else. So it reports 'missing return statement'. Changing else if (...) to a plain else fixes it."
+  - id: q3
+    type: MCQ
+    prompt: "Which varargs declaration is valid?"
+    code: null
+    options:
+      - "void f(int... a, String s)"
+      - "void f(String s, int... a)"
+      - "void f(int... a, int... b)"
+      - "void f(int ...a...)"
+    answer: 1
+    explanation: "A varargs parameter must be the last one and there can be only one. Option 1 puts it first and option 3 has two, so both fail to compile."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "These two methods can exist in the same class: int calc(int x) and double calc(int x)."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Both have the same signature calc(int). Return type is not part of the signature, so the compiler reports 'method calc(int) is already defined'."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      static int count(String label, int... nums) {
+          return nums.length;
+      }
+      public static void main(String[] args) {
+          System.out.println(count("a") + count("b", 1, 2) + count("c", new int[]{4, 5, 6}));
+      }
+    options: ["5", "6", "Compile error", "023"]
+    answer: 0
+    explanation: "count(\"a\") has an empty varargs array (0), count(\"b\", 1, 2) has 2, and passing an array directly gives 3. The return values are ints, so + adds them: 0 + 2 + 3 = 5. \"023\" would need String joining, but there is no String in this expression."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the return type for this method."
+    code: |
+      static ____ isPositive(int n) {
+          return n > 0;
+      }
+    acceptedAnswers: ["boolean"]
+    explanation: "n > 0 is a comparison, which gives true or false, so the return type is boolean. int would not compile, because Java does not convert boolean to int."
+  - id: q7
+    type: MATCH
+    prompt: "Match each term to its meaning"
+    pairs:
+      - left: "Parameter"
+        right: "Variable in the method definition that receives a value"
+      - left: "Argument"
+        right: "Actual value passed when calling"
+      - left: "void"
+        right: "The method returns nothing"
+      - left: "Overloading"
+        right: "Same name, different parameter lists"
+      - left: "Varargs"
+        right: "Accepts zero or more values as an array"
+    explanation: "Parameters live in the definition; arguments are supplied at the call. void, overloading and varargs describe what a method gives back and how it accepts input."
+explainBack:
+  prompt: "Explain to a friend what a method is, what happens when you call one, and what varargs means."
+  rubric:
+    - "I described parameters, return type and return value"
+    - "I said arguments are copied in (pass-by-value)"
+    - "I mentioned overloading as same name, different parameters"
+    - "I explained varargs is an array and must be the last parameter"
+    - "I used an analogy like a mixer grinder"
+  modelAnswer: |
+    A method is a named block of code that does one job, like a mixer grinder. I give it inputs called arguments, they are copied into its parameters, it does the work, and it can send back one result with return. If it returns nothing, its return type is void. Because Java copies the values, changing a parameter inside the method does not change my original variable. I can have several methods with the same name but different parameters; that is overloading. Varargs, written like int... nums, lets me pass any number of values, and inside the method they arrive as an array. It must be the last parameter.
+flashcards:
+  - front: "Method signature = ?"
+    back: "Name + parameter types (number, type, order). Not the return type."
+  - front: "Varargs rules"
+    back: "type... name; only one per method; must be last; it is an array inside."
+  - front: "Pass-by-value for primitives"
+    back: "The method gets a copy; the caller's variable does not change."
+  - front: "Overload resolution order"
+    back: "Exact match -> widening -> boxing -> varargs (last)."
+  - front: "Why mark helpers static for now?"
+    back: "So static main can call them without creating an object."
+keyTakeaways:
+  - "A method has modifiers, a return type, a name, parameters and a body."
+  - "Non-void methods must return a value on every path; return also ends the method."
+  - "Java passes copies of arguments (pass-by-value)."
+  - "Overloading needs different parameter lists; return type alone is not enough."
+  - "Varargs (type... name) is an array, only one per method, and must be last."
+  - "Small methods with clear names make coding-round solutions easier to debug."

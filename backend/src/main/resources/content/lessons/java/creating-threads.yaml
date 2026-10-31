@@ -1,0 +1,315 @@
+slug: creating-threads
+world: JAVA_CORE
+section: G
+order: 2
+title: "Thread vs Runnable vs Callable"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common comparison question in SP and DSE technical rounds; also needed to read any multithreaded code snippet."
+otherCompanies: "A very common basic question at TCS, Wipro, Cognizant, Accenture, Capgemini, and a warm-up in product-company interviews."
+why: |
+  Knowing *what* a thread is (previous lesson) is not enough. You must know **how to create one** in code.
+
+  Java gives you three common ways:
+  1. **Extend the `Thread` class**
+  2. **Implement the `Runnable` interface**
+  3. **Implement the `Callable` interface** (when you need a result back)
+
+  Interviewers ask **"Which way is better and why?"** and the famous trick: **"What is the difference between calling `start()` and `run()`?"** Both answers show whether you really understand what creates a new thread.
+analogy: |
+  Think of **ordering food at home**.
+
+  - **Runnable** is a *task slip*: "Deliver this parcel." The delivery boy goes, does it, and does not bring anything back.
+  - **Callable** is a task slip with a *return*: "Go to the shop and bring back the change." You get something back later.
+  - **Future** is the *token number* the shop gives you. You can come back with the token and ask, "Is my order ready? Give it to me" (`get()`).
+  - **Extending Thread** is like *becoming* a delivery boy yourself just to deliver one parcel. It works, but you lose the chance to be anything else (Java allows only one parent class).
+  - Calling **`run()` directly** is doing the delivery *yourself* instead of sending the boy. Nothing happens in parallel.
+visual:
+  diagram: |
+    WAY 1: extends Thread        WAY 2: implements Runnable
+    class T extends Thread {     Runnable r = () -> {...};
+      public void run(){...}     new Thread(r).start();
+    }
+    new T().start();
+
+    WAY 3: implements Callable<V>  (returns a value, may throw)
+    Callable<Integer> c = () -> 6 * 7;
+    Future<Integer> f = pool.submit(c);   --> token
+    f.get();  // waits, then gives 42
+
+    start() vs run():
+    t.start() --> JVM creates NEW thread --> it calls run()
+    t.run()   --> plain method call, runs in CURRENT thread
+  caption: "Three ways to give a thread its work. Only start() (or a thread pool) actually creates a new thread; run() alone is just a normal method call."
+  visualizer: null
+explanation: |
+  ### Way 1: Extend the Thread class
+  You create a subclass of `Thread` and **override** `run()` (put your work inside it). Then you call `start()`.
+  ```java
+  class MyThread extends Thread {
+      @Override
+      public void run() {
+          System.out.println("Working in " + getName());
+      }
+  }
+  new MyThread().start();
+  ```
+  - **Problem:** Java allows only **one parent class** (single inheritance). If your class extends `Thread`, it cannot extend anything else.
+  - It also mixes two ideas: *the worker* (Thread) and *the work* (your code).
+
+  ### Way 2: Implement Runnable (preferred)
+  `Runnable` is an interface with one method: `void run()`. You write the job, then hand it to a `Thread`.
+  ```java
+  Runnable job = () -> System.out.println("Working");
+  Thread t = new Thread(job);
+  t.start();
+  ```
+  - Your class is free to extend another class.
+  - The **same job** can be given to many threads or to a **thread pool** (lesson 5).
+  - Since `Runnable` has exactly one abstract method, it is a **functional interface**, so you can write it as a **lambda** (`() -> ...`).
+  - Limitation: `run()` returns `void` and **cannot throw checked exceptions** (exceptions the compiler forces you to handle, like `InterruptedException`).
+
+  ### Way 3: Implement Callable (when you need a result)
+  `Callable<V>` has one method: `V call() throws Exception`.
+  - It **returns a value** of type `V`.
+  - It **can throw checked exceptions**.
+  - You usually submit it to an `ExecutorService` (a thread pool) and get back a **`Future<V>`**: a promise that the result will be available later.
+  ```java
+  ExecutorService pool = Executors.newSingleThreadExecutor();
+  Future<Integer> f = pool.submit(() -> 6 * 7);
+  System.out.println(f.get()); // 42; get() waits if not ready
+  pool.shutdown();
+  ```
+
+  ### Comparison table
+  | | Thread (extend) | Runnable | Callable |
+  |---|---|---|---|
+  | Method | `run()` | `run()` | `call()` |
+  | Returns a value? | No | No | **Yes** (`V`) |
+  | Throws checked exceptions? | No | No | **Yes** |
+  | Uses up your one parent class? | **Yes** | No | No |
+  | Usually run by | `start()` | `new Thread(r).start()` or a pool | A pool via `submit()` |
+
+  ### start() vs run(): the classic trap
+  - `t.start()` asks the JVM to **create a new thread**. That new thread then calls `run()`.
+  - `t.run()` is just an **ordinary method call**. The code runs in the **current thread** (e.g. `main`). No new thread is created.
+  - `start()` can be called only once; `run()` can be called any number of times (it's just a method).
+
+  ### Output order with threads
+  When you start two threads, the **thread scheduler** (the part of the OS/JVM that decides which thread gets the CPU) chooses who runs first. So:
+  ```java
+  new Thread(() -> System.out.print("A")).start();
+  new Thread(() -> System.out.print("B")).start();
+  ```
+  may print `AB` or `BA`. Never assume an order unless your code forces it (for example with `join()`).
+
+  ### Quick rule for interviews
+  - Need just "do this in background"? **Runnable**.
+  - Need a **result** or need to **throw checked exceptions**? **Callable** + `Future`.
+  - Extending `Thread`: works, but prefer Runnable for flexibility.
+tinyCode:
+  code: |
+    import java.util.concurrent.*;
+
+    public class ThreeWays {
+        static class MyThread extends Thread {
+            @Override
+            public void run() {
+                System.out.println("1. extends Thread");
+            }
+        }
+
+        public static void main(String[] args) throws Exception {
+            Thread a = new MyThread();
+            a.start();
+            a.join();
+
+            Runnable job = () -> System.out.println("2. implements Runnable");
+            Thread b = new Thread(job);
+            b.start();
+            b.join();
+
+            Callable<Integer> task = () -> 6 * 7;
+            ExecutorService pool = Executors.newSingleThreadExecutor();
+            Future<Integer> future = pool.submit(task);
+            System.out.println("3. Callable returned " + future.get());
+            pool.shutdown();
+        }
+    }
+  walkthrough: |
+    - `MyThread extends Thread` and overrides `run()`. `a.start()` creates a new thread that runs it. `a.join()` waits for it, so the order is fixed.
+    - `Runnable job = () -> ...` is the work written as a lambda. `new Thread(job)` is the worker that carries it out.
+    - `Callable<Integer> task = () -> 6 * 7` returns a value (42).
+    - `Executors.newSingleThreadExecutor()` makes a small **thread pool** with one thread.
+    - `pool.submit(task)` gives us a `Future<Integer>` (the token). `future.get()` waits until the answer is ready and returns `42`.
+    - `pool.shutdown()` tells the pool to stop after finishing its work; without it, the program may not exit.
+    - `throws Exception` covers `join()` (InterruptedException) and `get()` (ExecutionException).
+
+    Output:
+    ```
+    1. extends Thread
+    2. implements Runnable
+    3. Callable returned 42
+    ```
+tryIt:
+  instructions: "Type this Runnable class and run it several times. The lines from Ravi and Priya may mix in a different order on different runs (that's normal for threads!). But 'Both done' is always last, because main joins both threads first."
+  code: |
+    public class Counter implements Runnable {
+        private final String label;
+
+        Counter(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public void run() {
+            for (int i = 1; i <= 3; i++) {
+                System.out.println(label + " says " + i);
+            }
+        }
+
+        public static void main(String[] args) throws InterruptedException {
+            Thread t1 = new Thread(new Counter("Ravi"));
+            Thread t2 = new Thread(new Counter("Priya"));
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+            System.out.println("Both done");
+        }
+    }
+predict:
+  code: |
+    public class RunVsStart {
+        public static void main(String[] args) throws InterruptedException {
+            Thread t = new Thread(
+                () -> System.out.println("Inside: " + Thread.currentThread().getName()),
+                "worker");
+            t.run();
+            t.start();
+            t.join();
+        }
+    }
+  expectedOutput: |
+    Inside: main
+    Inside: worker
+  explanation: |
+    `t.run()` is a plain method call, so the lambda runs in the **current** thread, which is `main`. Only `t.start()` creates the new thread named `worker`. The order is fixed: `run()` finishes completely before `start()` is even called, and `join()` makes main wait for the worker's line.
+commonMistakes:
+  - "Calling run() instead of start() and believing a new thread was created."
+  - "Extending Thread when the class also needs another parent class. Prefer implementing Runnable."
+  - "Trying to return a value or throw a checked exception from Runnable.run(). Use Callable for that."
+  - "Forgetting pool.shutdown(): the pool's threads keep the program alive."
+  - "Assuming two started threads print in the order they were started."
+interviewBox:
+  why: "Why interviewers ask this: it shows whether you know how threads are really created and can choose the right tool, not just recite definitions."
+  questions:
+    - q: "What are the ways to create a thread in Java?"
+      a: "We can extend the Thread class and override run, or implement Runnable and pass it to a Thread, or implement Callable and submit it to an ExecutorService. Runnable is usually preferred over extending Thread, and Callable is used when we need a return value."
+    - q: "Runnable vs Callable?"
+      a: "Runnable's run method returns nothing and cannot throw checked exceptions. Callable's call method returns a value and can throw checked exceptions. We submit a Callable to an executor and get a Future to read the result."
+    - q: "What is the difference between start() and run()?"
+      a: "start creates a new thread, and that new thread calls run. If we call run directly, it is just a normal method call in the current thread, so nothing runs in parallel. Also start can be called only once."
+    - q: "Why is implementing Runnable better than extending Thread?"
+      a: "Java supports only single inheritance, so extending Thread uses up the parent class. Runnable keeps the task separate from the worker, so the same task can run on any thread or thread pool."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What is printed? Think carefully about thread scheduling."
+    code: |
+      Thread t1 = new Thread(() -> System.out.print("A"));
+      Thread t2 = new Thread(() -> System.out.print("B"));
+      t1.start();
+      t2.start();
+    options: ["Always AB", "Always BA", "AB or BA: the order can vary", "Nothing, because there is no join()"]
+    answer: 2
+    explanation: "Both threads are started, and the scheduler decides which runs first, so either AB or BA is possible. 'Always AB' is tempting because t1 starts first, but starting first does not mean printing first. Missing join() does not stop the threads; the JVM waits for normal threads before exiting."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this code fail to compile?"
+    code: |
+      Runnable r = () -> {
+          Thread.sleep(100);
+          System.out.println("woke up");
+      };
+      new Thread(r).start();
+    options:
+      - "Lambdas cannot be used for Runnable"
+      - "Runnable.run() cannot throw the checked InterruptedException from sleep, and it is not caught"
+      - "Thread.sleep needs a long like 100L"
+      - "start() must be called before creating the Runnable"
+    answer: 1
+    explanation: "Thread.sleep throws InterruptedException, a checked exception. Runnable.run() does not declare any, so you must catch it inside the lambda (or use Callable, whose call() throws Exception). Lambdas are fine for Runnable, and 100 is auto-widened to long."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "Calling t.run() on a Thread object creates a new thread."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. run() is a normal method call executed by the current thread. Only start() asks the JVM to create a new thread."
+  - id: q4
+    type: MCQ
+    prompt: "You need a background task that calculates a total and gives it back to you. What fits best?"
+    code: null
+    options: ["Runnable with a void run()", "Callable<Integer> submitted to an ExecutorService", "Extending Thread and calling run()", "A static variable and Thread.sleep"]
+    answer: 1
+    explanation: "Callable returns a value, and the Future from submit() lets you get it safely. Runnable returns void, so you'd need awkward shared variables. Calling run() doesn't even create a thread."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the Future method that waits for and returns the result."
+    code: |
+      Future<Integer> f = pool.submit(() -> 10 + 20);
+      int result = f.____;
+      System.out.println(result); // 30
+    acceptedAnswers: ["get()", "get"]
+    explanation: "Future.get() blocks (waits) until the Callable finishes and then returns its value. If the task threw an exception, get() throws an ExecutionException that wraps it."
+  - id: q6
+    type: MATCH
+    prompt: "Match each term to its meaning"
+    pairs:
+      - left: "Runnable"
+        right: "Task with void run(), no checked exceptions"
+      - left: "Callable"
+        right: "Task whose call() returns a value and may throw"
+      - left: "Future"
+        right: "Token to fetch a task's result later"
+      - left: "start()"
+        right: "Creates a new thread which then calls run()"
+    explanation: "Runnable and Callable describe the work; Future is how you collect a Callable's answer; start() is what actually launches a new thread."
+  - id: q7
+    type: MCQ
+    prompt: "Why do many developers prefer implementing Runnable over extending Thread?"
+    code: null
+    options:
+      - "Runnable threads run faster"
+      - "Java has single inheritance, and Runnable keeps the class free to extend another class"
+      - "Thread cannot override run()"
+      - "Runnable can return a value"
+    answer: 1
+    explanation: "Speed is the same. The real reasons are single inheritance and separating the task from the worker. Runnable cannot return a value; that's Callable."
+explainBack:
+  prompt: "Explain to a friend the three ways to create a thread, which one to prefer, and why calling run() is not the same as start()."
+  rubric:
+    - "I named extending Thread, implementing Runnable and implementing Callable"
+    - "I said Callable returns a value (via Future) and can throw checked exceptions"
+    - "I said Runnable is preferred over extending Thread because of single inheritance"
+    - "I said run() runs in the current thread while start() creates a new one"
+  modelAnswer: |
+    There are three common ways. I can extend the Thread class and override run, but then my class can't extend anything else. I can write a Runnable, which is just the task, and give it to a Thread; this is usually better. Or, if I need an answer back, I write a Callable and submit it to a thread pool. The pool gives me a Future, like a token, and calling get on it gives me the result. One big trap: calling run directly is just a normal method call in the current thread. Only start actually creates a new thread.
+flashcards:
+  - front: "3 ways to create a thread"
+    back: "Extend Thread; implement Runnable and pass to Thread; implement Callable and submit to an ExecutorService."
+  - front: "Runnable vs Callable"
+    back: "Runnable: void run(), no checked exceptions. Callable<V>: V call() throws Exception, returns a result via Future."
+  - front: "start() vs run()"
+    back: "start() creates a new thread that calls run(). run() alone is a normal call in the current thread."
+  - front: "What does Future.get() do?"
+    back: "Waits until the task finishes and returns its result (or throws ExecutionException if the task failed)."
+keyTakeaways:
+  - "Runnable = the work; Thread = the worker that runs it."
+  - "Prefer Runnable over extending Thread (single inheritance, reuse with pools)."
+  - "Use Callable when you need a return value or checked exceptions; collect it with Future.get()."
+  - "Only start() creates a new thread; run() is a normal method call."
+  - "The order in which started threads run is decided by the scheduler and can vary."

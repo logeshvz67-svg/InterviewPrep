@@ -31,12 +31,15 @@ public class XpService {
     private final ProfileRepository profiles;
     private final StreakService streaks;
     private final TimeService time;
+    private final AchievementService achievements;
 
-    public XpService(XpEventRepository events, ProfileRepository profiles, StreakService streaks, TimeService time) {
+    public XpService(XpEventRepository events, ProfileRepository profiles, StreakService streaks, TimeService time,
+                     AchievementService achievements) {
         this.events = events;
         this.profiles = profiles;
         this.streaks = streaks;
         this.time = time;
+        this.achievements = achievements;
     }
 
     /**
@@ -70,6 +73,7 @@ public class XpService {
         // dirty checking writes the change automatically when the transaction commits.
 
         streaks.recordActivity(userId);
+        achievements.evaluate(userId, null, 100); // badges are checked whenever XP is earned
         log.debug("XP +{} {} user={}", action.xp(), action, userId);
         return new XpAward(true, action.xp(), action.gold(), null);
     }

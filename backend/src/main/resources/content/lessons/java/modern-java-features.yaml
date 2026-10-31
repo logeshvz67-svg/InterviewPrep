@@ -1,0 +1,403 @@
+slug: modern-java-features
+world: JAVA_CORE
+section: F
+order: 6
+title: "var, switch expressions, records, sealed classes, text blocks"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT]
+infosysRelevance: "Shows you are up to date: a good answer to 'what's new after Java 8?' in SP rounds, and records/switch expressions make coding answers shorter."
+otherCompanies: "Product companies often use Java 17 or 21 in production and expect you to read records, sealed types and pattern matching comfortably."
+why: |
+  Many students stop learning at Java 8. But companies now run **Java 17 and Java 21** (both **LTS**, Long-Term Support versions that get updates for years). Java 21 is what this app's own backend uses.
+
+  Newer Java removes a lot of boring code:
+  - a 40-line data class becomes a **1-line record**,
+  - a `switch` full of `break`s becomes a clean **switch expression**,
+  - messy `"..." + "\n" +` strings become readable **text blocks**,
+  - `if (o instanceof String) { String s = (String) o; ... }` loses its cast.
+
+  When an interviewer asks **"What features came after Java 8?"**, a confident answer with small examples stands out. It shows you keep learning, which is exactly what a Specialist Programmer role wants.
+analogy: |
+  Think of Java versions like **phone software updates**.
+
+  Java 8 was a huge update (lambdas, streams), like getting a smartphone for the first time. The later updates are smaller **quality-of-life features**: dark mode, quick replies, auto-fill passwords. Each one saves you a few taps every day.
+
+  - `var` is **auto-fill**: Java fills in the type it can already see.
+  - **Records** are a **ready-made contact card**: name, number, done; no need to design the card yourself.
+  - **Switch expressions** are **quick replies**: pick a case, get an answer, no extra steps.
+  - **Sealed classes** are a **family WhatsApp group with admin-only adds**: only the members the admin approves can join.
+  - **Text blocks** let you **paste a paragraph** exactly as it looks.
+visual:
+  diagram: |
+    Java timeline (LTS = long-term support)
+    8 (LTS) -- 10 -- 11 (LTS) -- 14 -- 15 -- 16 -- 17 (LTS) -- 21 (LTS)
+    lambdas    var    String      switch text  records  sealed   switch
+    streams           methods     expr   blocks instanceof classes patterns
+    Optional          (isBlank,                 pattern            record
+    java.time          strip...)                                   patterns
+
+    record Student(String name, int marks) {}
+       compiler writes for you:
+       +-----------------------------------------------+
+       | private final String name; private final int marks;
+       | Student(String name, int marks) {...}         |
+       | name()  marks()          <- accessors (no get)|
+       | equals()  hashCode()  toString()              |
+       +-----------------------------------------------+
+  caption: "Most modern features arrived between Java 10 and 21. A one-line record makes the compiler generate fields, constructor, accessors, equals, hashCode and toString."
+  visualizer: null
+explanation: |
+  ### 1. var: local variable type inference (Java 10)
+  `var` lets the compiler figure out the type of a **local variable** from the value on the right.
+  ```java
+  var name = "Asha";                       // String
+  var marks = new HashMap<String, List<Integer>>();   // no need to repeat the long type
+  for (var entry : marks.entrySet()) { ... }
+  ```
+  - Java is still **statically typed**: `name` is a `String` forever; `name = 5;` is a compile error. `var` is not JavaScript's `var`.
+  - Allowed only for **local variables** (and loop variables, lambda parameters). **Not** for fields, method parameters or return types.
+  - Needs an initializer: `var x;` and `var x = null;` don't compile (nothing to infer from).
+  - Use it when the type is obvious from the right side; avoid it when it hides meaning (`var data = service.process();`).
+
+  ### 2. Switch expressions (Java 14)
+  Old `switch` was a **statement** with fall-through bugs (forget a `break` and the next case runs too). The new form is an **expression**: it **returns a value**, uses arrows `->`, and never falls through.
+  ```java
+  String type = switch (day) {
+      case 1, 7 -> "Weekend";            // many labels, comma-separated
+      case 2, 3, 4, 5, 6 -> "Weekday";
+      default -> throw new IllegalArgumentException("bad day " + day);
+  };
+  ```
+  - Must be **exhaustive**: every possible value must be covered (usually with `default`), otherwise it won't compile.
+  - For a multi-line case, use a block and **`yield`** to give back the value:
+  ```java
+  int bonus = switch (grade) {
+      case 'A' -> 5000;
+      case 'B' -> {
+          int base = 2000;
+          yield base + 500;          // yield = "this is the value of the switch"
+      }
+      default -> 0;
+  };
+  ```
+
+  ### 3. Text blocks (Java 15)
+  A **text block** is a multi-line String between triple quotes `"""`. What you see is what you get: no `\n`, no `+`, no escaping double quotes.
+  ```java
+  String json = """
+      {
+        "name": "Asha",
+        "city": "Pune"
+      }
+      """;
+  ```
+  - The opening `"""` must be followed by a **new line**.
+  - Common leading spaces (the indentation of your code) are removed automatically.
+  - Great for JSON, SQL queries and HTML in tests.
+
+  ### 4. Records (Java 16)
+  A **record** is a short way to write an **immutable data class** (a class that only carries data and never changes).
+  ```java
+  record Student(String name, int marks) {}
+  ```
+  The compiler generates:
+  - `private final` fields `name` and `marks`,
+  - a constructor `Student(String name, int marks)` (the **canonical constructor**),
+  - accessors **`name()`** and **`marks()`** (no `get` prefix),
+  - `equals()`, `hashCode()` (based on all fields) and `toString()` like `Student[name=Asha, marks=91]`.
+
+  You can add validation with a **compact constructor**, plus your own methods and static methods:
+  ```java
+  record Student(String name, int marks) {
+      Student {                                    // compact constructor
+          if (marks < 0) throw new IllegalArgumentException("marks < 0");
+      }
+      boolean passed() { return marks >= 40; }
+  }
+  ```
+  Rules: records are implicitly **final** (no subclass), cannot **extend** another class (they already extend `java.lang.Record`), but **can implement interfaces**. You cannot add extra instance fields. Perfect for DTOs (data transfer objects: objects that just carry data between layers, like an API response) and map keys (immutable, with correct `equals`/`hashCode`).
+
+  ### 5. Pattern matching for instanceof (Java 16)
+  ```java
+  // old
+  if (obj instanceof String) {
+      String s = (String) obj;
+      System.out.println(s.length());
+  }
+  // new: test + cast + new variable in one step
+  if (obj instanceof String s && s.length() > 3) {
+      System.out.println(s.length());
+  }
+  ```
+  The variable `s` (a **pattern variable**) exists only where the check is surely true. You saw this already in `equals()` methods in earlier lessons.
+
+  ### 6. Sealed classes (Java 17)
+  A **sealed** class or interface decides **exactly which classes may extend it**.
+  ```java
+  sealed interface Payment permits Upi, Card, Cash {}
+  record Upi(String vpa) implements Payment {}
+  record Card(String last4) implements Payment {}
+  final class Cash implements Payment {}
+  ```
+  - Each permitted subclass must be `final`, `sealed` or `non-sealed` (records are already final).
+  - Why? It models a **fixed set of options** (like an enum, but each option can carry different data), and the compiler **knows all the cases**.
+
+  ### Bonus: pattern matching for switch and record patterns (Java 21)
+  Sealed types + records + switch work together. Because the compiler knows all permitted types, no `default` is needed:
+  ```java
+  static String describe(Payment p) {
+      return switch (p) {
+          case Upi u -> "UPI to " + u.vpa();
+          case Card(String last4) -> "Card ending " + last4;   // record pattern
+          case Cash c -> "Cash";
+      };
+  }
+  ```
+  If someone adds a new `Payment` type later, every such switch stops compiling until it's handled. That's a safety net.
+
+  ### Quick reference
+  | Feature | Version | One-line purpose |
+  |---|---|---|
+  | `var` | 10 | infer local variable types |
+  | Switch expressions | 14 | switch that returns a value, no fall-through |
+  | Text blocks | 15 | multi-line strings with `"""` |
+  | Records | 16 | one-line immutable data classes |
+  | Pattern matching `instanceof` | 16 | test and cast in one step |
+  | Sealed classes | 17 | restrict which classes can extend |
+  | Pattern matching `switch`, record patterns | 21 | switch on types and take records apart |
+  | Virtual threads | 21 | very cheap threads for many blocking tasks |
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Modern {
+        record Student(String name, int marks) {
+            Student {
+                if (marks < 0 || marks > 100) throw new IllegalArgumentException("bad marks");
+            }
+            String grade() {
+                return switch (marks / 10) {
+                    case 10, 9 -> "A";
+                    case 8, 7 -> "B";
+                    case 6, 5, 4 -> "C";
+                    default -> "F";
+                };
+            }
+        }
+
+        public static void main(String[] args) {
+            var list = List.of(new Student("Asha", 91), new Student("Ravi", 47));
+            for (var s : list) {
+                System.out.println(s + " -> " + s.grade());
+            }
+            Object o = list.get(0);
+            if (o instanceof Student st && st.marks() > 90) {
+                System.out.println(st.name() + " is a topper");
+            }
+            String report = """
+                Report
+                  Students: %d
+                """.formatted(list.size());
+            System.out.print(report);
+        }
+    }
+  walkthrough: |
+    - `record Student(String name, int marks)` creates fields, constructor, `name()`, `marks()`, `equals`, `hashCode` and `toString` automatically.
+    - The **compact constructor** `Student { ... }` checks the marks before the fields are set.
+    - `grade()` uses a **switch expression**: `marks / 10` for 91 is 9, so "A"; for 47 it's 4, so "C". No `break` needed.
+    - `var list` is inferred as `List<Student>`; `var s` as `Student`.
+    - `o instanceof Student st && st.marks() > 90` tests the type, casts, and names it `st` in one step.
+    - The **text block** keeps the line breaks and the 2-space indent of "Students". `formatted` fills in `%d`.
+
+    Output:
+    ```
+    Student[name=Asha, marks=91] -> A
+    Student[name=Ravi, marks=47] -> C
+    Asha is a topper
+    Report
+      Students: 2
+    ```
+tryIt:
+  instructions: "Type this sealed-interface payment example (it needs Java 21 for the pattern switch). Then add a new record NetBanking implements Payment to the permits list and watch the switch stop compiling until you add a case."
+  code: |
+    public class Payments {
+        sealed interface Payment permits Upi, Card, Cash {}
+        record Upi(String vpa) implements Payment {}
+        record Card(String last4) implements Payment {}
+        record Cash() implements Payment {}
+
+        static String describe(Payment p) {
+            return switch (p) {
+                case Upi u -> "UPI to " + u.vpa();
+                case Card(String last4) -> "Card ending " + last4;
+                case Cash c -> "Cash on delivery";
+            };
+        }
+
+        public static void main(String[] args) {
+            System.out.println(describe(new Upi("asha@okbank")));
+            System.out.println(describe(new Card("4242")));
+            System.out.println(describe(new Cash()));
+        }
+    }
+predict:
+  code: |
+    public class RecordPredict {
+        record Point(int x, int y) {}
+
+        public static void main(String[] args) {
+            Point a = new Point(1, 2);
+            Point b = new Point(1, 2);
+            System.out.println(a);
+            System.out.println(a == b);
+            System.out.println(a.equals(b) + " " + a.x());
+            int day = 6;
+            String type = switch (day) {
+                case 1, 7 -> "Weekend";
+                default -> "Weekday";
+            };
+            System.out.println(type);
+        }
+    }
+  expectedOutput: |
+    Point[x=1, y=2]
+    false
+    true 1
+    Weekday
+  explanation: |
+    A record's generated `toString()` prints `Point[x=1, y=2]`. `a == b` compares **references**: two separate objects, so `false`. The generated `equals()` compares **field values**, so `true`, and the accessor is `x()` (not `getX()`). The switch expression has no case for 6, so `default` gives "Weekday".
+commonMistakes:
+  - "Thinking var makes Java dynamically typed. The type is fixed at compile time; you just don't write it."
+  - "Using var for fields, method parameters, or without an initializer (var x;). Not allowed."
+  - "Calling getName() on a record. Record accessors are name(), marks() with no get prefix."
+  - "Trying to change a record field or extend a record. Fields are final and records are final classes."
+  - "Writing a switch expression on an int with no default: it won't compile because it isn't exhaustive."
+  - "Forgetting yield in a block-bodied case of a switch expression (return is not allowed there)."
+interviewBox:
+  why: "Why interviewers ask this: it shows whether you keep up with the language your future team uses, and records/switch expressions make your coding answers cleaner."
+  questions:
+    - q: "What are the important features added after Java 8?"
+      a: "Java 10 added var for local type inference. Java 14 made switch expressions standard, with arrows and no fall-through. Java 15 added text blocks for multi-line strings. Java 16 added records and pattern matching for instanceof. Java 17 added sealed classes. Java 21 added pattern matching for switch, record patterns and virtual threads. 11, 17 and 21 are LTS versions."
+    - q: "What is a record in Java?"
+      a: "A record is a compact way to declare an immutable data class. Writing record Student(String name, int marks) gives me private final fields, a constructor, accessor methods name() and marks(), and equals, hashCode and toString. Records are final, can't extend other classes, but can implement interfaces and have extra methods or a compact constructor for validation."
+    - q: "Is Java with var still statically typed?"
+      a: "Yes. var only means the compiler infers the type from the initializer at compile time. After that, the variable has a fixed type and can't hold a different type. It only works for local variables with an initializer."
+    - q: "What are sealed classes and why use them?"
+      a: "A sealed class or interface lists exactly which classes are allowed to extend it, using permits. It's useful for modelling a fixed set of options, like payment types. Because the compiler knows all subtypes, a switch over them can be exhaustive without a default, and adding a new type forces you to handle it everywhere."
+    - q: "How is a switch expression different from the old switch statement?"
+      a: "A switch expression returns a value, uses arrow labels so there's no fall-through and no break, allows several labels in one case, and must be exhaustive. For multi-line cases you use yield to return the value."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      char grade = 'B';
+      int bonus = switch (grade) {
+          case 'A' -> 5000;
+          case 'B' -> {
+              int base = 2000;
+              yield base + 500;
+          }
+          default -> 0;
+      };
+      System.out.println(bonus);
+    options: ["2000", "2500", "5000", "0"]
+    answer: 1
+    explanation: "grade is 'B', so the block runs and yield returns 2000 + 500 = 2500. There is no fall-through with arrow labels, so it never reaches default (0), which is what an old switch without break might have done."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      int code = 2;
+      String msg = switch (code) {
+          case 1 -> "One";
+          case 2 -> "Two";
+      };
+      System.out.println(msg);
+    options:
+      - "Arrow labels cannot be used with int"
+      - "A switch expression must be exhaustive; an int has many other values, so a default case is required"
+      - "msg must be declared with var"
+      - "switch cannot return a String"
+    answer: 1
+    explanation: "The compiler reports 'the switch expression does not cover all possible input values'. Add default -> \"Other\". With a sealed type or an enum where all cases are listed, default isn't needed, which is why this can be confusing."
+  - id: q3
+    type: MCQ
+    prompt: "Given record Student(String name, int marks) {}, how do you read the name of a Student s?"
+    code: null
+    options: ["s.getName()", "s.name()", "s.name", "Student.name(s)"]
+    answer: 1
+    explanation: "Records generate accessor methods with the same name as the component: name(). There is no getName(), which is the tempting habit from regular classes, and the field itself is private."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "After var x = 10; you can later write x = \"ten\"; because var can hold any type."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. var x = 10 makes x an int at compile time. Assigning a String is a compile error. var is inference, not dynamic typing."
+  - id: q5
+    type: MATCH
+    prompt: "Match each feature to the Java version that made it standard"
+    pairs:
+      - left: "var"
+        right: "Java 10"
+      - left: "Switch expressions"
+        right: "Java 14"
+      - left: "Records"
+        right: "Java 16"
+      - left: "Sealed classes"
+        right: "Java 17"
+      - left: "Pattern matching for switch"
+        right: "Java 21"
+    explanation: "Text blocks (15) and pattern matching for instanceof (16) fill the gaps. Knowing roughly when features arrived helps you talk about which Java version a project uses."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword that returns a value from a block inside a switch expression."
+    code: |
+      int days = switch (month) {
+          case 2 -> 28;
+          default -> {
+              int d = (month % 2 == 0) ? 30 : 31;
+              ____ d;
+          }
+      };
+    acceptedAnswers: ["yield"]
+    explanation: "yield gives the value of a block case in a switch expression. return would try to return from the whole method, so it isn't allowed there."
+  - id: q7
+    type: MCQ
+    prompt: "Which statement about records is TRUE?"
+    code: null
+    options: ["A record can extend another class", "A record's fields can be changed with setters", "A record can implement interfaces and have extra methods", "A record must override equals() by hand"]
+    answer: 2
+    explanation: "Records can implement interfaces and add methods. They cannot extend classes (they already extend java.lang.Record), their fields are final with no setters, and equals/hashCode are generated for you."
+explainBack:
+  prompt: "Explain to a friend three Java features that came after Java 8 and why each one makes code better."
+  rubric:
+    - "I explained records (one-line immutable data class with generated methods)"
+    - "I explained switch expressions (return a value, arrows, no fall-through, exhaustive)"
+    - "I explained var and said Java is still statically typed"
+    - "I mentioned at least one of text blocks, sealed classes, or pattern matching"
+    - "I mentioned that 17 and 21 are LTS versions used in companies"
+  modelAnswer: |
+    After Java 8, Java got many small features that remove boring code. Records let me write a data class in one line, like record Student(String name, int marks), and Java generates the fields, constructor, accessors, equals, hashCode and toString, and keeps it immutable. Switch expressions return a value, use arrows so there's no fall-through, and must cover every case. var lets the compiler infer the type of a local variable, but Java is still statically typed. There's also pattern matching, so instanceof can test and cast in one step, and sealed classes that list exactly which classes may extend them. Java 17 and 21 are the LTS versions most companies now use.
+flashcards:
+  - front: "What does record Point(int x, int y) {} generate?"
+    back: "private final fields, canonical constructor, accessors x() and y(), equals, hashCode, toString (Point[x=1, y=2])."
+  - front: "Switch expression rules"
+    back: "Returns a value, arrow labels (no fall-through), comma-separated labels, must be exhaustive, yield for block cases."
+  - front: "var limits"
+    back: "Local variables only, needs a non-null initializer, type fixed at compile time."
+  - front: "Sealed class"
+    back: "A class/interface that lists permitted subclasses with permits; subclasses must be final, sealed or non-sealed."
+  - front: "Pattern matching for instanceof"
+    back: "if (obj instanceof String s) { use s } : test, cast and bind in one step (Java 16)."
+  - front: "Java LTS versions"
+    back: "8, 11, 17, 21 (and 25): long-term support releases companies standardise on."
+keyTakeaways:
+  - "var infers local variable types; Java stays statically typed."
+  - "Switch expressions return values with arrows, no fall-through, and must be exhaustive; use yield in blocks."
+  - "Text blocks (\"\"\") make multi-line strings readable."
+  - "Records are one-line immutable data classes with generated accessors, equals, hashCode and toString."
+  - "Sealed types + records + pattern matching switch (Java 21) give safe, exhaustive type handling."

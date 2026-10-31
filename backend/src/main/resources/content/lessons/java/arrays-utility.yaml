@@ -1,0 +1,354 @@
+slug: arrays-utility
+world: JAVA_CORE
+section: A
+order: 13
+title: "The Arrays utility class"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Saves time in timed coding tests: sorting, searching, filling and copying in one line lets you spend your minutes on the actual SP/DSE problem logic."
+otherCompanies: "Arrays.sort, Arrays.asList traps and binarySearch return values show up in MCQs and coding rounds at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  `java.util.Arrays` is a **utility class**: a class full of ready-made `static` methods that work on arrays. You never create an `Arrays` object; you just call `Arrays.sort(arr)`, `Arrays.fill(arr, -1)` and so on.
+
+  Why learn it well:
+  - In a timed test, writing your own sort or copy loop wastes minutes and invites bugs. `Arrays.sort` is one line and runs in **O(n log n)**.
+  - Many solutions start with "sort the array", then use two pointers or binary search.
+  - Interviewers like the traps: `Arrays.asList` on an `int[]`, adding to a list from `asList`, `binarySearch` on an unsorted array, and sorting in descending order.
+analogy: |
+  Think of `Arrays` as a **Swiss army knife** (or the multi-tool kit your electrician carries).
+
+  - You do not build a new screwdriver every time you need one; you open the kit and use the right tool.
+  - `sort` is the comb that arranges everything in order. `binarySearch` is the index of a dictionary: fast, but only if the pages are already in order.
+  - `fill` is the paint roller: one stroke covers everything. `copyOf` is the photocopier: a fresh copy you can change freely.
+  - `toString` is the display window: it shows what is inside the array in a readable way.
+visual:
+  diagram: |
+    int[] a = {5, 2, 8, 1, 9};
+
+    Arrays.toString(a)       -> "[5, 2, 8, 1, 9]"
+    Arrays.sort(a)           -> a is now [1, 2, 5, 8, 9]   (in place)
+    Arrays.binarySearch(a,8) -> 3        (index, array must be sorted)
+    Arrays.binarySearch(a,6) -> -4       (= -(insertion point 3) - 1)
+    Arrays.copyOf(a, 3)      -> [1, 2, 5]           (new array)
+    Arrays.copyOf(a, 7)      -> [1, 2, 5, 8, 9, 0, 0] (padded)
+    Arrays.copyOfRange(a,1,4)-> [2, 5, 8]           (from 1, to 4 excl.)
+    Arrays.fill(b, -1)       -> [-1, -1, -1, ...]
+    Arrays.equals(a, c)      -> compares CONTENTS (a == c compares refs)
+
+    Arrays.asList(1, 2, 3)  ---view--->  backed by the array
+       set() OK  |  add()/remove() -> UnsupportedOperationException
+  caption: "One line per job: print, sort, search, copy, fill, compare. asList gives a fixed-size list view, not a normal ArrayList."
+  visualizer: null
+explanation: |
+  Add `import java.util.Arrays;` at the top of your file (or `import java.util.*;`).
+
+  ### toString and deepToString: printing
+  ```java
+  int[] a = {3, 1, 2};
+  System.out.println(Arrays.toString(a));        // [3, 1, 2]
+  int[][] g = {{1, 2}, {3, 4}};
+  System.out.println(Arrays.deepToString(g));    // [[1, 2], [3, 4]]
+  ```
+  `Arrays.toString(g)` on a 2D array prints row references like `[[I@..., [I@...]`, so use `deepToString` for 2D.
+
+  ### sort: ascending order, in place
+  ```java
+  Arrays.sort(a);                // whole array, ascending
+  Arrays.sort(a, 1, 4);          // only indexes 1, 2, 3 (end is exclusive)
+  String[] names = {"Ravi", "anu", "Bala"};
+  Arrays.sort(names);            // [Bala, Ravi, anu]  (uppercase before lowercase)
+  ```
+  - **In place** means the original array is changed; nothing is returned (`void`).
+  - Time: **O(n log n)**. For primitives Java uses a **dual-pivot quicksort**; for objects it uses **TimSort**, which is **stable** (equal elements keep their original order).
+  - Strings sort by Unicode value, so all capital letters come before small letters.
+
+  ### Descending order
+  For **objects** (like `Integer[]` or `String[]`) pass a **comparator** (a rule for ordering):
+  ```java
+  Integer[] b = {5, 2, 8};
+  Arrays.sort(b, Collections.reverseOrder());   // [8, 5, 2]
+  ```
+  This does **not** compile for `int[]`, because comparators only work with objects. For an `int[]`, sort ascending and then read it backwards (or reverse it with two pointers).
+
+  ### binarySearch: fast search on a sorted array
+  ```java
+  int[] s = {1, 2, 5, 8, 9};
+  Arrays.binarySearch(s, 8);   // 3
+  Arrays.binarySearch(s, 6);   // -4
+  ```
+  - The array **must be sorted first**. On an unsorted array, the result is unpredictable (no error, just a possibly wrong answer).
+  - Found: returns the index. If duplicates exist, any one of their indexes may be returned.
+  - Not found: returns `-(insertionPoint) - 1`, where the **insertion point** is where the key would be inserted to keep order. For 6, the insertion point is 3, so the result is -4. It is always negative when not found.
+  - Time: **O(log n)**.
+
+  ### fill: set every element
+  ```java
+  int[] dist = new int[5];
+  Arrays.fill(dist, Integer.MAX_VALUE);   // common in graph problems
+  boolean[] seen = new boolean[5];
+  Arrays.fill(seen, true);
+  Arrays.fill(dist, 1, 3, 0);             // only indexes 1 and 2
+  ```
+  For a 2D array, `fill` works one row at a time: `for (int[] row : grid) Arrays.fill(row, -1);`.
+
+  ### copyOf and copyOfRange: new arrays
+  ```java
+  int[] c1 = Arrays.copyOf(s, 3);         // [1, 2, 5]
+  int[] c2 = Arrays.copyOf(s, 7);         // [1, 2, 5, 8, 9, 0, 0]
+  int[] c3 = Arrays.copyOfRange(s, 1, 4); // [2, 5, 8]
+  ```
+  - `copyOf` **truncates** (cuts) if the new length is smaller and **pads** with default values if it is bigger. This is how you "grow" an array.
+  - `copyOfRange(arr, from, to)` includes `from` and excludes `to`.
+  - Both return a **new** array, so changing the copy does not touch the original. (`arr.clone()` and `System.arraycopy` are other ways to copy.)
+
+  ### equals: compare contents
+  ```java
+  int[] x = {1, 2}, y = {1, 2};
+  x == y;                 // false: different objects
+  x.equals(y);            // false: arrays do not override equals
+  Arrays.equals(x, y);    // true: same length and same elements
+  ```
+  For 2D arrays use `Arrays.deepEquals`.
+
+  ### asList: array to List (with traps)
+  ```java
+  List<String> list = Arrays.asList("a", "b", "c");
+  list.set(0, "z");   // OK
+  list.add("d");      // UnsupportedOperationException!
+  ```
+  - `asList` returns a **fixed-size** list **backed by** the array: changing an element through the list changes the array and vice versa, but you **cannot add or remove**.
+  - For a normal, growable list, wrap it: `new ArrayList<>(Arrays.asList(...))`.
+  - **Big trap:** `Arrays.asList(new int[]{1, 2, 3})` gives a `List<int[]>` with **one** element (the whole array), because generics work with objects, not primitives. Use `Integer[]` instead, or a loop.
+
+  ### stream: quick sum, max, min
+  ```java
+  int total = Arrays.stream(s).sum();          // 25
+  int max = Arrays.stream(s).max().getAsInt(); // 9
+  ```
+  Handy for quick totals, though a simple loop is just as good in tests.
+
+  ### Cheat sheet
+  | Method | Returns | Time |
+  |---|---|---|
+  | `toString(a)` / `deepToString(g)` | String | O(n) |
+  | `sort(a)` / `sort(a, from, to)` | void (in place) | O(n log n) |
+  | `binarySearch(a, key)` | index or negative | O(log n), needs sorted array |
+  | `fill(a, v)` | void | O(n) |
+  | `copyOf(a, len)` / `copyOfRange(a, f, t)` | new array | O(len) |
+  | `equals(a, b)` / `deepEquals` | boolean | O(n) |
+  | `asList(...)` | fixed-size List view | O(1) |
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class ArraysUtil {
+        public static void main(String[] args) {
+            int[] a = {5, 2, 8, 1, 9};
+            Arrays.sort(a);
+            System.out.println(Arrays.toString(a));
+            System.out.println(Arrays.binarySearch(a, 8));
+            System.out.println(Arrays.binarySearch(a, 6));
+
+            int[] grown = Arrays.copyOf(a, 7);
+            int[] part = Arrays.copyOfRange(a, 1, 4);
+            System.out.println(Arrays.toString(grown) + " " + Arrays.toString(part));
+
+            int[] filled = new int[4];
+            Arrays.fill(filled, 7);
+            System.out.println(Arrays.toString(filled));
+
+            Integer[] boxed = {5, 2, 8};
+            Arrays.sort(boxed, Collections.reverseOrder());
+            System.out.println(Arrays.toString(boxed));
+
+            int[] x = {1, 2}, y = {1, 2};
+            System.out.println((x == y) + " " + Arrays.equals(x, y));
+        }
+    }
+  walkthrough: |
+    - `Arrays.sort(a)` rearranges `a` itself into `[1, 2, 5, 8, 9]`.
+    - `binarySearch(a, 8)` finds 8 at index 3. For 6 (missing), it would be inserted at index 3, so it returns -(3) - 1 = `-4`.
+    - `copyOf(a, 7)` makes a longer copy padded with zeros; `copyOfRange(a, 1, 4)` copies indexes 1, 2, 3.
+    - `fill` sets all four elements to 7.
+    - `Collections.reverseOrder()` sorts the `Integer[]` in descending order. This works only for object arrays.
+    - `x == y` is false (two different array objects), while `Arrays.equals` compares contents: true.
+
+    Output:
+    ```
+    [1, 2, 5, 8, 9]
+    3
+    -4
+    [1, 2, 5, 8, 9, 0, 0] [2, 5, 8]
+    [7, 7, 7, 7]
+    [8, 5, 2]
+    false true
+    ```
+tryIt:
+  instructions: "Type this program that finds the k-th smallest and largest marks and checks if a score exists. Change k and target and predict the results before running."
+  code: |
+    import java.util.Arrays;
+
+    public class Ranks {
+        public static void main(String[] args) {
+            int[] marks = {67, 92, 45, 88, 73, 92, 51};
+            int[] sorted = Arrays.copyOf(marks, marks.length);
+            Arrays.sort(sorted);
+            int k = 2;
+            System.out.println("Original: " + Arrays.toString(marks));
+            System.out.println("Sorted:   " + Arrays.toString(sorted));
+            System.out.println(k + "nd smallest: " + sorted[k - 1]);
+            System.out.println(k + "nd largest: " + sorted[sorted.length - k]);
+            int target = 73;
+            int pos = Arrays.binarySearch(sorted, target);
+            System.out.println(target + (pos >= 0 ? " found at " + pos : " not found"));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Predict {
+        public static void main(String[] args) {
+            int[] nums = {3, 1, 2};
+            List<int[]> wrong = Arrays.asList(nums);
+            System.out.println(wrong.size());
+
+            Integer[] boxed = {3, 1, 2};
+            List<Integer> view = Arrays.asList(boxed);
+            view.set(0, 30);
+            System.out.println(boxed[0] + " " + view.size());
+
+            try {
+                view.add(4);
+            } catch (UnsupportedOperationException e) {
+                System.out.println("cannot add");
+            }
+        }
+    }
+  expectedOutput: |
+    1
+    30 3
+    cannot add
+  explanation: |
+    - `Arrays.asList(nums)` with an `int[]` treats the whole array as **one** object, so the list has size `1`.
+    - With `Integer[]`, the list is a **view** backed by the array: `view.set(0, 30)` also changes `boxed[0]`. The size is `3`.
+    - The list from `asList` has a **fixed size**, so `add` throws `UnsupportedOperationException`, which we catch and print `cannot add`.
+commonMistakes:
+  - "Calling binarySearch on an unsorted array and trusting the result."
+  - "Using Arrays.sort(intArray, Collections.reverseOrder()); it does not compile for primitive arrays."
+  - "Expecting Arrays.sort to return a new sorted array. It sorts in place and returns void."
+  - "Adding or removing elements on a list from Arrays.asList (UnsupportedOperationException)."
+  - "Passing an int[] to Arrays.asList and getting a list with one element."
+  - "Using Arrays.toString on a 2D array instead of Arrays.deepToString, or == instead of Arrays.equals."
+interviewBox:
+  why: "Why interviewers ask this: it shows you know the standard library and can write short, correct code. The asList and binarySearch details reveal whether you have really used these methods."
+  questions:
+    - q: "Which sorting algorithm does Arrays.sort use?"
+      a: "For primitive arrays it uses a dual-pivot quicksort, which is O(n log n) on average. For object arrays it uses TimSort, a merge-sort based algorithm that is stable, meaning equal elements keep their original order."
+    - q: "What does Arrays.binarySearch return if the element is not found?"
+      a: "It returns a negative number: minus the insertion point minus one, where the insertion point is the index where the element would go to keep the array sorted. The array must be sorted before calling it."
+    - q: "How do you sort an int array in descending order?"
+      a: "Comparators work only with objects, so I either sort the int array ascending and then reverse it with two pointers, or convert it to an Integer array and use Arrays.sort with Collections.reverseOrder()."
+    - q: "What is the problem with Arrays.asList?"
+      a: "It returns a fixed-size list backed by the original array. We can change elements with set, and that changes the array too, but add or remove throws UnsupportedOperationException. Also, passing an int array gives a list with one element, the array itself. For a normal list, I wrap it in new ArrayList."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int[] a = {10, 20, 30, 40};
+      System.out.println(Arrays.binarySearch(a, 30) + " " + Arrays.binarySearch(a, 25));
+    options: ["2 -3", "2 -1", "3 -3", "2 2"]
+    answer: 0
+    explanation: "30 is at index 2. 25 is missing; it would be inserted at index 2, so the result is -(2) - 1 = -3. -1 is the tempting guess because many languages use -1 for 'not found', but Java encodes the insertion point."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      int[] scores = {40, 90, 70};
+      Arrays.sort(scores, Collections.reverseOrder());
+      System.out.println(Arrays.toString(scores));
+    options:
+      - "Arrays.sort cannot sort arrays of length 3"
+      - "Comparators like reverseOrder() work only with object arrays, not int[]"
+      - "Collections must be written Collection"
+      - "toString must be called on scores directly"
+    answer: 1
+    explanation: "The sort(array, comparator) version needs an array of objects such as Integer[]. With int[] the compiler finds no matching method. Changing to Integer[] scores fixes it."
+  - id: q3
+    type: MCQ
+    prompt: "What is Arrays.copyOf(new int[]{4, 5, 6}, 5)?"
+    code: null
+    options: ["[4, 5, 6]", "[4, 5, 6, 0, 0]", "[4, 5, 6, 4, 5]", "ArrayIndexOutOfBoundsException"]
+    answer: 1
+    explanation: "copyOf with a bigger length creates a new array and pads the extra slots with the default value, 0 for int. It never throws for a bigger length; that is exactly how you grow an array."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Arrays.sort(arr) returns a new sorted array and leaves arr unchanged."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Arrays.sort is void and sorts the given array in place. If you need the original order too, copy it first with Arrays.copyOf."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String[] w = {"mango", "Apple", "banana"};
+      Arrays.sort(w);
+      System.out.println(Arrays.toString(w));
+    options: ["[Apple, banana, mango]", "[Apple, mango, banana]", "[banana, mango, Apple]", "[mango, banana, Apple]"]
+    answer: 0
+    explanation: "Strings are sorted by Unicode values. Capital 'A' (65) comes before every small letter, then 'b' (98) before 'm' (109). Here it happens to look alphabetical, but \"Zebra\" would also come before \"apple\"."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that sets every element of dist to -1."
+    code: |
+      int[] dist = new int[10];
+      Arrays.____(dist, -1);
+    acceptedAnswers: ["fill"]
+    explanation: "Arrays.fill(array, value) assigns the value to every element. It replaces a manual loop and is common for initializing distance or memo arrays."
+  - id: q7
+    type: MATCH
+    prompt: "Match each method to what it does"
+    pairs:
+      - left: "Arrays.sort(a)"
+        right: "Sorts a in place in ascending order"
+      - left: "Arrays.copyOfRange(a, 1, 3)"
+        right: "New array with indexes 1 and 2"
+      - left: "Arrays.equals(a, b)"
+        right: "Compares the contents of two arrays"
+      - left: "Arrays.deepToString(g)"
+        right: "Readable text for a 2D array"
+      - left: "Arrays.asList(x, y)"
+        right: "Fixed-size List backed by an array"
+    explanation: "Each method does one job. Remember that ranges are from-inclusive and to-exclusive, and that asList cannot grow or shrink."
+explainBack:
+  prompt: "Explain to a friend the five Arrays methods you would use most in a coding test, and one trap for each of sort, binarySearch and asList."
+  rubric:
+    - "I named toString, sort, binarySearch, fill and copyOf (or similar)"
+    - "I said sort is in place and descending order needs an object array"
+    - "I said binarySearch needs a sorted array and returns a negative number when not found"
+    - "I explained asList is fixed-size and the int[] trap"
+    - "I mentioned time complexities like O(n log n) and O(log n)"
+  modelAnswer: |
+    The Arrays class has ready-made static methods. I use toString to print an array, sort to sort it in place in O(n log n), binarySearch to find a value in O(log n), fill to set every element, and copyOf to make a resized copy. Traps: sort is void and changes the original, and for descending order I need an Integer array with Collections.reverseOrder, because comparators do not work with int arrays. binarySearch only works on a sorted array, and when the value is missing it returns a negative number based on where it would be inserted. asList gives a fixed-size list, so add throws an exception, and if I pass an int array I get a list with just one element.
+flashcards:
+  - front: "Arrays.binarySearch when key is missing"
+    back: "Returns -(insertionPoint) - 1 (always negative). Array must be sorted."
+  - front: "Sort int[] descending?"
+    back: "Sort ascending then reverse, or use Integer[] with Collections.reverseOrder()."
+  - front: "Arrays.asList limits"
+    back: "Fixed size (no add/remove), backed by the array; int[] becomes a single element."
+  - front: "copyOf vs copyOfRange"
+    back: "copyOf(a, len): first len elements, padded with defaults. copyOfRange(a, from, to): to is exclusive."
+  - front: "Algorithm behind Arrays.sort"
+    back: "Primitives: dual-pivot quicksort. Objects: TimSort (stable). Both O(n log n)."
+keyTakeaways:
+  - "Arrays is a utility class of static methods; import java.util.Arrays."
+  - "sort is in place, O(n log n); comparators (like reverseOrder) need object arrays."
+  - "binarySearch needs a sorted array; a missing key gives -(insertion point) - 1."
+  - "copyOf / copyOfRange make new arrays; fill sets every element; equals compares contents."
+  - "asList returns a fixed-size view; never pass an int[] to it."
+  - "Use toString for 1D and deepToString for 2D when printing."

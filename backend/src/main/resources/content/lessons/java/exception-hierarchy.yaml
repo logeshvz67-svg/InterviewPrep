@@ -1,0 +1,309 @@
+slug: exception-hierarchy
+world: JAVA_CORE
+section: D
+order: 1
+title: "Exception hierarchy"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Core theory for SP and DSE technical rounds; the family tree of Throwable is the base for every later exception question."
+otherCompanies: "A common basic Java question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies, often as 'Error vs Exception'."
+why: |
+  Programs go wrong: a file is missing, a user types "abc" where a number was expected, an array index is too big. Java reports these problems as **exceptions**.
+
+  Interviewers love asking **"What is the difference between Error and Exception?"** and **"Draw the exception hierarchy."** They want to see that you know:
+  - which problems your code *should* handle,
+  - which problems you *cannot* fix (like the JVM running out of memory),
+  - which exceptions the compiler forces you to handle (next lesson: checked vs unchecked).
+
+  Every other exception topic (try/catch order, throws, custom exceptions) depends on this one family tree. Learn the tree once and the rest becomes logic, not memory.
+analogy: |
+  Think of problems in a **railway journey**.
+
+  - **Throwable** is the word "trouble". Every kind of trouble is under it.
+  - **Error** is like an **earthquake that breaks the track**. The passenger (your program) cannot fix it. Example: `OutOfMemoryError`. You don't plan for it in normal code.
+  - **Exception** is like **a delayed train or a lost ticket**. Annoying, but you *can* plan for it: book another train, show your ID.
+    - **Checked exceptions** are like problems the railway *makes* you plan for: "Carry a valid ID or you can't board." The compiler is the ticket checker.
+    - **RuntimeException** (unchecked) is like **your own mistake**: you boarded the wrong coach. Nobody forced you to plan for it; you should simply be more careful (fix the bug).
+visual:
+  diagram: |2
+                         Object
+                           |
+                       Throwable
+                     /           \
+                Error             Exception
+          (JVM-level trouble)    (program-level trouble)
+           |                      |                \
+     OutOfMemoryError        IOException        RuntimeException
+     StackOverflowError      SQLException       (UNCHECKED)
+                             (CHECKED)            |
+                                |            NullPointerException
+                         FileNotFoundException ArithmeticException
+                                             IndexOutOfBoundsException
+                                             IllegalArgumentException
+                                                |
+                                          NumberFormatException
+
+     Unchecked = Error + RuntimeException (and their children)
+     Checked   = every other Exception
+  caption: "Throwable is the root. Error means serious JVM trouble you normally don't catch. Exception is trouble your program can handle; RuntimeException and its children are unchecked."
+  visualizer: null
+explanation: |
+  ### What is an exception?
+  An **exception** is an object that Java creates when something goes wrong while the program runs. It carries a **message** ("/ by zero") and a **stack trace** (the list of method calls that led to the problem).
+
+  When an exception happens, Java **stops the normal flow** and looks for code that handles it. If nobody handles it, the program crashes and prints the stack trace.
+
+  ### The root: Throwable
+  `java.lang.Throwable` is the parent class of everything that can be **thrown** (raised) with the `throw` keyword or **caught** (handled) with `catch`. Only objects of type Throwable (or its children) can be thrown. Throwing a `String` is a compile error.
+
+  Throwable has two direct children: **Error** and **Exception**.
+
+  ### Error: serious, usually not recoverable
+  An **Error** means something is wrong with the JVM or the environment, not with one line of your logic.
+  | Error | When it happens |
+  |---|---|
+  | `OutOfMemoryError` | The heap (memory for objects) is full |
+  | `StackOverflowError` | Too many nested method calls, usually recursion with no base case |
+  | `NoClassDefFoundError` | A class that existed at compile time is missing at run time |
+
+  You *can* technically catch an Error, but you normally should not. Your program usually cannot repair the situation.
+
+  ### Exception: problems your program can handle
+  An **Exception** is a condition a well-written program should expect and handle. It splits into two groups:
+
+  **1. Checked exceptions** – children of `Exception` that are **not** children of `RuntimeException`. The **compiler checks** that you handle them (with `try/catch`) or declare them (with `throws`). They are usually about the outside world: files, network, database.
+  - `IOException`, `FileNotFoundException`, `SQLException`, `InterruptedException`, `ClassNotFoundException`
+
+  **2. Unchecked exceptions** – `RuntimeException` and its children. The compiler does **not** force you to handle them. They usually mean a **bug** in your code.
+  - `NullPointerException` – using a variable that points to nothing (`null`)
+  - `ArithmeticException` – integer divide by zero
+  - `ArrayIndexOutOfBoundsException` – index outside the array
+  - `NumberFormatException` – `Integer.parseInt("abc")`
+  - `ClassCastException` – casting an object to the wrong type
+  - `IllegalArgumentException` – a method got a bad argument
+
+  > Errors are also **unchecked**. Rule to remember: **Unchecked = RuntimeException + Error** (and their subclasses). Everything else under Throwable is checked.
+
+  ### Why the tree matters: catching a parent catches its children
+  A `catch` block catches the named type **and all its subclasses**. So:
+  ```java
+  try {
+      int[] a = new int[2];
+      a[5] = 10;                        // ArrayIndexOutOfBoundsException
+  } catch (RuntimeException e) {         // parent type catches it
+      System.out.println("Caught: " + e.getClass().getSimpleName());
+  }
+  ```
+  This prints `Caught: ArrayIndexOutOfBoundsException`. The same is true for `catch (Exception e)`, which catches almost everything except Errors.
+
+  ### Useful methods every exception has (from Throwable)
+  | Method | Gives you |
+  |---|---|
+  | `getMessage()` | The message text, e.g. `/ by zero` |
+  | `toString()` | Class name + message: `java.lang.ArithmeticException: / by zero` |
+  | `printStackTrace()` | Full stack trace printed to the error stream |
+  | `getCause()` | The original exception wrapped inside this one (or `null`) |
+
+  ### Error vs Exception summary
+  | | Error | Exception |
+  |---|---|---|
+  | Meaning | JVM / environment failure | Problem in program logic or input |
+  | Recoverable? | Usually no | Usually yes |
+  | Should you catch it? | Almost never | Yes, where you can handle it |
+  | Checked? | Unchecked | Checked, except RuntimeException family |
+  | Examples | OutOfMemoryError, StackOverflowError | IOException, NullPointerException |
+tinyCode:
+  code: |
+    public class Family {
+        public static void main(String[] args) {
+            try {
+                int x = 10 / 0;
+            } catch (ArithmeticException e) {
+                System.out.println("Message: " + e.getMessage());
+                System.out.println("toString: " + e);
+                System.out.println("Is RuntimeException? " + (e instanceof RuntimeException));
+                System.out.println("Is Exception? " + (e instanceof Exception));
+                System.out.println("Is Throwable? " + (e instanceof Throwable));
+            }
+        }
+    }
+  walkthrough: |
+    - `10 / 0` with **integers** makes Java throw an `ArithmeticException` object. The next lines in `try` are skipped.
+    - `catch (ArithmeticException e)` receives that object in the variable `e`.
+    - `e.getMessage()` returns just the message: `/ by zero`.
+    - Printing `e` calls `toString()`, which gives the full class name plus the message.
+    - The three `instanceof` checks walk up the family tree: ArithmeticException **is a** RuntimeException, which **is an** Exception, which **is a** Throwable. All three print `true`.
+
+    Output:
+    ```
+    Message: / by zero
+    toString: java.lang.ArithmeticException: / by zero
+    Is RuntimeException? true
+    Is Exception? true
+    Is Throwable? true
+    ```
+tryIt:
+  instructions: "Type this program. It triggers three different unchecked exceptions and catches each one with the common parent RuntimeException. Run it and read which class name appears each time."
+  code: |
+    public class Tree {
+        static void test(int choice) {
+            try {
+                if (choice == 1) { String s = null; s.length(); }
+                if (choice == 2) { int[] a = new int[2]; a[3] = 1; }
+                if (choice == 3) { Integer.parseInt("abc"); }
+            } catch (RuntimeException e) {
+                System.out.println(choice + " -> " + e.getClass().getSimpleName());
+            }
+        }
+        public static void main(String[] args) {
+            test(1);
+            test(2);
+            test(3);
+        }
+    }
+predict:
+  code: |
+    public class Guess {
+        public static void main(String[] args) {
+            Exception e = new NumberFormatException("bad");
+            System.out.println(e instanceof IllegalArgumentException);
+            System.out.println(e instanceof RuntimeException);
+            System.out.println(e.getMessage());
+        }
+    }
+  expectedOutput: |
+    true
+    true
+    bad
+  explanation: |
+    `NumberFormatException` extends `IllegalArgumentException`, which extends `RuntimeException`. So both `instanceof` checks are `true`. Creating an exception object does **not** throw it; it is just an object here. `getMessage()` returns the text we passed: `bad`.
+commonMistakes:
+  - "Saying Error and Exception are the same thing. Error is JVM-level trouble you usually can't recover from; Exception is trouble your program can handle."
+  - "Thinking RuntimeException is checked because its name contains 'Exception'. RuntimeException and its children are unchecked."
+  - "Forgetting that Errors are also unchecked. Unchecked = RuntimeException family + Error family."
+  - "Catching Throwable or Error in normal code. That hides serious problems like OutOfMemoryError."
+  - "Thinking 'new SomeException()' throws it. Creating the object does nothing until you use the throw keyword."
+interviewBox:
+  why: "Why interviewers ask this: the hierarchy shows whether you understand what can go wrong in Java and which problems your code is expected to handle."
+  questions:
+    - q: "What is the root class of all exceptions in Java?"
+      a: "Throwable. It has two children: Error and Exception. Only Throwable objects can be thrown or caught."
+    - q: "What is the difference between Error and Exception?"
+      a: "An Error is a serious problem with the JVM or environment, like OutOfMemoryError or StackOverflowError, and we usually don't catch it. An Exception is a problem in the program's flow, like a missing file or a null value, and we are expected to handle it."
+    - q: "Is RuntimeException checked or unchecked? Give examples."
+      a: "Unchecked. The compiler doesn't force us to handle it. Examples are NullPointerException, ArithmeticException, ArrayIndexOutOfBoundsException and NumberFormatException. They usually mean a bug we should fix."
+    - q: "Is StackOverflowError an exception?"
+      a: "It is a Throwable but not an Exception. It extends Error, through VirtualMachineError. It usually comes from recursion that never stops."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which class is the direct parent of both Error and Exception?"
+    code: null
+    options: ["Object", "Throwable", "RuntimeException", "Exception"]
+    answer: 1
+    explanation: "Throwable is the parent of Error and Exception. Object is the grandparent (every class extends Object), but it isn't the direct parent. RuntimeException is a child of Exception, not its parent."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "NullPointerException is a checked exception, so the compiler forces you to catch it."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. NullPointerException extends RuntimeException, so it is unchecked. The compiler does not force any handling; you should prevent it by checking for null."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              try {
+                  int[] a = {1, 2, 3};
+                  System.out.println(a[3]);
+              } catch (RuntimeException e) {
+                  System.out.println("R: " + e.getClass().getSimpleName());
+              }
+          }
+      }
+    options:
+      - "R: RuntimeException"
+      - "R: ArrayIndexOutOfBoundsException"
+      - "3"
+      - "Program crashes, nothing is caught"
+    answer: 1
+    explanation: "a[3] is outside an array of size 3, so ArrayIndexOutOfBoundsException is thrown. A catch for the parent RuntimeException catches it, but the object is still the child type, so getSimpleName() prints the real class. It doesn't print 'RuntimeException' because the catch type does not change the object."
+  - id: q4
+    type: MATCH
+    prompt: "Match each problem to its type"
+    pairs:
+      - left: "OutOfMemoryError"
+        right: "Error: JVM ran out of heap memory"
+      - left: "IOException"
+        right: "Checked exception: input/output failed"
+      - left: "ArithmeticException"
+        right: "Unchecked exception: integer divide by zero"
+      - left: "StackOverflowError"
+        right: "Error: too many nested method calls"
+    explanation: "Errors are JVM-level trouble. IOException extends Exception directly, so it's checked. ArithmeticException extends RuntimeException, so it's unchecked."
+  - id: q5
+    type: SPOT_THE_BUG
+    prompt: "Why does this code fail to compile?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              throw "Something went wrong";
+          }
+      }
+    options:
+      - "main must declare throws Exception"
+      - "Only Throwable objects can be thrown; a String is not a Throwable"
+      - "throw must be inside a try block"
+      - "The message must use single quotes"
+    answer: 1
+    explanation: "The throw keyword needs an object of type Throwable or a subclass, e.g. throw new RuntimeException(\"Something went wrong\"). A String is not a Throwable, so the compiler reports incompatible types. throw does not need to be inside try."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the parent class so that MyBugException becomes an unchecked exception, like NullPointerException and ArithmeticException."
+    code: |
+      // All unchecked exceptions (except Errors) extend this class
+      class MyBugException extends ____ { }
+    acceptedAnswers: ["RuntimeException", "java.lang.RuntimeException"]
+    explanation: "RuntimeException is the parent of all unchecked exceptions that are not Errors. Extending Exception directly would make a checked exception instead."
+  - id: q7
+    type: MCQ
+    prompt: "Which statement about Errors is correct?"
+    code: null
+    options:
+      - "Errors are checked, so you must catch them"
+      - "Errors are unchecked and usually mean the JVM or environment has a serious problem"
+      - "Errors only happen at compile time"
+      - "Error is a subclass of Exception"
+    answer: 1
+    explanation: "Errors are unchecked and signal serious trouble like running out of memory. They happen at run time, and Error is a sibling of Exception (both under Throwable), not a subclass of it."
+explainBack:
+  prompt: "Explain the Java exception family tree to a friend, and say which problems a program should handle and which it usually can't."
+  rubric:
+    - "I said Throwable is the root with Error and Exception under it"
+    - "I explained Error as serious JVM trouble, usually not caught"
+    - "I explained checked exceptions vs RuntimeException (unchecked)"
+    - "I gave at least one example of each"
+    - "I used an analogy or simple words"
+  modelAnswer: |
+    In Java, every problem that can be thrown comes from one class called Throwable. It has two branches. Error is for serious trouble in the JVM, like running out of memory or a stack overflow; the program usually can't fix that, so we don't catch it. Exception is for problems the program can plan for. Inside Exception there are checked exceptions, like IOException, which the compiler forces us to handle, and RuntimeException, which is unchecked and usually means a bug, like NullPointerException or dividing by zero. It's like a train journey: an earthquake is an Error, a lost ticket is a checked exception, and boarding the wrong coach is my own runtime mistake.
+flashcards:
+  - front: "Root of the exception hierarchy?"
+    back: "Throwable, with two children: Error and Exception."
+  - front: "Which exceptions are unchecked?"
+    back: "RuntimeException and its subclasses, plus Error and its subclasses."
+  - front: "Two examples of Error"
+    back: "OutOfMemoryError and StackOverflowError."
+  - front: "Parent chain of NumberFormatException"
+    back: "NumberFormatException -> IllegalArgumentException -> RuntimeException -> Exception -> Throwable -> Object."
+  - front: "getMessage() vs toString() on an exception"
+    back: "getMessage() gives only the message. toString() gives the full class name plus the message."
+keyTakeaways:
+  - "Throwable is the root; Error and Exception are its two children."
+  - "Errors are serious JVM problems; don't catch them in normal code."
+  - "RuntimeException and Error families are unchecked; all other exceptions are checked."
+  - "A catch block for a parent type also catches every child type."
+  - "Only Throwable objects can be thrown, and creating one doesn't throw it."

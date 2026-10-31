@@ -1,0 +1,355 @@
+slug: final
+world: JAVA_CORE
+section: C
+order: 5
+title: "final keyword"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common comparison question for SP and DSE rounds (final vs finally vs finalize); final references and final classes also show up in output and compile-error questions."
+otherCompanies: "The final/finally/finalize comparison is a very common basic question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  `final` is one small word with **three different jobs**, depending on where you put it: on a variable, a method, or a class. Interviewers check that you know all three.
+
+  It also comes with the most famous "sounds the same" question in Java:
+  **"What is the difference between `final`, `finally` and `finalize`?"**
+  They have almost nothing in common except the spelling, and a clear answer here is easy marks.
+
+  And there's a classic trap: a `final` list **can** still have items added to it. If you understand why, you understand references properly.
+analogy: |
+  Think of **things that are "locked" in daily life**.
+
+  - **final variable** = writing your **date of birth** on your Aadhaar. Once filled in, it can't be changed.
+  - **final reference** = a **house address** printed on your ID. The address can't change, but you can still rearrange the furniture **inside** the house. (The variable can't point elsewhere, but the object can change.)
+  - **final method** = a **family recipe** your grandmother says must be cooked *exactly* this way; children can use it, but not change it (no overriding).
+  - **final class** = a **sealed exam paper packet**: nobody can open it up and make an extended version (no subclass).
+
+  And the look-alikes:
+  - **finally** = the **"switch off the lights before leaving"** rule: whatever happens during the day, it's always done at the end.
+  - **finalize** = an old idea of a **last note left for the cleaner** before your stuff is thrown away. The cleaner may never read it, so Java has retired it.
+visual:
+  diagram: |
+    final int x = 10;      x = 20;          // COMPILE ERROR
+
+    final int[] arr = {1, 2, 3};
+      arr ====X====> [ 1 | 2 | 3 ]    arrow is LOCKED (final)
+                       ^
+      arr[0] = 99;     | contents can change: [ 99 | 2 | 3 ]  OK
+      arr = new int[5];                          COMPILE ERROR
+
+    final on ...   | what is locked
+    ---------------+---------------------------------------
+    variable       | value / reference: assign only once
+    method         | cannot be overridden in a child class
+    class          | cannot be extended (no subclasses)
+
+    final    -> keyword (lock)
+    finally  -> block after try/catch, (almost) always runs
+    finalize -> old Object method for GC clean-up, deprecated
+  caption: "final locks the variable (the arrow), not the object it points to. final, finally and finalize are three unrelated things."
+  visualizer: null
+explanation: |
+  ### 1. final variables: assign only once
+  A **final variable** can be given a value **only once**. After that, any assignment is a **compile error**.
+  ```java
+  final int MAX = 100;
+  MAX = 200;   // compile error: cannot assign a value to final variable MAX
+  ```
+  - **Constants** are usually `static final` with UPPER_CASE names: `static final double GST_RATE = 0.18;`
+  - A **blank final** is a final field without a value at declaration. It **must** be assigned exactly once in **every constructor** (or an instance block). A `static final` blank must be assigned in a static block.
+  ```java
+  class Student {
+      final int rollNo;               // blank final
+      Student(int r) { rollNo = r; }  // assigned once here: OK
+  }
+  ```
+  - **final parameters**: `void pay(final double amount)` means the method can't re-assign `amount`.
+  - Final **local** variables must be assigned before use, just once.
+
+  ### final reference vs immutable object
+  This is the classic trap. For a reference variable, `final` locks the **arrow**, not the **object**:
+  ```java
+  final List<String> names = new ArrayList<>();
+  names.add("Ravi");              // OK: the list object is changed
+  names.add("Priya");             // OK
+  names = new ArrayList<>();      // COMPILE ERROR: the arrow is final
+  ```
+  To make the **object** unchangeable you need an **immutable** class (like `String`) or an unmodifiable collection (`List.of(...)`). That's a separate idea from `final`.
+
+  ### 2. final methods: cannot be overridden
+  **Overriding** means a child class gives its own version of a parent method (lesson C8). A `final` method **can't be overridden**, so its behaviour is guaranteed for every subclass. It can still be **inherited** and **called**, and it can be **overloaded** (same name, different parameters).
+  ```java
+  class Payment {
+      final void validate() { System.out.println("standard checks"); }
+  }
+  class UpiPayment extends Payment {
+      // void validate() { }   // compile error: cannot override final method
+  }
+  ```
+
+  ### 3. final classes: cannot be extended
+  A **final class** can't have subclasses. `String`, `Integer` (and all wrapper classes), and `Math` are final. This protects them from being changed through inheritance; it's part of why `String` is immutable.
+  ```java
+  final class Rupee { }
+  // class Paisa extends Rupee { }   // compile error: cannot inherit from final Rupee
+  ```
+
+  ### Illegal combinations
+  - `final abstract` (class or method) is a compile error: **abstract** means "must be completed by a child", **final** means "no child may change it". They contradict each other.
+  - Constructors can't be `final` (they are never inherited anyway).
+
+  ### Effectively final (Java 8+)
+  A local variable that is **never re-assigned** after its first value is called **effectively final**, even without the keyword. Lambdas and anonymous classes can only use local variables that are final or effectively final (Section F).
+
+  ### final vs finally vs finalize
+  | | `final` | `finally` | `finalize()` |
+  |---|---|---|---|
+  | What is it? | A **keyword** (modifier) | A **block** used with try/catch | A **method** in the `Object` class |
+  | Purpose | Lock a variable, method or class | Clean-up code that runs whether or not an exception happened | Clean-up called by the garbage collector before removing an object |
+  | When does it act? | Compile time (the compiler enforces it) | Every time the try block finishes | Maybe, at some unknown time, maybe never |
+  | Still used? | Yes, all the time | Yes (or try-with-resources) | **No**: deprecated since Java 9, marked for removal since Java 18 |
+
+  **finally** in short:
+  ```java
+  try {
+      int r = 10 / 0;                 // throws ArithmeticException
+  } catch (ArithmeticException e) {
+      System.out.println("caught");
+  } finally {
+      System.out.println("always runs");   // closes files, connections...
+  }
+  ```
+  The `finally` block runs whether the try finishes normally, an exception is caught, or even if the try has a `return`. It is skipped only in extreme cases like `System.exit()` or the JVM crashing. (Full details in Section D.)
+
+  **finalize()** in short: the **garbage collector** (the JVM part that frees memory of unused objects) *might* call `finalize()` on an object before deleting it. But there's no guarantee when, or even whether, it runs, and it slows the GC. So it was **deprecated** (officially discouraged). Today we free resources with `try-with-resources` or `finally`.
+tinyCode:
+  code: |
+    import java.util.ArrayList;
+    import java.util.List;
+
+    public class FinalDemo {
+        static final double GST_RATE = 0.18;
+
+        static class Order {
+            final int orderId;
+            final List<String> items = new ArrayList<>();
+
+            Order(int orderId) {
+                this.orderId = orderId;
+            }
+
+            final double total(double price) {
+                return price + price * GST_RATE;
+            }
+        }
+
+        public static void main(String[] args) {
+            Order o = new Order(101);
+            o.items.add("Dosa");
+            o.items.add("Coffee");
+            System.out.println(o.orderId + " " + o.items);
+            System.out.println(o.total(100));
+
+            try {
+                System.out.println("in try");
+            } finally {
+                System.out.println("in finally");
+            }
+        }
+    }
+  walkthrough: |
+    - `static final double GST_RATE` is a **constant**: one shared copy that can never change.
+    - `final int orderId` is a **blank final**: it gets its value exactly once, in the constructor.
+    - `final List<String> items` locks the reference, but we can still `add` to the list. Prints `101 [Dosa, Coffee]`.
+    - `total` is a **final method**: subclasses could use it but not override it. 100 + 18 = `118.0`.
+    - The `try` block prints, then the `finally` block runs as it always does.
+
+    Output:
+    ```
+    101 [Dosa, Coffee]
+    118.0
+    in try
+    in finally
+    ```
+tryIt:
+  instructions: "Type this program and run it. Then un-comment each of the two commented lines, one at a time, and read the compile error. Write down in your own words why each one fails."
+  code: |
+    public class FinalPractice {
+        public static void main(String[] args) {
+            final int[] marks = {70, 80, 90};
+            marks[0] = 75;
+            System.out.println(marks[0] + " " + marks[1] + " " + marks[2]);
+            // marks = new int[]{1, 2, 3};
+
+            final String city;
+            city = "Pune";
+            System.out.println(city);
+            // city = "Mysuru";
+
+            StringBuilder sb = new StringBuilder("code");
+            final StringBuilder ref = sb;
+            ref.append(" quest");
+            System.out.println(sb);
+        }
+    }
+predict:
+  code: |
+    import java.util.ArrayList;
+    import java.util.List;
+
+    public class Predict {
+        public static void main(String[] args) {
+            final List<Integer> nums = new ArrayList<>();
+            nums.add(1);
+            nums.add(2);
+            List<Integer> other = nums;
+            other.add(3);
+            System.out.println(nums);
+            System.out.println(nums.size());
+            try {
+                System.out.println(10 / 0);
+            } catch (ArithmeticException e) {
+                System.out.println("error");
+            } finally {
+                System.out.println("done");
+            }
+        }
+    }
+  expectedOutput: |
+    [1, 2, 3]
+    3
+    error
+    done
+  explanation: |
+    - `final` only stops `nums` from pointing to a different list. Adding is allowed.
+    - `other = nums` shares the same list, so `other.add(3)` also shows up in `nums`: `[1, 2, 3]`, size `3`.
+    - `10 / 0` throws `ArithmeticException` before anything is printed in the try. The catch prints `error`, and then `finally` prints `done`.
+commonMistakes:
+  - "Thinking a final List or array can't be modified. final locks the reference; the object's contents can still change."
+  - "Mixing up final, finally and finalize in an interview. Keyword vs block vs deprecated Object method."
+  - "Forgetting to assign a blank final field in every constructor (compile error)."
+  - "Saying a final method can't be inherited or overloaded. It can be both; it just can't be overridden."
+  - "Relying on finalize() for clean-up. It may never run and is deprecated; use try-with-resources or finally."
+  - "Writing final abstract. The two words contradict each other, so it doesn't compile."
+interviewBox:
+  why: "Why interviewers ask this: one keyword with three meanings plus two look-alike words is a quick way to test precise knowledge, and the final-reference trap tests your understanding of objects."
+  questions:
+    - q: "What is the difference between final, finally and finalize?"
+      a: "final is a keyword: a final variable can be assigned once, a final method can't be overridden, and a final class can't be extended. finally is a block after try and catch that almost always runs, so we put clean-up code there. finalize is a method of the Object class that the garbage collector might call before removing an object, but it's unreliable and deprecated since Java 9."
+    - q: "If a list is declared final, can we add elements to it?"
+      a: "Yes. final only means the variable can't point to a different list. The list object itself can still be changed, so add and remove work. To stop changes, I'd use an unmodifiable list like List.of."
+    - q: "Can a final method be overloaded? Can it be inherited?"
+      a: "Yes to both. A child class inherits a final method and can call it, and we can overload it with different parameters. We just can't override it with the same signature."
+    - q: "Give examples of final classes in Java and why they are final."
+      a: "String, Integer and the other wrapper classes, and Math. String and the wrappers are final so nobody can create a subclass that breaks their immutability or security. Math is just a utility class not meant to be extended."
+    - q: "When does a finally block not run?"
+      a: "Almost never. It runs after normal completion, after an exception, and even after a return in try. It's skipped only if the JVM stops, for example with System.exit() or a crash."
+quiz:
+  - id: q1
+    type: SPOT_THE_BUG
+    prompt: "Which line causes the compile error?"
+    code: |
+      final int[] scores = {10, 20};   // line 1
+      scores[1] = 25;                  // line 2
+      scores = new int[]{5, 5};        // line 3
+      System.out.println(scores[1]);   // line 4
+    options: ["Line 1", "Line 2", "Line 3", "Line 4"]
+    answer: 2
+    explanation: "Line 3 tries to point the final variable at a new array: compile error. Line 2 is allowed because it changes the array's contents, not the reference; that's the tempting wrong answer."
+  - id: q2
+    type: MATCH
+    prompt: "Match each word to what it is"
+    pairs:
+      - left: "final"
+        right: "Keyword that locks a variable, method or class"
+      - left: "finally"
+        right: "Block after try/catch that almost always runs"
+      - left: "finalize()"
+        right: "Deprecated Object method the GC might call"
+    explanation: "Similar spelling, unrelated jobs: a modifier, a block, and an old method."
+  - id: q3
+    type: MCQ
+    prompt: "What does marking a METHOD final do?"
+    options:
+      - "It can't be called from outside the class"
+      - "It can't be overridden by a subclass"
+      - "It can't be overloaded"
+      - "It runs only once"
+    answer: 1
+    explanation: "A final method can't be overridden. It can still be called (access is controlled by public/private, not final) and overloaded with different parameters."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      final StringBuilder sb = new StringBuilder("Hi");
+      sb.append("!");
+      sb.append("!");
+      System.out.println(sb);
+    options: ["Hi", "Hi!!", "Compile error: sb is final", "Hi!"]
+    answer: 1
+    explanation: "sb is a final reference, but the StringBuilder object is mutable, so appending works: Hi!!. The compile error would happen only if we wrote sb = new StringBuilder(...)."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "A class can be declared both final and abstract."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. abstract means 'a subclass must complete me'; final means 'no subclass allowed'. Together they make no sense, so the compiler rejects it."
+  - id: q6
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static int test() {
+              try {
+                  return 1;
+              } finally {
+                  System.out.print("finally ");
+              }
+          }
+          public static void main(String[] args) {
+              System.out.println(test());
+          }
+      }
+    options: ["1", "finally 1", "1 finally", "Compile error"]
+    answer: 1
+    explanation: "The try decides to return 1, but before the method actually returns, finally runs and prints \"finally \". Then main prints the returned 1. The finally block runs even when try has a return."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill the keyword so that no class can extend Rupee."
+    code: |
+      public ____ class Rupee {
+          private final long paise;
+          public Rupee(long paise) { this.paise = paise; }
+      }
+    acceptedAnswers: ["final"]
+    explanation: "A final class can't be subclassed, just like String and Integer."
+explainBack:
+  prompt: "Explain to a friend the three uses of final, why a final list can still change, and how final, finally and finalize differ."
+  rubric:
+    - "I explained final variable, final method and final class"
+    - "I said final locks the reference, not the object"
+    - "I said finally is a block that almost always runs after try/catch"
+    - "I said finalize is an old GC method that is deprecated and unreliable"
+  modelAnswer: |
+    final is a lock. On a variable, it means I can assign it only once. On a method, a child class can't override it. On a class, nobody can extend it, like String. One trap: if a list variable is final, I can still add items, because final locks the address, not the house; the variable just can't point to a different list. finally is completely different: it's the block after try and catch that runs whether or not an exception happened, so I put clean-up there. And finalize is an old method the garbage collector might call before deleting an object, but it might never run, so it's deprecated and we use try-with-resources instead.
+flashcards:
+  - front: "final on variable / method / class"
+    back: "Variable: assign once. Method: can't be overridden. Class: can't be extended."
+  - front: "final List: can you add elements?"
+    back: "Yes. final locks the reference, not the object. Re-assigning the variable is the compile error."
+  - front: "final vs finally vs finalize"
+    back: "final = keyword (lock). finally = block after try/catch that almost always runs. finalize = deprecated Object method called (maybe) by GC."
+  - front: "Blank final field"
+    back: "A final field with no initial value; must be assigned exactly once in every constructor."
+  - front: "Examples of final classes"
+    back: "String, Integer and other wrappers, Math."
+  - front: "When is finally skipped?"
+    back: "Only if the JVM stops: System.exit(), crash, power loss."
+keyTakeaways:
+  - "final variable = assign once; final method = no overriding; final class = no subclassing."
+  - "final locks the reference, not the object; a final list can still be modified."
+  - "Blank finals must be assigned exactly once in every constructor."
+  - "final and abstract can't be combined."
+  - "finally = clean-up block that almost always runs; finalize = deprecated GC hook, don't use it."

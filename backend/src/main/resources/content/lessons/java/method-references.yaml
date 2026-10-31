@@ -1,0 +1,280 @@
+slug: method-references
+world: JAVA_CORE
+section: F
+order: 2
+title: "Method references"
+version: 1
+estimatedMinutes: 20
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Modern Java knowledge for SP and DSE rounds; method references make stream and comparator answers shorter and cleaner."
+otherCompanies: "Shows up as part of 'Java 8 features' at TCS, Wipro, Cognizant, Accenture, Capgemini; product companies expect you to read and write them easily."
+why: |
+  In the last lesson you wrote lambdas like `s -> s.toUpperCase()` and `x -> System.out.println(x)`. Notice something? These lambdas **do nothing except call one existing method**.
+
+  Java 8 gives a shorter way to say exactly that: the **method reference**, written with a double colon `::`.
+  ```java
+  names.forEach(System.out::println);
+  ```
+  You will see `::` everywhere in real code, Spring projects and stream answers. Interviewers often ask you to **convert a lambda into a method reference** (or back), and to name the **four kinds**. Once you see the pattern, it's easy.
+analogy: |
+  Imagine you want someone to make tea. You can **describe the steps** ("boil water, add tea, add milk, add sugar"), or you can just say **"Do it the way Amma does"**.
+
+  A lambda is describing the steps: `x -> Amma.makeTea(x)`.
+  A method reference is just **pointing to the person who already knows how**: `Amma::makeTea`.
+
+  Same result, fewer words. And just like you can only point to someone if they really can do the job, a method reference only works when an existing method **fits the shape** of what's needed.
+visual:
+  diagram: |
+    The 4 kinds of method references
+
+    Kind                          Method ref           Same lambda
+    ----------------------------  -------------------  -----------------------
+    1. Static method              Integer::parseInt    s -> Integer.parseInt(s)
+    2. Method of a PARTICULAR     System.out::println  x -> System.out.println(x)
+       object (bound)             greeting::concat     s -> greeting.concat(s)
+    3. Method of ANY object of    String::toUpperCase  s -> s.toUpperCase()
+       a type (unbound)           String::compareTo    (a, b) -> a.compareTo(b)
+    4. Constructor                ArrayList::new       () -> new ArrayList<>()
+                                  StringBuilder::new   s -> new StringBuilder(s)
+
+    Reading tip:  Left::right   =  "who"  ::  "which method"
+  caption: "A method reference names an existing method instead of writing a lambda that only calls it. There are four kinds: static, bound instance, unbound instance and constructor."
+  visualizer: null
+explanation: |
+  ### What is a method reference?
+  A **method reference** is a short form of a lambda that **only calls one existing method**. The syntax is `ClassOrObject::methodName` (no brackets after the method name, because you are not calling it now, just pointing to it).
+
+  ```java
+  Function<String, Integer> f1 = s -> Integer.parseInt(s);   // lambda
+  Function<String, Integer> f2 = Integer::parseInt;          // method reference
+  ```
+  Both are the same object of type `Function<String, Integer>`. Like a lambda, a method reference can only be used where a **functional interface** is expected.
+
+  ### Kind 1: Static method — `ClassName::staticMethod`
+  The lambda's parameters become the method's arguments.
+  ```java
+  Function<String, Integer> toInt = Integer::parseInt;   // s -> Integer.parseInt(s)
+  BinaryOperator<Integer> big = Math::max;               // (a, b) -> Math.max(a, b)
+  ```
+
+  ### Kind 2: Instance method of a particular object — `object::method`
+  Also called a **bound** reference, because the object is fixed (bound) when you write it.
+  ```java
+  Consumer<String> print = System.out::println;      // x -> System.out.println(x)
+  String hello = "Hello ";
+  Function<String, String> greet = hello::concat;    // s -> hello.concat(s)
+  ```
+  `System.out` is one particular `PrintStream` object; `println` is its method.
+
+  ### Kind 3: Instance method of an arbitrary object — `ClassName::instanceMethod`
+  Also called **unbound**. This is the one that confuses people. The **first lambda parameter becomes the object** the method is called on; any other parameters become the arguments.
+  ```java
+  Function<String, String> up = String::toUpperCase;        // s -> s.toUpperCase()
+  Function<String, Integer> len = String::length;           // s -> s.length()
+  BiFunction<String, String, Boolean> eq = String::equals;  // (a, b) -> a.equals(b)
+  Comparator<String> cmp = String::compareToIgnoreCase;     // (a, b) -> a.compareToIgnoreCase(b)
+  ```
+  How do you tell kind 1 from kind 3 when both start with a class name? Check whether the method is `static`. `parseInt` is static (kind 1); `toUpperCase` is not (kind 3).
+
+  ### Kind 4: Constructor — `ClassName::new`
+  ```java
+  Supplier<List<String>> make = ArrayList::new;          // () -> new ArrayList<>()
+  Function<String, StringBuilder> sb = StringBuilder::new; // s -> new StringBuilder(s)
+  IntFunction<int[]> arr = int[]::new;                   // n -> new int[n]
+  ```
+  Java picks the constructor that matches the functional interface's parameters.
+
+  ### Where they shine
+  ```java
+  names.forEach(System.out::println);
+  names.stream().map(String::trim).filter(Predicate.not(String::isEmpty)).toList();
+  people.sort(Comparator.comparing(Person::getAge));
+  map.computeIfAbsent(key, k -> new ArrayList<>());  // here a lambda is clearer
+  ```
+
+  ### When NOT to use a method reference
+  Only when the lambda **just calls one method with the same arguments in the same order**. If you need extra logic, keep the lambda:
+  | Lambda | Method reference? |
+  |---|---|
+  | `s -> s.length()` | yes: `String::length` |
+  | `x -> System.out.println(x)` | yes: `System.out::println` |
+  | `x -> System.out.println("Value: " + x)` | **no**, extra logic |
+  | `s -> s.substring(1)` | **no**, an extra fixed argument |
+  | `(a, b) -> b.compareTo(a)` | **no**, arguments swapped |
+
+  Rule of thumb: use a method reference when it reads **more clearly**; otherwise a lambda is perfectly fine.
+tinyCode:
+  code: |
+    import java.util.*;
+    import java.util.function.*;
+
+    public class FourKinds {
+        public static void main(String[] args) {
+            Function<String, Integer> toInt = Integer::parseInt;        // 1 static
+            Consumer<Object> print = System.out::println;               // 2 bound
+            Function<String, String> upper = String::toUpperCase;       // 3 unbound
+            Supplier<List<String>> newList = ArrayList::new;            // 4 constructor
+
+            int total = toInt.apply("40") + toInt.apply("2");
+            print.accept(total);
+
+            List<String> cities = newList.get();
+            cities.add("pune");
+            cities.add("delhi");
+            cities.replaceAll(upper::apply);
+            cities.forEach(System.out::println);
+        }
+    }
+  walkthrough: |
+    - `Integer::parseInt` is a **static** method reference: `"40"` and `"2"` become 40 and 2, so `total` is 42.
+    - `System.out::println` is **bound** to the object `System.out`; `print.accept(total)` prints `42`.
+    - `String::toUpperCase` is **unbound**: the String passed in becomes the object it's called on.
+    - `ArrayList::new` is a **constructor** reference; `newList.get()` makes a fresh empty list.
+    - `replaceAll` needs a `UnaryOperator<String>`; `upper::apply` adapts our Function to it (we could also write `String::toUpperCase` directly).
+    - `forEach(System.out::println)` prints each city.
+
+    Output:
+    ```
+    42
+    PUNE
+    DELHI
+    ```
+tryIt:
+  instructions: "Type this program. For each method reference, say out loud which of the four kinds it is. Then rewrite each one as a lambda and check the output stays the same. (stream(), map and reduce are taught properly in the next lesson; for now read map as 'convert each item'.)"
+  code: |
+    import java.util.*;
+
+    public class RefPractice {
+        public static void main(String[] args) {
+            List<String> words = new ArrayList<>(List.of("mango", "Apple", "banana", "Cherry"));
+            words.sort(String::compareToIgnoreCase);
+            System.out.println(words);
+
+            List<Integer> lengths = words.stream().map(String::length).toList();
+            System.out.println(lengths);
+
+            int max = lengths.stream().reduce(Integer::max).orElse(0);
+            System.out.println(max);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+    import java.util.function.*;
+
+    public class RefPredict {
+        public static void main(String[] args) {
+            BiFunction<String, String, Boolean> same = String::equalsIgnoreCase;
+            Function<String, Integer> idx = "banana"::indexOf;
+            Supplier<StringBuilder> sb = StringBuilder::new;
+            System.out.println(same.apply("Java", "JAVA"));
+            System.out.println(idx.apply("na"));
+            System.out.println(sb.get().append("ok").reverse());
+        }
+    }
+  expectedOutput: |
+    true
+    2
+    ko
+  explanation: |
+    `String::equalsIgnoreCase` is **unbound**: the first argument `"Java"` becomes the object, so it runs `"Java".equalsIgnoreCase("JAVA")`, which is `true`. `"banana"::indexOf` is **bound** to the string "banana", so `idx.apply("na")` is `"banana".indexOf("na")`, the first "na" starts at index **2**. `StringBuilder::new` creates an empty builder; appending "ok" and reversing gives **ko**.
+commonMistakes:
+  - "Adding brackets: System.out::println() is a syntax error. You point to the method, you don't call it."
+  - "Forcing a method reference when the lambda has extra logic, like x -> System.out.println(\"Val \" + x). Keep the lambda."
+  - "Confusing static and unbound references: Integer::parseInt passes the argument in; String::length calls the method ON the argument."
+  - "Expecting (a, b) -> b.compareTo(a) to become String::compareTo. The arguments are swapped, so it isn't the same."
+  - "Forgetting a method reference still needs a functional interface target; var r = String::length; does not compile."
+interviewBox:
+  why: "Why interviewers ask this: it checks if you really understand how lambdas map to methods, not just copy stream code."
+  questions:
+    - q: "What is a method reference?"
+      a: "It's a shorter way to write a lambda that only calls an existing method, using the double colon. For example, s -> s.toUpperCase() can be written as String::toUpperCase. Like a lambda, it implements a functional interface."
+    - q: "What are the four types of method references?"
+      a: "First, a static method, like Integer::parseInt. Second, an instance method of a particular object, like System.out::println. Third, an instance method of any object of a type, like String::toUpperCase, where the first parameter becomes the object. Fourth, a constructor reference, like ArrayList::new."
+    - q: "When would you prefer a lambda over a method reference?"
+      a: "When the lambda does more than just call one method with the same arguments, for example adds text, passes an extra fixed argument, or swaps the order of parameters. Then a lambda is clearer, and a method reference may not even be possible."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each method reference to its kind"
+    pairs:
+      - left: "Integer::parseInt"
+        right: "Static method"
+      - left: "System.out::println"
+        right: "Instance method of a particular object"
+      - left: "String::toLowerCase"
+        right: "Instance method of an arbitrary object of a type"
+      - left: "HashMap::new"
+        right: "Constructor"
+    explanation: "parseInt is static; System.out is one specific object; toLowerCase is an instance method called on whichever String is passed in; ::new is a constructor."
+  - id: q2
+    type: MCQ
+    prompt: "Which lambda is equivalent to String::length used as a Function<String, Integer>?"
+    code: null
+    options: ["() -> String.length()", "s -> s.length()", "s -> String.length(s)", "(s, n) -> s.length(n)"]
+    answer: 1
+    explanation: "length is an instance method, so the single parameter becomes the object: s -> s.length(). 'String.length(s)' is tempting but there is no static length method in String."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      List<String> list = new ArrayList<>(List.of("b", "C", "a"));
+      list.sort(String::compareTo);
+      System.out.println(list);
+      list.sort(String::compareToIgnoreCase);
+      System.out.println(list);
+    options: ["[a, b, C]\n[a, b, C]", "[C, a, b]\n[a, b, C]", "[C, a, b]\n[C, a, b]", "[a, C, b]\n[a, b, C]"]
+    answer: 1
+    explanation: "compareTo compares character codes, and uppercase letters come before lowercase ones ('C' is 67, 'a' is 97), so C comes first. compareToIgnoreCase ignores case, giving a, b, C. The first option assumes compareTo ignores case, which it doesn't."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "Why does this line fail to compile?"
+    code: |
+      List<String> names = List.of("Asha", "Ravi");
+      names.forEach(System.out::println());
+    options:
+      - "forEach needs a Supplier"
+      - "A method reference must not have brackets after the method name: use System.out::println"
+      - "println cannot print Strings"
+      - "List.of returns an immutable list, so forEach is not allowed"
+    answer: 1
+    explanation: "System.out::println() is a syntax error. A method reference points to the method; it does not call it. forEach on an immutable list is fine because it only reads."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "The lambda x -> System.out.println(\"Value: \" + x) can be replaced by System.out::println."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The lambda adds the text \"Value: \" before printing. A method reference can only pass the arguments straight through, so the output would be different."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the blank to create a constructor reference that makes a new ArrayList."
+    code: |
+      Supplier<List<Integer>> maker = ArrayList::____;
+    acceptedAnswers: ["new"]
+    explanation: "ClassName::new is a constructor reference. Supplier's get() takes no arguments, so Java uses the no-argument constructor."
+explainBack:
+  prompt: "Explain to a friend what a method reference is and walk through the four kinds with one example each."
+  rubric:
+    - "I said it is a shorter form of a lambda that only calls an existing method"
+    - "I named all four kinds with an example each"
+    - "I explained that for String::toUpperCase the parameter becomes the object"
+    - "I said when a lambda is better (extra logic, swapped or extra arguments)"
+  modelAnswer: |
+    A method reference is a shortcut for a lambda that does nothing but call a method that already exists. Instead of x -> System.out.println(x), I write System.out::println. There are four kinds. A static method, like Integer::parseInt. A method on one particular object, like System.out::println. A method on whatever object comes in, like String::toUpperCase, where the input string itself becomes the object. And a constructor, like ArrayList::new. If my lambda adds any extra logic or changes the argument order, I keep it as a lambda, because a method reference can't do that.
+flashcards:
+  - front: "Four kinds of method references"
+    back: "Static (Integer::parseInt), bound instance (System.out::println), unbound instance (String::length), constructor (ArrayList::new)."
+  - front: "String::toUpperCase as a lambda"
+    back: "s -> s.toUpperCase() (the parameter becomes the object)."
+  - front: "Math::max as a BinaryOperator<Integer>"
+    back: "(a, b) -> Math.max(a, b)"
+  - front: "When can't you use a method reference?"
+    back: "When the lambda adds logic, adds a fixed argument, or swaps the argument order."
+keyTakeaways:
+  - "A method reference (::) replaces a lambda that only calls one existing method."
+  - "Four kinds: static, particular object, arbitrary object of a type, constructor."
+  - "For unbound references, the first parameter becomes the object the method is called on."
+  - "No brackets after the method name; a functional interface target is still required."
+  - "Use them when they read more clearly; lambdas are fine otherwise."

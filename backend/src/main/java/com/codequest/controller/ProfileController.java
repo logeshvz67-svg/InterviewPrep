@@ -28,6 +28,11 @@ public class ProfileController {
         return profiles.update(me.id(), req);
     }
 
+    @PutMapping("/profile/settings")
+    public ProfileView settings(@AuthenticationPrincipal UserPrincipal me, @RequestBody java.util.Map<String, Object> settings) {
+        return profiles.updateSettings(me.id(), settings);
+    }
+
     @PutMapping("/onboarding")
     public ProfileView onboard(@AuthenticationPrincipal UserPrincipal me, @Valid @RequestBody OnboardingRequest req) {
         return profiles.completeOnboarding(me.id(), req);

@@ -21,7 +21,11 @@ public enum XpAction {
     FOCUS_SESSION_25(10, 8),
     DAILY_COMMITMENT(10, 1),
     EXPLAIN_IT_BACK(20, 5),
-    PROVE_IT_PASSED(30, 0);
+    PROVE_IT_PASSED(30, 0),
+    // Additions beyond the original table (same "reward the process" spirit):
+    MOCK_TEST_COMPLETED(40, 2),      // finishing a full timed mock test
+    PRACTICE_SET(15, 3),             // 10+ aptitude or interview practice questions
+    SPRING_TOPIC_UNDERSTOOD(25, 0);  // passing a Spring concept quiz
 
     private final int xp;
     private final int dailyCap;

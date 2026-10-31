@@ -1,0 +1,363 @@
+slug: pass-by-value
+world: JAVA_CORE
+section: C
+order: 16
+title: "Java is pass-by-value"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A classic trap in SP and DSE theory and output practice: 'Is Java pass-by-value or pass-by-reference?' plus swap() and modify-object code."
+otherCompanies: "A very common Java interview trap at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  "**Is Java pass-by-value or pass-by-reference?**" Many people answer "primitives by value, objects by reference". **That answer is wrong**, and interviewers ask it precisely to see who really understands memory.
+
+  The correct answer: **Java is always pass-by-value.** For objects, the *value* that gets copied is the **reference** (the address).
+
+  Once you see the stack/heap picture, you'll be able to predict every output question about:
+  - a `swap(a, b)` method that "doesn't work",
+  - a method that **changes** an object's field (works!),
+  - a method that **reassigns** its parameter to a new object (doesn't affect the caller),
+  - arrays and Strings passed into methods.
+analogy: |
+  Imagine your friend wants to visit your house. You write your **address on a new chit** and give it to them.
+
+  - The friend has a **copy of the address**, not your house, and not your original chit.
+  - If the friend **goes to that address and paints the door blue**, your door really is blue. (Changing an object through a copied reference **is visible** to the caller.)
+  - If the friend **scribbles a different address on their chit**, your chit and your house don't change at all. (Reassigning the parameter **is not visible** to the caller.)
+
+  That's pass-by-value with references: the **chit is copied**, the **house is shared**.
+visual:
+  diagram: |2
+    void paint(House h) { h.color = "blue"; h = new House(); }
+
+    main:  House myHouse = new House();  paint(myHouse);
+
+       STACK                              HEAP
+    +-------------------+
+    | main()            |
+    |  myHouse [ #100 ]-+-----+
+    +-------------------+     |      +------------------+
+    | paint()           |     +----> | #100 House       |
+    |  h       [ #100 ]-+----------> |  color = "blue"  |
+    +-------------------+  (copy of  +------------------+
+                            #100)
+    after  h = new House();  (inside paint)
+    +-------------------+
+    | paint()           |            +------------------+
+    |  h       [ #200 ]-+----------> | #200 House (new) |
+    +-------------------+            +------------------+
+       myHouse still holds #100 -> sees "blue", never #200
+
+    int n = 5; change(n);  ->  change() gets its OWN 5 (a copy)
+  caption: "The method gets a copy of the reference (#100). Using it to change the object is visible to main; pointing the copy at a new object (#200) is not."
+  visualizer: null
+explanation: |
+  ### Two words first
+  - **Pass-by-value**: the method receives a **copy** of the caller's variable value. Changing the parameter variable can't change the caller's variable.
+  - **Pass-by-reference**: the method receives the **caller's variable itself** (an alias). Reassigning the parameter would change the caller's variable. (C++ has this with `&`. **Java does not.**)
+
+  ### Where things live: stack and heap
+  - The **stack** holds each method call's **local variables and parameters**. Each call gets its own box called a **stack frame**, which disappears when the method returns.
+  - The **heap** holds **objects** (everything made with `new`, arrays too).
+  - A variable of a class type (like `House h`) doesn't hold the object. It holds a **reference**: think of it as the object's address, like `#100`.
+
+  ### Case 1: primitives
+  ```java
+  static void change(int x) { x = 99; }
+
+  int n = 5;
+  change(n);
+  System.out.println(n);   // 5
+  ```
+  `change` gets its own copy of 5 in its own stack frame. Setting it to 99 changes only the copy.
+
+  ### Case 2: objects: changing the object (visible!)
+  ```java
+  static void paint(House h) { h.color = "blue"; }
+
+  House my = new House();   // color = "white"
+  paint(my);
+  System.out.println(my.color);   // blue
+  ```
+  `my` holds the reference `#100`. Java **copies `#100`** into `h`. Now two variables point to the **same object** on the heap, so changing the object through `h` is seen through `my`.
+
+  This is why people *think* objects are passed by reference. But only the **reference value** was copied.
+
+  ### Case 3: objects: reassigning the parameter (not visible)
+  ```java
+  static void replace(House h) {
+      h = new House();       // h now points to #200
+      h.color = "green";
+  }
+
+  House my = new House();
+  replace(my);
+  System.out.println(my.color);   // white
+  ```
+  `h = new House()` only changes the **copy** in `replace`'s frame. `my` in `main` still holds `#100`. If Java were pass-by-reference, `my` would now point to the green house. It doesn't. **This is the proof that Java is pass-by-value.**
+
+  ### The swap that doesn't work
+  ```java
+  static void swap(Integer a, Integer b) { Integer t = a; a = b; b = t; }
+  ```
+  `a` and `b` are copies; swapping the copies changes nothing for the caller. In Java you **cannot** write a method that swaps two caller variables. You can swap things **inside** an object or array:
+  ```java
+  static void swap(int[] arr, int i, int j) { int t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+  ```
+  This works because `arr` (a copied reference) points to the **same array** on the heap.
+
+  ### Strings and wrappers
+  `String` and `Integer` objects are **immutable** (they can't be changed). So inside a method, `s = s + "!"` or `count++` creates/gets a **new object** and points the local copy at it. The caller never sees it. It's Case 3 in disguise.
+
+  ### Summary table
+  | What the method does | Caller sees the change? | Why |
+  |---|---|---|
+  | Changes a primitive parameter | No | The method has its own copy of the value |
+  | Changes a field / array element through the parameter | **Yes** | Both references point to the same heap object |
+  | Reassigns the parameter (`p = new ...`) | No | Only the method's copy of the reference changes |
+  | "Modifies" a String or Integer parameter | No | Immutable: a new object is made and only the copy points to it |
+
+  **One-line interview answer:** "Java is strictly pass-by-value. For objects, the value passed is a copy of the reference, so a method can change the object's contents, but it can never make the caller's variable point to a different object."
+tinyCode:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            int n = 5;
+            change(n);
+            System.out.println("n = " + n);
+
+            House my = new House();
+            paint(my);
+            System.out.println("after paint: " + my.color);
+
+            replace(my);
+            System.out.println("after replace: " + my.color);
+        }
+
+        static void change(int x) { x = 99; }
+
+        static void paint(House h) { h.color = "blue"; }
+
+        static void replace(House h) {
+            h = new House();
+            h.color = "green";
+        }
+    }
+
+    class House {
+        String color = "white";
+    }
+  walkthrough: |
+    - `change(n)` copies 5 into `x`. Setting `x = 99` only changes the copy, so `n` stays 5.
+    - `paint(my)` copies the **reference** into `h`. Both point to the same House, so setting `h.color` really paints the caller's house blue.
+    - `replace(my)` again copies the reference. But `h = new House()` points the **copy** at a brand-new house. The green paint goes on that new house. `my` still points to the blue one.
+
+    Output:
+    ```
+    n = 5
+    after paint: blue
+    after replace: blue
+    ```
+tryIt:
+  instructions: "Type this and predict all three lines before running. Then change swapWrong so it takes the array and two indexes instead, and make the swap really work."
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            int a = 1, b = 2;
+            swapWrong(a, b);
+            System.out.println("a=" + a + " b=" + b);
+
+            int[] arr = {1, 2};
+            swapRight(arr, 0, 1);
+            System.out.println("arr=" + arr[0] + "," + arr[1]);
+
+            String s = "Hi";
+            shout(s);
+            System.out.println(s);
+        }
+
+        static void swapWrong(int x, int y) { int t = x; x = y; y = t; }
+
+        static void swapRight(int[] v, int i, int j) { int t = v[i]; v[i] = v[j]; v[j] = t; }
+
+        static void shout(String text) { text = text + "!!!"; }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Main {
+        public static void main(String[] args) {
+            List<String> list = new ArrayList<>();
+            list.add("A");
+            update(list);
+            System.out.println(list);
+
+            StringBuilder sb = new StringBuilder("x");
+            grow(sb);
+            System.out.println(sb);
+        }
+
+        static void update(List<String> l) {
+            l.add("B");
+            l = new ArrayList<>();
+            l.add("C");
+        }
+
+        static void grow(StringBuilder b) {
+            b.append("y");
+            b = new StringBuilder("z");
+            b.append("w");
+        }
+    }
+  expectedOutput: |
+    [A, B]
+    xy
+  explanation: |
+    In both methods, the first line changes the **shared** object through the copied reference ("B" is added, "y" is appended): the caller sees it. Then the parameter is **reassigned** to a new object, so "C" and "zw" go into new objects that the caller never sees.
+commonMistakes:
+  - "Saying \"Java passes objects by reference\". Java copies the reference value; it is always pass-by-value."
+  - "Expecting a swap(a, b) method to swap the caller's variables. It only swaps the method's copies."
+  - "Expecting p = new Something() inside a method to change the caller's variable."
+  - "Forgetting that changing an object's fields or an array's elements through a parameter IS visible to the caller."
+  - "Expecting text = text + \"!\" or count++ on a String/Integer parameter to affect the caller. They are immutable: a new object is created."
+interviewBox:
+  why: "Why interviewers ask this: the 'objects by reference' myth is very common, so this question quickly shows who understands references, stack and heap."
+  questions:
+    - q: "Is Java pass-by-value or pass-by-reference?"
+      a: "Java is always pass-by-value. For primitives the value itself is copied. For objects, the value is the reference, so a copy of the reference is passed. The method can change the object through that copy, but it can't make the caller's variable point to a different object."
+    - q: "If Java is pass-by-value, why does changing an object's field inside a method affect the caller?"
+      a: "Because the copied reference still points to the same object on the heap. Two variables, one object. So changing the object's field through either variable is visible to both. What the method can't do is change which object the caller's variable points to."
+    - q: "Can you write a swap method for two int variables in Java?"
+      a: "Not for the caller's variables, because the method only gets copies. To swap, we put the values in an array or an object and swap the elements inside it, or we simply swap inline where the variables live."
+    - q: "How would you prove Java is not pass-by-reference?"
+      a: "Pass an object to a method that reassigns the parameter to a new object. After the method returns, the caller's variable still points to the old object. With real pass-by-reference, it would point to the new one."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Box b = new Box();
+              b.v = 1;
+              set(b);
+              System.out.println(b.v);
+          }
+          static void set(Box x) {
+              x.v = 2;
+              x = new Box();
+              x.v = 3;
+          }
+      }
+      class Box { int v; }
+    options: ["1", "2", "3", "0"]
+    answer: 1
+    explanation: "x first points to the caller's Box, so x.v = 2 changes it. Then x is pointed at a new Box, and 3 goes into that new object, which the caller never sees. '3' is the pass-by-reference trap."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "In Java, objects are passed by reference and primitives are passed by value."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Everything is passed by value. For objects, the value copied is the reference. That's why reassigning a parameter never affects the caller."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "The programmer wants this to print 'b a'. Why does it print 'a b'?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              String x = "a", y = "b";
+              swap(x, y);
+              System.out.println(x + " " + y);
+          }
+          static void swap(String p, String q) {
+              String t = p;
+              p = q;
+              q = t;
+          }
+      }
+    options:
+      - "Strings can't be passed to methods"
+      - "swap only exchanges its own copies of the references; x and y in main are untouched"
+      - "The temp variable t must be static"
+      - "println prints variables in alphabetical order"
+    answer: 1
+    explanation: "p and q are copies of x and y's references. Swapping p and q changes nothing in main. A swap method can't change the caller's variables in Java; you'd have to swap inside an array or object."
+  - id: q4
+    type: MCQ
+    prompt: "A method receives int[] arr and does arr[0] = 50; What does the caller see?"
+    options:
+      - "Nothing changes, because Java is pass-by-value"
+      - "Its array's first element is now 50"
+      - "A compile error"
+      - "A new array is created"
+    answer: 1
+    explanation: "The method got a copy of the reference to the same array on the heap, so changing an element changes the caller's array. 'Nothing changes' confuses changing the object with reassigning the parameter."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              int[] nums = {1, 2, 3};
+              reset(nums);
+              System.out.println(nums[0]);
+              fill(nums);
+              System.out.println(nums[0]);
+          }
+          static void reset(int[] a) { a = new int[]{0, 0, 0}; }
+          static void fill(int[] a) { a[0] = 9; }
+      }
+    options: ["0\n9", "1\n9", "1\n1", "0\n0"]
+    answer: 1
+    explanation: "reset() only re-points its own copy at a new array, so nums still holds 1. fill() changes an element of the shared array, so nums[0] becomes 9."
+  - id: q6
+    type: MATCH
+    prompt: "Match each action inside a method to whether the caller sees it"
+    pairs:
+      - left: "x = 10;  (x is an int parameter)"
+        right: "Not visible: only the copy changes"
+      - left: "p.name = \"Ravi\";  (p is an object parameter)"
+        right: "Visible: same object on the heap"
+      - left: "p = new Person();"
+        right: "Not visible: only the copied reference moves"
+      - left: "s = s + \"!\";  (s is a String parameter)"
+        right: "Not visible: a new String object is created"
+    explanation: "Only changes made to a shared object (fields, array elements, list contents) reach the caller. Reassigning a parameter, primitive or reference, never does."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the one-line answer: Java is always pass-by-____."
+    code: |
+      // Interview answer:
+      // Java is always pass-by-____ ; for objects, a copy of the reference is passed.
+    acceptedAnswers: ["value"]
+    explanation: "Java is always pass-by-value. Saying 'reference' is the classic wrong answer: what's passed is a copy of the reference, which is a value."
+explainBack:
+  prompt: "Explain to a friend why Java is pass-by-value even for objects, using the stack/heap picture or the address-chit analogy."
+  rubric:
+    - "I said Java is always pass-by-value"
+    - "I explained objects live on the heap and variables hold references"
+    - "I said a method can change an object's contents through the copied reference"
+    - "I said reassigning the parameter doesn't affect the caller, which proves pass-by-value"
+    - "I mentioned the swap example or immutable Strings"
+  modelAnswer: |
+    Java is always pass-by-value. Objects live on the heap, and a variable only holds a reference, like a house address on a chit. When I call a method, Java copies the chit, so the method has its own copy of the address. If the method goes to that address and paints the door, the change is real, so changing an object's fields is visible to the caller. But if the method writes a new address on its chit, by assigning the parameter to a new object, my chit doesn't change. That's why a swap method can't swap my variables, and why changing a String parameter doesn't affect me.
+flashcards:
+  - front: "Is Java pass-by-value or pass-by-reference?"
+    back: "Always pass-by-value. For objects, the value passed is a copy of the reference."
+  - front: "Method sets obj.field = x. Caller sees it?"
+    back: "Yes: the copied reference points to the same heap object."
+  - front: "Method does obj = new Thing(). Caller sees it?"
+    back: "No: only the method's copy of the reference changes."
+  - front: "Why can't you write swap(int a, int b) in Java?"
+    back: "The method only gets copies; swap inside an array or object instead."
+  - front: "Stack vs heap (one line)"
+    back: "Stack: method frames with local variables/parameters. Heap: objects and arrays created with new."
+keyTakeaways:
+  - "Java is strictly pass-by-value; for objects the value is a copy of the reference."
+  - "Changing an object's contents through a parameter is visible to the caller."
+  - "Reassigning a parameter (primitive or reference) is never visible to the caller."
+  - "A swap(a, b) method can't swap the caller's variables; swap inside an array or object."
+  - "Immutable objects like String and Integer can't be changed by a method at all."

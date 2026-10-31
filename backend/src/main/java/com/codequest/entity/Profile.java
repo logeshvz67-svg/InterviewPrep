@@ -60,6 +60,11 @@ public class Profile extends BaseEntity {
     @Column(name = "sound_enabled", nullable = false)
     private boolean soundEnabled = true;
 
+    /** Free-form per-user settings: voice language/rate, reminder time, readiness threshold... */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(nullable = false)
+    private Map<String, Object> settings = new HashMap<>();
+
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     public String getCharacterName() { return characterName; }
@@ -86,6 +91,8 @@ public class Profile extends BaseEntity {
     public void setTotalXp(int totalXp) { this.totalXp = totalXp; }
     public int getGold() { return gold; }
     public void setGold(int gold) { this.gold = gold; }
+    public Map<String, Object> getSettings() { return settings; }
+    public void setSettings(Map<String, Object> settings) { this.settings = settings; }
     public boolean isSoundEnabled() { return soundEnabled; }
     public void setSoundEnabled(boolean soundEnabled) { this.soundEnabled = soundEnabled; }
 }

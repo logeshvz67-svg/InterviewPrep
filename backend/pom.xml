@@ -84,6 +84,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Read lesson/bank content written in YAML (easier to write code and markdown in) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+
         <!-- Swagger UI at /swagger-ui.html -->
         <dependency>
             <groupId>org.springdoc</groupId>

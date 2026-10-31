@@ -11,5 +11,7 @@ import java.util.Optional;
 public interface FocusSessionRepository extends JpaRepository<FocusSession, Long> {
     Optional<FocusSession> findFirstByUserIdAndStatusOrderByStartedAtDesc(Long userId, FocusStatus status);
     Optional<FocusSession> findByIdAndUserId(Long id, Long userId);
+    long countByUserIdAndStatus(Long userId, FocusStatus status);
+    long countByUserIdAndStatusAndLocalDateGreaterThanEqual(Long userId, FocusStatus status, LocalDate from);
     List<FocusSession> findByUserIdAndStatusAndLocalDateGreaterThanEqual(Long userId, FocusStatus status, LocalDate from);
 }

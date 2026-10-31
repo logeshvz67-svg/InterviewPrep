@@ -1,0 +1,431 @@
+slug: object-class
+world: JAVA_CORE
+section: C
+order: 14
+title: "The Object class"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Key for collections questions in SP and DSE rounds: the equals/hashCode contract explains how HashMap and HashSet really work."
+otherCompanies: "equals vs ==, the hashCode contract and shallow vs deep copy are common at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  Every class in Java secretly extends **`java.lang.Object`**. So every object you ever create has methods like `equals()`, `hashCode()`, `toString()` and `clone()`.
+
+  Interviewers love this topic because it connects OOP with collections:
+  - "What's the difference between `==` and `equals()`?"
+  - "What is the **equals and hashCode contract**? What breaks if you override only `equals()`?"
+  - "Why does my object print as `Student@1b6d3586`?"
+  - "What's the difference between a **shallow copy** and a **deep copy**?"
+
+  If you understand this lesson, the `HashMap` lesson later becomes much easier.
+analogy: |
+  Think of a **college hostel**.
+
+  - `==` asks: "Is this the **same person**?" (same room, same body).
+  - `equals()` asks: "Do these two people have the **same details** that matter?" (same roll number). Two ID cards can be separate pieces of plastic but describe the same student.
+  - `hashCode()` is the **hostel block number**. The warden first goes to the right block (fast), then checks names inside that block (equals). If two equal students were given **different block numbers**, the warden would search the wrong block and say "not found". That is exactly the HashMap bug when `hashCode()` isn't overridden.
+  - `clone()` is a **photocopy**. A **shallow** photocopy of a file folder copies the cover page but the **pages inside are still shared** with the original. A **deep** copy photocopies every page too.
+visual:
+  diagram: |2
+    HashMap lookup:  map.get(key)
+      1) bucket = key.hashCode()  ->  go to that bucket
+      2) inside bucket: key.equals(existingKey) ?
+
+     bucket 0 | ...
+     bucket 1 | [ Student(101,"Ravi") -> "A+" ]
+     bucket 2 | ...
+     bucket 3 | ...
+
+    new Student(101,"Ravi") used as the key again:
+      equals overridden, hashCode NOT  -> hash says bucket 3
+                                       -> looks in bucket 3: empty
+                                       -> returns null   (BUG)
+      both overridden                  -> bucket 1 -> equals true
+                                       -> returns "A+"   (OK)
+
+    SHALLOW copy                 DEEP copy
+    orig --+                     orig ----> [marks list A]
+           +--> [marks list]     copy ----> [marks list B]
+    copy --+     (shared!)                  (separate)
+  caption: "hashCode chooses the bucket and equals checks inside it, so equal objects MUST have equal hash codes. A shallow copy shares inner objects; a deep copy duplicates them."
+  visualizer: null
+explanation: |
+  ### Object: the root of all classes
+  If a class doesn't write `extends`, Java makes it extend **`Object`**. So `Object` is the parent of every class (directly or indirectly), and an `Object` variable can hold any object.
+
+  Important methods of `Object`:
+  | Method | Default behaviour | Usually overridden? |
+  |---|---|---|
+  | `boolean equals(Object o)` | same as `==` (same object in memory) | Yes, to compare data |
+  | `int hashCode()` | a number usually derived from the object's identity | Yes, **whenever equals is** |
+  | `String toString()` | `ClassName@hexHashCode` | Yes, for readable output |
+  | `protected Object clone()` | shallow field-by-field copy (needs `Cloneable`) | Sometimes |
+  | `Class<?> getClass()` | the runtime class of the object | No (it's final) |
+  | `wait()`, `notify()`, `notifyAll()` | thread coordination | No (final) |
+  | `finalize()` | called before garbage collection | Deprecated: don't use |
+
+  ### `==` vs `equals()`
+  - **`==`** on objects compares **references**: "do these two variables point to the **same object**?"
+  - **`equals()`** compares **content**, but *only if the class overrides it*. Object's default `equals()` is just `==`.
+  - `String`, `Integer`, `ArrayList`, records and many library classes already override `equals()`.
+
+  ```java
+  String a = new String("hi");
+  String b = new String("hi");
+  System.out.println(a == b);        // false: two objects
+  System.out.println(a.equals(b));   // true: same characters
+  ```
+
+  ### Writing a correct `equals()`
+  ```java
+  @Override
+  public boolean equals(Object o) {
+      if (this == o) return true;                         // same object
+      if (o == null || getClass() != o.getClass()) return false;
+      Student s = (Student) o;
+      return roll == s.roll && Objects.equals(name, s.name);
+  }
+  ```
+  The parameter **must be `Object`**. Writing `equals(Student s)` **overloads** instead of overriding, and collections will ignore it.
+
+  The **equals contract** (rules a correct equals must follow):
+  1. **Reflexive**: `x.equals(x)` is true.
+  2. **Symmetric**: if `x.equals(y)` then `y.equals(x)`.
+  3. **Transitive**: if x equals y and y equals z, then x equals z.
+  4. **Consistent**: same answer every time if nothing changed.
+  5. **Non-null**: `x.equals(null)` is false (never throws).
+
+  ### The `hashCode()` contract
+  A **hash code** is an `int` summary of an object, used by `HashMap`, `HashSet` and `Hashtable` to decide which **bucket** (slot) to store it in.
+  1. **If two objects are equal by `equals()`, they MUST have the same `hashCode()`.**
+  2. If two objects are not equal, their hash codes **may** still be the same (a **collision**); that's allowed, just slower.
+  3. Calling `hashCode()` repeatedly on an unchanged object gives the same number.
+
+  ```java
+  @Override
+  public int hashCode() {
+      return Objects.hash(roll, name);   // use the SAME fields as equals
+  }
+  ```
+
+  ### What breaks if you override only `equals()`?
+  `HashMap.get(key)` and `HashSet.contains(x)` first compute `hashCode()` to find the bucket, and **only then** call `equals()` inside that bucket.
+  - Two "equal" students without a custom `hashCode()` get different identity-based hash codes, so they land in **different buckets**.
+  - Result: `set.add(s1); set.add(s2);` gives **size 2** (duplicates!), and `map.get(new Student(101, "Ravi"))` returns **null** even though an equal key is in the map.
+
+  And the reverse? Overriding only `hashCode()` puts equal objects in the same bucket, but `equals()` still says "different", so you still get duplicates. **Always override both, using the same fields.**
+
+  ### `toString()`
+  `System.out.println(obj)` and string joining (`"x" + obj`) call `toString()`. The default gives something like `Student@1b6d3586` (class name + `@` + hash code in hex). Override it to print useful data:
+  ```java
+  @Override
+  public String toString() { return "Student{roll=" + roll + ", name=" + name + "}"; }
+  ```
+
+  ### `clone()`: shallow vs deep copy
+  To use `clone()`:
+  1. The class implements the **`Cloneable`** interface (a **marker interface**: it has no methods, it just gives permission).
+  2. Override `clone()` (usually `public`) and call `super.clone()`.
+  3. Without `Cloneable`, `super.clone()` throws **`CloneNotSupportedException`**.
+
+  `Object.clone()` makes a **shallow copy**: it copies each field's value. For primitives that's a real copy. For reference fields it copies only the **reference**, so the original and the clone **share** the same inner objects.
+
+  A **deep copy** also copies the inner objects, so the two are fully independent:
+  ```java
+  @Override
+  public Student clone() throws CloneNotSupportedException {
+      Student copy = (Student) super.clone();       // shallow first
+      copy.marks = new ArrayList<>(this.marks);     // then copy the inner list
+      return copy;
+  }
+  ```
+
+  | Shallow copy | Deep copy |
+  |---|---|
+  | Copies field values; references point to the **same** inner objects | Copies inner objects too |
+  | Changing the clone's list changes the original's list | Fully independent |
+  | `super.clone()` by default | You copy each mutable field yourself |
+
+  Many developers prefer a **copy constructor** (`new Student(other)`) over `clone()`, because `clone()` is easy to get wrong.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Main {
+        public static void main(String[] args) {
+            Student a = new Student(101, "Ravi");
+            Student b = new Student(101, "Ravi");
+
+            System.out.println(a == b);
+            System.out.println(a.equals(b));
+            System.out.println(a.hashCode() == b.hashCode());
+            System.out.println(a);
+
+            Map<Student, String> grades = new HashMap<>();
+            grades.put(a, "A+");
+            System.out.println(grades.get(b));
+        }
+    }
+
+    class Student {
+        private final int roll;
+        private final String name;
+
+        Student(int roll, String name) { this.roll = roll; this.name = name; }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Student s = (Student) o;
+            return roll == s.roll && Objects.equals(name, s.name);
+        }
+
+        @Override
+        public int hashCode() { return Objects.hash(roll, name); }
+
+        @Override
+        public String toString() { return "Student{roll=" + roll + ", name=" + name + "}"; }
+    }
+  walkthrough: |
+    - `a == b` is `false`: two separate objects in memory.
+    - `a.equals(b)` is `true`: our `equals()` compares roll and name.
+    - Their hash codes are equal because `hashCode()` uses the **same fields** as `equals()`.
+    - `println(a)` calls our `toString()`.
+    - `grades.get(b)` finds "A+" even though we stored the key `a`: `b` hashes to the same bucket, and `equals()` says they match.
+
+    Output:
+    ```
+    false
+    true
+    true
+    Student{roll=101, name=Ravi}
+    A+
+    ```
+tryIt:
+  instructions: "Type this shallow-copy demo and run it. Then change clone() to also do copy.items = new ArrayList<>(items); and run again: the original should no longer change."
+  code: |
+    import java.util.*;
+
+    public class Main {
+        public static void main(String[] args) throws CloneNotSupportedException {
+            Cart original = new Cart();
+            original.items.add("Rice");
+
+            Cart copy = original.clone();
+            copy.items.add("Dal");
+
+            System.out.println("original: " + original.items);
+            System.out.println("copy:     " + copy.items);
+        }
+    }
+
+    class Cart implements Cloneable {
+        List<String> items = new ArrayList<>();
+
+        @Override
+        public Cart clone() throws CloneNotSupportedException {
+            Cart copy = (Cart) super.clone();
+            return copy;
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Main {
+        public static void main(String[] args) {
+            Set<Pen> set = new HashSet<>();
+            set.add(new Pen("blue"));
+            set.add(new Pen("blue"));
+            System.out.println(set.size());
+            System.out.println(new Pen("blue").equals(new Pen("blue")));
+        }
+    }
+
+    class Pen {
+        String color;
+        Pen(String color) { this.color = color; }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof Pen p && color.equals(p.color);
+        }
+    }
+  expectedOutput: |
+    2
+    true
+  explanation: |
+    `Pen` overrides `equals()` but **not** `hashCode()`. Each `new Pen("blue")` gets its own identity-based hash code, so the HashSet puts them in different buckets and never even calls `equals()`: size 2, a duplicate! Yet `equals()` itself says `true`. This is the classic broken equals/hashCode contract.
+commonMistakes:
+  - "Overriding equals() but not hashCode(). HashMap/HashSet then miss equal keys or store duplicates."
+  - "Writing equals(Student s) instead of equals(Object o). That overloads equals and collections never call it; use @Override to catch this."
+  - "Using == to compare object contents such as Strings. == compares references; use equals()."
+  - "Thinking equal hash codes mean equal objects. Different objects can share a hash code (collision)."
+  - "Calling super.clone() without implementing Cloneable, which throws CloneNotSupportedException."
+  - "Expecting clone() to deep copy. Object.clone() is shallow: inner lists and objects stay shared."
+interviewBox:
+  why: "Why interviewers ask this: it connects OOP to how HashMap and HashSet work, and bugs here are very common in real code."
+  questions:
+    - q: "What is the difference between == and equals()?"
+      a: "== compares references, so it is true only if both variables point to the same object. equals() compares content, if the class overrides it. Object's default equals() is the same as ==, but classes like String and Integer override it to compare values."
+    - q: "What is the equals and hashCode contract?"
+      a: "If two objects are equal by equals(), they must return the same hashCode(). Two unequal objects may share a hash code, which is a collision. hashCode must also stay the same for an unchanged object. So whenever I override equals, I override hashCode using the same fields."
+    - q: "What happens if you override equals but not hashCode and use the object as a HashMap key?"
+      a: "Equal objects will usually have different hash codes, so HashMap looks in the wrong bucket. get() with an equal key returns null, and a HashSet can store duplicates, because equals() is never even called across different buckets."
+    - q: "What is the difference between a shallow copy and a deep copy?"
+      a: "A shallow copy copies the field values, so reference fields still point to the same inner objects; changing the inner list in the copy changes the original too. A deep copy also copies those inner objects, so the two are fully independent. Object.clone() gives a shallow copy by default."
+    - q: "Why does an object print like Student@1b6d3586?"
+      a: "Because the class didn't override toString(), so Object's version prints the class name, an @ sign and the hash code in hexadecimal. Overriding toString() gives readable output."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Book overrides equals() (by isbn) but NOT hashCode(). What does this print?"
+    code: |
+      import java.util.*;
+      public class Main {
+          public static void main(String[] args) {
+              Map<Book, Integer> stock = new HashMap<>();
+              stock.put(new Book("111"), 5);
+              System.out.println(stock.get(new Book("111")));
+          }
+      }
+      class Book {
+          String isbn;
+          Book(String isbn) { this.isbn = isbn; }
+          @Override
+          public boolean equals(Object o) {
+              return o instanceof Book b && isbn.equals(b.isbn);
+          }
+      }
+    options: ["5", "null", "0", "Compile error"]
+    answer: 1
+    explanation: "get() uses hashCode() first. The new Book has a different identity hash code, so HashMap searches a different bucket and returns null. equals() would say true, but it's never reached. Overriding hashCode() with the isbn would make it print 5."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "The author expects list.contains(...) to be true, but it prints false. Why?"
+    code: |
+      import java.util.*;
+      public class Main {
+          public static void main(String[] args) {
+              List<Point> list = new ArrayList<>();
+              list.add(new Point(1, 2));
+              System.out.println(list.contains(new Point(1, 2)));
+          }
+      }
+      class Point {
+          int x, y;
+          Point(int x, int y) { this.x = x; this.y = y; }
+          public boolean equals(Point p) {
+              return x == p.x && y == p.y;
+          }
+          public int hashCode() { return 31 * x + y; }
+      }
+    options:
+      - "ArrayList.contains uses == only"
+      - "equals(Point p) overloads instead of overriding equals(Object)"
+      - "hashCode is wrong for (1, 2)"
+      - "Point must implement Comparable"
+    answer: 1
+    explanation: "contains() calls equals(Object). This class only added an overload equals(Point), so Object's default equals (same as ==) runs and returns false. Changing the parameter to Object (with @Override) fixes it. ArrayList doesn't even use hashCode, so the hashCode isn't the problem."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "If two objects have the same hashCode(), they must be equal by equals()."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The rule only goes one way: equal objects must have equal hash codes. Unequal objects may share a hash code; that's a collision. For example \"Aa\" and \"BB\" have the same String hash code."
+  - id: q4
+    type: MCQ
+    prompt: "What does Object's default toString() return?"
+    options:
+      - "All field values in brackets"
+      - "The class name, @, and the hash code in hex"
+      - "An empty string"
+      - "null"
+    answer: 1
+    explanation: "The default is getClass().getName() + \"@\" + Integer.toHexString(hashCode()), like Student@1b6d3586. Printing field values only happens if you override toString() (or use a record)."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "Box.clone() just returns super.clone(). What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) throws Exception {
+              Box a = new Box();
+              Box b = a.clone();
+              b.size = 20;
+              b.data[0] = 99;
+              System.out.println(a.size + " " + a.data[0]);
+          }
+      }
+      class Box implements Cloneable {
+          int size = 10;
+          int[] data = {1, 2, 3};
+          public Box clone() throws CloneNotSupportedException {
+              return (Box) super.clone();
+          }
+      }
+    options: ["10 1", "20 99", "10 99", "20 1"]
+    answer: 2
+    explanation: "Shallow copy: the int size is copied, so changing b.size doesn't touch a.size (10). But data is a reference, so both boxes share the same array, and b.data[0] = 99 changes a's array too. '10 1' would be true only for a deep copy."
+  - id: q6
+    type: MATCH
+    prompt: "Match each Object method to its purpose"
+    pairs:
+      - left: "equals()"
+        right: "Checks if two objects have the same content"
+      - left: "hashCode()"
+        right: "Gives the int used to pick a hash bucket"
+      - left: "toString()"
+        right: "Gives a readable text form of the object"
+      - left: "clone()"
+        right: "Creates a field-by-field copy"
+    explanation: "These four are the most-asked Object methods. getClass(), wait() and notify() are final and can't be overridden."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the helper that builds a hash code from the same fields used in equals()."
+    code: |
+      import java.util.*;
+      public class Main {
+          int id = 7;
+          String name = "Asha";
+          @Override
+          public int hashCode() { return Objects.____(id, name); }
+          public static void main(String[] args) {
+              Main m = new Main();
+              System.out.println(m.hashCode() == new Main().hashCode());
+          }
+      }
+    acceptedAnswers: ["hash"]
+    explanation: "Objects.hash(id, name) combines the fields into one int. Two objects with the same id and name get the same hash code, so this prints true."
+explainBack:
+  prompt: "Explain == vs equals(), the equals/hashCode contract with the HashMap consequence, and shallow vs deep copy."
+  rubric:
+    - "I said == compares references and equals compares content when overridden"
+    - "I stated: equal objects must have equal hash codes (not the other way round)"
+    - "I explained HashMap uses hashCode for the bucket and then equals, so overriding only equals breaks get() and HashSet"
+    - "I explained shallow copy shares inner objects and deep copy copies them"
+    - "I used an analogy like the hostel block number"
+  modelAnswer: |
+    Every class extends Object, which gives equals, hashCode, toString and clone. == checks if two variables point to the same object, while equals checks content, but only if the class overrides it. The contract says equal objects must have the same hash code. That matters because a HashMap first uses hashCode to pick a bucket, like a hostel block, and only then uses equals inside it. If I override only equals, equal keys go to different buckets, so get returns null and a HashSet keeps duplicates. toString gives readable output. clone by default is a shallow copy, so inner lists are shared; a deep copy copies those too.
+flashcards:
+  - front: "== vs equals() on objects"
+    back: "== compares references (same object?). equals() compares content if overridden; Object's default is ==."
+  - front: "The hashCode contract (main rule)"
+    back: "If a.equals(b) then a.hashCode() == b.hashCode(). Not the other way round."
+  - front: "Override equals but not hashCode: effect on HashMap/HashSet?"
+    back: "Equal keys land in different buckets: get() returns null, HashSet stores duplicates."
+  - front: "Default toString() format"
+    back: "ClassName@hexHashCode, e.g. Student@1b6d3586."
+  - front: "Shallow vs deep copy"
+    back: "Shallow: references copied, inner objects shared (Object.clone()). Deep: inner objects copied too."
+  - front: "What is Cloneable?"
+    back: "A marker interface (no methods). Without it, super.clone() throws CloneNotSupportedException."
+keyTakeaways:
+  - "Every class extends Object; its key methods are equals, hashCode, toString and clone."
+  - "== compares references; equals compares content (only when overridden)."
+  - "Equal objects must have equal hash codes: always override equals and hashCode together, with the same fields."
+  - "HashMap/HashSet use hashCode to find the bucket, then equals inside it."
+  - "equals must take Object as its parameter; use @Override."
+  - "Object.clone() is shallow; deep copies must copy mutable inner objects too."

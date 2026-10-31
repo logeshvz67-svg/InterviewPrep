@@ -1,0 +1,334 @@
+slug: atomic-locks
+world: JAVA_CORE
+section: G
+order: 6
+title: "Atomic classes and locks"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT]
+infosysRelevance: "Depth topic for SP: a natural follow-up after 'how do you fix count++?' Knowing AtomicInteger and ReentrantLock shows you go beyond synchronized."
+otherCompanies: "Common in product-company concurrency discussions and senior backend interviews; occasionally a bonus question in service-company rounds."
+why: |
+  `synchronized` works, but it's a blunt tool. The `java.util.concurrent` package gives you sharper ones:
+  - **Atomic classes** (`AtomicInteger`, `AtomicLong`, `AtomicBoolean`, `AtomicReference`): fix `count++` **without any lock**.
+  - **`ReentrantLock`**: a lock with extra powers: try for a lock and give up, wait with a timeout, be interrupted, be fair.
+  - **`ReadWriteLock`**: many readers at once, but only one writer.
+
+  The classic interview chain goes: *"count++ isn't thread-safe. How do you fix it?"* → *"synchronized."* → *"Any other way?"* → **"AtomicInteger, using CAS."** → *"What is CAS?"* This lesson prepares you for every step.
+analogy: |
+  **AtomicInteger and CAS** are like **updating a shared Google Sheet cell** carefully: "I saw the value was **5**. Set it to **6**, but *only if it's still 5*." If someone changed it in the meantime, your update is rejected, so you read the new value and try again. No one had to lock the sheet.
+
+  **ReentrantLock** is like the **bank locker room key** with a register: you can wait in line, or **wait only 2 minutes and leave** (`tryLock` with timeout), and the guard can serve people **in arrival order** (fair lock). And you **must return the key** yourself (`unlock()`), even if something goes wrong.
+
+  **ReadWriteLock** is like a **library notice board**: any number of students can **read** it at the same time, but when the librarian is **writing** a new notice, everybody waits.
+visual:
+  diagram: |
+    CAS (Compare-And-Swap) inside incrementAndGet()
+
+      loop:
+        current = read value          (say 5)
+        next    = current + 1         (6)
+        if value is STILL current -> set to next, done!
+        else (someone changed it) -> try the loop again
+
+    Thread A: read 5 ---- CAS(5 -> 6) OK      value = 6
+    Thread B: read 5 ------------ CAS(5 -> 6) FAILS (now 6)
+              read 6 ---- CAS(6 -> 7) OK      value = 7
+
+    READWRITE LOCK
+      readers:  R R R R  (together)   |  writer: W (alone)
+      read + read = OK   read + write = wait   write + write = wait
+  caption: "CAS never blocks: it updates only if the value hasn't changed, otherwise it retries. A ReadWriteLock lets many readers in together but a writer goes alone."
+  visualizer: null
+explanation: |
+  ### 1. Atomic classes
+  An **atomic** operation happens completely or not at all; no other thread can see it half-done. The package `java.util.concurrent.atomic` has classes whose methods are atomic **without using locks**.
+  ```java
+  AtomicInteger count = new AtomicInteger(0);
+  count.incrementAndGet();   // thread-safe count++
+  ```
+  Common `AtomicInteger` methods:
+  | Method | Does | Returns |
+  |---|---|---|
+  | `get()` / `set(v)` | Read / write | value / void |
+  | `incrementAndGet()` | `++count` | **new** value |
+  | `getAndIncrement()` | `count++` | **old** value |
+  | `addAndGet(5)` | `count += 5` | new value |
+  | `compareAndSet(expected, newValue)` | Set only if current == expected | `true` if it worked |
+  | `updateAndGet(x -> x * 2)` | Apply a function atomically | new value |
+
+  Others: `AtomicLong`, `AtomicBoolean`, `AtomicReference<T>` (for objects), and **`LongAdder`** (faster than `AtomicLong` when many threads only add and you read the total rarely).
+
+  ### 2. CAS: how atomics work without locks
+  **CAS (Compare-And-Swap)** is a single CPU instruction: "If the value at this memory location is still X, replace it with Y; tell me if it worked." Atomic classes use CAS in a loop (see diagram). Threads **never block** (never go to BLOCKED state); a thread that loses just retries.
+  - **Good**: very fast when contention (fighting over the same variable) is low; no deadlock possible.
+  - **Limit**: works for **one variable**. If you must update two variables together (e.g. move money between two accounts), you still need a lock.
+  - **ABA problem** (bonus): value changes 5 → 6 → 5; CAS thinks nothing changed. `AtomicStampedReference` adds a version number to catch this.
+
+  ### 3. ReentrantLock
+  `ReentrantLock` (in `java.util.concurrent.locks`) does what `synchronized` does, plus more. **Reentrant** means the thread holding the lock can lock it again (a hold counter goes up) without blocking itself.
+
+  The **must-know pattern**: unlock in `finally`, so the lock is released even if an exception happens.
+  ```java
+  lock.lock();
+  try {
+      balance += amount;
+  } finally {
+      lock.unlock();
+  }
+  ```
+
+  | Feature | `synchronized` | `ReentrantLock` |
+  |---|---|---|
+  | Release | Automatic at end of block | **Manual** `unlock()` in `finally` |
+  | Try without waiting | No | `tryLock()` |
+  | Wait with timeout | No | `tryLock(1, TimeUnit.SECONDS)` |
+  | Interruptible while waiting | No | `lockInterruptibly()` |
+  | Fairness (first come, first served) | No | `new ReentrantLock(true)` |
+  | Multiple wait conditions | One (`wait/notify`) | Many `Condition` objects (`await/signal`) |
+  | Ease of use | Simple, can't forget to unlock | More power, more responsibility |
+
+  **Rule of thumb**: use `synchronized` for simple cases; use `ReentrantLock` when you need `tryLock`, timeouts, fairness or several conditions. A **fair** lock is slower but prevents starvation.
+
+  ### 4. ReadWriteLock
+  Many programs **read** shared data far more often than they **write** it (e.g. a price list or cache). With a normal lock, readers block each other for no reason. `ReentrantReadWriteLock` has two locks:
+  - **Read lock**: many threads can hold it **at the same time**, as long as no one is writing.
+  - **Write lock**: **exclusive**; no readers or other writers while it's held.
+  ```java
+  ReadWriteLock rw = new ReentrantReadWriteLock();
+
+  int get(String k) {
+      rw.readLock().lock();
+      try { return prices.getOrDefault(k, 0); }
+      finally { rw.readLock().unlock(); }
+  }
+  void put(String k, int v) {
+      rw.writeLock().lock();
+      try { prices.put(k, v); }
+      finally { rw.writeLock().unlock(); }
+  }
+  ```
+
+  ### Which tool when?
+  | Situation | Use |
+  |---|---|
+  | One counter or flag updated by many threads | `AtomicInteger` / `AtomicBoolean` (or `LongAdder` for heavy counting) |
+  | Several variables must change together | `synchronized` or `ReentrantLock` |
+  | Need timeout / tryLock / fairness | `ReentrantLock` |
+  | Mostly reads, few writes | `ReadWriteLock` (or a concurrent collection) |
+  | Shared map | `ConcurrentHashMap` (it handles locking internally) |
+tinyCode:
+  code: |
+    import java.util.concurrent.atomic.AtomicInteger;
+
+    public class AtomicCounter {
+        public static void main(String[] args) throws InterruptedException {
+            AtomicInteger count = new AtomicInteger(0);
+            Runnable task = () -> {
+                for (int i = 0; i < 10000; i++) {
+                    count.incrementAndGet();
+                }
+            };
+            Thread t1 = new Thread(task);
+            Thread t2 = new Thread(task);
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+            System.out.println("Count = " + count.get());
+        }
+    }
+  walkthrough: |
+    - `AtomicInteger count = new AtomicInteger(0)` creates a thread-safe integer object starting at 0.
+    - The lambda can use `count` because the **variable** never changes (it's effectively final); only the value **inside** the object changes.
+    - `count.incrementAndGet()` is the atomic version of `count++`. Internally it uses a CAS loop, so no increment is lost, and no lock is used.
+    - `join()` on both threads makes main wait, so we print the final value.
+    - Output is **always** `Count = 20000`. Compare with the plain `int` version from the synchronization lesson, which lost updates.
+tryIt:
+  instructions: "Type this Wallet that uses a ReentrantLock. Notice the lock() then try/finally pattern: that's the part interviewers look for. Run it: the balance is always 20000. Then (just to learn) remove the lock lines and run a few times to see the race come back."
+  code: |
+    import java.util.concurrent.locks.ReentrantLock;
+
+    public class Wallet {
+        private final ReentrantLock lock = new ReentrantLock();
+        private int balance = 0;
+
+        void deposit(int amount) {
+            lock.lock();
+            try {
+                balance += amount;
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        public static void main(String[] args) throws InterruptedException {
+            Wallet w = new Wallet();
+            Runnable task = () -> {
+                for (int i = 0; i < 1000; i++) {
+                    w.deposit(10);
+                }
+            };
+            Thread t1 = new Thread(task);
+            Thread t2 = new Thread(task);
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+            System.out.println("Balance = " + w.balance);
+        }
+    }
+predict:
+  code: |
+    import java.util.concurrent.atomic.AtomicInteger;
+
+    public class Cas {
+        public static void main(String[] args) {
+            AtomicInteger a = new AtomicInteger(5);
+            System.out.println(a.getAndIncrement());
+            System.out.println(a.incrementAndGet());
+            System.out.println(a.compareAndSet(7, 10));
+            System.out.println(a.compareAndSet(7, 20));
+            System.out.println(a.get());
+        }
+    }
+  expectedOutput: |
+    5
+    7
+    true
+    false
+    10
+  explanation: |
+    Single thread, so the output is fixed. `getAndIncrement()` returns the **old** value 5 and makes it 6. `incrementAndGet()` makes it 7 and returns the **new** value 7. `compareAndSet(7, 10)`: the value is 7, so it becomes 10 and returns `true`. `compareAndSet(7, 20)`: the value is now 10, not 7, so nothing changes and it returns `false`. Final value: 10.
+commonMistakes:
+  - "Calling unlock() outside finally: if the code in between throws, the lock is never released and other threads wait forever."
+  - "Mixing up getAndIncrement() (returns old value, like i++) and incrementAndGet() (returns new value, like ++i)."
+  - "Thinking atomic variables make a group of operations safe. Each call is atomic, but if (a.get() > 0) a.decrementAndGet(); as two calls is still a race."
+  - "Using ReadWriteLock when writes are frequent; then it is no faster than a normal lock."
+  - "Saying ReentrantLock is always better than synchronized. It's more flexible, but synchronized is simpler and safer for basic cases."
+interviewBox:
+  why: "Why interviewers ask this: it checks whether you know modern java.util.concurrent tools and can pick the right one instead of putting synchronized everywhere."
+  questions:
+    - q: "How does AtomicInteger make increment thread-safe without synchronized?"
+      a: "It uses CAS, compare-and-swap. It reads the current value, computes the new value, and sets it only if the value is still the same as what it read. If another thread changed it, it simply retries. This is a single hardware instruction, so no lock is needed and threads never block."
+    - q: "What is the difference between synchronized and ReentrantLock?"
+      a: "Both give mutual exclusion and are reentrant. synchronized is automatic and simple. ReentrantLock must be unlocked manually in a finally block, but it offers tryLock, waiting with a timeout, interruptible locking, fairness and multiple conditions."
+    - q: "What is a ReadWriteLock and when would you use it?"
+      a: "It has a read lock and a write lock. Many threads can hold the read lock together, but the write lock is exclusive. It's useful when data is read very often and changed rarely, like a configuration or a cache."
+    - q: "What is a fair lock?"
+      a: "A fair lock gives the lock to the thread that has waited the longest, first come first served. new ReentrantLock(true) creates one. It prevents starvation but is usually slower."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (Single thread, so the output is fixed.)"
+    code: |
+      ReentrantLock lock = new ReentrantLock();
+      lock.lock();
+      lock.lock();
+      System.out.print(lock.getHoldCount() + " ");
+      lock.unlock();
+      System.out.print(lock.getHoldCount() + " ");
+      System.out.println(lock.isLocked());
+    options: ["2 1 true", "1 0 false", "Deadlock: the second lock() waits forever", "2 1 false"]
+    answer: 0
+    explanation: "ReentrantLock is reentrant: the same thread can lock it again, and a hold count tracks how many times. After two lock() calls the count is 2; after one unlock() it's 1 and the lock is still held (isLocked() is true). You need one unlock() per lock(). The deadlock option is the tempting trap."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "What is the danger in this method?"
+    code: |
+      void withdraw(int amount) {
+          lock.lock();
+          if (amount > balance) {
+              throw new IllegalArgumentException("Not enough money");
+          }
+          balance -= amount;
+          lock.unlock();
+      }
+    options:
+      - "lock() must be called inside the if"
+      - "If the exception is thrown, unlock() never runs and the lock stays held forever"
+      - "balance -= amount is not allowed with ReentrantLock"
+      - "There is no problem"
+    answer: 1
+    explanation: "When the exception is thrown, the method exits before unlock(), so every other thread trying to lock waits forever. Always write lock(); try { ... } finally { unlock(); }. synchronized would release automatically, which is why ReentrantLock needs this discipline."
+  - id: q3
+    type: MCQ
+    prompt: "What does CAS (compare-and-swap) do?"
+    code: null
+    options:
+      - "Locks the variable until the thread finishes"
+      - "Updates the value only if it still equals the expected value, otherwise reports failure"
+      - "Swaps the values of two variables"
+      - "Compares two strings and swaps their characters"
+    answer: 1
+    explanation: "CAS checks 'is it still X?' and only then writes Y, all in one atomic hardware step. On failure the atomic class retries. It does NOT lock, which is the whole advantage."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In a ReentrantReadWriteLock, many threads can hold the read lock at the same time, but the write lock is exclusive."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Reads don't change data, so they can safely happen together. A writer needs everyone else out, both readers and other writers."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that releases a ReentrantLock."
+    code: |
+      lock.lock();
+      try {
+          count++;
+      } finally {
+          lock.____;
+      }
+    acceptedAnswers: ["unlock()", "unlock"]
+    explanation: "unlock() releases one hold on the lock. Putting it in finally guarantees it runs even if the try block throws."
+  - id: q6
+    type: MATCH
+    prompt: "Match each need to the best tool"
+    pairs:
+      - left: "One shared hit counter"
+        right: "AtomicInteger"
+      - left: "Wait at most 2 seconds for a lock"
+        right: "ReentrantLock.tryLock(timeout)"
+      - left: "Data read often, written rarely"
+        right: "ReadWriteLock"
+      - left: "Simple critical section, auto release"
+        right: "synchronized"
+    explanation: "Atomics for single variables, tryLock for timeouts, read-write locks for read-heavy data, and synchronized when you just need a simple, safe lock."
+  - id: q7
+    type: MCQ
+    prompt: "Which statement about AtomicInteger is TRUE?"
+    code: null
+    options:
+      - "It makes any sequence of method calls on it atomic as a group"
+      - "Each single method like incrementAndGet() is atomic, but two separate calls together are not"
+      - "It uses synchronized internally for every call"
+      - "It can only be used by one thread"
+    answer: 1
+    explanation: "Each method call is atomic. But 'if (a.get() > 0) a.decrementAndGet();' is two calls, and another thread can sneak in between. For check-then-act, use compareAndSet in a loop, updateAndGet, or a lock."
+explainBack:
+  prompt: "Explain to a friend how AtomicInteger fixes count++ without a lock, and when you'd use ReentrantLock or a ReadWriteLock instead."
+  rubric:
+    - "I explained CAS: update only if the value is unchanged, otherwise retry"
+    - "I said atomics are lock-free and good for single variables"
+    - "I said ReentrantLock adds tryLock, timeout, fairness and must be unlocked in finally"
+    - "I said ReadWriteLock allows many readers together but one writer alone"
+  modelAnswer: |
+    AtomicInteger uses compare-and-swap. It's like updating a shared sheet: I saw 5, so set it to 6, but only if it's still 5. If someone changed it, I read again and retry. No lock, nobody waits in line, so it's fast for a single counter. If I need to change several things together, I use a lock. ReentrantLock is like synchronized but with extras: I can try for the lock and give up after a timeout, and make it fair. I must always unlock it in a finally block. And if the data is read a lot but rarely written, a ReadWriteLock lets many readers in together but makes a writer go alone.
+flashcards:
+  - front: "What is CAS?"
+    back: "Compare-And-Swap: set the new value only if the current value equals the expected one; otherwise fail and retry. Lock-free."
+  - front: "incrementAndGet vs getAndIncrement"
+    back: "incrementAndGet = ++i (returns new value). getAndIncrement = i++ (returns old value)."
+  - front: "ReentrantLock must-know pattern"
+    back: "lock.lock(); try { ... } finally { lock.unlock(); }"
+  - front: "ReentrantLock extras over synchronized"
+    back: "tryLock, timeout, lockInterruptibly, fairness, multiple Conditions."
+  - front: "ReadWriteLock rule"
+    back: "Many readers together OR one writer alone."
+keyTakeaways:
+  - "Atomic classes give lock-free, thread-safe single-variable updates using CAS."
+  - "Each atomic call is atomic; a sequence of calls is not."
+  - "ReentrantLock = synchronized plus tryLock, timeouts, fairness, conditions; always unlock in finally."
+  - "ReadWriteLock helps read-heavy data: shared read lock, exclusive write lock."
+  - "Pick the simplest tool that works: atomic for one variable, lock for several, concurrent collections for shared maps."

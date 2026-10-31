@@ -1,0 +1,350 @@
+slug: this-keyword
+world: JAVA_CORE
+section: C
+order: 3
+title: "The this keyword"
+version: 1
+estimatedMinutes: 20
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Basic OOP question for SP and DSE rounds; the name = name shadowing bug is a frequent spot-the-bug and output question."
+otherCompanies: "A basic OOP question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  You have already seen `this.name = name;` in constructors. Many beginners type it without knowing **why**, and then one day they write `name = name;` and the field silently stays `null`.
+
+  Interviewers ask:
+  - "What is the `this` keyword? Where can you use it?"
+  - "Can you use `this` inside a static method?"
+  - "What's the difference between `this` and `this()`?"
+
+  Understanding `this` also makes method chaining (`sb.append("a").append("b")`) and the Builder pattern feel natural.
+analogy: |
+  Imagine a **WhatsApp family group** where three people are named **Ravi**: the grandfather, the father and the son.
+
+  - If someone writes "Ravi, come here", nobody knows which Ravi.
+  - If the son says **"I"** or **"me"**, it's clear: he means himself.
+
+  `this` is Java's word for **"me, this very object"**. When a parameter and a field have the same name (two Ravis), `this.name` means "**my** name field", and plain `name` means the parameter that was just passed in.
+visual:
+  diagram: |
+    Student s1 = new Student("Ravi");
+
+    Student(String name) {        <- parameter "name" = "Ravi"
+        this.name = name;
+    }      |          |
+           |          +-- the PARAMETER (nearest name wins)
+           +------------- the FIELD of the current object
+
+      s1 -----> +-------------------+
+      this ---> | name = "Ravi"     |   inside the constructor,
+                +-------------------+   this == s1 (same object)
+
+    WRONG:  name = name;   parameter = parameter, field stays null
+  caption: "Inside a constructor or instance method, this is a reference to the current object. this.name is the field; plain name is the closer parameter."
+  visualizer: null
+explanation: |
+  ### What is `this`?
+  `this` is a **reference** (an arrow) to the **current object**: the object whose constructor or method is running right now.
+  - In `s1.show()`, inside `show()`, `this` points to `s1`'s object.
+  - In `s2.show()`, `this` points to `s2`'s object.
+
+  Same method code, different `this` each time. That's how one method can work for every object.
+
+  ### Use 1: fixing name clashes (shadowing)
+  **Shadowing** means a local variable or parameter has the **same name as a field**, so it "hides" the field. Inside the method, the plain name refers to the **nearest** one: the parameter.
+  ```java
+  class Student {
+      String name;
+      Student(String name) {
+          name = name;        // BUG: parameter = parameter. Field stays null!
+      }
+  }
+  ```
+  ```java
+  Student(String name) {
+      this.name = name;       // field = parameter. Correct.
+  }
+  ```
+  If the names are different (`Student(String n) { name = n; }`), `this` is optional, because there's no clash.
+
+  ### Use 2: calling another constructor, `this(...)`
+  As you saw in the constructors lesson, `this(...)` calls another constructor of the **same class**. It must be the first statement.
+  ```java
+  Student() { this("Unknown"); }
+  ```
+  Don't mix them up: **`this`** is a reference to the object; **`this()`** is a constructor call.
+
+  ### Use 3: calling the current object's methods
+  `this.show()` and `show()` are the same inside an instance method. Writing `this.` just makes it explicit.
+
+  ### Use 4: passing the current object to another method
+  ```java
+  class Order {
+      void place(Shop shop) {
+          shop.accept(this);   // "here, take ME"
+      }
+  }
+  ```
+
+  ### Use 5: returning the current object (method chaining)
+  If a method returns `this`, you can call the next method on the result in the same line. This is called **method chaining**, and it's how `StringBuilder.append` and the **Builder pattern** work.
+  ```java
+  class Pizza {
+      String size; boolean cheese;
+      Pizza size(String s)  { this.size = s;  return this; }
+      Pizza cheese()        { this.cheese = true; return this; }
+  }
+  Pizza p = new Pizza().size("large").cheese();
+  ```
+
+  ### Where you CAN'T use `this`
+  **Static** methods belong to the class, not to any object (next lesson). So inside a `static` method (like `main`), there is **no current object**, and `this` causes a compile error:
+  ```java
+  public static void main(String[] args) {
+      System.out.println(this);   // compile error: non-static variable this
+                                  // cannot be referenced from a static context
+  }
+  ```
+  Also, you cannot assign to it: `this = other;` is a compile error. `this` always means the current object.
+
+  ### Summary
+  | Use | Example |
+  |---|---|
+  | Refer to a field hidden by a parameter | `this.name = name;` |
+  | Call another constructor of the same class | `this("Unknown");` (first line) |
+  | Call a method on the current object | `this.show();` |
+  | Pass the current object | `shop.accept(this);` |
+  | Return the current object (chaining) | `return this;` |
+  | Not allowed | inside static methods; `this = ...` |
+tinyCode:
+  code: |
+    public class ThisDemo {
+        static class Student {
+            String name;
+            int marks;
+
+            Student(String name, int marks) {
+                this.name = name;
+                this.marks = marks;
+            }
+
+            Student addBonus(int bonus) {
+                this.marks = this.marks + bonus;
+                return this;
+            }
+
+            boolean isSameAs(Student other) {
+                return this == other;
+            }
+
+            void show() {
+                System.out.println(name + " " + marks);
+            }
+        }
+
+        public static void main(String[] args) {
+            Student s1 = new Student("Ravi", 70);
+            Student s2 = new Student("Priya", 80);
+
+            s1.addBonus(5).addBonus(5).show();
+            s2.show();
+
+            System.out.println(s1.isSameAs(s1) + " " + s1.isSameAs(s2));
+        }
+    }
+  walkthrough: |
+    - The constructor uses `this.name = name` so the **field** gets the parameter's value.
+    - `addBonus` changes the current object's marks and then `return this;`, giving back the same object, so we can chain: `s1.addBonus(5).addBonus(5).show()` adds 10 in total and prints `Ravi 80`.
+    - `s2.show()` runs the same `show` code, but now the current object is `s2`: `Priya 80`.
+    - `isSameAs(other)` compares `this` with `other` using `==`. `s1.isSameAs(s1)` is `true`; `s1.isSameAs(s2)` is `false`.
+
+    Output:
+    ```
+    Ravi 80
+    Priya 80
+    true false
+    ```
+tryIt:
+  instructions: "Type this program and run it. It prints \"null has Rs 0.0\" instead of \"Ravi has Rs 1500.0\". Find the bug in the Account constructor, fix it using this, and run it again to check."
+  code: |
+    public class FixThis {
+        static class Account {
+            String holder;
+            double balance;
+
+            Account(String holder, double balance) {
+                holder = holder;
+                balance = balance;
+            }
+
+            void print() {
+                System.out.println(holder + " has Rs " + balance);
+            }
+        }
+
+        public static void main(String[] args) {
+            Account a = new Account("Ravi", 1500.0);
+            a.print();
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static class Counter {
+            int count;
+
+            Counter increment() {
+                count++;
+                return this;
+            }
+
+            void setCount(int count) {
+                count = count * 10;
+            }
+        }
+
+        public static void main(String[] args) {
+            Counter c = new Counter();
+            c.increment().increment().increment();
+            System.out.println(c.count);
+            c.setCount(7);
+            System.out.println(c.count);
+        }
+    }
+  expectedOutput: |
+    3
+    3
+  explanation: |
+    - Each `increment()` adds 1 to the field and returns the **same** object, so three chained calls make `count` = `3`.
+    - In `setCount(int count)`, the parameter is also called `count`, so it **shadows** the field. `count = count * 10` only changes the parameter (to 70). The field is untouched, so it's still `3`. The fix would be `this.count = count * 10;`.
+commonMistakes:
+  - "Writing name = name; in a constructor. It assigns the parameter to itself; the field stays at its default (null / 0)."
+  - "Using this inside a static method like main. There is no current object there, so it's a compile error."
+  - "Confusing this (a reference to the current object) with this() (a call to another constructor)."
+  - "Forgetting return this; in a method meant for chaining, and getting a compile error or a void return."
+interviewBox:
+  why: "Why interviewers ask this: it checks whether you understand that methods run on a specific object, and it catches the common shadowing bug."
+  questions:
+    - q: "What is the this keyword in Java?"
+      a: "this is a reference to the current object, the object whose method or constructor is running. We use it mainly to tell a field apart from a parameter with the same name, like this.name = name."
+    - q: "What are the uses of this?"
+      a: "To refer to the current object's fields when they are shadowed by parameters, to call another constructor of the same class with this(), to call the current object's methods, to pass the current object to another method, and to return the current object for method chaining."
+    - q: "Can we use this in a static method?"
+      a: "No. A static method belongs to the class, not to any object, so there is no current object. Using this there gives a compile error."
+    - q: "What happens if you write name = name in a constructor?"
+      a: "The parameter shadows the field, so both names mean the parameter. It just assigns the parameter to itself, and the field keeps its default value, like null. We need this.name = name."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      class Car {
+          String model;
+          Car(String model) { model = model; }
+      }
+      public class Main {
+          public static void main(String[] args) {
+              System.out.println(new Car("Nexon").model);
+          }
+      }
+    options: ["Nexon", "null", "model", "Compile error"]
+    answer: 1
+    explanation: "Inside the constructor, model means the parameter (it shadows the field). model = model assigns the parameter to itself; the field stays null. It compiles fine. Writing this.model = model would print Nexon."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this code fail to compile?"
+    code: |
+      public class Main {
+          int x = 10;
+          public static void main(String[] args) {
+              System.out.println(this.x);
+          }
+      }
+    options:
+      - "x must be public"
+      - "this cannot be used in a static method because there is no current object"
+      - "println cannot print int fields"
+      - "x must be declared inside main"
+    answer: 1
+    explanation: "main is static, so it isn't running on any object, and this has nothing to point to: compile error. To use x, create an object first: new Main().x. Making x public wouldn't help; the problem is the static context."
+  - id: q3
+    type: TRUE_FALSE
+    prompt: "this and this() mean the same thing."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. this is a reference to the current object (e.g. this.name). this() is a call to another constructor of the same class, allowed only as the first statement of a constructor."
+  - id: q4
+    type: FILL_THE_CODE
+    prompt: "Fill in the statement so this method can be chained: obj.setA(1).setB(2)"
+    code: |
+      Settings setA(int a) {
+          this.a = a;
+          return ____;
+      }
+    acceptedAnswers: ["this", "this;"]
+    explanation: "Returning this gives back the same object, so the next method can be called on it in the same expression. That's how StringBuilder.append and builders work."
+  - id: q5
+    type: MCQ
+    prompt: "Inside s2.show(), what does this refer to?"
+    options: ["The Student class", "The object that s2 points to", "The first Student object ever created", "Nothing; this is only for constructors"]
+    answer: 1
+    explanation: "this is the object the method was called on. For s2.show(), that's s2's object. It's not the class itself (that's what static is about), and this works in any instance method, not only constructors."
+  - id: q6
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      class Point {
+          int x;
+          Point(int x) { this.x = x; }
+          Point moveBy(int d) { x = x + d; return this; }
+      }
+      public class Main {
+          public static void main(String[] args) {
+              Point p = new Point(1);
+              Point q = p.moveBy(2).moveBy(3);
+              System.out.println(p.x + " " + q.x + " " + (p == q));
+          }
+      }
+    options: ["1 6 false", "6 6 true", "3 6 false", "6 6 false"]
+    answer: 1
+    explanation: "moveBy changes the same object and returns this, so q is not a new Point; it's p itself. x becomes 1 + 2 + 3 = 6 and p == q is true. \"1 6 false\" assumes moveBy builds a new object, which it doesn't."
+  - id: q7
+    type: MATCH
+    prompt: "Match each use of this to its purpose"
+    pairs:
+      - left: "this.name = name;"
+        right: "Set the field hidden by a parameter"
+      - left: "this(\"Unknown\");"
+        right: "Call another constructor of the same class"
+      - left: "return this;"
+        right: "Allow method chaining"
+      - left: "shop.accept(this);"
+        right: "Pass the current object to another method"
+    explanation: "One keyword, several roles, all meaning 'the current object' (or, with brackets, 'another constructor of this class')."
+explainBack:
+  prompt: "Explain to a friend what this means in Java, using the 'three people named Ravi' idea, and why name = name is a bug."
+  rubric:
+    - "I said this means the current object"
+    - "I explained shadowing: the parameter hides the field"
+    - "I gave at least two other uses (this(), return this, passing this)"
+    - "I said this can't be used in static methods"
+  modelAnswer: |
+    The this keyword means "me, the current object". It's like a family group with three people named Ravi; when one says "me", it's clear who he means. In a constructor, if my parameter is called name and my field is also called name, plain name means the parameter, because the nearest one wins. So name = name just copies the parameter to itself and the field stays null. this.name = name says "my field gets the parameter". I can also use this() to call another constructor, return this to chain methods, or pass this to another method. But in a static method there's no current object, so this isn't allowed.
+flashcards:
+  - front: "What is this?"
+    back: "A reference to the current object: the one whose method or constructor is running."
+  - front: "Why is name = name a bug in a constructor?"
+    back: "The parameter shadows the field, so it assigns the parameter to itself. Use this.name = name."
+  - front: "this vs this()"
+    back: "this = reference to the current object. this() = call another constructor of the same class (first line only)."
+  - front: "Can you use this in a static method?"
+    back: "No. Static methods have no current object; compile error."
+  - front: "How does method chaining work?"
+    back: "Each method returns this, so the next call runs on the same object: obj.a().b().c()."
+keyTakeaways:
+  - "this is a reference to the current object."
+  - "Use this.field when a parameter has the same name as a field (shadowing)."
+  - "this() calls another constructor of the same class; this is the object itself."
+  - "return this enables method chaining (StringBuilder, Builder pattern)."
+  - "this cannot be used in static methods and cannot be re-assigned."

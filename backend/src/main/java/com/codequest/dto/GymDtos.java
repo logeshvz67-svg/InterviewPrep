@@ -26,7 +26,8 @@ public final class GymDtos {
             @Min(1) @Max(5) int confidence,
             @NotBlank @Size(min = 20, max = 5000, message = "Write your approach in your own words (at least 20 characters)") String approach,
             @Size(max = 20000) String code,
-            @PastOrPresent LocalDate solvedOn) {}
+            @PastOrPresent LocalDate solvedOn,
+            @Size(max = 120) String bankSlug) {}
 
     public record PatternView(String code, String name, String description, boolean spCore) {}
 

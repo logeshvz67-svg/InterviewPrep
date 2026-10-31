@@ -77,6 +77,25 @@ public class ProfileService {
         return Mappers.toView(p);
     }
 
+    /** Small per-user settings stored as JSON. Only known keys with sane values are accepted. */
+    @Transactional
+    public ProfileView updateSettings(Long userId, java.util.Map<String, Object> in) {
+        Profile p = load(userId);
+        java.util.Map<String, Object> s = new java.util.HashMap<>(p.getSettings());
+        in.forEach((k, v) -> {
+            switch (k) {
+                case "voiceLang" -> { if (v instanceof String str && str.matches("[a-z]{2}(-[A-Z]{2})?")) s.put(k, str); else throw ApiException.badRequest("voiceLang like en-IN"); }
+                case "voiceRate" -> { if (v instanceof Number n && n.doubleValue() >= 0.5 && n.doubleValue() <= 2) s.put(k, n.doubleValue()); else throw ApiException.badRequest("voiceRate 0.5-2"); }
+                case "reminderTime" -> { if (v == null || (v instanceof String str && str.matches("([01]\\d|2[0-3]):[0-5]\\d"))) s.put(k, v); else throw ApiException.badRequest("reminderTime HH:mm"); }
+                case "readyThreshold" -> { if (v instanceof Number n && n.intValue() >= 40 && n.intValue() <= 100) s.put(k, n.intValue()); else throw ApiException.badRequest("readyThreshold 40-100"); }
+                case "aiNoticeSeen", "notificationsOn" -> s.put(k, Boolean.TRUE.equals(v));
+                default -> throw ApiException.badRequest("Unknown setting: " + k);
+            }
+        });
+        p.setSettings(s);
+        return Mappers.toView(p);
+    }
+
     /** "Switch company": changes the primary target. Readiness and filters recompute from it. */
     @Transactional
     public ProfileView switchCompany(Long userId, SwitchCompanyRequest req) {

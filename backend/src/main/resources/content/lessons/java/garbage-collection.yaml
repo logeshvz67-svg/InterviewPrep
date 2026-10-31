@@ -1,0 +1,336 @@
+slug: garbage-collection
+world: JAVA_CORE
+section: H
+order: 3
+title: "Garbage collection basics"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common theory question for SP and DSE rounds: when an object becomes eligible for GC, GC roots, generations and why System.gc() is only a request."
+otherCompanies: "A standard JVM question at TCS, Wipro, Cognizant, Accenture, Capgemini, and a starting point for deeper GC tuning talks in product companies."
+why: |
+  In C, programmers must free memory by hand, and forgetting causes crashes. In Java you just write `new` and never `delete`. Who cleans up? The **garbage collector (GC)**.
+
+  Interviewers ask:
+  - **"What is garbage collection?"**
+  - **"When is an object eligible for garbage collection?"** (often as "how many objects are eligible after this line?")
+  - **"What are GC roots?"**, **"What are the young and old generations?"**
+  - **"Does `System.gc()` force garbage collection?"** (No!)
+
+  Knowing these also helps you understand memory leaks (next lesson) and why some apps "pause" for a moment.
+analogy: |
+  Think of a **housing society's cleaning staff** on a big festival day.
+
+  - The staff don't ask "is this plate dirty?". They ask **"can anyone still reach this from a resident's flat?"** If a plate is still connected to someone (it's on their table), it stays. If nobody is connected to it, it goes in the bin.
+  - The **residents' flats** are the **GC roots**: the starting points. Anything linked to them, directly or through a chain, is kept.
+  - Most plates are **used once and thrown quickly** (paper plates). So the staff clean the **party hall (young generation)** very often and very fast. Steel utensils that have survived many cleanings are moved to the **store room (old generation)**, which is cleaned rarely because it's slow and things there usually stay.
+  - Calling `System.gc()` is like **requesting** the staff to clean now. They *may* come, but they decide.
+visual:
+  diagram: |
+    REACHABILITY: start at the GC roots, follow the arrows
+
+     GC ROOTS              HEAP
+    +----------------+    +-------------------------------------+
+    | local vars in  |----|-> [Order] ---> [Customer]  REACHABLE|
+    | stack frames   |    |                                     |
+    | static fields  |----|-> [Config]                REACHABLE|
+    | active threads |    |                                     |
+    +----------------+    |    [Ticket]  (no arrow in) GARBAGE  |
+                          |    [A] <---> [B]           GARBAGE  |
+                          |  (point to each other, but no root  |
+                          |   reaches them: island of isolation)|
+                          +-------------------------------------+
+
+    GENERATIONS (how the heap is split)
+    +----------- YOUNG GENERATION -----------+  +------ OLD -------+
+    |  Eden       | Survivor S0 | Survivor S1|  | long-lived       |
+    |  (new objs) |  survivors move here     |  | objects promoted |
+    +----------------------------------------+  | after many GCs   |
+      Minor GC: frequent and fast               +------------------+
+      new -> Eden -> Survivor -> ... -> Old     Major/Full GC: rare, slow
+  caption: "GC marks everything reachable from the roots; the rest is garbage, even objects that point to each other. New objects start in Eden; survivors move toward the old generation."
+  visualizer: null
+explanation: |
+  ### What is garbage collection?
+  **Garbage collection** is the JVM automatically finding objects in the heap that your program can **no longer use**, and freeing their memory. The part of the JVM that does this is the **garbage collector**. You never call `delete` or `free` in Java.
+
+  ### When is an object eligible for GC?
+  An object is eligible when it is **unreachable**: no chain of references leads to it from any **GC root**. Note "eligible" means "can be collected", **not** "collected right now". The GC decides when.
+
+  Common ways an object becomes unreachable:
+  ```java
+  Ticket a = new Ticket("T1");
+  a = null;                 // 1. reference set to null
+
+  Ticket b = new Ticket("T2");
+  b = new Ticket("T5");     // 2. reference re-pointed to another object
+
+  void book() {
+      Ticket temp = new Ticket("T3");
+  }                         // 3. local variable goes out of scope when the method ends
+  ```
+  4. **Island of isolation**: objects A and B refer to each other, but nothing from the roots refers to either. Both are garbage. Java's GC handles this because it uses **reachability**, not simple reference counting.
+
+  ### GC roots
+  **GC roots** are the starting points the collector trusts as "definitely in use":
+  - **Local variables and parameters** in the stack frames of running methods (in every thread).
+  - **Static fields** of loaded classes.
+  - **Active (running) threads** themselves.
+  - Some JVM internals, like references held by native (JNI) code.
+
+  If you can walk from a root to an object by following references, it's **reachable** and stays alive.
+
+  ### How it works: mark and sweep (simple version)
+  1. **Mark**: start from every root and mark each object you can reach.
+  2. **Sweep**: everything not marked is garbage; free that memory.
+  3. **Compact** (often): slide the living objects together so free memory is one big block, which makes new allocation fast.
+
+  While some steps run, the JVM may pause your application threads briefly. This is called a **stop-the-world pause**. Modern collectors work hard to keep these pauses short.
+
+  ### Generations: young and old
+  Observation (the **weak generational hypothesis**): **most objects die young**. Temporary strings, loop objects, request data... they're garbage within milliseconds. So the heap is split:
+
+  | Area | What lives there | GC type |
+  |---|---|---|
+  | **Young generation: Eden** | Brand-new objects | **Minor GC**: frequent, fast |
+  | **Young generation: Survivor spaces (S0, S1)** | Objects that survived a minor GC; they move back and forth, gaining "age" | Minor GC |
+  | **Old (tenured) generation** | Objects that survived many minor GCs (are **promoted**) | **Major / Full GC**: rarer, slower |
+
+  The lifecycle: `new` → Eden → (survives) → Survivor → (survives many times) → Old.
+
+  Cleaning only the small young area often is cheap, because most of it is garbage anyway.
+
+  > **Metaspace** (class metadata) is outside the heap and is not part of young/old. It is cleaned when classes are unloaded.
+
+  ### Common garbage collectors (names to recognise)
+  | Collector | In one line |
+  |---|---|
+  | **Serial** | One thread, simple; small apps |
+  | **Parallel** | Many threads; focuses on throughput (total work done) |
+  | **G1** (default since Java 9) | Splits the heap into regions; balances throughput and pause time |
+  | **ZGC / Shenandoah** | Very short pauses even with huge heaps |
+
+  ### System.gc() is only a hint
+  `System.gc()` (or `Runtime.getRuntime().gc()`) **requests** a collection. The JVM **may ignore it**, and it can even be turned off with the option `-XX:+DisableExplicitGC`. You can't force GC, and good code never depends on it. Calling it often can actually hurt performance by causing unnecessary full collections.
+
+  ### What about finalize()?
+  `finalize()` was a method the GC might call before collecting an object. It's **deprecated** (since Java 9, marked for removal) because it's slow and there's **no guarantee** it ever runs. For cleanup of files and connections, use **try-with-resources** instead.
+
+  ### Can a Java program still run out of memory?
+  Yes. If objects stay **reachable** (for example, you keep adding to a static list and never remove), GC can't free them, and you get `OutOfMemoryError`. That's a **memory leak**, the topic of the next lesson.
+tinyCode:
+  code: |
+    public class Eligible {
+        static class Ticket {
+            String id;
+
+            Ticket(String id) {
+                this.id = id;
+            }
+        }
+
+        static Ticket saved;               // static field = a GC root
+
+        static void book() {
+            Ticket temp = new Ticket("T3"); // local: gone when book() returns
+            saved = new Ticket("T4");       // kept alive by the static field
+        }
+
+        public static void main(String[] args) {
+            Ticket a = new Ticket("T1");
+            Ticket b = new Ticket("T2");
+
+            a = null;                  // T1 has no references now
+            b = new Ticket("T5");      // T2 lost its only reference
+            book();                    // T3 unreachable after the call
+
+            System.out.println("Still reachable: " + b.id + ", " + saved.id);
+        }
+    }
+  walkthrough: |
+    We create five Ticket objects and track which are still reachable at the print line.
+    - **T1**: `a = null;` removes its only reference. **Eligible.**
+    - **T2**: `b = new Ticket("T5");` points `b` at a new object, so T2 has no reference. **Eligible.**
+    - **T3**: `temp` is a local variable in `book()`. When `book()` returns, its stack frame is gone, so nothing refers to T3. **Eligible.**
+    - **T4**: stored in the **static field** `saved`. Static fields are GC roots, so T4 stays **reachable**.
+    - **T5**: referenced by the local `b` in main's stack frame (a root). **Reachable.**
+
+    So 3 objects are eligible and 2 are reachable. The program prints:
+    ```
+    Still reachable: T5, T4
+    ```
+    We can't print "T1 was collected", because GC runs when the JVM decides, not at a fixed line.
+tryIt:
+  instructions: "Type this and run it. It fills about 100 MB, drops the reference, then calls System.gc(). Your numbers will be different from anyone else's, and the last line may not drop at all on some JVMs, because System.gc() is only a hint. That's the lesson!"
+  code: |
+    import java.util.ArrayList;
+    import java.util.List;
+
+    public class MemoryUse {
+        static long usedMB() {
+            Runtime rt = Runtime.getRuntime();
+            return (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
+        }
+
+        public static void main(String[] args) {
+            System.out.println("Start: " + usedMB() + " MB used");
+
+            List<int[]> data = new ArrayList<>();
+            for (int i = 0; i < 100; i++) {
+                data.add(new int[250_000]);   // about 1 MB each
+            }
+            System.out.println("After filling: " + usedMB() + " MB used");
+
+            data = null;                       // the list and arrays are now unreachable
+            System.gc();                       // only a HINT to the JVM
+            System.out.println("After gc hint: " + usedMB() + " MB used");
+        }
+    }
+predict:
+  code: |
+    import java.util.ArrayList;
+    import java.util.List;
+
+    public class StillReachable {
+        public static void main(String[] args) {
+            List<StringBuilder> list = new ArrayList<>();
+            StringBuilder sb = new StringBuilder("A");
+            list.add(sb);
+            sb = null;
+            System.out.println(list.get(0));
+            list.get(0).append("B");
+            System.out.println(list.get(0));
+            list.clear();
+            System.out.println(list.size());
+        }
+    }
+  expectedOutput: |
+    A
+    AB
+    0
+  explanation: |
+    `sb = null` removes only **one** reference. The list still holds a reference to the same StringBuilder, so the object is still **reachable** and not eligible for GC. We can print it ("A") and even change it ("AB"). Only after `list.clear()` does the last reference disappear; then the StringBuilder becomes eligible. Setting a variable to null does not delete an object; it just removes that one arrow.
+commonMistakes:
+  - "Saying System.gc() forces garbage collection. It's only a request; the JVM may ignore it."
+  - "Thinking 'eligible for GC' means 'collected immediately'. The GC decides when to run."
+  - "Believing objects that reference each other can never be collected. Java uses reachability from GC roots, so isolated islands are collected."
+  - "Thinking setting one variable to null frees the object, even when another reference (like a list) still points to it."
+  - "Relying on finalize() for cleanup. It's deprecated and may never run; use try-with-resources."
+interviewBox:
+  why: "Why interviewers ask this: GC is Java's core memory-management feature, and the 'eligible objects' question checks whether you can trace references precisely."
+  questions:
+    - q: "What is garbage collection in Java?"
+      a: "Garbage collection is the JVM automatically freeing heap memory used by objects that the program can no longer reach. We don't free memory ourselves. The collector starts from GC roots like local variables and static fields, marks everything reachable, and frees the rest."
+    - q: "When does an object become eligible for garbage collection?"
+      a: "When no chain of references from any GC root reaches it. For example, when we set its only reference to null, point the reference to another object, when a local variable goes out of scope, or when objects only refer to each other in an island of isolation."
+    - q: "Explain the young and old generations."
+      a: "Most objects die young, so the heap is split. New objects are created in Eden, in the young generation. A minor GC cleans the young generation often and quickly, and survivors move to survivor spaces. Objects that survive many collections are promoted to the old generation, which is collected less often by a slower major GC."
+    - q: "Can we force garbage collection?"
+      a: "No. System.gc() only requests a collection; the JVM may ignore it, and it can be disabled. We should never write code that depends on it."
+    - q: "What are GC roots?"
+      a: "GC roots are references the collector always treats as alive: local variables in active stack frames, static fields of loaded classes, active threads, and some JVM internal references. Anything reachable from them stays in memory."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "How many Car objects are eligible for GC after the last line runs (inside main)?"
+    code: |
+      Car c1 = new Car();
+      Car c2 = new Car();
+      Car c3 = c1;
+      c1 = null;
+      c2 = null;
+    options: ["0", "1", "2", "3"]
+    answer: 1
+    explanation: "Only two Car objects were ever created (c3 = c1 copies a reference; it doesn't create an object). The first Car is still referenced by c3, so it stays reachable. The second Car lost its only reference (c2), so 1 object is eligible. 2 is the tempting answer if you forget c3."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "Calling System.gc() guarantees that garbage collection runs immediately."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. System.gc() is only a hint. The JVM may run a collection, delay it, or ignore it completely (e.g. with -XX:+DisableExplicitGC)."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (Single thread, so the output is fixed.)"
+    code: |
+      String s1 = new String("x");
+      String s2 = s1;
+      s1 = null;
+      System.out.println(s2);
+    options: ["null", "x", "NullPointerException", "It depends on whether GC has run"]
+    answer: 1
+    explanation: "s2 still references the String object, so it is reachable and can't be collected. Setting s1 to null only removes one reference. GC never removes a reachable object, so 'it depends on GC' is wrong."
+  - id: q4
+    type: MATCH
+    prompt: "Match each heap area or event to its description"
+    pairs:
+      - left: "Eden"
+        right: "Where brand-new objects are created"
+      - left: "Survivor spaces"
+        right: "Hold objects that lived through a minor GC"
+      - left: "Old generation"
+        right: "Long-lived objects promoted after many GCs"
+      - left: "Minor GC"
+        right: "Frequent, fast cleanup of the young generation"
+      - left: "Major / Full GC"
+        right: "Rarer, slower cleanup that includes the old generation"
+    explanation: "Objects flow Eden -> Survivor -> Old. Minor GCs are cheap because most young objects are already dead."
+  - id: q5
+    type: MCQ
+    prompt: "Objects A and B reference each other, but no variable or static field refers to either. What happens?"
+    code: null
+    options:
+      - "They are never collected, causing a memory leak"
+      - "Both are eligible for GC (island of isolation)"
+      - "Only A is eligible"
+      - "The JVM throws an error"
+    answer: 1
+    explanation: "Java's GC checks reachability from GC roots, not reference counts. No root reaches A or B, so both are garbage. Simple reference counting (used by some other languages) would fail here, which is why the first option is tempting."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the value that removes this reference so the Report object (with no other references) becomes eligible for GC."
+    code: |
+      Report r = new Report();
+      r.print();
+      r = ____;
+    acceptedAnswers: ["null"]
+    explanation: "Assigning null removes the reference. If nothing else points to the Report, it becomes unreachable and eligible. It isn't collected at that exact moment; the GC chooses when."
+  - id: q7
+    type: MCQ
+    prompt: "Which of these is NOT a GC root?"
+    code: null
+    options:
+      - "A local variable in a currently running method"
+      - "A static field of a loaded class"
+      - "A running thread"
+      - "An object only referenced by a field of an unreachable object"
+    answer: 3
+    explanation: "GC roots are the starting points: locals in live frames, static fields and active threads. An object referenced only from an unreachable object is itself unreachable, so it's garbage, not a root."
+explainBack:
+  prompt: "Explain to a friend how Java decides which objects to throw away, what young and old generations are, and whether System.gc() forces a cleanup."
+  rubric:
+    - "I said GC finds objects not reachable from GC roots and frees them"
+    - "I named GC roots: local variables, static fields, active threads"
+    - "I explained young (Eden, survivors, minor GC) and old generation (major GC)"
+    - "I said System.gc() is only a hint"
+    - "I used an analogy like cleaning staff checking what residents can still reach"
+  modelAnswer: |
+    Java's garbage collector is like cleaning staff after a festival. They don't check if a plate looks dirty; they check whether any resident can still reach it. The residents are GC roots: local variables in running methods, static fields and active threads. Anything you can reach by following references from them stays; everything else is garbage, even two objects pointing only at each other. Since most objects die young, new objects go into the young generation, which is cleaned often and fast. Objects that survive many cleanings move to the old generation, cleaned rarely. System.gc() only requests a cleanup; the JVM decides.
+flashcards:
+  - front: "When is an object eligible for GC?"
+    back: "When it is unreachable from every GC root (null reference, re-pointed reference, out of scope, island of isolation)."
+  - front: "GC roots"
+    back: "Local variables in active stack frames, static fields, active threads, JNI references."
+  - front: "Young vs old generation"
+    back: "Young (Eden + survivors): new objects, frequent fast minor GC. Old: long-lived promoted objects, rarer slower major GC."
+  - front: "Does System.gc() force GC?"
+    back: "No, it's only a hint; the JVM may ignore it."
+  - front: "Default GC since Java 9"
+    back: "G1 (Garbage-First): region-based, balances throughput and pause time."
+keyTakeaways:
+  - "GC frees heap objects that are unreachable from GC roots; you never free memory by hand."
+  - "Eligible does not mean collected now; the JVM decides when."
+  - "GC roots: locals in active frames, static fields, active threads."
+  - "Most objects die young: Eden -> Survivor -> Old; minor GCs are fast, major GCs slower."
+  - "System.gc() is only a hint; finalize() is deprecated."

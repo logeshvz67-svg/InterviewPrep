@@ -1,0 +1,232 @@
+slug: how-java-works
+world: JAVA_CORE
+section: A
+order: 1
+title: "How Java works: JDK, JRE, JVM"
+version: 1
+estimatedMinutes: 25
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Core theory for both SP and DSE technical rounds; a favourite warm-up question."
+otherCompanies: "Asked as a basic Java question almost everywhere: TCS, Wipro, Cognizant, Accenture, Capgemini, product companies."
+why: |
+  Every Java interview starts somewhere, and **"What is the difference between JDK, JRE and JVM?"** is one of the most common first questions.
+
+  More importantly, knowing *how* your code runs explains many later topics:
+  - why Java is called **platform independent** ("write once, run anywhere"),
+  - what a **compile error** is versus a **runtime error**,
+  - where memory, garbage collection and class loading (Section H) fit in.
+
+  If you understand this one picture, a lot of Java stops feeling like magic.
+analogy: |
+  Think of a **recipe written in English** being cooked in kitchens all over the world.
+
+  - **Your `.java` file** is the recipe written by you.
+  - **The compiler (`javac`)** is a translator who rewrites your recipe into a *universal cooking language* (bytecode, a `.class` file).
+  - **The JVM** is a chef who reads the universal language. Every country (Windows, Mac, Linux) has its *own* chef, but they all understand the same universal recipe.
+  - **The JRE** is the full kitchen: the chef (JVM) **plus** the pots, pans and spices (the standard libraries like `String`, `ArrayList`).
+  - **The JDK** is the kitchen **plus** the translator and recipe-writing tools. You need the JDK to *write* Java; you only need the JRE to *run* it.
+visual:
+  diagram: |
+    +------------------------------ JDK ------------------------------+
+    |  javac (compiler), javadoc, jdb (debugger), jar ...             |
+    |  +--------------------------- JRE ---------------------------+  |
+    |  |  Standard libraries: java.lang, java.util, java.io ...    |  |
+    |  |  +------------------------ JVM ------------------------+  |  |
+    |  |  |  Class loader -> Bytecode verifier -> Interpreter   |  |  |
+    |  |  |                                       + JIT compiler |  |  |
+    |  |  +-----------------------------------------------------+  |  |
+    |  +-----------------------------------------------------------+  |
+    +-----------------------------------------------------------------+
+
+     Hello.java  --javac-->  Hello.class (bytecode)  --java-->  JVM runs it
+     (you write)             (same file on every OS)            (OS-specific)
+  caption: "The JDK contains the JRE, and the JRE contains the JVM. Your code is compiled once to bytecode, and any JVM can run it."
+  visualizer: null
+explanation: |
+  ### Step 1: You write source code
+  You type Java in a file such as `Hello.java`. This is **source code**: text that humans can read.
+
+  ### Step 2: The compiler turns it into bytecode
+  Running `javac Hello.java` makes `Hello.class`. This file holds **bytecode**: simple instructions for the JVM, not for your CPU directly.
+  - The compiler also checks your code. Spelling mistakes, missing semicolons and wrong types are caught here as **compile-time errors**.
+
+  ### Step 3: The JVM runs the bytecode
+  Running `java Hello` starts the **JVM (Java Virtual Machine)**: a program that pretends to be a computer which understands bytecode.
+  1. The **class loader** finds and loads `Hello.class` into memory.
+  2. The **bytecode verifier** checks the bytecode is safe (no illegal memory tricks).
+  3. The **interpreter** runs instructions one by one, and the **JIT (Just-In-Time) compiler** turns frequently used code ("hot" code) into fast native machine code while the program runs.
+
+  Errors that happen while running (like dividing by zero) are **runtime errors** (exceptions).
+
+  ### JDK vs JRE vs JVM
+  | | What it is | Who needs it |
+  |---|---|---|
+  | **JVM** | The engine that runs bytecode. Different for each OS. | Built into the JRE |
+  | **JRE** (Java Runtime Environment) | JVM + standard libraries | Anyone who only *runs* Java apps |
+  | **JDK** (Java Development Kit) | JRE + developer tools (`javac`, `jar`, debugger) | Developers (you!) |
+
+  > Since Java 11, Oracle no longer ships a separate JRE download; you usually install a JDK. Interviewers still expect you to know the difference.
+
+  ### Why "platform independent"?
+  The **bytecode** is the same on every OS. Only the **JVM** is OS-specific. So Java code is platform independent, but the **JVM is platform dependent**. This is a classic trick question.
+
+  ### Is Java compiled or interpreted?
+  **Both.** It is compiled to bytecode by `javac`, then the JVM interprets it *and* JIT-compiles hot parts to native code.
+tinyCode:
+  code: |
+    public class Hello {
+        public static void main(String[] args) {
+            System.out.println("Hello, Code Quest!");
+        }
+    }
+  walkthrough: |
+    - `public class Hello` declares a class. The file **must** be named `Hello.java` because the class is `public`.
+    - `public static void main(String[] args)` is the **entry point**: the JVM looks for exactly this method to start the program.
+      - `public`: the JVM can call it from outside.
+      - `static`: it can run without creating an object first.
+      - `void`: it returns nothing.
+      - `String[] args`: command-line arguments.
+    - `System.out.println(...)` prints a line to the console.
+
+    Compile and run it in a terminal:
+    ```
+    javac Hello.java   # creates Hello.class (bytecode)
+    java Hello         # the JVM runs Hello.class (note: no .class here)
+    ```
+tryIt:
+  instructions: "Type this program yourself (pasting is turned off on purpose: typing builds memory). Then compile it with javac and run it with java on your computer, or in an online compiler."
+  code: |
+    public class Steps {
+        public static void main(String[] args) {
+            System.out.println("1. I wrote Steps.java");
+            System.out.println("2. javac made Steps.class");
+            System.out.println("3. The JVM is running it now");
+        }
+    }
+predict:
+  code: |
+    public class Order {
+        public static void main(String[] args) {
+            System.out.print("JDK ");
+            System.out.println("JRE");
+            System.out.print("JVM");
+        }
+    }
+  expectedOutput: |
+    JDK JRE
+    JVM
+  explanation: |
+    `print` does **not** add a new line; `println` does. So "JDK " and "JRE" share the first line, then a newline is printed, then "JVM".
+commonMistakes:
+  - "Saying \"the JVM is platform independent\". It's the opposite: bytecode is platform independent; the JVM is platform dependent."
+  - "Running `java Hello.class` instead of `java Hello`."
+  - "Naming the file differently from the public class (e.g. class Hello in hello.java). This is a compile error."
+  - "Thinking Java is only interpreted. The JIT compiler turns hot code into native machine code."
+  - "Mixing up compile-time errors (caught by javac) and runtime errors (happen while the JVM runs)."
+interviewBox:
+  why: "Why interviewers ask this: it checks whether you understand what happens after you press Run, and it's a quick way to see if you can explain a concept clearly."
+  questions:
+    - q: "What is the difference between JDK, JRE and JVM?"
+      a: "The JVM runs bytecode. The JRE is the JVM plus the standard libraries, which is enough to run Java programs. The JDK is the JRE plus developer tools like the javac compiler, so you need it to write and compile Java."
+    - q: "Why is Java platform independent?"
+      a: "Because javac compiles code into bytecode, which is the same on every operating system. Each OS has its own JVM that understands that bytecode. So the code is platform independent, but the JVM itself is platform dependent."
+    - q: "Is Java compiled or interpreted?"
+      a: "Both. javac compiles source code to bytecode. Then the JVM interprets the bytecode, and its JIT compiler converts frequently used parts into native machine code for speed."
+    - q: "What does the JIT compiler do?"
+      a: "JIT means Just-In-Time. While the program runs, it notices code that runs many times and compiles it to native machine code, so those parts run much faster."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "You only want to RUN a Java program someone gave you as a .class file. What is the minimum you need?"
+    code: null
+    options: ["JDK", "JRE", "Only javac", "An IDE like IntelliJ"]
+    answer: 1
+    explanation: "Running needs the JVM and the standard libraries, which is the JRE. The JDK also works (it contains a JRE), but it isn't the minimum. javac only compiles; it can't run anything."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "The JVM is platform independent."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Bytecode is platform independent; each OS needs its own JVM, so the JVM is platform dependent."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      System.out.print("A");
+      System.out.println("B");
+      System.out.println("C");
+    options: ["A B C (one line)", "AB\nC", "A\nB\nC", "ABC"]
+    answer: 1
+    explanation: "print(\"A\") doesn't add a newline, so B follows A on the same line. println(\"B\") ends the line, then C prints on the next line."
+  - id: q4
+    type: MATCH
+    prompt: "Match each part to its job"
+    pairs:
+      - left: "javac"
+        right: "Turns .java source into .class bytecode"
+      - left: "Class loader"
+        right: "Loads .class files into memory"
+      - left: "JIT compiler"
+        right: "Turns hot bytecode into native machine code"
+      - left: "Bytecode verifier"
+        right: "Checks the bytecode is safe before running"
+    explanation: "javac works before running; the class loader, verifier and JIT are parts of the JVM working while the program runs."
+  - id: q5
+    type: SPOT_THE_BUG
+    prompt: "This file is saved as hello.java. Why does it fail to compile?"
+    code: |
+      public class Hello {
+          public static void main(String[] args) {
+              System.out.println("Hi");
+          }
+      }
+    options:
+      - "main must return int"
+      - "A public class must be in a file with exactly the same name: Hello.java"
+      - "println needs a semicolon inside the brackets"
+      - "String[] args must be String args"
+    answer: 1
+    explanation: "File names are case-sensitive and must match the public class: Hello.java. Everything else in the code is correct."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the command that compiles Hello.java into bytecode."
+    code: |
+      ____ Hello.java
+      java Hello
+    acceptedAnswers: ["javac"]
+    explanation: "javac is the Java compiler; it produces Hello.class. java (without c) starts the JVM to run it."
+  - id: q7
+    type: MCQ
+    prompt: "Dividing an int by zero while the program runs causes an ArithmeticException. What kind of error is this?"
+    options: ["Compile-time error", "Runtime error", "Syntax error", "Bytecode verifier error"]
+    answer: 1
+    explanation: "The code compiles fine; the problem only appears while the JVM runs it, so it's a runtime error (an exception)."
+explainBack:
+  prompt: "Explain to a friend who doesn't code what happens between writing Hello.java and seeing 'Hello' on the screen, and why Java runs on any computer."
+  rubric:
+    - "I said the compiler (javac) turns source code into bytecode"
+    - "I said the JVM runs the bytecode and that each OS has its own JVM"
+    - "I explained JDK vs JRE vs JVM (tools > runtime > engine)"
+    - "I used an analogy or example"
+    - "I kept it under one minute and used simple words"
+  modelAnswer: |
+    When I write Java, I write a text file like Hello.java. The compiler, javac, translates it into bytecode, a universal set of instructions stored in Hello.class. Then the Java Virtual Machine reads that bytecode and runs it, and it even turns busy parts into fast machine code with the JIT compiler. The trick is that the bytecode is identical everywhere; only the JVM is different for Windows, Mac or Linux. That's why Java is "write once, run anywhere". The JDK is the full developer kit with the compiler, the JRE is what you need to run programs, and the JVM is the engine inside it.
+flashcards:
+  - front: "JDK vs JRE vs JVM in one line each"
+    back: "JVM = runs bytecode. JRE = JVM + standard libraries (to run apps). JDK = JRE + dev tools like javac (to build apps)."
+  - front: "Is the JVM platform independent?"
+    back: "No. Bytecode is platform independent; the JVM is platform dependent (one per OS)."
+  - front: "What does javac produce?"
+    back: "A .class file containing bytecode."
+  - front: "Is Java compiled or interpreted?"
+    back: "Both: compiled to bytecode by javac, then interpreted by the JVM with JIT compilation of hot code to native code."
+  - front: "print vs println"
+    back: "println adds a newline after the text; print does not."
+keyTakeaways:
+  - "Source (.java) is compiled by javac into bytecode (.class); the JVM runs bytecode."
+  - "JDK ⊃ JRE ⊃ JVM. Developers install the JDK."
+  - "Bytecode is platform independent; the JVM is platform dependent."
+  - "Java is both compiled and interpreted, with a JIT compiler for speed."
+  - "Compile-time errors are found by javac; runtime errors happen while the JVM runs."

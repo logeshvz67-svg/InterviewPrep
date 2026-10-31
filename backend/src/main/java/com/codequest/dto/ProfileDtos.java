@@ -38,7 +38,8 @@ public final class ProfileDtos {
     public record ProfileView(
             String characterName, String avatar, String primaryCompany, List<String> laterCompanies,
             LocalDate testDate, String timezone, int dailyMinutes, String whyStatement,
-            Map<String, Integer> selfAssessment, boolean onboardingComplete, int totalXp, int gold, boolean soundEnabled) {}
+            Map<String, Integer> selfAssessment, boolean onboardingComplete, int totalXp, int gold, boolean soundEnabled,
+            Map<String, Object> settings) {}
 
     public record RoadmapView(LocalDate startDate, LocalDate endDate, int totalWeeks, int currentWeek, List<RoadmapWeek> weeks) {}
 }

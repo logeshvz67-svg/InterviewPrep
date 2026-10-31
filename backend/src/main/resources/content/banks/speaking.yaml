@@ -1,0 +1,754 @@
+# Speaking practice: prompts, phrases, vocabulary and pronunciation.
+# Sample answers are models to ADAPT. Replace [brackets] with your own true details.
+prompts:
+  # ---------------- SELF_INTRO (PPF) ----------------
+  - id: spk-001
+    category: SELF_INTRO
+    prompt: "Tell me about yourself."
+    framework: PPF
+    timeLimitSeconds: 90
+    tips:
+      - "Present: what you do now. Past: how you got here. Future: what you want next."
+      - "Mention your job switch honestly, but spend most time on what you have learned in tech."
+      - "End with one line about the role, so the interviewer knows why you are here."
+    sampleAnswer: |
+      Thank you for the opportunity. My name is [your name]. At present, I work as a data entry associate at [company].
+      My work is mostly copying and checking data, and it taught me to be careful and consistent.
+      In the past year, I wanted to build things, not just enter data, so I started learning Java on my own.
+      I studied object-oriented programming, collections and basic data structures, and I practise DSA problems every day.
+      I also built a small Spring Boot REST API for managing tasks, with a MySQL database.
+      In the future, I want to grow as a software developer, and this role is the right place to start,
+      because I can learn from experienced engineers and contribute with real code.
+  - id: spk-002
+    category: SELF_INTRO
+    prompt: "Introduce yourself in 30 seconds."
+    framework: PPF
+    timeLimitSeconds: 60
+    tips:
+      - "Keep it to four or five short sentences."
+      - "Do not repeat your full resume. Pick the two strongest points."
+    sampleAnswer: |
+      Hello, I am [your name]. I currently work in a non-technical data processing role,
+      where I handle large amounts of data with good accuracy.
+      Over the last year, I taught myself Java, OOP, SQL and basic data structures,
+      and I built two small projects, including a REST API with Spring Boot.
+      I enjoy solving problems step by step, and I now want to start my career as a developer.
+      I am excited to grow with a team where I can keep learning and add value quickly.
+  - id: spk-003
+    category: SELF_INTRO
+    prompt: "Walk me through your resume."
+    framework: PPF
+    timeLimitSeconds: 120
+    tips:
+      - "Go in time order, but link each step to the next with one reason."
+      - "Explain the gap or the switch in one calm sentence. Do not apologise."
+      - "Point to your projects as proof of your skills."
+    sampleAnswer: |
+      Sure. I completed my [degree] from [college] in [year].
+      After that, I joined [company] in a data entry role, mainly because I needed to support my family at that time.
+      The job taught me discipline, attention to detail and meeting daily targets.
+      While working, I realised I enjoy the logic behind the systems I was using.
+      So I started learning Java in the evenings. I finished core Java and OOP, then moved to DSA and SQL.
+      To apply what I learned, I built a Task Manager API with Spring Boot and MySQL,
+      and I solved more than [number] practice problems.
+      Now I am looking for a developer role, where I can use these skills full time and keep improving.
+  - id: spk-004
+    category: SELF_INTRO
+    prompt: "Tell me something about yourself that is not on your resume."
+    framework: PPF
+    timeLimitSeconds: 60
+    tips:
+      - "Share a real habit or interest that shows a useful quality."
+      - "Connect it back to work in the last sentence."
+    sampleAnswer: |
+      Something not on my resume is that I keep a learning diary.
+      Every day, I write down one thing I learned and one mistake I made while coding.
+      I started this when I began learning Java after my office hours.
+      Looking back at it, I can see how much I have improved, from simple loops to building REST APIs.
+      It also helps me revise before interviews.
+      I plan to keep this habit at work too, because writing things down helps me learn faster
+      and avoid repeating the same mistakes.
+
+  # ---------------- TECHNICAL (CEU) ----------------
+  - id: spk-005
+    category: TECHNICAL
+    prompt: "Explain polymorphism to a friend who is not technical."
+    framework: CEU
+    timeLimitSeconds: 90
+    tips:
+      - "Concept first in one sentence, then a daily-life example, then where it is used in code."
+      - "Avoid jargon until the use-case part."
+    sampleAnswer: |
+      Polymorphism means one name, many forms. The same action can behave differently depending on who does it.
+      For example, think of the word "speak". A dog speaks by barking, a cat speaks by meowing,
+      and a person speaks with words. We give the same instruction, "speak", but each one responds in its own way.
+      In Java, I can have a parent class Animal with a method speak(), and child classes Dog and Cat override it.
+      If I write Animal a = new Dog(); a.speak(); it barks, because Java decides at runtime which version to call.
+      This is useful in real projects, for example a payment system where card, UPI and wallet
+      all have a pay() method, and the code calling pay() does not need to change when we add a new type.
+  - id: spk-006
+    category: TECHNICAL
+    prompt: "Explain how a HashMap works."
+    framework: CEU
+    timeLimitSeconds: 120
+    tips:
+      - "Mention key-value pairs, hashCode, buckets, and equals."
+      - "Say what happens on a collision in simple words."
+      - "Give the average time for get and put: O(1)."
+    sampleAnswer: |
+      A HashMap stores data as key-value pairs and lets us find a value quickly using its key.
+      Inside, it has an array of buckets. When we put a key, Java calls hashCode() on the key,
+      turns that into a bucket index, and stores the entry there.
+      If two keys land in the same bucket, that is a collision. The entries are kept in a small list,
+      and since Java 8, a long list becomes a balanced tree. Then equals() is used to find the exact key.
+      An example is a phone contact list: the name is the key and the number is the value.
+      Because of hashing, get and put are O(1) on average. I use HashMap often in DSA, for example to count frequencies.
+  - id: spk-007
+    category: TECHNICAL
+    prompt: "What is the JVM and why is Java platform independent?"
+    framework: CEU
+    timeLimitSeconds: 90
+    tips:
+      - "Explain source code to bytecode to JVM in order."
+      - "Use the line: write once, run anywhere."
+    sampleAnswer: |
+      The JVM, or Java Virtual Machine, is a program that runs Java bytecode.
+      When I compile a .java file with javac, I do not get machine code. I get a .class file with bytecode.
+      Each operating system has its own JVM, and that JVM converts the bytecode into instructions for that machine.
+      So the same .class file can run on Windows, Linux or Mac. That is why we say "write once, run anywhere".
+      An example: it is like a movie with subtitles. The movie is the same, but each country's player shows it in its own language.
+      The JVM also manages memory for us with garbage collection, and the JIT compiler makes frequently used code faster.
+  - id: spk-008
+    category: TECHNICAL
+    prompt: "What is a REST API?"
+    framework: CEU
+    timeLimitSeconds: 90
+    tips:
+      - "Mention resources, URLs, HTTP methods and JSON."
+      - "Give a small example from your own project if you have one."
+    sampleAnswer: |
+      A REST API is a way for two programs to talk over HTTP using simple rules.
+      Everything is a resource with its own URL, like /tasks or /tasks/5.
+      We use HTTP methods to say what we want: GET to read, POST to create, PUT to update and DELETE to remove.
+      Data usually travels as JSON, and the server replies with a status code, like 200 for OK or 404 for not found.
+      It is like ordering at a restaurant counter: you give a clear order, and you get a clear response.
+      In my Task Manager project, the mobile or web front end calls GET /tasks to show the list,
+      and POST /tasks to add a new task. Spring Boot makes this easy with @RestController.
+  - id: spk-009
+    category: TECHNICAL
+    prompt: "Explain the four pillars of OOP."
+    framework: CEU
+    timeLimitSeconds: 120
+    tips:
+      - "Name all four first, then one line and one example each."
+      - "Encapsulation, Inheritance, Polymorphism, Abstraction."
+    sampleAnswer: |
+      The four pillars of OOP are encapsulation, inheritance, polymorphism and abstraction.
+      Encapsulation means keeping data and methods together and hiding the data, using private fields with getters and setters,
+      like a capsule that protects the medicine inside.
+      Inheritance means a child class reuses code from a parent class, like a Car class extending a Vehicle class.
+      Polymorphism means one method name with different behaviour, through overloading and overriding.
+      Abstraction means showing only what is needed and hiding the details, like driving a car without knowing how the engine works.
+      In Java we get abstraction with abstract classes and interfaces.
+      Together, they make code easier to reuse, change and test.
+  - id: spk-010
+    category: TECHNICAL
+    prompt: "How does exception handling work in Java?"
+    framework: CEU
+    timeLimitSeconds: 90
+    tips:
+      - "Cover try, catch, finally, throw and throws."
+      - "Mention checked vs unchecked exceptions in one line each."
+    sampleAnswer: |
+      An exception is an unexpected problem while the program runs, like dividing by zero or a missing file.
+      Exception handling lets the program deal with it instead of crashing.
+      We put risky code in a try block, and handle the problem in a catch block.
+      The finally block always runs, so we use it to close resources. Today, try-with-resources does that automatically.
+      We use throw to raise an exception and throws to declare that a method may pass one up.
+      Checked exceptions, like IOException, must be handled or declared at compile time.
+      Unchecked ones, like NullPointerException, extend RuntimeException and are usually programming mistakes.
+      For example, when reading a file, I catch IOException and show a friendly message.
+  - id: spk-011
+    category: TECHNICAL
+    prompt: "Explain SQL joins with an example."
+    framework: CEU
+    timeLimitSeconds: 120
+    tips:
+      - "Use two tables everyone understands, like students and courses or employees and departments."
+      - "Explain INNER and LEFT join clearly; mention RIGHT and FULL briefly."
+    sampleAnswer: |
+      A join combines rows from two tables using a related column.
+      Take an employees table and a departments table, linked by dept_id.
+      An INNER JOIN returns only employees who have a matching department.
+      A LEFT JOIN returns all employees, and if an employee has no department, the department columns are NULL.
+      A RIGHT JOIN is the opposite: all departments, even ones with no employees.
+      A FULL OUTER JOIN keeps all rows from both sides. MySQL does not support it directly, so we combine a LEFT and a RIGHT join with UNION.
+      A self join joins a table to itself, for example to find each employee's manager.
+      In practice, I use LEFT JOIN when I must not lose rows, like listing all customers even without orders.
+  - id: spk-012
+    category: TECHNICAL
+    prompt: "What is recursion? Give an example."
+    framework: CEU
+    timeLimitSeconds: 90
+    tips:
+      - "Always mention the base case and the recursive case."
+      - "Mention stack overflow if there is no base case."
+    sampleAnswer: |
+      Recursion is when a method calls itself to solve a smaller version of the same problem.
+      Every recursive method needs two parts: a base case, where it stops, and a recursive case, where it calls itself with a smaller input.
+      A simple example is factorial. factorial of 5 is 5 times factorial of 4, and so on, until factorial of 1, which is 1. That is the base case.
+      A daily example is standing in a queue and asking the person in front, "what is your position?" Each person asks the next, until the first person says "one".
+      If we forget the base case, the calls never stop and we get a StackOverflowError.
+      Recursion is used in tree traversal, merge sort and backtracking problems.
+  - id: spk-013
+    category: TECHNICAL
+    prompt: "What is dependency injection in Spring?"
+    framework: CEU
+    timeLimitSeconds: 90
+    tips:
+      - "Say who creates the objects: Spring, not you."
+      - "Prefer constructor injection and say why."
+    sampleAnswer: |
+      Dependency injection means a class does not create the objects it needs. Instead, they are given to it from outside.
+      In Spring, the IoC container creates objects called beans and connects them.
+      For example, my TaskService needs a TaskRepository. I do not write new TaskRepository() inside the service.
+      I add the repository as a constructor parameter, and Spring passes the right bean automatically.
+      It is like a restaurant kitchen: the chef does not grow vegetables, the supplier delivers them.
+      This makes the code loosely coupled and easy to test, because in a unit test I can pass a mock repository instead.
+      Constructor injection is preferred, because the fields can be final and the class cannot be created without its dependencies.
+  - id: spk-014
+    category: TECHNICAL
+    prompt: "What is your favourite data structure and why?"
+    framework: CEU
+    timeLimitSeconds: 90
+    tips:
+      - "Pick one you can explain deeply, not the fanciest one."
+      - "Say where you used it in a real problem."
+    sampleAnswer: |
+      My favourite data structure is the HashMap, because it makes many problems simple and fast.
+      It stores key-value pairs and gives average O(1) time to add or find a value.
+      For example, in the Two Sum problem, instead of checking every pair, which is O(n squared),
+      I store each number and its index in a HashMap and check if the target minus the current number is already there.
+      That brings it down to O(n).
+      I also used it in my project to count how many tasks each user has.
+      In daily life, it is like a dictionary: you go straight to the word instead of reading every page.
+
+  # ---------------- HR ----------------
+  - id: spk-015
+    category: HR
+    prompt: "Why do you want to switch from your current job to software development?"
+    framework: NONE
+    timeLimitSeconds: 90
+    tips:
+      - "Be positive about your current job. Never complain about it."
+      - "Show proof of your interest: courses, practice, projects."
+      - "Talk about growth and building things."
+    sampleAnswer: |
+      My current job taught me accuracy and discipline, and I am thankful for it.
+      But most of my work is repeating the same steps, and I realised I want to build things and solve new problems every day.
+      I first got curious when I saw how much of my work could be automated.
+      So I started learning Java and SQL after work, and the more I learned, the more I enjoyed it.
+      I have been practising consistently for [number] months, and I built projects to test myself.
+      This switch is not a sudden decision. I have prepared for it, and I am ready to start as a developer and keep learning.
+  - id: spk-016
+    category: HR
+    prompt: "What are your strengths?"
+    framework: NONE
+    timeLimitSeconds: 60
+    tips:
+      - "Pick two or three strengths and give a short proof for each."
+      - "Link at least one strength to the job."
+    sampleAnswer: |
+      My first strength is consistency. I learned programming while working full time,
+      by studying for two hours every evening, even on tired days.
+      My second strength is attention to detail. In my data job, my accuracy rate stayed high,
+      and in coding, this helps me catch small bugs and edge cases.
+      My third strength is that I am not afraid to ask questions or say "I don't know yet".
+      I search, try, and then ask with what I have already tried. I believe these strengths will help me learn fast in a team.
+  - id: spk-017
+    category: HR
+    prompt: "What is your biggest weakness?"
+    framework: NONE
+    timeLimitSeconds: 60
+    tips:
+      - "Pick a real weakness that does not block the job."
+      - "Always say what you are doing to improve it."
+    sampleAnswer: |
+      One weakness is that my spoken English is not yet as fluent as I want it to be.
+      I sometimes take a moment to find the right words, especially when explaining technical ideas.
+      To improve, I practise explaining one concept aloud every day and record myself.
+      I also take part in mock interviews and note down useful phrases.
+      I can already see progress. A few months ago, I could not explain a HashMap in English clearly, and now I can.
+      I will keep working on it, because clear communication is important in a team.
+  - id: spk-018
+    category: HR
+    prompt: "Where do you see yourself in five years?"
+    framework: NONE
+    timeLimitSeconds: 60
+    tips:
+      - "Show ambition, but keep it connected to the company."
+      - "Talk about skills and responsibility, not only titles."
+    sampleAnswer: |
+      In five years, I see myself as a strong software engineer who can own features from start to end.
+      In the first year or two, I want to learn the codebase, write clean code and become reliable in my team.
+      After that, I want to go deeper into backend development and system design,
+      and help new joiners, the same way I hope someone will help me when I join.
+      I would like to grow within this company, because I value long-term learning more than quick changes.
+  - id: spk-019
+    category: HR
+    prompt: "Are you willing to relocate or work in shifts?"
+    framework: NONE
+    timeLimitSeconds: 60
+    tips:
+      - "Answer honestly. If yes, say yes clearly and show flexibility."
+      - "If there is a real limit, say it politely and offer an alternative."
+    sampleAnswer: |
+      Yes, I am open to relocating to any location where the company needs me.
+      As a fresher in tech, I see it as a chance to learn and meet new people.
+      I am also comfortable with shifts if the project needs it.
+      In my current job, I have already worked in rotating shifts, so I know how to manage my routine and health.
+      My priority right now is to start my career as a developer and do good work wherever I am placed.
+  - id: spk-020
+    category: HR
+    prompt: "Do you have any questions for us?"
+    framework: NONE
+    timeLimitSeconds: 60
+    tips:
+      - "Always ask one or two questions. Saying no can sound like low interest."
+      - "Ask about learning, the team or the work. Avoid salary in the first question."
+    sampleAnswer: |
+      Yes, thank you. I have a few questions.
+      First, what does the training or onboarding look like for new joiners in this role?
+      I want to know how I can prepare before I join.
+      Second, what qualities do you see in freshers who do really well in their first year here?
+      I would like to work on those from day one.
+      If there is time, I would also like to know what a normal day looks like for a developer in this team,
+      and which technologies I should practise more before joining.
+      Thank you for your time today. I enjoyed this conversation and learned a lot from your questions.
+
+  # ---------------- BEHAVIORAL (STAR) ----------------
+  - id: spk-021
+    category: BEHAVIORAL
+    prompt: "Tell me about a challenge you faced and how you handled it."
+    framework: STAR
+    timeLimitSeconds: 120
+    tips:
+      - "Situation and Task in two sentences. Spend most time on Action."
+      - "End with a Result you can measure or clearly describe."
+    sampleAnswer: |
+      Situation: When I started learning to code, I was working full time, and I had very little free time.
+      Task: I had to learn Java and DSA well enough for interviews, without affecting my job.
+      Action: I made a simple plan. I woke up one hour early to solve one problem, and studied theory for one hour after work.
+      On weekends, I built a small project to apply what I learned. When I got stuck, I wrote the problem in my diary and asked in online forums.
+      Result: In [number] months, I finished core Java, solved [number] problems, and built a working REST API.
+      I also learned that small daily progress beats long weekend sessions.
+  - id: spk-022
+    category: BEHAVIORAL
+    prompt: "Tell me about a mistake you made and what you learned."
+    framework: STAR
+    timeLimitSeconds: 120
+    tips:
+      - "Choose a real mistake, but not a serious ethical one."
+      - "Own it. Do not blame others. Focus on the lesson."
+    sampleAnswer: |
+      Situation: In my data job, I was given a large file to update before the end of the day.
+      Task: I had to enter and verify around five hundred records.
+      Action: To finish fast, I skipped my usual check at the end, and later my team lead found about twenty wrong entries.
+      I told him honestly that I had skipped the check. I stayed back, fixed every record, and then created a short checklist that I follow every time.
+      Result: Since then, I have not repeated that mistake. In coding, I follow the same idea: I test edge cases before I say my code is done.
+      I learned that speed without checking only creates more work later.
+  - id: spk-023
+    category: BEHAVIORAL
+    prompt: "Tell me about a time you worked in a team."
+    framework: STAR
+    timeLimitSeconds: 120
+    tips:
+      - "Make your own role clear: use I for your actions, we for the team result."
+      - "Mention how you communicated or helped someone."
+    sampleAnswer: |
+      Situation: At my office, our team of five had to clean and move old customer data to a new system within one week.
+      Task: My part was to verify records and help the team stay on track.
+      Action: I noticed people were checking the same records twice, so I suggested we split the data by region and track progress in a shared sheet.
+      I also helped a new teammate learn the shortcuts I used, so she could work faster.
+      Result: We finished one day early, with fewer errors than the previous migration.
+      I learned that good teamwork is mostly clear communication and helping each other.
+  - id: spk-024
+    category: BEHAVIORAL
+    prompt: "Tell me about a time you worked under deadline pressure."
+    framework: STAR
+    timeLimitSeconds: 120
+    tips:
+      - "Show that you stayed calm and planned, not that you just worked late."
+      - "Mention how you prioritised."
+    sampleAnswer: |
+      Situation: Last quarter, two big data reports were due on the same day at my job, and one teammate was on leave.
+      Task: I had to make sure both reports were submitted on time and without mistakes.
+      Action: First, I listed every step for both reports and marked which ones were most important.
+      I informed my manager early about the risk, and he agreed to move one small task to the next day.
+      I then worked in focused blocks and checked each section as soon as I finished it.
+      Result: Both reports were submitted on time with no errors. I learned to plan first and to raise risks early, instead of hoping for the best.
+  - id: spk-025
+    category: BEHAVIORAL
+    prompt: "Tell me about a time you had to learn something new quickly."
+    framework: STAR
+    timeLimitSeconds: 120
+    tips:
+      - "Your self-learning of programming is a strong story. Use it."
+      - "Mention the method you used to learn, not just that you learned."
+    sampleAnswer: |
+      Situation: While building my Task Manager project, I wanted to add login, but I had never used Spring Security or JWT.
+      Task: I gave myself one week to understand it and add it to the project.
+      Action: I first read the official guide to understand the filter chain. Then I built the smallest working example in a separate project.
+      When something failed, I read the error message carefully and checked one change at a time.
+      After it worked, I moved it into my main project and wrote notes in my diary.
+      Result: In about a week, my API had working login with hashed passwords and JWT tokens.
+      I learned that building a tiny example first is the fastest way for me to learn a new tool.
+
+  # ---------------- PROJECT ----------------
+  - id: spk-026
+    category: PROJECT
+    prompt: "Explain your project."
+    framework: NONE
+    timeLimitSeconds: 150
+    tips:
+      - "Follow: problem, solution, tech stack, your role, one challenge, what you learned."
+      - "Be ready for follow-up questions on anything you mention."
+      - "Keep it simple. Interviewers prefer a clear small project over a confusing big one."
+    sampleAnswer: |
+      My project is a Task Manager REST API. The problem was simple: I wanted a way for users to create tasks, set due dates and track their status.
+      I built it alone using Java 17, Spring Boot, Spring Data JPA and MySQL.
+      It follows a layered design: controllers handle HTTP requests, services contain the business logic, and repositories talk to the database.
+      Users can create, update, delete and filter tasks. I added validation with @Valid and a global exception handler, so errors return clean JSON messages.
+      One challenge was the N+1 query problem when loading users with their tasks. I fixed it using a fetch join.
+      I also wrote unit tests with JUnit and Mockito.
+      This project taught me how a real backend is structured.
+  - id: spk-027
+    category: PROJECT
+    prompt: "What was the most difficult part of your project?"
+    framework: STAR
+    timeLimitSeconds: 120
+    tips:
+      - "Pick a real technical problem and explain how you found the cause."
+      - "Show your debugging process: read the error, form a guess, test it."
+    sampleAnswer: |
+      Situation: In my Task Manager API, when I returned a user with their tasks as JSON, the app crashed with a very long error.
+      Task: I had to find out why and fix it properly.
+      Action: I read the stack trace and saw it was a StackOverflowError from Jackson, the JSON library.
+      I realised the user had a list of tasks, and each task pointed back to the user, so Jackson kept going in a circle.
+      Instead of returning entities directly, I created simple DTO classes that only had the fields I needed.
+      Result: The error was fixed, and the API responses became cleaner. I learned why returning DTOs instead of entities is a good practice.
+  - id: spk-028
+    category: PROJECT
+    prompt: "If you had more time, what would you improve in your project?"
+    framework: NONE
+    timeLimitSeconds: 90
+    tips:
+      - "Shows you can judge your own work. Give two or three concrete improvements."
+      - "Say why each improvement matters."
+    sampleAnswer: |
+      If I had more time, I would make three improvements.
+      First, I would add more integration tests using Testcontainers, so I can test with a real database and not only mocks.
+      Second, I would add pagination to the task list API, because returning thousands of tasks at once would be slow.
+      Third, I would put the app in Docker and deploy it to a cloud server, so others can try it using a live link.
+      These changes would make the project closer to how real production systems are built,
+      and I would learn a lot from each one.
+
+  # ---------------- WHY_COMPANY ----------------
+  - id: spk-029
+    category: WHY_COMPANY
+    prompt: "Why do you want to join Infosys?"
+    framework: NONE
+    timeLimitSeconds: 90
+    tips:
+      - "Mention things you have actually read on the company's own website, in your own words."
+      - "Connect the company's strengths to what you need as a career switcher: training and growth."
+      - "Do not claim facts you are not sure about."
+    sampleAnswer: |
+      I want to join Infosys for three reasons.
+      First, Infosys is known for its strong focus on training freshers, and as someone switching careers,
+      a structured learning start is very valuable for me.
+      Second, Infosys works with clients across many industries, so I will get exposure to different projects and technologies.
+      Third, I have read about its learning platforms and its focus on continuous upskilling,
+      and continuous learning is exactly how I got into programming in the first place.
+      I believe I can grow here as a developer, and in return, I will bring discipline, consistency and a strong willingness to learn.
+  - id: spk-030
+    category: WHY_COMPANY
+    prompt: "Why do you want to work in IT and software?"
+    framework: NONE
+    timeLimitSeconds: 90
+    tips:
+      - "Tell a short personal story about what made you curious."
+      - "Talk about problem solving and impact, not only salary."
+    sampleAnswer: |
+      I want to work in software because I enjoy solving problems and building things that people use.
+      My interest started at my current job. I spent hours doing the same copy-paste steps,
+      and I wondered how a small program could do it in seconds.
+      When I wrote my first Java program that read a file and cleaned the data, I felt very motivated.
+      Software is a field where you keep learning, and one good program can save time for thousands of people.
+      I also like that skill and practice matter more than background. That gives me confidence that with hard work, I can do well here.
+
+phrases:
+  # buying time
+  - phrase: "That's a good question. Let me think for a moment."
+    useWhen: "You need a few seconds to organise your answer."
+  - phrase: "Give me a second to structure my thoughts."
+    useWhen: "The question is long and you want to answer in order."
+  - phrase: "Let me think aloud while I work through this."
+    useWhen: "Solving a coding or logic problem, so the interviewer can follow your thinking."
+  - phrase: "Can I take a minute to write this down first?"
+    useWhen: "A coding question with several inputs or rules."
+  - phrase: "Let me start with a simple approach and then improve it."
+    useWhen: "You know a brute-force solution but not yet the best one."
+  # clarifying
+  - phrase: "Just to make sure I understood correctly, you are asking about...?"
+    useWhen: "You want to confirm the question before answering."
+  - phrase: "Could you please repeat the question?"
+    useWhen: "You did not hear or understand the question."
+  - phrase: "Do you mean X or Y?"
+    useWhen: "The question could mean two different things."
+  - phrase: "Can I assume the input is always valid, or should I handle edge cases?"
+    useWhen: "Clarifying constraints in a coding problem."
+  - phrase: "Should I focus on the concept or on the code?"
+    useWhen: "You are unsure how deep the interviewer wants you to go."
+  - phrase: "Could you give me an example input?"
+    useWhen: "A problem statement is unclear."
+  # admitting you don't know
+  - phrase: "I'm not sure about that, but here is how I would find out."
+    useWhen: "You do not know the answer but can show your approach."
+  - phrase: "I haven't worked with that yet, but I know a related concept."
+    useWhen: "Asked about a tool or topic you have not used."
+  - phrase: "I don't want to guess. I would check the documentation to be sure."
+    useWhen: "You could guess, but honesty is better."
+  - phrase: "I have read about it, but I have not used it in a project."
+    useWhen: "You know the theory only. Be honest about your level."
+  - phrase: "I'm not confident about that part. Could you give me a hint?"
+    useWhen: "Stuck on a technical problem. Asking for a hint is better than silence."
+  # structuring
+  - phrase: "There are three main points."
+    useWhen: "Starting an answer, so the interviewer knows what is coming."
+  - phrase: "First... Second... Finally..."
+    useWhen: "Listing steps or points in order."
+  - phrase: "Let me explain with an example."
+    useWhen: "After defining a concept, to make it clear."
+  - phrase: "In simple words, it means..."
+    useWhen: "After a technical definition, to show real understanding."
+  - phrase: "The main difference is..."
+    useWhen: "Answering any 'X vs Y' question."
+  - phrase: "The time complexity of this approach is O(n), because..."
+    useWhen: "After writing code, to explain its efficiency."
+  - phrase: "On the other hand..."
+    useWhen: "Comparing two options or showing the other side."
+  - phrase: "To give you some context..."
+    useWhen: "Starting a story, like a STAR answer."
+  - phrase: "As a result..."
+    useWhen: "Moving to the Result part of a STAR answer."
+  # closing
+  - phrase: "So, to sum up..."
+    useWhen: "Ending a long answer with a short summary."
+  - phrase: "Does that answer your question?"
+    useWhen: "Checking if the interviewer wants more detail."
+  - phrase: "I can go deeper into any part if you like."
+    useWhen: "Ending a technical answer, inviting follow-up."
+  - phrase: "Thank you for your time. I really enjoyed this conversation."
+    useWhen: "End of the interview."
+  - phrase: "I look forward to hearing from you."
+    useWhen: "Final goodbye, polite and positive."
+
+vocabulary:
+  - word: "Collaborate"
+    meaning: "Work together with others."
+    example: "I collaborated with my team to finish the migration early."
+  - word: "Deadline"
+    meaning: "The latest time by which something must be done."
+    example: "We met the deadline by planning the work in small parts."
+  - word: "Prioritise"
+    meaning: "Decide which tasks are most important and do them first."
+    example: "I prioritise bugs that affect users before small UI changes."
+  - word: "Responsibility"
+    meaning: "A duty or task that you are in charge of."
+    example: "My responsibility was to verify the data before it went live."
+  - word: "Initiative"
+    meaning: "Doing something useful without being told to."
+    example: "I took the initiative to create a checklist for the team."
+  - word: "Feedback"
+    meaning: "Comments about your work that help you improve."
+    example: "I asked my lead for feedback on my code."
+  - word: "Implement"
+    meaning: "Build or put a plan or feature into action."
+    example: "I implemented login using Spring Security and JWT."
+  - word: "Approach"
+    meaning: "A way of solving a problem."
+    example: "My first approach was brute force, then I improved it with a HashMap."
+  - word: "Efficient"
+    meaning: "Doing something well without wasting time or resources."
+    example: "Binary search is more efficient than linear search on sorted data."
+  - word: "Scalable"
+    meaning: "Able to handle more users or data without breaking."
+    example: "We added pagination so the API stays scalable."
+  - word: "Maintainable"
+    meaning: "Easy to understand and change later."
+    example: "Small methods with clear names make code maintainable."
+  - word: "Requirement"
+    meaning: "Something the software must do."
+    example: "One requirement was that users can filter tasks by status."
+  - word: "Stakeholder"
+    meaning: "A person who is affected by or interested in a project."
+    example: "We shared a demo with the stakeholders every Friday."
+  - word: "Deliverable"
+    meaning: "A piece of work that must be handed over."
+    example: "The first deliverable was a working API for creating tasks."
+  - word: "Clarify"
+    meaning: "Make something clear by asking or explaining."
+    example: "Could you clarify whether the array can be empty?"
+  - word: "Adapt"
+    meaning: "Change to fit a new situation."
+    example: "I adapted quickly when our team moved to a new tool."
+  - word: "Consistent"
+    meaning: "Doing something the same good way every time."
+    example: "I have been consistent in practising one problem a day."
+  - word: "Proactive"
+    meaning: "Acting early to prevent problems instead of waiting."
+    example: "I was proactive and told my manager about the risk early."
+  - word: "Troubleshoot"
+    meaning: "Find and fix the cause of a problem."
+    example: "I troubleshot the error by reading the stack trace."
+  - word: "Optimise"
+    meaning: "Make something faster or better."
+    example: "I optimised the query by adding an index."
+  - word: "Constraint"
+    meaning: "A limit or rule you must work within."
+    example: "The constraint was that we could only use constant extra space."
+  - word: "Trade-off"
+    meaning: "Giving up one benefit to get another."
+    example: "Using a HashMap is a trade-off: faster time but more memory."
+  - word: "Accomplish"
+    meaning: "Succeed in doing something."
+    example: "In three months, I accomplished my goal of finishing core Java."
+  - word: "Contribute"
+    meaning: "Give your effort or ideas to help something succeed."
+    example: "I want to contribute to real projects from my first month."
+  - word: "Resilient"
+    meaning: "Able to recover quickly after difficulty."
+    example: "Learning to code after work taught me to be resilient."
+  - word: "Transition"
+    meaning: "A change from one state or job to another."
+    example: "My transition from data entry to development took a year of practice."
+  - word: "Elaborate"
+    meaning: "Give more details."
+    example: "Could you elaborate on what you mean by scale?"
+  - word: "Concise"
+    meaning: "Short and clear, without extra words."
+    example: "I try to keep my answers concise and to the point."
+  - word: "Escalate"
+    meaning: "Raise a problem to a higher person when you cannot solve it."
+    example: "When the issue blocked the release, I escalated it to my lead."
+  - word: "Ownership"
+    meaning: "Taking full responsibility for a task and its result."
+    example: "I took ownership of the bug and fixed it the same day."
+
+pronunciation:
+  - term: "Hibernate"
+    sayItLike: "HY-ber-nayt"
+    note: "Stress on the first part. Like an animal sleeping through winter."
+  - term: "Kubernetes"
+    sayItLike: "koo-ber-NET-eez"
+    note: "Four parts. Stress on NET. Often shortened to K8s, said 'kates'."
+  - term: "JSON"
+    sayItLike: "JAY-sun"
+    note: "Like the name Jason. Not 'jay-ess-oh-en'."
+  - term: "SQL"
+    sayItLike: "ESS-kyoo-ELL or SEE-kwel"
+    note: "Both are accepted. Pick one and use it the same way every time."
+  - term: "MySQL"
+    sayItLike: "my-ESS-kyoo-ELL"
+    note: "The official way is 'My S-Q-L', though 'my-sequel' is also common."
+  - term: "Linux"
+    sayItLike: "LIN-ux"
+    note: "Short 'i' like in 'link'. Not 'LIE-nux'."
+  - term: "cache"
+    sayItLike: "KASH"
+    note: "Sounds exactly like 'cash'. Not 'catch' or 'ca-shay'."
+  - term: "queue"
+    sayItLike: "KYOO"
+    note: "Just the letter Q. The 'ueue' is silent."
+  - term: "char"
+    sayItLike: "CHAR or KAR"
+    note: "Most say 'char' like 'charcoal'. 'Car' is also used. Both are fine."
+  - term: "deque"
+    sayItLike: "DECK"
+    note: "Short for double-ended queue. Not 'dee-kyoo'."
+  - term: "Postgres"
+    sayItLike: "POST-gress"
+    note: "Two parts. PostgreSQL is said 'post-gress-kyoo-ell'."
+  - term: "Nginx"
+    sayItLike: "EN-jin-EX"
+    note: "Sounds like 'engine-x'. Not 'en-ginks'."
+  - term: "YAML"
+    sayItLike: "YAM-ul"
+    note: "Rhymes with 'camel'."
+  - term: "GUI"
+    sayItLike: "GOO-ee"
+    note: "Sounds like 'gooey'. Spelling out G-U-I is also understood."
+  - term: "Ajax"
+    sayItLike: "AY-jax"
+    note: "Stress on the first part."
+  - term: "Agile"
+    sayItLike: "AJ-ile"
+    note: "Like 'AJ-ail' in Indian/British English or 'AJ-ul' in American English. Not 'a-JILE'."
+  - term: "bytecode"
+    sayItLike: "BITE-kohd"
+    note: "'Byte' sounds like 'bite'."
+  - term: "enum"
+    sayItLike: "EE-num"
+    note: "Short for enumeration. 'EE-noom' is also heard."
+  - term: "tuple"
+    sayItLike: "TUP-ul or TOO-pul"
+    note: "Both are accepted. Rhymes with 'couple' or with 'scruple'."
+  - term: "daemon"
+    sayItLike: "DEE-mun"
+    note: "Same as 'demon'. A daemon thread runs in the background."
+  - term: "async"
+    sayItLike: "AY-sink"
+    note: "Short for asynchronous: ay-SIN-kruh-nus."
+  - term: "sudo"
+    sayItLike: "SOO-doo"
+    note: "Short for 'superuser do'. 'SOO-doh' is also common."
+  - term: "width"
+    sayItLike: "WIDTH (wid-th)"
+    note: "Say the 'd' and the soft 'th' together. Not 'with' or 'widt'."
+  - term: "schema"
+    sayItLike: "SKEE-muh"
+    note: "The 'ch' is a hard K sound. Not 'shee-ma'."
+  - term: "API"
+    sayItLike: "AY-PEE-EYE"
+    note: "Spell out each letter. Not 'appy'."
+  - term: "Java"
+    sayItLike: "JAH-vuh"
+    note: "Stress on the first part, with a soft 'v'."
+  - term: "Git"
+    sayItLike: "GIT"
+    note: "Hard G as in 'get'. Not 'jit'."
+  - term: "integer"
+    sayItLike: "IN-tuh-jer"
+    note: "The 'g' is soft like J. Not 'in-te-ger' with a hard g."
+  - term: "algorithm"
+    sayItLike: "AL-guh-rith-um"
+    note: "Stress on AL. Not 'al-go-RITH-um'."
+  - term: "Boolean"
+    sayItLike: "BOO-lee-un"
+    note: "Three parts. Named after George Boole."
+  - term: "Docker"
+    sayItLike: "DOK-er"
+    note: "Like a dock worker. Short 'o'."
+  - term: "Kafka"
+    sayItLike: "KAHF-kuh"
+    note: "Named after the writer Franz Kafka."
+  - term: "Ubuntu"
+    sayItLike: "oo-BOON-too"
+    note: "Stress on BOON."
+  - term: "suite"
+    sayItLike: "SWEET"
+    note: "As in 'test suite'. Not 'suit'."
+  - term: "Maven"
+    sayItLike: "MAY-vun"
+    note: "Rhymes with 'raven'."

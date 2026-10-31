@@ -1,0 +1,293 @@
+slug: sets-linked-tree
+world: JAVA_CORE
+section: E
+order: 7
+title: "HashSet, LinkedHashMap, TreeMap, TreeSet"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A common comparison question in SP and DSE rounds; choosing the right map or set also makes coding answers cleaner."
+otherCompanies: "Common 'difference between' question at TCS, Wipro, Cognizant, Accenture, Capgemini; product companies also ask you to build an LRU cache with LinkedHashMap."
+why: |
+  In the last lesson you learned how `HashMap` works. But HashMap has one weakness: **no order**. When you print it, keys come out in a strange order.
+
+  Real problems often need order:
+  - "Print the first non-repeating character" needs **insertion order** -> `LinkedHashMap`.
+  - "Print marks in sorted order of names" needs **sorted order** -> `TreeMap`.
+  - "Remove duplicates" needs a **set** -> `HashSet`, `LinkedHashSet` or `TreeSet`.
+
+  Interviewers love the question **"HashMap vs LinkedHashMap vs TreeMap"** and its twin **"HashSet vs LinkedHashSet vs TreeSet"**. If you know how each one is built, you never need to memorise the table: you can work it out.
+analogy: |
+  Think of three ways to keep guest names at a **wedding**.
+
+  - **HashSet / HashMap** is a **bag of name cards**. Super fast to check "is Priya here?", but if you pour the cards out, they come in random order.
+  - **LinkedHashSet / LinkedHashMap** is the **guest register at the entrance**. Each new guest signs on the next line, so you can read names back **in arrival order**. It still has the fast bag next to it for checking.
+  - **TreeSet / TreeMap** is the **alphabetical seating chart**. Every new name is placed in its sorted position. Finding or adding takes a few more steps (log n), but you always read names **A to Z**, and you can ask "who sits just before Meena?".
+visual:
+  diagram: |
+    insert order: "mango", "kiwi", "grape"
+
+    HashSet      buckets (n = 16):
+                 [2]->kiwi   [11]->grape   [15]->mango
+                 print order: kiwi, grape, mango  (bucket order,
+                 no promise: it can change after a resize)
+
+    LinkedHashSet  same buckets + a doubly linked list:
+                 head -> mango <-> kiwi <-> grape <- tail
+                 print order: mango, kiwi, grape  (insertion)
+
+    TreeSet      red-black tree (sorted):
+                          kiwi
+                         /    \
+                     grape    mango
+                 print order: grape, kiwi, mango  (sorted)
+  caption: "Hash structures jump straight to a bucket (no order). Linked versions add a chain that remembers arrival order. Tree versions keep everything sorted in a balanced tree."
+  visualizer: null
+explanation: |
+  ### First, what is a Set?
+  A **Set** is a collection with **no duplicates**. If you add "apple" twice, it is stored once. `add()` returns `true` if the element was new and `false` if it was already there.
+
+  ### HashSet: a HashMap in disguise
+  Inside, `HashSet` holds a `HashMap`. Your element becomes the **key**, and every value is the same dummy object (called `PRESENT`).
+  ```java
+  // roughly what HashSet.add does
+  public boolean add(E e) {
+      return map.put(e, PRESENT) == null;
+  }
+  ```
+  So everything from HashMap applies: O(1) average add/contains/remove, uses `hashCode()` + `equals()`, allows one `null`, and **no order guarantee**.
+
+  ### LinkedHashMap and LinkedHashSet: remember the order
+  `LinkedHashMap` **extends** `HashMap`. Each entry also has `before` and `after` pointers, forming a **doubly linked list** (a chain you can walk both ways) through all entries.
+  - Lookups still use the buckets: O(1).
+  - Iteration follows the linked list: **insertion order**.
+  - Putting an existing key again does **not** change its position.
+  - `LinkedHashSet` is built on a `LinkedHashMap`, just like HashSet is built on HashMap.
+
+  Cost: a little more memory for the two extra pointers per entry.
+
+  #### Access order and LRU cache
+  `LinkedHashMap` has a special constructor: `new LinkedHashMap<>(16, 0.75f, true)`. The `true` means **access order**: every `get` or `put` moves that entry to the end. The least recently used entry is then at the front. Override `removeEldestEntry` and you have an **LRU (Least Recently Used) cache** in a few lines. This is a popular practice question.
+
+  ### TreeMap and TreeSet: always sorted
+  `TreeMap` stores entries in a **red-black tree**, which is a binary search tree that keeps itself balanced, so its height stays about log n.
+  - Keys are kept **sorted**: by their natural order (`Comparable`, e.g. numbers ascending, Strings A-Z) or by a `Comparator` you pass in.
+  - `put`, `get`, `remove`, `containsKey` are **O(log n)**.
+  - It does **not** use `hashCode()` or `equals()`. It uses `compareTo()` / `compare()`. If compare returns 0, the keys are treated as the same.
+  - A `null` key throws `NullPointerException` with natural ordering, because it can't compare null.
+  - `TreeSet` is built on a `TreeMap`.
+
+  #### Navigation methods (the hidden superpower)
+  | Method | Meaning |
+  |---|---|
+  | `firstKey()` / `lastKey()` | smallest / largest key |
+  | `floorKey(x)` | largest key **<= x** |
+  | `ceilingKey(x)` | smallest key **>= x** |
+  | `lowerKey(x)` / `higherKey(x)` | strictly < x / strictly > x |
+  | `headMap(x)` / `tailMap(x)` | keys < x / keys >= x |
+
+  For TreeSet the names are `first()`, `last()`, `floor()`, `ceiling()`, `headSet()`, `tailSet()`. These help in problems like "find the closest smaller value".
+
+  ### The comparison table
+  | | HashMap / HashSet | LinkedHashMap / LinkedHashSet | TreeMap / TreeSet |
+  |---|---|---|---|
+  | Built on | array of buckets | buckets + doubly linked list | red-black tree |
+  | Order | none promised | insertion (or access) order | sorted |
+  | get / add / contains | O(1) average | O(1) average | O(log n) |
+  | null key / element | one allowed | one allowed | not allowed (natural order) |
+  | Uses | hashCode + equals | hashCode + equals | compareTo / Comparator |
+  | Extras | fastest | LRU cache | floor, ceiling, first, last, ranges |
+
+  ### How to choose
+  - Just need fast lookup or de-duplication? **HashMap / HashSet**.
+  - Need to keep the order things arrived? **LinkedHashMap / LinkedHashSet**.
+  - Need sorted output or "nearest key" queries? **TreeMap / TreeSet**.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class ThreeSets {
+        public static void main(String[] args) {
+            List<String> fruits = List.of("mango", "apple", "kiwi", "apple");
+
+            Set<String> linked = new LinkedHashSet<>(fruits);
+            Set<String> tree = new TreeSet<>(fruits);
+            System.out.println(linked);
+            System.out.println(tree);
+
+            TreeMap<Integer, String> grade = new TreeMap<>();
+            grade.put(90, "A");
+            grade.put(75, "B");
+            grade.put(50, "C");
+            System.out.println(grade.floorKey(82) + " -> " + grade.floorEntry(82).getValue());
+            System.out.println(grade.firstKey() + " " + grade.lastKey());
+        }
+    }
+  walkthrough: |
+    - `fruits` has "apple" twice. Both sets drop the duplicate.
+    - `LinkedHashSet` keeps **arrival order**: `[mango, apple, kiwi]`.
+    - `TreeSet` keeps **sorted order**: `[apple, kiwi, mango]`.
+    - The `TreeMap` stores cut-off marks sorted: 50, 75, 90.
+    - `floorKey(82)` means "largest key that is <= 82", which is `75`. Its value is `"B"`. So it prints `75 -> B`. A neat way to convert marks to grades.
+    - `firstKey()` is the smallest (50) and `lastKey()` the largest (90).
+
+    Output:
+    ```
+    [mango, apple, kiwi]
+    [apple, kiwi, mango]
+    75 -> B
+    50 90
+    ```
+tryIt:
+  instructions: "Type this tiny LRU cache. It holds only 2 items. Before running, guess which key gets removed. (Hint: get(1) makes key 1 'recently used'.)"
+  code: |
+    import java.util.*;
+
+    public class Lru {
+        public static void main(String[] args) {
+            Map<Integer, String> cache = new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<Integer, String> eldest) {
+                    return size() > 2;
+                }
+            };
+            cache.put(1, "one");
+            cache.put(2, "two");
+            cache.get(1);
+            cache.put(3, "three");
+            System.out.println(cache);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class OrderCheck {
+        public static void main(String[] args) {
+            Map<String, Integer> lm = new LinkedHashMap<>();
+            lm.put("b", 1);
+            lm.put("a", 2);
+            lm.put("b", 3);
+            Map<String, Integer> tm = new TreeMap<>(lm);
+            System.out.println(lm);
+            System.out.println(tm);
+        }
+    }
+  expectedOutput: |
+    {b=3, a=2}
+    {a=2, b=3}
+  explanation: |
+    In `LinkedHashMap`, putting `"b"` again only **updates the value**; it keeps its original first position, so `b` stays before `a`. Copying into a `TreeMap` sorts the keys, so `a` comes first.
+commonMistakes:
+  - "Expecting HashSet or HashMap to print in insertion order. No order is promised; use the Linked versions."
+  - "Thinking re-putting a key in LinkedHashMap moves it to the end. In insertion-order mode it keeps its old position (only access-order mode moves it)."
+  - "Putting a null key into a TreeMap or TreeSet with natural ordering: NullPointerException."
+  - "Forgetting TreeSet uses compareTo, not equals. If your comparator says two different objects are 0 apart, TreeSet keeps only one of them."
+  - "Using TreeMap when you don't need sorting. It is O(log n), slower than HashMap's O(1)."
+interviewBox:
+  why: "Why interviewers ask this: it checks if you can pick the right data structure and explain the trade-off between speed and order."
+  questions:
+    - q: "What is the difference between HashMap, LinkedHashMap and TreeMap?"
+      a: "All three store key-value pairs. HashMap uses buckets, gives O(1) average and no order. LinkedHashMap is a HashMap plus a doubly linked list, so it keeps insertion order with almost the same speed. TreeMap uses a red-black tree, keeps keys sorted, gives O(log n), and doesn't allow a null key with natural ordering."
+    - q: "How does HashSet work internally?"
+      a: "HashSet uses a HashMap inside. The element is stored as the key and a dummy constant called PRESENT is the value. add returns true if put returned null, meaning the key was new. So it relies on hashCode and equals for uniqueness."
+    - q: "How would you implement an LRU cache in Java?"
+      a: "I'd extend LinkedHashMap with accessOrder set to true, so every get moves the entry to the end. Then I override removeEldestEntry to return true when size is more than the capacity. The eldest entry, which is the least recently used, gets removed automatically."
+    - q: "How does TreeSet decide that two elements are duplicates?"
+      a: "TreeSet uses compareTo or the Comparator, not equals. If compare returns zero, it treats them as the same element and doesn't add the second one."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "You must print the first non-repeating character of a string, so you need character counts kept in the order the characters first appeared. Which map fits best?"
+    code: null
+    options: ["HashMap", "LinkedHashMap", "TreeMap", "Hashtable"]
+    answer: 1
+    explanation: "LinkedHashMap keeps insertion order with O(1) operations. TreeMap is tempting because it has 'order', but it is sorted order (alphabetical), not first-appearance order. HashMap and Hashtable promise no order."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      Set<Integer> s = new TreeSet<>(List.of(40, 10, 30, 10, 20));
+      System.out.println(s);
+      System.out.println(((TreeSet<Integer>) s).ceiling(25));
+    options: ["[40, 10, 30, 20]\n30", "[10, 20, 30, 40]\n30", "[10, 20, 30, 40]\n20", "[10, 10, 20, 30, 40]\n30"]
+    answer: 1
+    explanation: "TreeSet sorts and removes the duplicate 10, giving [10, 20, 30, 40]. ceiling(25) is the smallest element >= 25, which is 30. 20 would be floor(25), the tempting mix-up."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Why does this crash at runtime?"
+    code: |
+      Map<String, Integer> m = new TreeMap<>();
+      m.put("x", 1);
+      m.put(null, 2);
+      System.out.println(m);
+    options:
+      - "TreeMap cannot store Integer values"
+      - "TreeMap with natural ordering cannot compare a null key, so put(null, ...) throws NullPointerException"
+      - "You must call sort() before printing a TreeMap"
+      - "TreeMap allows only one entry"
+    answer: 1
+    explanation: "TreeMap places keys by comparing them, and \"x\".compareTo(null) is impossible, so it throws NullPointerException. HashMap and LinkedHashMap would accept one null key, which is why this surprises people."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "HashSet internally uses a HashMap, storing each element as a key."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. HashSet wraps a HashMap; elements are keys and a shared dummy object PRESENT is the value. That is why HashSet needs good hashCode() and equals()."
+  - id: q5
+    type: MATCH
+    prompt: "Match each collection to how it orders elements"
+    pairs:
+      - left: "HashSet"
+        right: "No order promised"
+      - left: "LinkedHashSet"
+        right: "Insertion order"
+      - left: "TreeSet"
+        right: "Sorted order"
+      - left: "LinkedHashMap(16, 0.75f, true)"
+        right: "Access order (least recently used first)"
+    explanation: "Hash = no order, Linked = remembers order (insertion, or access when the flag is true), Tree = sorted."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the TreeMap method that returns the largest key less than or equal to 82."
+    code: |
+      TreeMap<Integer, String> grade = new TreeMap<>(Map.of(90, "A", 75, "B", 50, "C"));
+      System.out.println(grade.____(82));   // prints 75
+    acceptedAnswers: ["floorKey"]
+    explanation: "floorKey(x) gives the largest key <= x. ceilingKey would give the smallest key >= x, which is 90."
+  - id: q7
+    type: MCQ
+    prompt: "What is the time complexity of contains() in a TreeSet with n elements?"
+    code: null
+    options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"]
+    answer: 1
+    explanation: "TreeSet is a balanced red-black tree of height about log n, so contains walks one path: O(log n). O(1) is HashSet's average case."
+explainBack:
+  prompt: "Explain to a friend the difference between HashSet, LinkedHashSet and TreeSet, and when you would use each."
+  rubric:
+    - "I said all three remove duplicates"
+    - "I explained how each one is built (hash map, hash map + linked list, red-black tree)"
+    - "I described the order each gives (none, insertion, sorted)"
+    - "I mentioned the speed difference (O(1) vs O(log n))"
+    - "I gave one real use for each"
+  modelAnswer: |
+    All three are sets, so they never keep duplicates. HashSet is really a HashMap inside, so it's the fastest, O(1) on average, but the order is random. LinkedHashSet is the same thing plus a linked list that remembers arrival order, so I use it when I want to remove duplicates but keep the original order. TreeSet is a red-black tree, so it keeps elements sorted and has handy methods like floor and ceiling, but each operation is O(log n). So: fast lookup, use HashSet; keep order, use LinkedHashSet; need sorting, use TreeSet.
+flashcards:
+  - front: "HashMap vs LinkedHashMap vs TreeMap: order"
+    back: "HashMap: none. LinkedHashMap: insertion (or access) order. TreeMap: sorted by key."
+  - front: "How is HashSet built?"
+    back: "On a HashMap: element = key, a dummy PRESENT object = value."
+  - front: "TreeMap operations cost"
+    back: "O(log n) for put, get, remove, containsKey (red-black tree)."
+  - front: "LRU cache in Java in one line"
+    back: "LinkedHashMap with accessOrder = true, overriding removeEldestEntry to return size() > capacity."
+  - front: "floorKey vs ceilingKey"
+    back: "floorKey(x): largest key <= x. ceilingKey(x): smallest key >= x."
+keyTakeaways:
+  - "HashSet/LinkedHashSet/TreeSet are built on HashMap/LinkedHashMap/TreeMap."
+  - "Hash = fastest, no order. Linked = insertion order (or access order). Tree = sorted, O(log n)."
+  - "TreeMap/TreeSet compare keys with compareTo/Comparator and reject null keys with natural order."
+  - "LinkedHashMap with access order + removeEldestEntry gives an LRU cache."
+  - "TreeMap's floor/ceiling/first/last methods solve 'nearest value' problems neatly."

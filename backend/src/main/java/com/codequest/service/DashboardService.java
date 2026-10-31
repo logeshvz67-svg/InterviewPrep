@@ -36,9 +36,25 @@ public class DashboardService {
     private final FocusService focus;
     private final RoadmapRepository roadmaps;
     private final TimeService time;
+    private final FlashcardService flashcards;
+    private final PracticeService practice;
+    private final ExamService exams;
+    private final AchievementService achievements;
+    private final ReportService reports;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final com.fasterxml.jackson.databind.ObjectMapper json;
 
     public DashboardService(ProfileService profiles, StreakService streaks, QuestService quests, XpService xp, GymService gym,
-                            CurriculumService curriculum, FocusService focus, RoadmapRepository roadmaps, TimeService time) {
+                            CurriculumService curriculum, FocusService focus, RoadmapRepository roadmaps, TimeService time,
+                            FlashcardService flashcards, PracticeService practice, ExamService exams, AchievementService achievements,
+                            ReportService reports, org.springframework.jdbc.core.JdbcTemplate jdbc, com.fasterxml.jackson.databind.ObjectMapper json) {
+        this.flashcards = flashcards;
+        this.practice = practice;
+        this.exams = exams;
+        this.achievements = achievements;
+        this.reports = reports;
+        this.jdbc = jdbc;
+        this.json = json;
         this.profiles = profiles;
         this.streaks = streaks;
         this.quests = quests;
@@ -57,7 +73,7 @@ public class DashboardService {
         StreakView streak = streaks.view(userId);
         List<QuestView> todayQuests = quests.today(userId);
         FocusView active = focus.active(userId);
-        int due = gym.dueRevisitCount(userId);
+        int due = gym.dueRevisitCount(userId) + flashcards.dueCount(userId);
 
         Long daysToTest = p.getTestDate() != null && !p.getTestDate().isBefore(today)
                 ? ChronoUnit.DAYS.between(today, p.getTestDate()) : null;
@@ -67,15 +83,20 @@ public class DashboardService {
         String weekTitle = r == null || r.getWeeks().isEmpty() ? null : r.getWeeks().get(week - 1).title();
 
         ReadinessView readiness = readiness(userId, p.getPrimaryCompany());
+        // Daily snapshot for the "readiness over time" chart + the Infosys Ready badge.
+        reports.snapshotReadiness(userId, p.getPrimaryCompany(), json.valueToTree(java.util.Map.of("score", readiness.score())));
+        Object th = p.getSettings().get("readyThreshold");
+        double threshold = th instanceof Number n ? n.doubleValue() : 75;
+        if (p.getPrimaryCompany().startsWith("INFOSYS")) achievements.evaluate(userId, readiness.score().doubleValue(), threshold);
         BigDecimal javaV = component(readiness, Component.JAVA);
         BigDecimal dsaV = component(readiness, Component.DSA);
         Map<String, Integer> self = p.getSelfAssessment();
         List<RadarPoint> radar = List.of(
                 new RadarPoint("Java", self.get("JAVA"), toFive(javaV)),
                 new RadarPoint("DSA", self.get("DSA"), toFive(dsaV)),
-                new RadarPoint("SQL", self.get("SQL"), null),
-                new RadarPoint("Spring", self.get("SPRING"), null),
-                new RadarPoint("Communication", self.get("COMMUNICATION"), null));
+                new RadarPoint("SQL", self.get("SQL"), toFiveOrNull(component(readiness, Component.SQL), readiness, Component.SQL)),
+                new RadarPoint("Spring", self.get("SPRING"), springMeasured(userId)),
+                new RadarPoint("Communication", self.get("COMMUNICATION"), toFiveOrNull(component(readiness, Component.COMMUNICATION), readiness, Component.COMMUNICATION)));
 
         NextAction next = nextAction(userId, active, streak, todayQuests, weekTitle);
         return new CommandCenter(p.getCharacterName(), p.getAvatar(), p.getWhyStatement(), Mappers.toLevelView(p), streak,
@@ -130,24 +151,53 @@ public class DashboardService {
         Map<Component, BigDecimal> values = new EnumMap<>(Component.class);
         values.put(Component.JAVA, curriculum.javaScore(userId, companyCode));
         values.put(Component.DSA, gym.dsaScore(userId));
-        // SQL, aptitude, mocks, communication are tracked from Phases 2-4. Until then they count as 0 (shown honestly).
-        values.put(Component.SQL, null);
-        values.put(Component.APTITUDE, null);
-        values.put(Component.MOCKS, null);
-        values.put(Component.COMMUNICATION, null);
+        values.put(Component.SQL, practice.sqlScore(userId));          // SQL/DBMS interview practice self-scores
+        values.put(Component.APTITUDE, practice.aptitudeScore(userId)); // last 50 aptitude answers
+        values.put(Component.MOCKS, mockScore(userId));                 // mock tests + mock interviews
+        values.put(Component.COMMUNICATION, communicationScore(userId)); // last 10 speaking sessions
+        // Anything still null = not practised yet: counts as 0 and is labelled "not tracked yet".
         var result = ReadinessCalculator.compute(companyCode, values);
         return new ReadinessView(companyCode, result.score(), result.trackedWeight(), result.components(),
                 result.improveNext().name(), tip(result.improveNext()));
+    }
+
+    private BigDecimal mockScore(Long userId) {
+        BigDecimal tests = exams.recentMockScore(userId);
+        BigDecimal interviews = jdbc.queryForObject(
+                "select avg(overall_score)/100 from (select overall_score from mock_interviews where user_id=? and status='COMPLETED' order by id desc limit 3) t",
+                BigDecimal.class, userId);
+        if (tests == null) return interviews;
+        if (interviews == null) return tests;
+        return tests.add(interviews).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal communicationScore(Long userId) {
+        return jdbc.queryForObject(
+                "select avg(overall_score)/100 from (select overall_score from speaking_sessions where user_id=? order by id desc limit 10) t",
+                BigDecimal.class, userId);
+    }
+
+    private Integer springMeasured(Long userId) {
+        Double v = jdbc.queryForObject("""
+                select case when (select count(*) from spring_topics)=0 then null else
+                  (select coalesce(sum(case status when 'LEARNING' then 0.25 when 'UNDERSTOOD' then 0.6 when 'CAN_EXPLAIN' then 1.0 else 0 end),0)
+                   from spring_topic_progress where user_id=?) / (select count(*) from spring_topics) end""", Double.class, userId);
+        return v == null ? null : (int) Math.round(v * 5);
+    }
+
+    private static Integer toFiveOrNull(BigDecimal v, ReadinessView r, Component c) {
+        boolean tracked = r.components().stream().anyMatch(x -> x.component() == c && x.tracked());
+        return tracked ? toFive(v) : null;
     }
 
     private static String tip(Component c) {
         return switch (c) {
             case JAVA -> "Move your next Java topic from Learning to Understood: read it, type the examples, explain it out loud.";
             case DSA -> "Open the Pattern Map and solve 2 easy problems in the recommended pattern.";
-            case SQL -> "Practice one SQL query a day (joins and GROUP BY first).";
-            case APTITUDE -> "Do 10 aptitude questions with a timer.";
-            case MOCKS -> "Take a timed mock test using your Exam pattern settings.";
-            case COMMUNICATION -> "Record a 2-minute self-introduction.";
+            case SQL -> "Practise 5 SQL questions in the Interview Colosseum (tick the key points you covered).";
+            case APTITUDE -> "Do one 10-question aptitude set in the Aptitude Arena.";
+            case MOCKS -> "Enter the exam pattern from the official careers page, then take a timed mock test.";
+            case COMMUNICATION -> "Record a 2-minute self-introduction in the Communication Gym.";
         };
     }
 

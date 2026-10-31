@@ -1,0 +1,312 @@
+slug: date-time-api
+world: JAVA_CORE
+section: F
+order: 5
+title: "Date/Time API"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+infosysRelevance: "Practical knowledge for SP and DSE: project discussions often touch on storing timestamps, time zones and date calculations."
+otherCompanies: "Product companies care a lot about correct time handling (UTC storage, user time zones); service companies may ask 'why was java.time introduced?' as a Java 8 question."
+why: |
+  Almost every real app works with time: order placed at, OTP expires in 5 minutes, subscription ends on, employee's age, report for last month. Getting time wrong causes real bugs: a user in Mumbai sees an order "placed tomorrow", or a 5-minute OTP expires immediately.
+
+  Java's old classes (`java.util.Date`, `Calendar`, `SimpleDateFormat`) were confusing and buggy. Java 8 introduced **`java.time`**, a clean, safe API.
+
+  The most important professional rule you'll learn here: **store time in UTC (as an `Instant`), and convert to the user's local time only when showing it.** Interviewers like to hear that you know the difference between `Instant`, `LocalDateTime` and `ZonedDateTime`.
+analogy: |
+  Think of a **live cricket match** watched around the world.
+
+  - The ball is bowled at **one exact moment** for everyone on Earth. That moment is an **`Instant`**: a point on the universal timeline (counted in UTC).
+  - A fan in **Chennai** says "it happened at 7:30 PM", a fan in **London** says "2:00 PM". Same moment, different wall clocks. That's a **`ZonedDateTime`**: the instant shown in a particular time zone.
+  - Your **birthday** is "15 August" no matter where you are. You don't care about the exact moment or the zone. That's a **`LocalDate`**: a date on a calendar, with no zone.
+
+  The scorecard (database) records the universal moment. Each TV channel converts it to local time for its viewers.
+visual:
+  diagram: |
+    ONE moment on the global timeline, seen in two zones
+
+    Instant         2026-01-15T10:00:00Z         (Z = UTC, stored in DB)
+                         |
+             +-----------+-----------+
+             |                       |
+     atZone(Asia/Kolkata)    atZone(America/New_York)
+             v                       v
+    ZonedDateTime                ZonedDateTime
+    2026-01-15T15:30+05:30       2026-01-15T05:00-05:00
+    [Asia/Kolkata]               [America/New_York]
+             |
+     toLocalDate() / toLocalTime()
+             v
+    LocalDate 2026-01-15     LocalTime 15:30   (no zone: wall clock)
+
+    Store: Instant (UTC)   ->   Show: ZonedDateTime in user's zone
+  caption: "An Instant is one exact moment in UTC. Attach a time zone to get a ZonedDateTime for display. LocalDate and LocalTime are just calendar and clock values without a zone."
+  visualizer: null
+explanation: |
+  ### Why the old API was replaced
+  | Problem in `java.util.Date` / `Calendar` | Fixed in `java.time` |
+  |---|---|
+  | **Mutable**: anyone could change a date object you shared | All classes are **immutable** (cannot change) |
+  | Months started at **0** (January = 0) | January = 1, or use `Month.JANUARY` |
+  | `SimpleDateFormat` is **not thread-safe** | `DateTimeFormatter` is immutable and thread-safe |
+  | `Date` mixed "moment" and "calendar date" in one class | Separate, clear classes for each idea |
+
+  **Immutable** means every "change" method returns a **new object**. `date.plusDays(1)` does not change `date`; you must use the returned value.
+
+  ### The main classes
+  | Class | What it represents | Example | Use for |
+  |---|---|---|---|
+  | `LocalDate` | a date, no time, no zone | `2026-08-15` | birthdays, due dates, holidays |
+  | `LocalTime` | a time, no date, no zone | `09:30` | shop opening time |
+  | `LocalDateTime` | date + time, **no zone** | `2026-08-15T09:30` | a local event where zone is understood |
+  | `Instant` | an exact moment in **UTC** | `2026-08-15T04:00:00Z` | timestamps: created_at, logs, DB storage |
+  | `ZonedDateTime` | date + time + **zone rules** | `2026-08-15T09:30+05:30[Asia/Kolkata]` | showing time to a user, scheduling across zones |
+  | `OffsetDateTime` | date + time + fixed offset | `2026-08-15T09:30+05:30` | APIs and databases that store an offset |
+  | `ZoneId` | a time zone like `Asia/Kolkata` | | converting |
+  | `Duration` | an amount of **time** (hours, minutes, seconds) | `PT8H30M` | OTP validity, timeouts |
+  | `Period` | an amount of **dates** (years, months, days) | `P26Y2M` | age, subscription length |
+  | `DateTimeFormatter` | formats and parses text | `dd-MM-yyyy` | display |
+
+  **UTC** (Coordinated Universal Time) is the world's reference clock. India is UTC+05:30. The `Z` at the end of an Instant means "UTC".
+
+  ### Instant vs LocalDateTime vs ZonedDateTime (the key idea)
+  - `LocalDateTime` like `2026-01-15T10:00` is **ambiguous**: 10 AM where? Delhi and New York are 10.5 hours apart. It is **not** a moment on the timeline.
+  - `Instant` is **unambiguous**: one exact moment everywhere. Perfect for storing.
+  - `ZonedDateTime` = the moment + the **zone's rules**, including **daylight saving time** (DST: some countries move clocks 1 hour forward in summer). `ZoneId` handles this; a fixed offset like `+05:30` cannot.
+
+  ### The professional pattern: store UTC, show local
+  ```java
+  Instant createdAt = Instant.now();                    // save this in the DB (UTC)
+  ZonedDateTime forUser = createdAt.atZone(ZoneId.of("Asia/Kolkata"));
+  String shown = forUser.format(DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm a"));
+  ```
+  - Servers can run in any zone (cloud servers usually run in UTC). If you store local times, data from different servers or users gets mixed up.
+  - The browser or app knows the user's zone and converts for display.
+  - In Spring Boot + PostgreSQL, map timestamps to `Instant` (or `OffsetDateTime`) columns of type `timestamptz`.
+
+  ### Creating and calculating
+  ```java
+  LocalDate today = LocalDate.now();                    // depends on the system clock
+  LocalDate d = LocalDate.of(2026, 1, 31);              // month 1 = January
+  LocalDate p = LocalDate.parse("2026-08-15");          // ISO format yyyy-MM-dd
+  d.plusMonths(1);                                      // 2026-02-28 (clamped, no "Feb 31")
+  d.getDayOfWeek();  d.isLeapYear();  d.isBefore(p);
+  ```
+
+  ### Duration vs Period
+  ```java
+  Duration shift = Duration.between(LocalTime.of(9, 30), LocalTime.of(18, 0)); // PT8H30M
+  Duration otp = Duration.ofMinutes(5);
+  Period age = Period.between(LocalDate.of(2000, 8, 15), LocalDate.of(2026, 10, 31)); // P26Y2M16D
+  long days = ChronoUnit.DAYS.between(start, end);      // total days as a number
+  ```
+  `Duration` is for machine time (seconds, minutes, hours). `Period` is for human calendar time (years, months, days, where months have different lengths).
+
+  ### Formatting and parsing
+  ```java
+  DateTimeFormatter f = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+  String text = LocalDate.of(2026, 8, 15).format(f);    // "15-08-2026"
+  LocalDate back = LocalDate.parse("15-08-2026", f);
+  ```
+  Pattern letters: `yyyy` year, `MM` month number, `MMM` short month name, `dd` day, `HH` 24-hour, `hh` 12-hour, `mm` **minutes**, `ss` seconds, `a` AM/PM. Watch out: `MM` (month) vs `mm` (minutes).
+
+  ### Testing tip
+  `LocalDate.now()` and `Instant.now()` give different values every run, which makes tests flaky. In real projects you pass a `Clock` object, so tests can use a fixed time: `LocalDate.now(clock)`.
+tinyCode:
+  code: |
+    import java.time.*;
+    import java.time.format.DateTimeFormatter;
+    import java.time.temporal.ChronoUnit;
+
+    public class TimeTour {
+        public static void main(String[] args) {
+            Instant placed = Instant.parse("2026-01-15T10:00:00Z");
+            ZonedDateTime india = placed.atZone(ZoneId.of("Asia/Kolkata"));
+            ZonedDateTime ny = placed.atZone(ZoneId.of("America/New_York"));
+            System.out.println(india);
+            System.out.println(ny);
+
+            DateTimeFormatter f = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+            System.out.println("Shown to Indian user: " + india.format(f));
+
+            LocalDate joined = LocalDate.of(2024, 2, 29);
+            LocalDate review = joined.plusYears(1);
+            System.out.println(review);
+            System.out.println(ChronoUnit.DAYS.between(joined, review));
+
+            Duration otp = Duration.ofMinutes(5);
+            Instant expiresAt = placed.plus(otp);
+            System.out.println(expiresAt);
+        }
+    }
+  walkthrough: |
+    - `Instant.parse(...)` makes one exact moment: 10:00 UTC (`Z`).
+    - `atZone(Asia/Kolkata)` shows the **same moment** on Indian clocks: 15:30 (+05:30). In New York (in January, UTC-05:00) it's 05:00.
+    - `DateTimeFormatter` turns the Indian time into a friendly string.
+    - `2024-02-29` is a leap day. `plusYears(1)` can't give 2025-02-29 (it doesn't exist), so Java clamps to `2025-02-28`.
+    - `ChronoUnit.DAYS.between` counts the days: 365.
+    - `placed.plus(otp)` gives the OTP expiry moment, 5 minutes later, still in UTC.
+
+    Output:
+    ```
+    2026-01-15T15:30+05:30[Asia/Kolkata]
+    2026-01-15T05:00-05:00[America/New_York]
+    Shown to Indian user: 15-01-2026 15:30
+    2025-02-28
+    365
+    2026-01-15T10:05:00Z
+    ```
+tryIt:
+  instructions: "Type this age and shift calculator. Change the birth date to your own and the shift times to your college timings. (The dates are fixed so the output is the same every run.)"
+  code: |
+    import java.time.*;
+
+    public class AgeShift {
+        public static void main(String[] args) {
+            LocalDate birth = LocalDate.of(2003, 8, 15);
+            LocalDate today = LocalDate.of(2026, 10, 31);
+            Period age = Period.between(birth, today);
+            System.out.println("Age: " + age.getYears() + " years " + age.getMonths() + " months");
+
+            Duration shift = Duration.between(LocalTime.of(9, 30), LocalTime.of(18, 0));
+            System.out.println("Shift: " + shift + " = " + shift.toMinutes() + " minutes");
+
+            LocalDate deadline = today.plusDays(10);
+            System.out.println(deadline + " is a " + deadline.getDayOfWeek());
+        }
+    }
+predict:
+  code: |
+    import java.time.*;
+
+    public class Immutable {
+        public static void main(String[] args) {
+            LocalDate d = LocalDate.of(2026, 1, 31);
+            d.plusDays(1);
+            System.out.println(d);
+            LocalDate next = d.plusMonths(1);
+            System.out.println(next);
+            System.out.println(next.getMonth() + " " + next.getMonthValue());
+        }
+    }
+  expectedOutput: |
+    2026-01-31
+    2026-02-28
+    FEBRUARY 2
+  explanation: |
+    `LocalDate` is **immutable**: `d.plusDays(1)` returns a new date, but we ignore it, so `d` is still `2026-01-31`. `plusMonths(1)` would be 31 February, which doesn't exist, so Java clamps to the last valid day: `2026-02-28` (2026 is not a leap year). `getMonth()` gives the enum `FEBRUARY` and `getMonthValue()` gives `2` (months start at 1, unlike the old Calendar).
+commonMistakes:
+  - "Calling date.plusDays(1) and not using the result. java.time objects are immutable; write date = date.plusDays(1)."
+  - "Storing LocalDateTime for timestamps like created_at. It has no zone, so the moment is ambiguous; store an Instant (UTC)."
+  - "Using a fixed offset (+05:30) for zones that have daylight saving time. Use ZoneId like Europe/London."
+  - "Mixing up MM (month) and mm (minutes) in format patterns."
+  - "Using Period for hours/minutes or Duration for months. Duration = time-based, Period = date-based."
+  - "Using the old SimpleDateFormat shared between threads. It isn't thread-safe; DateTimeFormatter is."
+interviewBox:
+  why: "Why interviewers ask this: time bugs are common and costly in real apps, so knowing Instant vs local time shows practical maturity."
+  questions:
+    - q: "Why was the java.time API introduced in Java 8?"
+      a: "The old Date and Calendar classes were mutable, had confusing designs like months starting at zero, and SimpleDateFormat wasn't thread-safe. java.time is immutable and thread-safe, and has separate clear classes like LocalDate, LocalTime, Instant and ZonedDateTime."
+    - q: "What is the difference between Instant, LocalDateTime and ZonedDateTime?"
+      a: "Instant is an exact moment on the timeline in UTC, good for storing timestamps. LocalDateTime is just a date and time on a wall clock with no zone, so it's not an exact moment. ZonedDateTime is a date and time with a time zone, including daylight saving rules, so it's good for showing time to a user in their zone."
+    - q: "How would you store and display timestamps in a web application?"
+      a: "I'd store them in UTC, as an Instant or a timestamp with time zone column in the database. When showing them, I convert to the user's time zone with atZone and format with DateTimeFormatter. That way, servers and users in different zones never mix up times."
+    - q: "What is the difference between Duration and Period?"
+      a: "Duration measures time in seconds, minutes and hours, like an OTP valid for 5 minutes. Period measures dates in years, months and days, like a person's age or a 3-month subscription."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Your app records when each order was placed. Users are in India, the UK and the US. Which type should you store in the database?"
+    code: null
+    options: ["LocalDateTime", "LocalDate", "Instant (UTC)", "String like \"15-01-2026 3:30 PM\""]
+    answer: 2
+    explanation: "An Instant is one exact moment in UTC, the same for everyone, and can be converted to any user's zone for display. LocalDateTime is tempting because it has date and time, but without a zone you can't tell which moment it was."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      Instant i = Instant.parse("2026-03-01T20:00:00Z");
+      ZonedDateTime z = i.atZone(ZoneId.of("Asia/Kolkata"));
+      System.out.println(z.toLocalDate() + " " + z.toLocalTime());
+    options: ["2026-03-01 20:00", "2026-03-02 01:30", "2026-03-01 14:30", "2026-03-02 20:00"]
+    answer: 1
+    explanation: "India is UTC+05:30. 20:00 UTC + 5:30 = 01:30 the NEXT day, so the local date is 2026-03-02. '2026-03-01 14:30' subtracts instead of adding. This is exactly the 'order placed tomorrow' confusion that converting properly avoids."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "The programmer expects 2026-05-11, but it prints 2026-05-10. What's wrong?"
+    code: |
+      LocalDate due = LocalDate.of(2026, 5, 10);
+      due.plusDays(1);
+      System.out.println(due);
+    options:
+      - "LocalDate.of uses 0-based months"
+      - "LocalDate is immutable; plusDays returns a new date that is ignored. Write due = due.plusDays(1)"
+      - "plusDays only works with Instant"
+      - "println cannot print a LocalDate"
+    answer: 1
+    explanation: "Every java.time 'change' method returns a new object. The month is fine: java.time months start at 1, unlike the old Calendar, which is the tempting wrong option."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "A LocalDateTime represents one exact moment on the global timeline."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. LocalDateTime has no time zone, so '2026-01-15T10:00' could be 10 AM in Delhi or in New York, which are different moments. Instant and ZonedDateTime are exact moments."
+  - id: q5
+    type: MATCH
+    prompt: "Match each class to the best use"
+    pairs:
+      - left: "LocalDate"
+        right: "A birthday or a holiday"
+      - left: "Instant"
+        right: "created_at timestamp stored in the database"
+      - left: "ZonedDateTime"
+        right: "Showing a meeting time to a user in their zone"
+      - left: "Duration"
+        right: "An OTP valid for 5 minutes"
+      - left: "Period"
+        right: "A person's age in years and months"
+    explanation: "Calendar-only values use LocalDate, exact moments use Instant, display in a zone uses ZonedDateTime, time amounts use Duration and date amounts use Period."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that converts a UTC Instant into Indian time."
+    code: |
+      ZonedDateTime ist = instant.____(ZoneId.of("Asia/Kolkata"));
+    acceptedAnswers: ["atZone"]
+    explanation: "Instant.atZone(zoneId) gives a ZonedDateTime for the same moment, shown on that zone's clocks."
+  - id: q7
+    type: MCQ
+    prompt: "In the pattern \"dd-MM-yyyy HH:mm\", what does mm mean?"
+    code: null
+    options: ["Month", "Minutes", "Milliseconds", "Month name"]
+    answer: 1
+    explanation: "Lowercase mm is minutes; uppercase MM is the month number. Mixing them up is a classic bug that prints dates like 15-30-2026."
+explainBack:
+  prompt: "Explain to a friend the difference between Instant, LocalDate and ZonedDateTime, and why apps store time in UTC but show it in local time."
+  rubric:
+    - "I said Instant is one exact moment in UTC"
+    - "I said LocalDate/LocalDateTime have no zone, so they are calendar or wall-clock values"
+    - "I said ZonedDateTime is a moment shown in a specific zone, including daylight saving rules"
+    - "I explained 'store UTC, show local' with a reason"
+    - "I mentioned java.time objects are immutable"
+  modelAnswer: |
+    An Instant is one exact moment for the whole world, counted in UTC, like the moment a ball is bowled in a match. A LocalDate is just a calendar date like a birthday, with no time zone at all. A ZonedDateTime is a moment shown on a particular zone's clock, so the same Instant is 3:30 PM in India and 5 AM in New York. Apps store the Instant in UTC because servers and users can be anywhere, and UTC never gets confused. When showing it, they convert to the user's zone. Also, all these classes are immutable, so plusDays returns a new object.
+flashcards:
+  - front: "Instant vs LocalDateTime"
+    back: "Instant: exact moment in UTC. LocalDateTime: date + time with no zone, not an exact moment."
+  - front: "Golden rule for timestamps in apps"
+    back: "Store in UTC (Instant / timestamptz); convert to the user's zone (atZone) only for display."
+  - front: "Duration vs Period"
+    back: "Duration: hours/minutes/seconds (machine time). Period: years/months/days (calendar time)."
+  - front: "Are java.time classes mutable?"
+    back: "No, immutable and thread-safe. plusDays etc. return new objects."
+  - front: "LocalDate.of(2026, 1, 31).plusMonths(1)"
+    back: "2026-02-28 (clamped to the last valid day)."
+keyTakeaways:
+  - "java.time replaced Date/Calendar: immutable, thread-safe, months start at 1."
+  - "LocalDate/LocalTime/LocalDateTime have no zone; Instant is an exact UTC moment; ZonedDateTime adds zone rules."
+  - "Store timestamps in UTC, convert to the user's zone for display."
+  - "Duration is time-based, Period is date-based; ChronoUnit.X.between counts units."
+  - "Format with DateTimeFormatter; remember MM = month, mm = minutes."

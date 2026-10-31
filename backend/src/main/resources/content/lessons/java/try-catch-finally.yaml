@@ -1,0 +1,359 @@
+slug: try-catch-finally
+world: JAVA_CORE
+section: D
+order: 3
+title: "try, catch, finally"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Output-prediction questions on try/catch/finally flow are common practice material for SP and DSE; core for writing safe code in coding rounds."
+otherCompanies: "Common output and theory questions at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  Knowing the exception family tree is theory. **try, catch and finally** are how you actually *use* it.
+
+  Interviewers love **"What is the output?"** questions here, because the flow jumps around: some lines are skipped, some always run. If you can trace the jumps step by step, these questions become free marks.
+
+  You will learn:
+  - exactly which lines run when an exception happens (and when it doesn't),
+  - how Java picks **which catch** block runs,
+  - **multi-catch** (`catch (A | B e)`),
+  - why **catch order** can cause a compile error,
+  - what `finally` is for.
+analogy: |
+  Think of **cooking at home with a gas stove**.
+
+  - **try** = "Try to cook the recipe step by step."
+  - **catch** = "If the milk boils over, do *this*. If the gas runs out, do *that*." Each catch is a plan for one kind of trouble. Only the first matching plan is used.
+  - **finally** = "**Whatever happens, turn off the gas.**" Whether the dish was perfect, burnt, or you stopped halfway, this step always happens.
+
+  And order of plans matters: if your first plan is "for ANY problem, call Mummy", the specific plan "if milk boils over, lower the flame" can never be reached. Java calls that a compile error.
+visual:
+  diagram: |
+    try {                         NO exception        exception in line 2
+      line 1;                     line 1  ran          line 1  ran
+      line 2;   <-- may throw     line 2  ran          line 2  THROWS ---+
+      line 3;                     line 3  ran          line 3  SKIPPED   |
+    } catch (TypeA e) {           catch   skipped      first matching <--+
+      ...                                              catch runs
+    } finally {
+      cleanup;                    finally RUNS         finally RUNS
+    }
+    after;                        after   runs         after runs
+                                                       (if exception was
+                                                        caught)
+
+    Catch matching goes TOP to BOTTOM; first match wins:
+    catch (FileNotFoundException e)   <- most specific first
+    catch (IOException e)
+    catch (Exception e)               <- most general last
+  caption: "Without an exception, the try finishes and catch is skipped. With one, the rest of try is skipped and the first matching catch runs. finally runs in both cases."
+  visualizer: null
+explanation: |
+  ### The three blocks
+  - **try**: code that *might* throw an exception.
+  - **catch (Type e)**: runs only if an exception of that type (or a subclass) was thrown in the try. `e` is the exception object.
+  - **finally**: runs **after** try (and catch), **whether or not** an exception happened. Used for cleanup: closing files, releasing locks, printing "done".
+
+  Allowed shapes: `try-catch`, `try-finally`, `try-catch-finally`, and many catches. A `try` alone (no catch, no finally) is a compile error.
+
+  ### Flow of control, step by step
+  **Case 1: no exception.** All of try runs, every catch is skipped, finally runs, then code after the block.
+
+  **Case 2: exception, and a catch matches.** Try stops at the line that threw. The remaining try lines are **skipped forever** (Java never goes back). The first matching catch runs, then finally, then code after the block.
+
+  **Case 3: exception, and no catch matches.** Finally still runs, then the exception keeps travelling up to the calling method. Code after the block does **not** run in this method.
+
+  **Case 4: exception inside a catch block.** Finally runs, then the new exception travels up.
+
+  ### How Java picks a catch block
+  Java checks the catch blocks **from top to bottom** and runs the **first one whose type matches** (same class or a parent class). Only **one** catch block runs per exception.
+
+  ### Catch order: specific first, general last
+  Because a parent type also matches its children, putting a parent **before** a child makes the child's catch unreachable. Java refuses to compile it:
+  ```java
+  try {
+      int x = 5 / 0;
+  } catch (Exception e) {
+      System.out.println("general");
+  } catch (ArithmeticException e) {   // compile error:
+      System.out.println("maths");     // exception ArithmeticException
+  }                                    // has already been caught
+  ```
+  Fix: put `ArithmeticException` first. Unrelated types (like `ArithmeticException` and `NullPointerException`) can be in any order.
+
+  ### Multi-catch (Java 7+)
+  If two exceptions need the **same** handling, join them with `|`:
+  ```java
+  try {
+      int n = Integer.parseInt(text);
+      System.out.println(arr[n]);
+  } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+      System.out.println("Bad input: " + e.getClass().getSimpleName());
+  }
+  ```
+  Two rules:
+  1. The types must **not** be parent and child. `catch (IOException | FileNotFoundException e)` is a compile error, because the parent already covers the child.
+  2. `e` is implicitly **final**: you cannot assign `e = ...` inside the block.
+
+  ### What exactly does finally guarantee?
+  finally runs after a normal finish, after a caught exception, after an uncaught exception, and even after a `return`, `break` or `continue` inside try. The only common cases where it does **not** run are `System.exit()`, the JVM crashing, or the machine losing power. (The next lessons dig into these traps.)
+
+  ### Nested try
+  A try block can contain another try/catch. If the inner catch doesn't match, the exception goes to the outer catch. Each level's finally still runs, inner first.
+
+  ### Quick summary table
+  | Situation | Rest of try | catch | finally | Code after |
+  |---|---|---|---|---|
+  | No exception | runs | skipped | runs | runs |
+  | Exception, caught | skipped | first match runs | runs | runs |
+  | Exception, not caught | skipped | none | runs | skipped (exception goes up) |
+tinyCode:
+  code: |
+    public class Kitchen {
+        static void cook(String step) {
+            try {
+                System.out.println("Try: " + step);
+                if (step.equals("milk")) {
+                    throw new IllegalStateException("milk boiled over");
+                }
+                System.out.println("Done: " + step);
+            } catch (IllegalStateException e) {
+                System.out.println("Catch: " + e.getMessage());
+            } finally {
+                System.out.println("Finally: gas off");
+            }
+        }
+        public static void main(String[] args) {
+            cook("rice");
+            cook("milk");
+        }
+    }
+  walkthrough: |
+    - `cook("rice")`: no exception. The try prints both lines, catch is skipped, finally prints "gas off".
+    - `cook("milk")`: we **throw** an `IllegalStateException` (an unchecked exception meaning "the object is in a bad state").
+      - "Done: milk" is **skipped**, because try stops at the throw.
+      - The catch matches, so it prints the message.
+      - finally still prints "gas off".
+
+    Output:
+    ```
+    Try: rice
+    Done: rice
+    Finally: gas off
+    Try: milk
+    Catch: milk boiled over
+    Finally: gas off
+    ```
+tryIt:
+  instructions: "Type this program. It uses a multi-catch and ordered catch blocks. Run it, then try moving 'catch (Exception e)' to the top and read the compile error."
+  code: |
+    public class Picker {
+        static void run(String input) {
+            int[] marks = {70, 85, 90};
+            try {
+                int i = Integer.parseInt(input);
+                System.out.println("Mark: " + (marks[i] / i));
+            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                System.out.println("Bad index input: " + input);
+            } catch (Exception e) {
+                System.out.println("Other: " + e.getClass().getSimpleName());
+            } finally {
+                System.out.println("-- checked " + input);
+            }
+        }
+        public static void main(String[] args) {
+            run("1");
+            run("x");
+            run("7");
+            run("0");
+        }
+    }
+predict:
+  code: |
+    public class Trace {
+        public static void main(String[] args) {
+            try {
+                System.out.println("1");
+                Object o = "hello";
+                Integer n = (Integer) o;
+                System.out.println("2");
+            } catch (ArithmeticException e) {
+                System.out.println("3");
+            } catch (RuntimeException e) {
+                System.out.println("4");
+            } finally {
+                System.out.println("5");
+            }
+            System.out.println("6");
+        }
+    }
+  expectedOutput: |
+    1
+    4
+    5
+    6
+  explanation: |
+    Casting a `String` to `Integer` throws `ClassCastException`. So "2" is skipped. Java checks the catches top to bottom: `ArithmeticException` does not match, `RuntimeException` does (ClassCastException is its child), so "4" prints. finally prints "5". The exception was handled, so "6" also prints.
+commonMistakes:
+  - "Putting catch (Exception e) before a more specific catch. That's a compile error: the specific one is unreachable."
+  - "Thinking execution returns to the try after the catch. The skipped try lines never run."
+  - "Expecting more than one catch block to run for one exception. Only the first match runs."
+  - "Writing a multi-catch with parent and child types, like IOException | FileNotFoundException. Compile error."
+  - "Thinking finally only runs when there is an exception. It runs in both cases."
+  - "Writing a try block with neither catch nor finally. It doesn't compile."
+interviewBox:
+  why: "Why interviewers ask this: tracing try/catch/finally flow quickly shows whether you really understand how exceptions move through a program."
+  questions:
+    - q: "Explain the flow of try, catch and finally."
+      a: "The try block runs until it finishes or an exception is thrown. If an exception is thrown, the remaining try lines are skipped and Java looks at the catch blocks from top to bottom; the first one that matches runs. The finally block runs after that in every case, with or without an exception, so we use it for cleanup."
+    - q: "Can we have try without catch?"
+      a: "Yes, if it has a finally block: try-finally. Or with try-with-resources, which can stand alone. But a plain try with neither catch nor finally doesn't compile."
+    - q: "Why must a subclass exception be caught before its superclass?"
+      a: "Because Java picks the first matching catch. A superclass catch would match the subclass too, so a later subclass catch could never run. The compiler reports that as an error."
+    - q: "What is multi-catch?"
+      a: "From Java 7 we can catch several unrelated exceptions in one block with a pipe, like catch (IOException | SQLException e), when the handling is the same. The types can't be parent and child, and the variable e is final."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              try {
+                  System.out.print("A");
+                  int x = 10 / 0;
+                  System.out.print("B");
+              } catch (ArithmeticException e) {
+                  System.out.print("C");
+              } finally {
+                  System.out.print("D");
+              }
+              System.out.print("E");
+          }
+      }
+    options: ["ABCDE", "ACDE", "ACD", "ABDE"]
+    answer: 1
+    explanation: "A prints, then 10 / 0 throws, so B is skipped. The catch prints C, finally prints D, and since the exception was handled, E prints. 'ABCDE' is wrong because the try never goes back to print B."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why won't this compile?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              try {
+                  String s = null;
+                  s.length();
+              } catch (RuntimeException e) {
+                  System.out.println("runtime");
+              } catch (NullPointerException e) {
+                  System.out.println("npe");
+              }
+          }
+      }
+    options:
+      - "NullPointerException is checked"
+      - "The NullPointerException catch is unreachable because RuntimeException (its parent) is caught first"
+      - "You cannot catch RuntimeException"
+      - "A finally block is required"
+    answer: 1
+    explanation: "RuntimeException already catches NullPointerException, so the second catch can never run, and the compiler reports 'exception NullPointerException has already been caught'. Fix: put the NullPointerException catch first. finally is optional."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              try {
+                  try {
+                      throw new IllegalArgumentException("x");
+                  } catch (ArithmeticException e) {
+                      System.out.println("inner catch");
+                  } finally {
+                      System.out.println("inner finally");
+                  }
+              } catch (IllegalArgumentException e) {
+                  System.out.println("outer catch " + e.getMessage());
+              } finally {
+                  System.out.println("outer finally");
+              }
+          }
+      }
+    options:
+      - "inner catch\ninner finally\nouter finally"
+      - "inner finally\nouter catch x\nouter finally"
+      - "outer catch x\ninner finally\nouter finally"
+      - "inner finally\nouter finally"
+    answer: 1
+    explanation: "The inner catch only handles ArithmeticException, so it doesn't match. The inner finally still runs first, then the exception moves to the outer try, where the outer catch matches, then the outer finally runs. The inner finally always runs before the outer catch, because Java finishes the inner block first."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "If an exception is thrown in try and no catch block matches it, the finally block is skipped."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. finally runs even when no catch matches. After finally, the exception continues up to the calling method."
+  - id: q5
+    type: MCQ
+    prompt: "Which multi-catch is a compile error?"
+    code: null
+    options:
+      - "catch (NumberFormatException | NullPointerException e)"
+      - "catch (java.io.IOException | java.sql.SQLException e)"
+      - "catch (java.io.IOException | java.io.FileNotFoundException e)"
+      - "catch (ArithmeticException | ClassCastException e)"
+    answer: 2
+    explanation: "FileNotFoundException is a subclass of IOException, and multi-catch types must not be related by subclassing. The other pairs are unrelated siblings, so they're fine."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword for the block that runs whether or not an exception happens."
+    code: |
+      try {
+          openFile();
+      } catch (Exception e) {
+          System.out.println("error");
+      } ____ {
+          System.out.println("cleanup");
+      }
+    acceptedAnswers: ["finally"]
+    explanation: "finally always runs after try/catch, which makes it the place for cleanup. Note the spelling: finally, not final (final is a different keyword) and not finalize (an old Object method)."
+  - id: q7
+    type: MATCH
+    prompt: "Match the situation to what happens"
+    pairs:
+      - left: "No exception in try"
+        right: "All catch blocks skipped, finally runs"
+      - left: "Exception, a catch matches"
+        right: "Rest of try skipped, first matching catch runs"
+      - left: "Exception, no catch matches"
+        right: "finally runs, then the exception goes to the caller"
+      - left: "Parent catch written before child catch"
+        right: "Compile error: child already caught"
+    explanation: "These four rules cover almost every try/catch/finally output question. Trace them line by line."
+explainBack:
+  prompt: "Explain to a friend how try, catch and finally work, including what happens to the lines after an exception and why catch order matters."
+  rubric:
+    - "I said the rest of try is skipped after an exception"
+    - "I said only the first matching catch runs, checked top to bottom"
+    - "I said finally runs with or without an exception"
+    - "I explained why specific catches must come before general ones"
+    - "I used an analogy like 'turn off the gas'"
+  modelAnswer: |
+    I put risky code in try. If everything works, the catch blocks are skipped. If a line throws an exception, the remaining try lines are skipped forever, and Java checks the catch blocks from top to bottom; the first one that matches the exception type runs. Then finally runs, no matter what happened, so it's perfect for cleanup, like always turning off the gas after cooking. Because a parent type like Exception also matches its children, I must write specific catches first and general ones last, otherwise the compiler complains that the specific catch can never be reached.
+flashcards:
+  - front: "After an exception in try, do the remaining try lines run?"
+    back: "No. They are skipped forever; control jumps to the first matching catch."
+  - front: "How many catch blocks run for one exception?"
+    back: "Only one: the first one (top to bottom) whose type matches."
+  - front: "Catch order rule"
+    back: "Subclass before superclass. Otherwise: compile error 'exception X has already been caught'."
+  - front: "Multi-catch rules"
+    back: "catch (A | B e): A and B must not be parent/child, and e is implicitly final."
+  - front: "When does finally run?"
+    back: "After try/catch in all normal cases: no exception, caught exception, uncaught exception, return. Not after System.exit."
+keyTakeaways:
+  - "Once a line throws, the rest of the try is skipped forever."
+  - "Catches are checked top to bottom; only the first match runs."
+  - "Specific exceptions first, general last, or the code won't compile."
+  - "Multi-catch joins unrelated types with | and makes e final."
+  - "finally runs whether or not an exception happens; use it for cleanup."

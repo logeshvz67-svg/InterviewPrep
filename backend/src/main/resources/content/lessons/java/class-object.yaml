@@ -1,0 +1,355 @@
+slug: class-object
+world: JAVA_CORE
+section: C
+order: 1
+title: "Class and object"
+version: 1
+estimatedMinutes: 25
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Core OOP theory for every SP and DSE round; the first step before inheritance, polymorphism and design questions."
+otherCompanies: "A basic OOP question everywhere: TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  **"What is a class and what is an object?"** is usually the first OOP question in a Java interview. It sounds easy, but many people answer with a definition they memorised and then get stuck on the follow-up: *"What happens in memory when you write `new`?"*
+
+  Everything in OOP (Object-Oriented Programming: building programs from objects that hold data and behaviour together) starts here:
+  - Constructors, `this`, `static` and inheritance all need this picture.
+  - Output questions often test what happens when two variables point to the same object.
+  - Every coding problem with a `Node`, `Student` or `Pair` class uses it.
+analogy: |
+  Think of a **cookie cutter** and **cookies**.
+
+  - The **cookie cutter** is the **class**. It decides the shape. You can't eat it. It exists once.
+  - Each **cookie** is an **object**. You can make as many cookies as you like with the same cutter.
+  - Each cookie can have its own **topping** (chocolate, jam). That's the object's **state** (its field values).
+  - Things you can do with a cookie (eat it, break it) are its **behaviour** (methods).
+
+  Another everyday example: the **Aadhaar card format** is the class (fields: name, number, address). Your Aadhaar card and your friend's are two objects with different values.
+visual:
+  diagram: |
+    class Student {            <- blueprint (class), one in memory
+        String name;           <- field (state)
+        int marks;
+        void show() {...}      <- method (behaviour)
+    }
+
+    Student a = new Student();  a.name = "Ravi";  a.marks = 85;
+    Student b = new Student();  b.name = "Priya"; b.marks = 92;
+    Student c = a;
+
+     STACK               HEAP
+     +-----+        +------------------+
+     |  a  |------->| name = "Ravi"    |  object 1
+     +-----+   +--->| marks = 85       |
+     |  c  |---+    +------------------+
+     +-----+        +------------------+
+     |  b  |------->| name = "Priya"   |  object 2
+     +-----+        | marks = 92       |
+                    +------------------+
+  caption: "A class is the blueprint. new creates an object on the heap. Variables on the stack hold references (arrows). c = a copies the arrow, not the object."
+  visualizer: null
+explanation: |
+  ### Class: the blueprint
+  A **class** is a template that describes:
+  - **Fields** (also called *instance variables* or *attributes*): the data each object will hold, like `name` and `marks`.
+  - **Methods**: the actions an object can do, like `show()`.
+
+  ```java
+  class Student {
+      String name;      // field
+      int marks;        // field
+
+      void show() {     // method
+          System.out.println(name + " scored " + marks);
+      }
+  }
+  ```
+  Writing a class does **not** create any student. It only describes what a student looks like.
+
+  ### Object: the real thing
+  An **object** is one actual instance of a class, living in memory, with its own values. (**Instance** just means "one object made from a class".)
+  ```java
+  Student s1 = new Student();   // create an object
+  s1.name = "Ravi";             // set its state with the dot operator
+  s1.marks = 85;
+  s1.show();                    // call its behaviour: Ravi scored 85
+  ```
+  The **dot operator** (`.`) means "go to this object and use its field or method".
+
+  ### What `new Student()` really does
+  1. Finds free memory on the **heap** (the memory area for objects) and creates the object.
+  2. Gives every field its **default value**: `0` for numbers, `false` for boolean, `'\u0000'` for char, and `null` for objects like String.
+  3. Runs the **constructor** (a special setup method, next lesson).
+  4. Returns a **reference** (the object's address), which is stored in the variable `s1`.
+
+  The variable `s1` itself lives on the **stack** (if it's a local variable) and only holds the arrow to the object.
+
+  ### Reference vs object
+  ```java
+  Student a = new Student();
+  Student c = a;        // NO new object! c and a point to the same object
+  c.marks = 50;
+  System.out.println(a.marks);  // 50
+  ```
+  Only `new` creates objects. Assigning one variable to another copies the **reference**.
+
+  A reference can also be `null`, meaning "points to nothing". Using a field or method on a `null` reference throws **`NullPointerException`** at runtime.
+
+  ### Field defaults vs local variables
+  | | Fields (inside the class) | Local variables (inside a method) |
+  |---|---|---|
+  | Default value? | Yes: 0, false, null... | **No** |
+  | Use without assigning? | Allowed | **Compile error** |
+
+  ### Four ways to create an object (good to know)
+  1. `new` keyword (the normal way, 99% of the time).
+  2. Cloning an existing object with `clone()`.
+  3. Deserialization (rebuilding an object from saved bytes).
+  4. Reflection, for example `Student.class.getDeclaredConstructor().newInstance()`.
+
+  ### Class vs object in one table
+  | Class | Object |
+  |---|---|
+  | Blueprint / template | Real instance |
+  | Declared once with `class` | Created with `new`, many times |
+  | No memory for field values | Gets heap memory for its own field values |
+  | Logical idea | Physical thing in memory |
+
+  ### Where objects go when unused
+  When no variable points to an object any more, it becomes **eligible for garbage collection**: the JVM's **garbage collector** will free that memory automatically later. You never delete objects by hand in Java.
+tinyCode:
+  code: |
+    public class School {
+        static class Student {
+            String name;
+            int marks;
+            boolean passed;
+
+            void show() {
+                System.out.println(name + " " + marks + " " + passed);
+            }
+        }
+
+        public static void main(String[] args) {
+            Student a = new Student();
+            a.show();
+
+            a.name = "Ravi";
+            a.marks = 85;
+            a.passed = a.marks >= 40;
+            a.show();
+
+            Student b = new Student();
+            b.name = "Priya";
+            b.marks = 92;
+            b.show();
+
+            Student c = a;
+            c.marks = 50;
+            a.show();
+        }
+    }
+  walkthrough: |
+    - `static class Student` is written inside `School` only so the example fits in one file. (`static` nested classes come in a later lesson; just read it as a normal class here.)
+    - `new Student()` creates object 1. No values were set, so the fields have defaults: `null 0 false`.
+    - We set `a`'s fields and call `show()`: `Ravi 85 true`.
+    - `b` is a **second, separate** object: `Priya 92 false` (we never set `passed`, so it stays false).
+    - `Student c = a;` makes no new object; `c` points to object 1. Changing `c.marks` changes the same object, so `a.show()` now prints `Ravi 50 true`.
+
+    Output:
+    ```
+    null 0 false
+    Ravi 85 true
+    Priya 92 false
+    Ravi 50 true
+    ```
+tryIt:
+  instructions: "Type this Phone class and the main method. Create a third phone of your own, give it a brand and battery level, and call both methods on it. Watch how each object keeps its own battery."
+  code: |
+    public class PhoneShop {
+        static class Phone {
+            String brand;
+            int battery;
+
+            void use(int minutes) {
+                battery = battery - minutes / 10;
+            }
+
+            void status() {
+                System.out.println(brand + " battery: " + battery + "%");
+            }
+        }
+
+        public static void main(String[] args) {
+            Phone p1 = new Phone();
+            p1.brand = "Samsung";
+            p1.battery = 100;
+
+            Phone p2 = new Phone();
+            p2.brand = "Redmi";
+            p2.battery = 60;
+
+            p1.use(200);
+            p1.status();
+            p2.status();
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static class Box {
+            int size;
+        }
+
+        public static void main(String[] args) {
+            Box x = new Box();
+            Box y = new Box();
+            Box z = x;
+            x.size = 5;
+            y.size = 7;
+            z.size = z.size + y.size;
+            System.out.println(x.size + " " + y.size + " " + z.size);
+            System.out.println((x == z) + " " + (x == y));
+        }
+    }
+  expectedOutput: |
+    12 7 12
+    true false
+  explanation: |
+    - Only two objects exist (two `new`s). `x` and `z` point to the same Box; `y` points to another.
+    - `x.size = 5`, `y.size = 7`. Then `z.size = 5 + 7 = 12`, which changes the shared object, so `x.size` is also 12.
+    - `x == z` compares references: same object, `true`. `x == y`: different objects, `false`.
+commonMistakes:
+  - "Thinking Student c = a; makes a copy. It copies the reference; both variables share one object."
+  - "Saying \"a class takes memory for each field value\". Only objects get memory for field values."
+  - "Using a local variable without initialising it. Fields get defaults; local variables don't (compile error)."
+  - "Calling a method on a null reference, which throws NullPointerException at runtime."
+  - "Comparing two objects with == and expecting it to compare their fields. == compares references."
+interviewBox:
+  why: "Why interviewers ask this: it's the foundation of OOP, and the follow-ups (memory, references, new) show whether you understand it or just memorised a line."
+  questions:
+    - q: "What is the difference between a class and an object?"
+      a: "A class is a blueprint that defines fields and methods. An object is a real instance created from that blueprint with new, and it has its own values for those fields. For example, Student is a class, and Ravi and Priya are two Student objects."
+    - q: "What happens when you write new Student()?"
+      a: "Java allocates memory for a new object on the heap, sets all fields to default values like 0, false or null, runs the constructor, and returns a reference to the object. That reference is stored in the variable."
+    - q: "If I write Student b = a, how many objects are there?"
+      a: "Still one. b = a only copies the reference, so both variables point to the same object. Changing a field through b is visible through a. Only new creates a new object."
+    - q: "What are the ways to create an object in Java?"
+      a: "Mainly with the new keyword. Other ways are clone(), deserialization, and reflection, like getDeclaredConstructor().newInstance()."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which statement is correct?"
+    options:
+      - "A class is created with new; an object is declared with class"
+      - "A class is a blueprint; an object is an instance of it created with new"
+      - "A class and an object are the same thing in Java"
+      - "Each class can have only one object"
+    answer: 1
+    explanation: "The class describes fields and methods; new makes objects (instances) from it, as many as you want. The first option swaps the two; the last is wrong because one class can create many objects."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      class Dog { String name; int age; }
+      public class Main {
+          public static void main(String[] args) {
+              Dog d = new Dog();
+              System.out.println(d.name + " " + d.age);
+          }
+      }
+    options: ["null 0", "\" \" 0", "Compile error: fields not initialised", "NullPointerException"]
+    answer: 0
+    explanation: "Fields get default values: null for objects like String and 0 for int. Printing null is fine (it prints the word null). The compile error option is the rule for LOCAL variables, not fields."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This program crashes at runtime. Why?"
+    code: |
+      class Car { String model; }
+      public class Main {
+          public static void main(String[] args) {
+              Car c = null;
+              c.model = "Nexon";
+              System.out.println(c.model);
+          }
+      }
+    options:
+      - "model must be declared final"
+      - "c is null (no object was created), so c.model throws NullPointerException"
+      - "String fields can't be assigned outside the class"
+      - "println cannot print fields"
+    answer: 1
+    explanation: "c points to nothing. Accessing a field through a null reference throws NullPointerException. The fix is Car c = new Car();. Field assignment from outside is allowed here because model is not private."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Student s2 = s1; creates a second Student object."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. It copies the reference, so s1 and s2 point to the same single object. Only new (or clone, deserialization, reflection) creates objects."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      class Counter { int n; }
+      public class Main {
+          public static void main(String[] args) {
+              Counter a = new Counter();
+              Counter b = new Counter();
+              Counter c = b;
+              a.n++; b.n++; c.n++;
+              System.out.println(a.n + " " + b.n + " " + c.n);
+          }
+      }
+    options: ["1 1 1", "1 2 2", "3 3 3", "1 2 1"]
+    answer: 1
+    explanation: "Two objects: a's object and b's object (c shares b's). a.n becomes 1. b.n++ and c.n++ both increase the same object, so it becomes 2, seen through both b and c. \"1 1 1\" is the trap of thinking c is a separate object."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill the keyword that creates a new object."
+    code: |
+      Student s = ____ Student();
+    acceptedAnswers: ["new"]
+    explanation: "new allocates the object on the heap, runs the constructor and returns the reference."
+  - id: q7
+    type: MATCH
+    prompt: "Match each term to its meaning"
+    pairs:
+      - left: "Class"
+        right: "Blueprint describing fields and methods"
+      - left: "Object"
+        right: "An actual instance in heap memory"
+      - left: "Field"
+        right: "Data each object holds (its state)"
+      - left: "Method"
+        right: "An action an object can perform (behaviour)"
+      - left: "Reference"
+        right: "A variable holding the address of an object"
+    explanation: "Class = blueprint, object = instance, fields = state, methods = behaviour, reference = arrow to the object."
+explainBack:
+  prompt: "Explain to a friend the difference between a class and an object, and what happens in memory when you write new."
+  rubric:
+    - "I said a class is a blueprint and an object is an instance"
+    - "I said each object has its own field values (state)"
+    - "I explained new: heap memory, default values, constructor, reference returned"
+    - "I explained that b = a copies the reference, not the object"
+    - "I used an analogy (cookie cutter, Aadhaar format...)"
+  modelAnswer: |
+    A class is like a cookie cutter: it decides the shape, meaning what fields and methods every object will have. An object is one actual cookie made with it. When I write new Student(), Java makes the object on the heap, gives every field a default value like zero or null, runs the constructor, and gives me back a reference, which is like the object's address. My variable only holds that address. So if I write b = a, I don't get a new student; both variables point to the same one, and changing it through b also shows through a. Only new creates a new object.
+flashcards:
+  - front: "Class vs object"
+    back: "Class = blueprint (fields + methods). Object = real instance created with new, with its own field values."
+  - front: "4 steps of new"
+    back: "Allocate heap memory, set default values, run the constructor, return a reference."
+  - front: "Default field values"
+    back: "0 for numbers, false for boolean, '\\u0000' for char, null for objects. Local variables have NO default."
+  - front: "Does b = a create an object?"
+    back: "No. It copies the reference; both point to the same object."
+  - front: "Ways to create an object"
+    back: "new, clone(), deserialization, reflection (getDeclaredConstructor().newInstance())."
+keyTakeaways:
+  - "A class is a blueprint; an object is an instance with its own state."
+  - "new allocates heap memory, sets defaults, runs the constructor and returns a reference."
+  - "Variables hold references; assigning one to another shares the same object."
+  - "Fields get default values; local variables must be initialised before use."
+  - "Using a null reference throws NullPointerException; unreachable objects are garbage collected."

@@ -1,0 +1,295 @@
+slug: concurrent-collections
+world: JAVA_CORE
+section: E
+order: 9
+title: "ConcurrentHashMap, fail-fast vs fail-safe"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, TCS]
+infosysRelevance: "A depth topic for SP technical rounds: it usually comes right after 'how does HashMap work?'."
+otherCompanies: "Product companies and TCS advanced roles use it to check multithreading basics; 'fail-fast vs fail-safe' is a common basic question everywhere."
+why: |
+  Real backend apps (like a Spring Boot server) handle **many users at the same time**. Each request runs on its own **thread** (a separate line of work running in parallel). If two threads change the same `HashMap` together, data can silently get lost.
+
+  Interviewers check two things here:
+  1. **"HashMap vs Hashtable vs ConcurrentHashMap"**: how to share a map safely between threads.
+  2. **"Fail-fast vs fail-safe iterators"**: what happens when a collection changes while you are looping over it.
+
+  Both questions come up right after HashMap internals, so learning them together makes your answer flow naturally.
+analogy: |
+  Imagine a **big library** with many shelves.
+
+  - **HashMap** is a library with **no rules**: two people can grab the same register and scribble over each other's entries. Entries get lost.
+  - **Hashtable / synchronizedMap** puts **one guard at the main door** who lets in only one person at a time. Safe, but a long queue forms outside.
+  - **ConcurrentHashMap** gives **each shelf its own small lock**. Many people work on different shelves at once; they only wait if they need the exact same shelf. Reading is allowed almost freely.
+
+  For iterators: a **fail-fast** iterator is a strict teacher taking attendance who **stops immediately** ("Someone changed the list!") if a student walks in mid-roll-call. A **fail-safe** iterator takes a **photo of the class** first and reads names from the photo, so changes don't disturb it (but it doesn't see them either).
+visual:
+  diagram: |
+    Hashtable / synchronizedMap      ConcurrentHashMap (Java 8+)
+    one lock for the whole map       lock only one bucket's head
+    +------------------------+       +----+
+    | LOCK                   |       | 0  | -> [a] -> [q]   <- T1 locks
+    |  [0] [1] [2] ... [15]  |       | 1  | -> null         <- T2 CAS put
+    +------------------------+       | 2  | -> [m]          <- T3 reads,
+    T1 works, T2 T3 T4 wait          | .. |                   no lock
+                                     +----+
+
+    Iterators while another change happens:
+    fail-fast (ArrayList, HashMap)    fail-safe (CopyOnWriteArrayList)
+    modCount 3 -> list.add -> 4       iterator reads a snapshot copy
+    next(): expected 3, found 4       list.add makes a NEW array
+    => ConcurrentModificationException loop continues, no exception
+  caption: "Hashtable locks the whole map; ConcurrentHashMap locks only one bucket. Fail-fast iterators throw when the collection changes; fail-safe ones work on a copy or a weakly consistent view."
+  visualizer: null
+explanation: |
+  ### The problem: HashMap is not thread-safe
+  **Thread-safe** means "works correctly even when many threads use it at the same time". `HashMap` is **not**. If two threads do `map.put(...)` together:
+  - both may write into the same bucket and one entry is **lost**,
+  - `size` can become wrong,
+  - in old Java 7, two threads resizing together could create a loop in a bucket list and hang the CPU.
+
+  ### Option 1: Hashtable and Collections.synchronizedMap
+  `Hashtable` (an old class from Java 1.0) and `Collections.synchronizedMap(map)` make every method `synchronized`. **synchronized** means "only one thread may be inside at a time". This is safe but slow: one thread reading blocks every other thread, even readers.
+  - `Hashtable` allows **no null key and no null value**.
+  - Even with these, **compound actions** like "check then put" are not atomic (see below).
+
+  ### Option 2: ConcurrentHashMap (the right answer)
+  `java.util.concurrent.ConcurrentHashMap` is built for many threads:
+  - **Java 8+ design:** same idea as HashMap (array of buckets, lists, trees), but:
+    - writing into an **empty bucket** uses **CAS** (Compare-And-Swap, a single CPU instruction that says "set this only if it is still empty"), so no lock at all;
+    - writing into a **non-empty bucket** locks **only that bucket's first node** with `synchronized`;
+    - **reads (`get`) take no lock** in normal cases, so they are very fast.
+  - **Java 7 design (old):** the map was split into 16 **segments**, each with its own lock. You may hear "segment locking" in interviews; mention that Java 8 replaced it with per-bucket locking.
+  - Allows **no null keys or values**. Why? In a shared map, `get(k)` returning `null` would be ambiguous: "key missing" or "value is null"? Another thread could change things between your `containsKey` and `get`, so Java simply bans null.
+  - `size()` is an estimate while other threads are writing.
+
+  ### Atomic compound methods
+  This "check-then-act" code is **broken** with threads, even on ConcurrentHashMap:
+  ```java
+  if (!map.containsKey(word)) {   // T1 and T2 both see "missing"
+      map.put(word, 1);           // both put 1 -> one count lost
+  }
+  ```
+  Each call is safe alone, but the **pair** is not. Use the atomic (all-in-one, cannot be interrupted) methods instead:
+  | Method | What it does atomically |
+  |---|---|
+  | `putIfAbsent(k, v)` | put only if the key is missing |
+  | `computeIfAbsent(k, fn)` | create the value only if missing |
+  | `merge(k, 1, Integer::sum)` | add 1 to the count (or start at 1) |
+  | `compute(k, fn)` | replace the value using the old one |
+
+  ### Fail-fast iterators
+  Normal collections (`ArrayList`, `HashMap`, `HashSet`...) keep a counter called **`modCount`** that increases on every structural change (add/remove). The iterator remembers the value when it starts. On each `next()`, if `modCount` changed, it throws **`ConcurrentModificationException`** (CME).
+  - It happens even with **one thread**: e.g. calling `list.remove(x)` inside a for-each loop.
+  - It is **best effort**: Java does not promise to always detect it, so never use CME for program logic.
+  - Safe way to remove while looping: `iterator.remove()` or `list.removeIf(...)`.
+
+  ### Fail-safe (weakly consistent) iterators
+  Collections in `java.util.concurrent` never throw CME:
+  - **`CopyOnWriteArrayList`**: every write creates a **new copy** of the internal array. The iterator keeps reading the **old snapshot**, so it never sees changes made after it started. Great for lists that are read a lot and changed rarely (like a list of event listeners). Bad for frequent writes: each write is O(n).
+  - **`ConcurrentHashMap`**: its iterators are **weakly consistent**: they don't throw, and they may or may not show changes made during the loop.
+  - `CopyOnWriteArrayList`'s iterator does **not** support `iterator.remove()` (it throws `UnsupportedOperationException`).
+
+  ### Summary table
+  | | HashMap | Hashtable | synchronizedMap | ConcurrentHashMap |
+  |---|---|---|---|---|
+  | Thread-safe | No | Yes | Yes | Yes |
+  | Locking | none | whole map | whole map | per bucket + CAS |
+  | Null key/value | 1 key, many values | none | like the wrapped map | none |
+  | Iterator | fail-fast | fail-fast* | fail-fast | weakly consistent |
+  | Speed with many threads | unsafe | slow | slow | fast |
+
+  *Hashtable's old `Enumeration` is not fail-fast, but its `Iterator` is.
+tinyCode:
+  code: |
+    import java.util.*;
+    import java.util.concurrent.*;
+
+    public class WordCount {
+        public static void main(String[] args) throws Exception {
+            Map<String, Integer> counts = new ConcurrentHashMap<>();
+            ExecutorService pool = Executors.newFixedThreadPool(4);
+            for (int t = 0; t < 4; t++) {
+                pool.submit(() -> {
+                    for (int i = 0; i < 1000; i++) {
+                        counts.merge("hits", 1, Integer::sum);
+                    }
+                });
+            }
+            pool.shutdown();
+            pool.awaitTermination(10, TimeUnit.SECONDS);
+            System.out.println(counts.get("hits"));
+        }
+    }
+  walkthrough: |
+    - `ConcurrentHashMap` is the shared map. `ExecutorService` is a ready-made **pool of 4 threads**.
+    - Each of the 4 tasks adds 1 to `"hits"` 1000 times, all at the same time.
+    - `merge("hits", 1, Integer::sum)` does "if missing, put 1; else old + 1" as **one atomic step**, so no update is ever lost.
+    - `shutdown()` stops accepting new tasks and `awaitTermination` waits for the running ones to finish.
+    - Output is always `4000`. With a plain `HashMap` and `get` + `put`, you would often see a smaller, random number (or even a broken map).
+tryIt:
+  instructions: "Type this to see a fail-fast iterator throw, and a fail-safe one keep going. Then change the ArrayList to use removeIf(x -> x == 2) instead of the loop and see the fix."
+  code: |
+    import java.util.*;
+    import java.util.concurrent.*;
+
+    public class FailDemo {
+        public static void main(String[] args) {
+            List<Integer> safe = new CopyOnWriteArrayList<>(List.of(1, 2, 3));
+            for (int x : safe) {
+                if (x == 1) safe.add(4);
+            }
+            System.out.println("copy-on-write: " + safe);
+
+            List<Integer> fast = new ArrayList<>(List.of(1, 2, 3, 4));
+            try {
+                for (int x : fast) {
+                    if (x == 2) fast.remove(Integer.valueOf(x));
+                }
+            } catch (ConcurrentModificationException e) {
+                System.out.println("ArrayList threw CME");
+            }
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+    import java.util.concurrent.*;
+
+    public class Snapshot {
+        public static void main(String[] args) {
+            List<String> list = new CopyOnWriteArrayList<>(List.of("a", "b"));
+            int seen = 0;
+            for (String s : list) {
+                list.add(s.toUpperCase());
+                seen++;
+            }
+            System.out.println(seen);
+            System.out.println(list);
+        }
+    }
+  expectedOutput: |
+    2
+    [a, b, A, B]
+  explanation: |
+    The for-each loop iterates over a **snapshot** taken when the loop started: `[a, b]`. Each `add` creates a new internal array, but the loop never sees it. So the loop body runs only 2 times (no infinite loop and no exception), and afterwards the list holds all four items.
+commonMistakes:
+  - "Saying ConcurrentHashMap locks the whole map. Java 8+ locks only one bucket (and uses CAS for empty buckets); reads usually take no lock."
+  - "Putting null keys or values into ConcurrentHashMap or Hashtable. Both throw NullPointerException."
+  - "Writing if (!map.containsKey(k)) map.put(k, v) with threads. Each call is safe, but the pair is not; use putIfAbsent, computeIfAbsent or merge."
+  - "Thinking ConcurrentModificationException needs two threads. Removing from an ArrayList inside its own for-each loop (one thread) also causes it."
+  - "Using CopyOnWriteArrayList for a list with many writes. Every write copies the whole array: O(n)."
+interviewBox:
+  why: "Why interviewers ask this: it shows whether you can write code that is safe in a real multi-user server, not just in a single-threaded practice program."
+  questions:
+    - q: "What is the difference between HashMap, Hashtable and ConcurrentHashMap?"
+      a: "HashMap is not thread-safe, allows one null key and is the fastest for single-threaded code. Hashtable is a legacy class where every method is synchronized, so it locks the whole map and allows no nulls. ConcurrentHashMap is thread-safe but much faster: in Java 8 it uses CAS for empty buckets and locks only one bucket for writes, while reads usually don't lock. It also doesn't allow nulls."
+    - q: "Why doesn't ConcurrentHashMap allow null keys or values?"
+      a: "Because with many threads, a null from get would be ambiguous: is the key missing or is the value null? You can't safely check with containsKey, since another thread might change the map in between. So Java bans null to avoid that confusion."
+    - q: "What is the difference between fail-fast and fail-safe iterators?"
+      a: "A fail-fast iterator, like ArrayList's or HashMap's, throws ConcurrentModificationException if the collection is structurally changed during iteration, except through the iterator's own remove. It detects this with a modCount counter. A fail-safe iterator, like CopyOnWriteArrayList's, works on a snapshot copy, so it never throws, but it doesn't see the changes. ConcurrentHashMap's iterator is weakly consistent: no exception, may or may not see changes."
+    - q: "How did ConcurrentHashMap change in Java 8?"
+      a: "Java 7 split the map into 16 segments, each with its own lock. Java 8 removed segments: it uses CAS to insert into an empty bucket and synchronizes only on the first node of a bucket. It also turns long buckets into trees, like HashMap."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "In Java 8+, how does ConcurrentHashMap make a put into a NON-empty bucket thread-safe?"
+    code: null
+    options: ["It locks the entire map", "It locks one of 16 segments", "It synchronizes on the first node of that bucket only", "It doesn't; puts are not thread-safe"]
+    answer: 2
+    explanation: "Java 8+ locks only the head node of the bucket being changed (empty buckets use CAS). '16 segments' is the tempting answer but describes the old Java 7 design. Locking the whole map is what Hashtable does."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      List<Integer> list = new ArrayList<>(List.of(1, 2, 3, 4));
+      try {
+          for (Integer x : list) {
+              if (x == 1) list.remove(x);
+          }
+          System.out.println("done " + list);
+      } catch (ConcurrentModificationException e) {
+          System.out.println("CME");
+      }
+    options: ["done [2, 3, 4]", "CME", "done [1, 2, 3, 4]", "Compile error"]
+    answer: 1
+    explanation: "list.remove(x) with an Integer removes the object 1, which changes modCount. The next call to the iterator's next() sees the change and throws ConcurrentModificationException. 'done [2, 3, 4]' is what people expect, but the for-each loop is fail-fast."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Several threads call record(word) on the same shared map. Counts sometimes come out too low. What is the bug?"
+    code: |
+      Map<String, Integer> map = new ConcurrentHashMap<>();
+
+      void record(String word) {
+          Integer old = map.get(word);
+          if (old == null) map.put(word, 1);
+          else map.put(word, old + 1);
+      }
+    options:
+      - "ConcurrentHashMap cannot store Integer values"
+      - "get and put are each safe, but get-then-put is not atomic, so two threads can read the same old value; use map.merge(word, 1, Integer::sum)"
+      - "map must be declared as a HashMap"
+      - "record() must return the count"
+    answer: 1
+    explanation: "Two threads can both read old = 5 and both write 6, losing one update. merge (or compute) does the read and write as one atomic step. Switching to HashMap would make it worse, not better."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "ConcurrentHashMap allows one null key, like HashMap."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. ConcurrentHashMap rejects null keys and null values with NullPointerException, because null results would be ambiguous between threads."
+  - id: q5
+    type: MATCH
+    prompt: "Match each collection to its iterator behaviour"
+    pairs:
+      - left: "ArrayList"
+        right: "Fail-fast: throws ConcurrentModificationException"
+      - left: "CopyOnWriteArrayList"
+        right: "Fail-safe: iterates over a snapshot copy"
+      - left: "ConcurrentHashMap"
+        right: "Weakly consistent: no exception, may see some changes"
+    explanation: "java.util collections are fail-fast; java.util.concurrent ones never throw CME: copy-on-write uses snapshots, ConcurrentHashMap is weakly consistent."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the ConcurrentHashMap method that adds 1 to a word's count atomically (starting at 1 if the word is new)."
+    code: |
+      counts.____(word, 1, Integer::sum);
+    acceptedAnswers: ["merge"]
+    explanation: "merge(key, value, fn) puts value if the key is missing, otherwise stores fn(old, value), all atomically."
+  - id: q7
+    type: MCQ
+    prompt: "Which situation is the BEST fit for CopyOnWriteArrayList?"
+    code: null
+    options: ["A list that gets 10,000 adds per second", "A list of event listeners that is read on every event but changed rarely", "A single-threaded list used in a sorting algorithm", "A list that must allow iterator.remove()"]
+    answer: 1
+    explanation: "Copy-on-write makes reads cheap and lock-free but every write copies the whole array, so it suits read-heavy, write-rare lists. It also does not support iterator.remove()."
+explainBack:
+  prompt: "Explain to a friend why we use ConcurrentHashMap instead of HashMap in a web server, and what fail-fast and fail-safe iterators mean."
+  rubric:
+    - "I said HashMap is not thread-safe and can lose updates"
+    - "I compared Hashtable's whole-map lock with ConcurrentHashMap's per-bucket locking and lock-free reads"
+    - "I mentioned atomic methods like merge or computeIfAbsent for check-then-act"
+    - "I explained fail-fast (modCount, ConcurrentModificationException) vs fail-safe (snapshot copy)"
+    - "I mentioned that ConcurrentHashMap does not allow null"
+  modelAnswer: |
+    A web server handles many requests at once, each on its own thread. HashMap isn't thread-safe, so two threads writing together can lose data. Hashtable is safe but locks the whole map, so threads wait in a queue. ConcurrentHashMap only locks the one bucket being written, uses CAS for empty buckets, and reads without locking, so it's both safe and fast. For counters I use merge, because a separate get and put isn't atomic. Fail-fast iterators, like ArrayList's, throw ConcurrentModificationException if the list changes during the loop. Fail-safe ones, like CopyOnWriteArrayList's, read a snapshot, so they never throw.
+flashcards:
+  - front: "How does Java 8 ConcurrentHashMap lock?"
+    back: "CAS for empty buckets, synchronized on the bucket's first node for others; get() usually takes no lock."
+  - front: "Nulls in Hashtable / ConcurrentHashMap?"
+    back: "Not allowed (neither keys nor values): NullPointerException."
+  - front: "Fail-fast iterator"
+    back: "Throws ConcurrentModificationException if the collection is structurally changed during iteration (checked via modCount). Example: ArrayList, HashMap."
+  - front: "Fail-safe iterator"
+    back: "Works on a snapshot or weakly consistent view, never throws CME. Example: CopyOnWriteArrayList, ConcurrentHashMap."
+  - front: "Atomic counter update in ConcurrentHashMap"
+    back: "map.merge(key, 1, Integer::sum)"
+keyTakeaways:
+  - "HashMap is not thread-safe; Hashtable and synchronizedMap lock the whole map."
+  - "ConcurrentHashMap (Java 8+) uses CAS and per-bucket locks; reads are mostly lock-free; no nulls."
+  - "Check-then-act is not atomic; use merge, compute, computeIfAbsent or putIfAbsent."
+  - "Fail-fast iterators throw ConcurrentModificationException, even in one thread."
+  - "Fail-safe (CopyOnWriteArrayList) iterates a snapshot; best for read-heavy, write-rare lists."

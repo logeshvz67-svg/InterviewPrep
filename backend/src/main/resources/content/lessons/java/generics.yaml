@@ -1,0 +1,365 @@
+slug: generics
+world: JAVA_CORE
+section: E
+order: 1
+title: "Generics"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Core for SP and DSE: every collection you use in coding rounds (List<Integer>, Map<String, Integer>) is generic, and generic syntax questions are common in theory rounds."
+otherCompanies: "A basic must-know for TCS, Wipro, Cognizant, Accenture, Capgemini and product companies; often asked as 'why generics?' or 'write a generic method'."
+why: |
+  Every time you write `List<Integer>` or `Map<String, Integer>` in a coding round, you are using **generics**. Without understanding them, error messages like `incompatible types` or `List<int>` failing will feel random.
+
+  Generics answer a simple need: **"I want one class (like a list) that works for any type, but still safely."**
+
+  Interviewers ask:
+  - "Why were generics added? What problem do they solve?"
+  - "Write a generic method / generic class."
+  - "Why can't you write `List<int>`?"
+  - "What does `<T extends Number>` mean?"
+
+  This lesson teaches the core. The next lesson covers wildcards (`?`) and type erasure.
+analogy: |
+  Think of **steel tiffin boxes with labels**.
+
+  - Without generics, every box is labelled just "**food**". You can put anything in it: rice, sambar, a phone charger. When you open it, you have to **guess** what's inside and hope (a **cast**). Guessing wrong = a mess at lunch time (`ClassCastException` at run time).
+  - With generics, the box is labelled "**Box of Idli**" (`Box<Idli>`). The shopkeeper (the **compiler**) refuses to let you put a charger in it. When you open it, you **know** it's idli. No guessing.
+  - `T` is just the **blank on the label**: `Box<T>` is a box design where you fill in the food type when you buy it.
+visual:
+  diagram: |
+    WITHOUT generics (raw type)          WITH generics
+    ---------------------------          -----------------------------
+    List list = new ArrayList();         List<String> list =
+    list.add("Asha");                        new ArrayList<>();
+    list.add(42);      // allowed!       list.add("Asha");
+                                         list.add(42);   // COMPILE ERROR
+    String s = (String) list.get(1);     String s = list.get(0);
+           ^ cast needed                        ^ no cast needed
+    -> ClassCastException at RUN time    -> mistake caught at COMPILE time
+
+    Generic class:            class Box<T> { T item; }
+                                        |
+             Box<String>  -> T = String  (item is a String)
+             Box<Integer> -> T = Integer (item is an Integer)
+  caption: "Generics move type mistakes from run time to compile time and remove casts. T is a type parameter: a placeholder filled in when you use the class."
+  visualizer: null
+explanation: |
+  ### The problem before generics (Java 1.4)
+  Collections stored everything as `Object`, the parent of all classes:
+  ```java
+  List names = new ArrayList();      // a "raw type": no <...>
+  names.add("Asha");
+  names.add(42);                      // compiler allows it
+  String n = (String) names.get(1);   // ClassCastException at run time!
+  ```
+  Two pains: you must **cast** every time you read, and a wrong type is caught only at **run time**, maybe in production.
+
+  ### The fix: generics (Java 5+)
+  **Generics** let a class or method take a **type as a parameter**, written in angle brackets `< >`.
+  ```java
+  List<String> names = new ArrayList<>();
+  names.add("Asha");
+  // names.add(42);                  // compile error: no suitable method add(int)
+  String n = names.get(0);           // no cast
+  ```
+  Benefits:
+  1. **Type safety**: wrong types are compile errors.
+  2. **No casts**: the compiler knows the type.
+  3. **Reusable code**: one `ArrayList` class works for any type.
+
+  ### Words you need
+  | Term | Meaning | Example |
+  |---|---|---|
+  | Type parameter | The placeholder name in the definition | `T` in `class Box<T>` |
+  | Type argument | The real type you plug in | `String` in `Box<String>` |
+  | Parameterized type | The class with the argument filled in | `Box<String>` |
+  | Diamond `<>` | Lets the compiler infer the argument (Java 7+) | `new ArrayList<>()` |
+  | Raw type | Using a generic class without `< >` (old, unsafe) | `List list` |
+
+  Naming convention for type parameters: single capital letters. `T` = Type, `E` = Element (collections), `K` = Key, `V` = Value, `N` = Number, `R` = Result.
+
+  ### Writing a generic class
+  ```java
+  class Box<T> {
+      private T item;
+      void put(T item) { this.item = item; }
+      T get() { return item; }
+  }
+  Box<String> b = new Box<>();
+  b.put("Laddu");
+  String s = b.get();
+  ```
+  You can have more than one parameter: `class Pair<K, V> { K key; V value; }` (that's how `Map<K, V>` works).
+
+  ### Writing a generic method
+  Put the type parameter **before the return type**:
+  ```java
+  static <T> void printAll(T[] items) {
+      for (T x : items) System.out.print(x + " ");
+  }
+  printAll(new Integer[]{1, 2, 3});       // T inferred as Integer
+  printAll(new String[]{"a", "b"});       // T inferred as String
+  ```
+  The method can be generic even if its class isn't. The compiler **infers** `T` from the arguments.
+
+  ### Bounded type parameters: `<T extends X>`
+  Sometimes `T` must be a certain kind of type. `<T extends Number>` means "T must be Number or a subclass" (Integer, Double, Long...). Now you can call Number's methods on `T`:
+  ```java
+  static <T extends Number> double sum(List<T> list) {
+      double total = 0;
+      for (T n : list) total += n.doubleValue();
+      return total;
+  }
+  ```
+  - `extends` is used for **both** classes and interfaces here: `<T extends Comparable<T>>` means T can be compared to itself.
+  - Multiple bounds: `<T extends Number & Comparable<T>>` (class first, then interfaces).
+
+  ### Why not `List<int>`?
+  Type arguments must be **objects (reference types)**, not primitives like `int`, `double`, `char`. Use the **wrapper classes**: `List<Integer>`, `List<Double>`, `List<Character>`. Java **autoboxes** (auto-converts) `int` to `Integer` when you add, and **unboxes** when you read.
+
+  ### Generics are invariant (important!)
+  `Integer` is a child of `Number`, but **`List<Integer>` is NOT a child of `List<Number>`**:
+  ```java
+  List<Integer> ints = new ArrayList<>();
+  // List<Number> nums = ints;   // compile error
+  ```
+  If it were allowed, you could do `nums.add(3.5)` and put a Double into a list of Integers. The next lesson shows how wildcards (`? extends`, `? super`) solve this safely.
+
+  ### Things you cannot do with T
+  - `new T()` – the type is unknown at run time.
+  - `new T[10]` – same reason.
+  - `static T field` – static members are shared by all `Box<...>` versions, so they can't use the class's T.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Tiffin {
+        static class Box<T> {
+            private T item;
+            Box(T item) { this.item = item; }
+            T get() { return item; }
+        }
+
+        static <T> T firstOf(List<T> list) {
+            return list.get(0);
+        }
+
+        public static void main(String[] args) {
+            Box<String> lunch = new Box<>("Idli");
+            Box<Integer> count = new Box<>(4);
+            String food = lunch.get();
+            int pieces = count.get();
+            System.out.println(pieces + " " + food);
+
+            List<Double> prices = List.of(30.5, 12.0);
+            Double first = firstOf(prices);
+            System.out.println("First price: " + first);
+        }
+    }
+  walkthrough: |
+    - `class Box<T>` is a **generic class**. `T` is filled in when we create a box.
+    - `Box<String> lunch = new Box<>("Idli")`: the diamond `<>` lets Java infer `String`. `lunch.get()` returns a `String`, so no cast.
+    - `Box<Integer> count = new Box<>(4)`: `4` is autoboxed to `Integer`. Reading it into `int pieces` unboxes it.
+    - `static <T> T firstOf(List<T> list)` is a **generic method**. Called with a `List<Double>`, Java infers `T = Double`.
+    - `List.of(...)` makes a small fixed (unmodifiable) list.
+
+    Output:
+    ```
+    4 Idli
+    First price: 30.5
+    ```
+tryIt:
+  instructions: "Type this bounded generic method. It works for a list of Integers and a list of Doubles. Then try calling it with a List<String> and read the compile error."
+  code: |
+    import java.util.*;
+
+    public class Bounded {
+        static <T extends Number> double average(List<T> nums) {
+            double total = 0;
+            for (T n : nums) {
+                total += n.doubleValue();
+            }
+            return total / nums.size();
+        }
+
+        public static void main(String[] args) {
+            List<Integer> marks = List.of(70, 80, 90);
+            List<Double> heights = List.of(5.5, 6.0);
+            System.out.println(average(marks));
+            System.out.println(average(heights));
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Pairs {
+        static class Pair<K, V> {
+            K key; V value;
+            Pair(K key, V value) { this.key = key; this.value = value; }
+            public String toString() { return key + "=" + value; }
+        }
+        static <T> void swapPrint(T a, T b) {
+            System.out.println(b + " " + a);
+        }
+        public static void main(String[] args) {
+            Pair<String, Integer> p = new Pair<>("age", 21);
+            System.out.println(p);
+            swapPrint("left", "right");
+            swapPrint(1, 2);
+        }
+    }
+  expectedOutput: |
+    age=21
+    right left
+    2 1
+  explanation: |
+    `Pair<String, Integer>` has two type parameters, like a mini Map entry, and `toString` prints `age=21`. `swapPrint` is a generic method; Java infers `T = String` for the first call and `T = Integer` for the second. It prints the arguments in reverse order.
+commonMistakes:
+  - "Writing List<int> or Map<char, int>. Type arguments must be wrapper classes: List<Integer>, Map<Character, Integer>."
+  - "Using raw types like 'List list = new ArrayList();'. You lose type safety and need casts."
+  - "Thinking List<Integer> is a subtype of List<Number>. Generics are invariant; use wildcards instead."
+  - "Putting the type parameter in the wrong place for a generic method. It goes before the return type: static <T> void m(T x)."
+  - "Trying new T() or new T[n] inside a generic class. The real type isn't known at run time."
+interviewBox:
+  why: "Why interviewers ask this: generics are everywhere in collections, and explaining them shows you understand compile-time type safety."
+  questions:
+    - q: "What are generics and why were they introduced?"
+      a: "Generics let classes and methods take a type as a parameter, like List<String>. They were added in Java 5 for type safety, so wrong types are caught at compile time instead of causing ClassCastException at run time, and to remove the need for casts. They also let us write reusable code that works for many types."
+    - q: "Why can't we use primitives like int in generics?"
+      a: "Type arguments must be reference types, because generics work with objects; after compilation the type becomes Object or its bound. So we use wrapper classes like Integer and Double, and autoboxing converts between int and Integer for us."
+    - q: "What is a bounded type parameter?"
+      a: "It restricts what T can be. <T extends Number> means T must be Number or a subclass, so inside the method I can call Number methods like doubleValue(). extends is used for both classes and interfaces in bounds."
+    - q: "How do you write a generic method?"
+      a: "Declare the type parameter before the return type, like public static <T> T firstOf(List<T> list). The compiler infers T from the arguments when I call it."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the MAIN benefit of generics?"
+    code: null
+    options:
+      - "Programs run faster because generics use less memory"
+      - "Type errors are caught at compile time and casts are not needed"
+      - "They allow primitive types in collections"
+      - "They make all classes thread-safe"
+    answer: 1
+    explanation: "Generics are about compile-time type safety and removing casts. They don't make code faster, they don't allow primitives (you still need Integer, not int), and they have nothing to do with threads."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              List<int> marks = new ArrayList<>();
+              marks.add(90);
+              System.out.println(marks);
+          }
+      }
+    options:
+      - "ArrayList needs an initial size"
+      - "Generic type arguments can't be primitives; use List<Integer>"
+      - "The diamond <> can't be used with ArrayList"
+      - "add() needs a cast"
+    answer: 1
+    explanation: "int is a primitive. Generics need reference types, so write List<Integer>; autoboxing then turns 90 into an Integer. The diamond is fine, and no cast is needed."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          static <T> int countEqual(List<T> list, T target) {
+              int c = 0;
+              for (T x : list) {
+                  if (x.equals(target)) c++;
+              }
+              return c;
+          }
+          public static void main(String[] args) {
+              List<String> fruits = List.of("mango", "apple", "mango", "kiwi");
+              System.out.println(countEqual(fruits, "mango"));
+              System.out.println(countEqual(List.of(1, 2, 1, 1), 1));
+          }
+      }
+    options: ["2\n3", "1\n1", "2\n1", "Compile error: T is unknown"]
+    answer: 0
+    explanation: "T is inferred as String for the first call (mango appears 2 times) and Integer for the second (1 appears 3 times). It's not a compile error: the compiler infers T from the arguments."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Because Integer extends Number, a List<Integer> can be assigned to a variable of type List<Number>."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Generics are invariant: List<Integer> is not a List<Number>. Otherwise you could add a Double to a list of Integers through the List<Number> variable. Use List<? extends Number> to accept it read-only."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the bound so that T can only be Number or its subclasses."
+    code: |
+      static <T ____ Number> double twice(T x) {
+          return x.doubleValue() * 2;
+      }
+    acceptedAnswers: ["extends"]
+    explanation: "Bounds use the keyword extends, even for interfaces. 'implements' and 'super' are not allowed in a type parameter declaration like this."
+  - id: q6
+    type: MATCH
+    prompt: "Match the term to its meaning"
+    pairs:
+      - left: "T in class Box<T>"
+        right: "Type parameter (placeholder)"
+      - left: "String in Box<String>"
+        right: "Type argument (the real type)"
+      - left: "new ArrayList<>()"
+        right: "Diamond: compiler infers the type"
+      - left: "List list = new ArrayList();"
+        right: "Raw type: old and unsafe"
+    explanation: "The parameter is the blank on the label; the argument is what you write in the blank. The diamond saves typing; raw types skip generics and lose type safety."
+  - id: q7
+    type: SPOT_THE_BUG
+    prompt: "Which line causes the compile error?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              List<String> names = new ArrayList<>();   // line A
+              names.add("Ravi");                        // line B
+              names.add(10);                            // line C
+              String n = names.get(0);                  // line D
+          }
+      }
+    options: ["Line A", "Line B", "Line C", "Line D"]
+    answer: 2
+    explanation: "names is a List<String>, so adding the int 10 is a compile error. That's the whole point of generics: the mistake is caught before running. Line D needs no cast because the compiler knows get returns a String."
+explainBack:
+  prompt: "Explain generics to a friend: what problem they solve, and how a generic class and a generic method look."
+  rubric:
+    - "I explained the old problem: Object, casts, ClassCastException at run time"
+    - "I said generics give compile-time type safety and no casts"
+    - "I described a generic class like Box<T> and a generic method <T>"
+    - "I mentioned wrappers instead of primitives (List<Integer>)"
+    - "I used an analogy like labelled tiffin boxes"
+  modelAnswer: |
+    Before generics, a list stored everything as Object, so I could put a String and a number in the same list, and when I took something out I had to cast it and hope. A wrong guess crashed at run time. Generics let me put the type in angle brackets, like List<String>. Now the compiler stops me from adding a number, and I don't need casts. I can write my own generic class, like Box<T>, where T is a placeholder filled in later, or a generic method with <T> before the return type. One rule: type arguments must be objects, so I use List<Integer>, not List<int>.
+flashcards:
+  - front: "Why generics? (two reasons)"
+    back: "Compile-time type safety, and no casts when reading. Plus reusable code."
+  - front: "Where does <T> go in a generic method?"
+    back: "Before the return type: public static <T> T first(List<T> list)."
+  - front: "What does <T extends Number> mean?"
+    back: "T must be Number or a subclass, so Number's methods can be called on T."
+  - front: "Why not List<int>?"
+    back: "Type arguments must be reference types. Use wrapper classes: List<Integer>."
+  - front: "Is List<Integer> a List<Number>?"
+    back: "No. Generics are invariant. Use wildcards like List<? extends Number>."
+keyTakeaways:
+  - "Generics let a class or method take a type parameter, like List<String>."
+  - "They catch type mistakes at compile time and remove casts."
+  - "Generic method: <T> goes before the return type; Java infers T."
+  - "<T extends X> bounds T so you can use X's methods."
+  - "Only reference types as type arguments: Integer, not int."
+  - "List<Integer> is not a List<Number>: generics are invariant."

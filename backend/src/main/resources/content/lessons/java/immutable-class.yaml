@@ -1,0 +1,398 @@
+slug: immutable-class
+world: JAVA_CORE
+section: C
+order: 17
+title: "Designing an immutable class"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, TCS]
+infosysRelevance: "A common design question for SP and DSE: 'How do you make a class immutable?' tests final, encapsulation and defensive copies together."
+otherCompanies: "Frequently asked at product companies and TCS (often right after 'Why is String immutable?')."
+why: |
+  "**How would you create an immutable class in Java?**" is a favourite design question. It looks easy ("make the fields final"), but the follow-up catches most people:
+
+  > "Your class has a `List` field. I pass you a list, then change my list. Did your 'immutable' object just change?"
+
+  This lesson brings together things you already know: `final`, `private`, encapsulation, pass-by-value and shallow vs deep copy. Immutable objects are everywhere: `String`, `Integer`, `LocalDate`, records. They are **thread-safe**, **safe as HashMap keys** and **easy to reason about**.
+analogy: |
+  An immutable object is like a **printed and laminated certificate**.
+
+  - Once it's printed, **nobody can change the marks** on it. If your marks are revised, the college **prints a new certificate**; it doesn't edit the old one.
+  - When you submit it for a job, you give a **photocopy**, not the original. Whatever the company scribbles on the photocopy, your original is safe. That's a **defensive copy**.
+  - And when the college prints it, it copies your marks from the mark sheet **onto the certificate**. If someone later edits the mark sheet, the certificate doesn't change. That's copying **in the constructor**.
+visual:
+  diagram: |2
+    WITHOUT defensive copy (broken)
+      caller list --+
+                    +--> [ "Maths", "Physics" ]  <- caller adds "Hack"
+      obj.subjects -+       shared! object changes too
+
+    WITH defensive copy in constructor
+      caller list ----> [ "Maths", "Physics", "Hack" ]
+      obj.subjects ---> [ "Maths", "Physics" ]   (own copy)
+
+    WITH defensive copy in getter
+      getSubjects() --> copy / unmodifiable view
+      caller edits it -> UnsupportedOperationException
+                          or only the copy changes
+
+    Change needed? Don't edit, build NEW:
+      s1 = new Student("Asha", 80)
+      s2 = s1.withMarks(90)  ->  s1 still 80, s2 is 90
+  caption: "final fields stop re-pointing, but not changes inside a mutable object. Copy mutable data on the way in and on the way out."
+  visualizer: null
+explanation: |
+  ### What does immutable mean?
+  An **immutable** object's state (its field values) **can never change after it's created**. To "change" it, you create a **new object** with the new values.
+
+  You already know one: `String`.
+  ```java
+  String s = "hi";
+  s.toUpperCase();         // returns a NEW String "HI"
+  System.out.println(s);   // still "hi"
+  ```
+
+  ### Why make classes immutable?
+  - **Thread-safe for free**: if nothing can change, many threads can share the object without locks.
+  - **Safe as `HashMap` keys / in `HashSet`**: the hash code can never change after the object is stored.
+  - **Easy to cache and share**: like the String pool and the Integer cache.
+  - **Fewer bugs**: no one can change your object behind your back.
+  - The cost: a new object for every change, which can mean more objects in memory.
+
+  ### The 5 rules
+  1. **Make the class `final`** so no subclass can add mutable behaviour or override methods. (Alternative: private constructor + static factory method.)
+  2. **Make all fields `private` and `final`.** private = no outside access; final = assigned once.
+  3. **No setters**, and no method that changes a field.
+  4. **Defensive copy mutable inputs in the constructor.** Don't store the caller's `List`, array or `Date` directly; store **your own copy**.
+  5. **Don't leak mutable fields from getters.** Return a copy or an unmodifiable view, never your internal object.
+
+  Bonus: for "changes", add **`withX(...)`** methods that return a **new** object.
+
+  ### Why `final` alone isn't enough
+  ```java
+  final class Student {
+      private final List<String> subjects;
+      Student(List<String> subjects) { this.subjects = subjects; }   // BAD
+      List<String> getSubjects() { return subjects; }                // BAD
+  }
+  ```
+  `final` only means the **reference** `subjects` can't point to another list. The **list itself** can still be changed:
+  - The caller keeps its reference and does `myList.add("Hack")` -> our object changes (constructor leak).
+  - Anyone calls `s.getSubjects().clear()` -> our object changes (getter leak).
+
+  Remember pass-by-value: the constructor received a **copy of the reference**, so both point to the **same list**.
+
+  ### The correct version
+  ```java
+  public final class Student {                 // rule 1
+      private final String name;               // rule 2
+      private final int marks;
+      private final List<String> subjects;
+
+      public Student(String name, int marks, List<String> subjects) {
+          this.name = name;
+          this.marks = marks;
+          this.subjects = new ArrayList<>(subjects);    // rule 4: copy in
+      }
+
+      public String getName() { return name; }          // String is immutable: safe
+      public int getMarks() { return marks; }           // primitive: safe
+      public List<String> getSubjects() {
+          return Collections.unmodifiableList(subjects); // rule 5: read-only view
+      }
+
+      public Student withMarks(int newMarks) {          // "change" = new object
+          return new Student(name, newMarks, subjects);
+      }
+  }
+  ```
+  Notes:
+  - Fields that are **primitives** or **immutable types** (`String`, `Integer`, `LocalDate`) need no copying.
+  - Fields that are **mutable** (`List`, `Map`, arrays, `java.util.Date`, your own mutable classes) need copying.
+  - `List.copyOf(list)` (Java 10+) gives an **unmodifiable copy** in one step and rejects `null` elements. If you store that, your getter can return it directly.
+  - For arrays, copy with `arr.clone()` or `Arrays.copyOf(arr, arr.length)`, in **both** the constructor and the getter.
+  - If the list holds **mutable objects**, a true deep immutability needs those objects to be immutable too (or copied deeply).
+
+  ### Unmodifiable view vs copy
+  | | `Collections.unmodifiableList(x)` | `new ArrayList<>(x)` / `List.copyOf(x)` |
+  |---|---|---|
+  | What it is | a read-only **window** onto `x` | a **separate** list |
+  | Caller tries `add()` | `UnsupportedOperationException` | allowed on `new ArrayList` copy; `List.copyOf` throws |
+  | If `x` changes later | the view shows the change | the copy doesn't |
+
+  That's why the constructor must **copy**, and the getter can return a view of **our own private copy**.
+
+  ### Records and immutability
+  A `record` gives you rules 1 to 3 automatically (final class, private final fields, no setters). It is **shallowly** immutable: you still need a compact constructor with `List.copyOf(...)` for list components.
+  ```java
+  record Team(String name, List<String> members) {
+      Team { members = List.copyOf(members); }
+  }
+  ```
+
+  ### Why is String immutable? (common follow-up)
+  Security (file paths, URLs, class names can't be altered after checks), the **String pool** (many variables can safely share one object), thread safety, and caching its hash code for fast `HashMap` lookups.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Main {
+        public static void main(String[] args) {
+            List<String> subs = new ArrayList<>(List.of("Maths", "Physics"));
+            Student s1 = new Student("Asha", 80, subs);
+
+            subs.add("Hack");
+            System.out.println(s1.getSubjects());
+
+            try {
+                s1.getSubjects().add("Hack2");
+            } catch (UnsupportedOperationException e) {
+                System.out.println("Cannot modify subjects");
+            }
+
+            Student s2 = s1.withMarks(95);
+            System.out.println(s1.getMarks() + " " + s2.getMarks());
+        }
+    }
+
+    final class Student {
+        private final String name;
+        private final int marks;
+        private final List<String> subjects;
+
+        Student(String name, int marks, List<String> subjects) {
+            this.name = name;
+            this.marks = marks;
+            this.subjects = new ArrayList<>(subjects);
+        }
+
+        String getName() { return name; }
+        int getMarks() { return marks; }
+        List<String> getSubjects() { return Collections.unmodifiableList(subjects); }
+
+        Student withMarks(int newMarks) { return new Student(name, newMarks, subjects); }
+    }
+  walkthrough: |
+    - The constructor stores **its own copy** of the list. So when `main` adds "Hack" to `subs`, `s1` is unaffected: it still prints `[Maths, Physics]`.
+    - `getSubjects()` returns an **unmodifiable view**, so `add("Hack2")` throws `UnsupportedOperationException`, which we catch.
+    - `withMarks(95)` doesn't change `s1`; it returns a **new** Student. `s1` stays 80.
+    - The class is `final` and all fields are `private final`, with no setters.
+
+    Output:
+    ```
+    [Maths, Physics]
+    Cannot modify subjects
+    80 95
+    ```
+tryIt:
+  instructions: "Type this BROKEN 'immutable' class and run it: the object changes even though the field is final. Then fix it with defensive copies (scores.clone()) in BOTH the constructor and the getter, and run again."
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            int[] data = {10, 20, 30};
+            Report r = new Report(data);
+
+            data[0] = 999;
+            r.getScores()[1] = 555;
+
+            System.out.println(r.getScores()[0] + " " + r.getScores()[1]);
+        }
+    }
+
+    final class Report {
+        private final int[] scores;
+
+        Report(int[] scores) { this.scores = scores; }
+
+        int[] getScores() { return scores; }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Main {
+        public static void main(String[] args) {
+            List<String> src = new ArrayList<>(List.of("a"));
+
+            List<String> view = Collections.unmodifiableList(src);
+            List<String> copy = List.copyOf(src);
+
+            src.add("b");
+            System.out.println(view);
+            System.out.println(copy);
+
+            String s = "java";
+            s.concat("21");
+            System.out.println(s);
+        }
+    }
+  expectedOutput: |
+    [a, b]
+    [a]
+    java
+  explanation: |
+    An unmodifiable **view** is just a read-only window onto `src`, so it shows "b" after `src` changes. `List.copyOf` made a **separate** copy before "b" was added. And `concat` returns a new String that we ignored, so `s` is still "java".
+commonMistakes:
+  - "Thinking final fields alone make a class immutable. final stops re-pointing the reference, not changes inside a List or array."
+  - "Storing the caller's List or array directly in the constructor instead of copying it."
+  - "Returning the internal List or array from a getter, letting callers modify it."
+  - "Forgetting to make the class final, so a subclass can add mutable state or override getters."
+  - "Using Collections.unmodifiableList on the caller's list in the constructor. It's only a view: the caller can still change the original."
+  - "Calling s.concat(...) or s.toUpperCase() and expecting s to change. Immutable methods return a new object."
+interviewBox:
+  why: "Why interviewers ask this: one question tests final, encapsulation, pass-by-value and shallow vs deep copy together, and immutability matters for thread safety and HashMap keys."
+  questions:
+    - q: "How do you create an immutable class in Java?"
+      a: "I make the class final, make all fields private and final, provide no setters, and set everything in the constructor. For mutable fields like lists or arrays, I make a defensive copy in the constructor and return a copy or an unmodifiable view from the getter. If a change is needed, I return a new object, like a withMarks method."
+    - q: "Why isn't making fields final enough?"
+      a: "final only stops the field from pointing to another object. If the field is a List or an array, its contents can still be changed by the caller who passed it in or by anyone who gets it from a getter. That's why we need defensive copies."
+    - q: "What are the benefits of immutable objects?"
+      a: "They are automatically thread-safe, they are safe to use as HashMap keys because their hash code never changes, they can be cached and shared, and they are easier to reason about because nobody can change them unexpectedly."
+    - q: "Why is String immutable in Java?"
+      a: "For the String pool, so many references can safely share one object; for security, since strings are used for file paths, URLs and class names; for thread safety; and so its hash code can be cached, which makes it a fast HashMap key."
+    - q: "Are records immutable?"
+      a: "Records are shallowly immutable: the class is final, the fields are private final and there are no setters. But if a component is a mutable List, its contents can still change, so I copy it in a compact constructor using List.copyOf."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Tags stores the list directly. What does this print?"
+    code: |
+      import java.util.*;
+      public class Main {
+          public static void main(String[] args) {
+              List<String> list = new ArrayList<>();
+              list.add("new");
+              Tags t = new Tags(list);
+              list.add("sale");
+              System.out.println(t.getTags().size());
+          }
+      }
+      final class Tags {
+          private final List<String> tags;
+          Tags(List<String> tags) { this.tags = tags; }
+          List<String> getTags() { return tags; }
+      }
+    options: ["1", "2", "0", "Compile error: tags is final"]
+    answer: 1
+    explanation: "The constructor stored the caller's reference, so both point to the same list. Adding 'sale' to list also changes the Tags object: size 2. final only prevents this.tags = otherList; it doesn't stop list.add()."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This class is meant to be immutable. Which line breaks immutability?"
+    code: |
+      import java.util.*;
+      public final class Route {
+          private final String from;
+          private final List<String> stops;
+
+          public Route(String from, List<String> stops) {
+              this.from = from;
+              this.stops = new ArrayList<>(stops);
+          }
+          public String getFrom() { return from; }
+          public List<String> getStops() { return stops; }
+
+          public static void main(String[] args) {
+              Route r = new Route("Pune", List.of("Lonavala"));
+              r.getStops().add("Hacked");
+              System.out.println(r.getStops());
+          }
+      }
+    options:
+      - "this.from = from; because Strings must be copied"
+      - "getStops() returns the internal list, so callers can modify it"
+      - "The class should not be final"
+      - "new ArrayList<>(stops) should be stops"
+    answer: 1
+    explanation: "The constructor copies correctly, but the getter hands out the internal list, and r.getStops().add(\"Hacked\") changes the object (it prints [Lonavala, Hacked]). Return Collections.unmodifiableList(stops) or a copy. Strings are already immutable, so from needs no copy."
+  - id: q3
+    type: MCQ
+    prompt: "Which is NOT one of the rules for an immutable class?"
+    options:
+      - "Declare the class final"
+      - "Make fields private and final"
+      - "Provide setters that validate input"
+      - "Make defensive copies of mutable fields"
+    answer: 2
+    explanation: "Immutable classes have no setters at all, validated or not. Validation belongs in the constructor. The other three are core rules."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "A field declared private final List<String> items can never have its contents changed."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. final means the reference can't be re-pointed to another list, but items.add(...) still changes the list's contents. That's why defensive copies or unmodifiable lists are needed."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Money m1 = new Money(100);
+              Money m2 = m1.add(50);
+              System.out.println(m1.amount() + " " + m2.amount());
+          }
+      }
+      record Money(int amount) {
+          Money add(int extra) { return new Money(amount + extra); }
+      }
+    options: ["150 150", "100 150", "100 100", "Compile error: records can't have methods"]
+    answer: 1
+    explanation: "Records are immutable, and add() returns a NEW Money instead of changing m1. So m1 stays 100 and m2 is 150. Records can have instance methods; they just can't have extra instance fields."
+  - id: q6
+    type: MATCH
+    prompt: "Match each rule to the problem it prevents"
+    pairs:
+      - left: "final class"
+        right: "A subclass adding mutable state or overriding getters"
+      - left: "private final fields"
+        right: "Outside access and reassignment after construction"
+      - left: "Copy in the constructor"
+        right: "The caller changing the list it passed in"
+      - left: "Copy or read-only view in the getter"
+        right: "Callers changing internal data they received"
+    explanation: "Each rule closes one door. Together they make sure no one can change the object after it's built."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the Java 10+ method that stores an unmodifiable copy of the incoming list."
+    code: |
+      import java.util.*;
+      public class Main {
+          private final List<String> names;
+          Main(List<String> input) { this.names = List.____(input); }
+          public static void main(String[] args) {
+              List<String> in = new ArrayList<>(List.of("A"));
+              Main m = new Main(in);
+              in.add("B");
+              System.out.println(m.names);
+          }
+      }
+    acceptedAnswers: ["copyOf"]
+    explanation: "List.copyOf(input) makes a separate unmodifiable copy, so adding 'B' to the original doesn't affect names: it prints [A]. Collections.unmodifiableList(input) would only be a view and would show [A, B]."
+explainBack:
+  prompt: "Explain how to design an immutable class and why final fields are not enough, using the laminated-certificate analogy."
+  rubric:
+    - "I listed: final class, private final fields, no setters"
+    - "I explained defensive copies in the constructor and in getters"
+    - "I explained why final alone fails for Lists/arrays (the reference is final, not the contents)"
+    - "I said changes return a new object (withX methods)"
+    - "I gave at least two benefits (thread safety, HashMap keys, caching)"
+  modelAnswer: |
+    An immutable object is like a laminated certificate: once made, it never changes. To build one, I make the class final, make every field private and final, give no setters, and set everything in the constructor. But final only locks the reference, not what's inside a List or array. So in the constructor I copy any mutable input, otherwise the caller could still change it, and from getters I return a copy or an unmodifiable view, otherwise others could change my data. If someone needs different values, a method like withMarks returns a new object. Immutable objects are thread-safe, safe as HashMap keys and easy to share, just like String.
+flashcards:
+  - front: "5 rules for an immutable class"
+    back: "final class; private final fields; no setters; defensive copy of mutable inputs in constructor; return copies/unmodifiable views from getters."
+  - front: "Why isn't final enough for a List field?"
+    back: "final stops re-pointing the reference, but list.add()/clear() still change the contents."
+  - front: "unmodifiableList(x) vs List.copyOf(x)"
+    back: "unmodifiableList = read-only view (shows later changes to x). copyOf = separate unmodifiable copy."
+  - front: "Benefits of immutability"
+    back: "Thread-safe, safe HashMap keys, cacheable/shareable, fewer bugs."
+  - front: "How does an immutable class 'change' a value?"
+    back: "It returns a new object (e.g. withMarks(90)), leaving the original untouched."
+keyTakeaways:
+  - "Immutable = state never changes after construction; changes create new objects."
+  - "Rules: final class, private final fields, no setters, defensive copies in and out."
+  - "final protects the reference, not the contents of a mutable object."
+  - "An unmodifiable view is not a copy; copy first (new ArrayList<>, List.copyOf, clone)."
+  - "Immutable objects are thread-safe and safe as HashMap keys; String and records are examples."

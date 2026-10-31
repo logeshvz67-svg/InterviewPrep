@@ -1,0 +1,329 @@
+slug: string-methods
+world: JAVA_CORE
+section: B
+order: 4
+title: "Common String methods"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Needed for most string coding problems in SP and DSE coding rounds; substring/indexOf/split/compareTo are also frequent in output MCQs."
+otherCompanies: "Used in string coding questions everywhere: TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  Almost every string coding problem uses the same 10-15 methods: `charAt`, `length`, `substring`, `indexOf`, `split`, `toCharArray` and friends. If you know them well, you can write solutions quickly without searching.
+
+  Output questions also love the small details:
+  - Does `substring(1, 4)` include index 4? (No.)
+  - What does `compareTo` really return? (A number, not just -1/0/1.)
+  - Why does `"a.b".split(".")` give an empty array?
+
+  This lesson is your **toolbox**. Learn the rules once, and they work everywhere.
+analogy: |
+  Think of a String as a **row of numbered seats in a cinema**, starting from seat **0**.
+
+  - `charAt(3)` = "who is sitting in seat 3?"
+  - `length()` = "how many seats in this row?"
+  - `substring(2, 5)` = "give me seats 2, 3 and 4" (the end seat number is where you **stop**, you don't take it).
+  - `indexOf('k')` = "which seat is the first person named k sitting in?" (-1 if nobody).
+  - `split(",")` = "break the row into groups wherever there is an empty seat marked ','".
+visual:
+  diagram: |
+    String s = "CODEQUEST";
+
+     index:   0   1   2   3   4   5   6   7   8
+            +---+---+---+---+---+---+---+---+---+
+     char:  | C | O | D | E | Q | U | E | S | T |
+            +---+---+---+---+---+---+---+---+---+
+                    ^           ^
+                  begin=2     end=5 (NOT included)
+
+     s.length()         -> 9      (last index = 8)
+     s.charAt(4)        -> 'Q'
+     s.substring(2, 5)  -> "DEQ"  (indexes 2,3,4)
+     s.substring(4)     -> "QUEST" (4 to the end)
+     s.indexOf('E')     -> 3      (first E)
+     s.lastIndexOf('E') -> 6      (last E)
+     s.indexOf('Z')     -> -1     (not found)
+  caption: "Indexes start at 0. substring(begin, end) includes begin but stops BEFORE end, so its length is end - begin."
+  visualizer: null
+explanation: |
+  Remember first: Strings are **immutable**, so every method below **returns** a result. It never changes the original String.
+
+  ### Size and single characters
+  | Method | Returns | Example with `s = "Java"` |
+  |---|---|---|
+  | `length()` | number of characters | `4` |
+  | `charAt(i)` | the `char` at index i | `charAt(0)` → `'J'` |
+  | `isEmpty()` | `true` if length is 0 | `false` |
+  | `isBlank()` (Java 11) | `true` if empty or only spaces | `"  ".isBlank()` → `true` |
+
+  `charAt` with a bad index (less than 0, or ≥ length) throws **`StringIndexOutOfBoundsException`** (a runtime error). Note: for arrays it's `arr.length` (no brackets); for Strings it's `s.length()` (a method).
+
+  ### Cutting pieces: `substring`
+  - `substring(begin)` → from `begin` to the end.
+  - `substring(begin, end)` → from `begin` up to **end - 1**. Length = `end - begin`.
+  - `"hello".substring(1, 3)` → `"el"`. `"hello".substring(5)` → `""` (empty, allowed). `substring(6)` → exception.
+
+  ### Searching
+  | Method | Meaning | `s = "banana"` |
+  |---|---|---|
+  | `indexOf(x)` | first position of char/String x, or -1 | `indexOf('a')` → `1` |
+  | `indexOf(x, from)` | search starting at `from` | `indexOf('a', 2)` → `3` |
+  | `lastIndexOf(x)` | last position, or -1 | `lastIndexOf('a')` → `5` |
+  | `contains(str)` | is the text inside? | `contains("nan")` → `true` |
+  | `startsWith(p)` / `endsWith(p)` | prefix / suffix check | `startsWith("ba")` → `true` |
+
+  ### Comparing
+  - `equals(o)`: same characters, case matters.
+  - `equalsIgnoreCase(o)`: same characters, ignoring upper/lower case.
+  - `compareTo(o)`: **dictionary order** (also called *lexicographic* order). It returns a number:
+    - `0` if equal,
+    - **negative** if this String comes first,
+    - **positive** if it comes after.
+
+  How the number is computed: Java walks both Strings together. At the **first different character**, it returns `thisChar - otherChar` (their Unicode numbers). If one String runs out first, it returns `thisLength - otherLength`.
+  ```java
+  "apple".compareTo("banana")  // 'a' - 'b' = -1
+  "cat".compareTo("car")       // 't' - 'r' = 2
+  "abc".compareTo("abcde")     // 3 - 5 = -2 (prefix, compare lengths)
+  "Apple".compareTo("apple")   // 'A' - 'a' = 65 - 97 = -32
+  ```
+  Capital letters (65-90) come **before** small letters (97-122). `compareToIgnoreCase` ignores this.
+
+  ### Changing (returns a new String)
+  | Method | Example | Result |
+  |---|---|---|
+  | `toUpperCase()` / `toLowerCase()` | `"Hi".toUpperCase()` | `"HI"` |
+  | `trim()` / `strip()` | `"  hi  ".trim()` | `"hi"` |
+  | `replace(a, b)` | `"a-b-c".replace("-", "+")` | `"a+b+c"` |
+  | `concat(x)` | `"ab".concat("cd")` | `"abcd"` |
+  | `repeat(n)` (Java 11) | `"ab".repeat(3)` | `"ababab"` |
+
+  `replace` changes **all** matches, not just the first. (`replaceAll` and `replaceFirst` take a regex pattern.)
+
+  ### Splitting and joining
+  ```java
+  String[] parts = "red,green,blue".split(",");  // ["red", "green", "blue"]
+  String joined = String.join("-", parts);        // "red-green-blue"
+  String[] words = "  hello   world ".trim().split("\\s+"); // ["hello", "world"]
+  ```
+  `split` takes a **regex** (a small pattern language). Characters like `.` `|` `*` `+` `?` have special meaning there. `"a.b".split(".")` returns an **empty array**, because `.` means "any character". Use `split("\\.")` to split on a real dot. Also, **trailing empty pieces are removed**: `"a,b,,".split(",")` has length 2.
+
+  ### Converting
+  | Method | What it does |
+  |---|---|
+  | `toCharArray()` | String → `char[]` (great for sorting or counting) |
+  | `new String(charArray)` / `String.valueOf(charArray)` | `char[]` → String |
+  | `String.valueOf(x)` | any value → String (`String.valueOf(42)` → `"42"`) |
+  | `Integer.parseInt(s)` | `"42"` → `42` (int) |
+  | `chars()` | a stream of the characters (Section F) |
+
+  ### char arithmetic you'll need
+  A `char` is really a small number (its Unicode code). So:
+  - `c - 'a'` gives 0 for `'a'`, 1 for `'b'`... (perfect array index for counting).
+  - `Character.isDigit(c)`, `isLetter(c)`, `isUpperCase(c)`, `toLowerCase(c)` help you classify characters.
+  - Careful: `'a' + 1` is the **int** `98`, not `'b'`. Cast back: `(char) ('a' + 1)` → `'b'`.
+tinyCode:
+  code: |
+    public class Methods {
+        public static void main(String[] args) {
+            String s = "CodeQuest";
+            System.out.println(s.length());
+            System.out.println(s.charAt(4));
+            System.out.println(s.substring(0, 4));
+            System.out.println(s.substring(4));
+            System.out.println(s.indexOf('e') + " " + s.lastIndexOf('e'));
+            System.out.println(s.toLowerCase().contains("quest"));
+
+            String csv = "ravi,priya,arjun";
+            String[] names = csv.split(",");
+            System.out.println(names.length + " " + names[1]);
+
+            char[] arr = s.toCharArray();
+            System.out.println(arr[0] + arr[1]);
+            System.out.println("" + arr[0] + arr[1]);
+        }
+    }
+  walkthrough: |
+    - `length()` of "CodeQuest" is `9`.
+    - `charAt(4)` is index 4: C(0) o(1) d(2) e(3) **Q(4)**.
+    - `substring(0, 4)` takes indexes 0-3: `Code`. `substring(4)` takes from 4 to the end: `Quest`.
+    - First `'e'` is at 3, last `'e'` is at 6 (Qu**e**st: Q4 u5 e6). Prints `3 6`.
+    - `toLowerCase()` gives "codequest", which contains "quest": `true`.
+    - `split(",")` gives 3 names; index 1 is `priya`. Prints `3 priya`.
+    - `arr[0] + arr[1]` is `'C' + 'o'` = 67 + 111 = `178`: two chars added are **numbers**!
+    - `"" + arr[0] + arr[1]` starts with a String, so the chars are joined as text: `Co`.
+
+    Output:
+    ```
+    9
+    Q
+    Code
+    Quest
+    3 6
+    true
+    3 priya
+    178
+    Co
+    ```
+tryIt:
+  instructions: "Type this mini email checker. It uses indexOf, substring, contains and endsWith together. Run it, then change the email to \"priya.k@infy\" and \"noatsign.com\" and predict each output before running."
+  code: |
+    public class EmailCheck {
+        public static void main(String[] args) {
+            String email = "  Ravi.Kumar@Example.com ";
+            email = email.trim().toLowerCase();
+
+            int at = email.indexOf('@');
+            if (at <= 0 || !email.contains(".")) {
+                System.out.println("Invalid email");
+                return;
+            }
+            String user = email.substring(0, at);
+            String domain = email.substring(at + 1);
+
+            System.out.println("User: " + user);
+            System.out.println("Domain: " + domain);
+            System.out.println("Is .com? " + domain.endsWith(".com"));
+            System.out.println("Initial: " + Character.toUpperCase(user.charAt(0)));
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            String s = "a,b,,c,,";
+            String[] p = s.split(",");
+            System.out.println(p.length);
+            System.out.println("dog".compareTo("dot"));
+            System.out.println("hello".substring(1, 3));
+            System.out.println("banana".indexOf("na", 3));
+        }
+    }
+  expectedOutput: |
+    4
+    -13
+    el
+    4
+  explanation: |
+    - `split(",")` gives `["a", "b", "", "c"]`. The empty piece between the two commas stays, but **trailing** empty pieces are removed, so length is `4`.
+    - "dog" vs "dot": first difference is `'g'` (103) vs `'t'` (116). 103 - 116 = `-13`. compareTo returns the difference, not just -1.
+    - `substring(1, 3)` takes indexes 1 and 2 of "hello": `el`.
+    - In "banana" (b0 a1 n2 a3 n4 a5), "na" appears at 2 and 4. Starting the search at 3, the first match is `4`.
+commonMistakes:
+  - "Thinking substring(begin, end) includes end. It stops at end - 1."
+  - "Writing s.length for a String (that's for arrays) or arr.length() for an array."
+  - "Expecting compareTo to return only -1, 0 or 1. It returns the character difference or length difference."
+  - "Splitting on \".\" or \"|\" without escaping. split takes a regex: use \"\\\\.\" or \"\\\\|\"."
+  - "Adding two chars and expecting text: 'a' + 'b' is the number 195. Start with \"\" or use String.valueOf."
+  - "Forgetting that trim(), replace() and toUpperCase() return a new String; store the result."
+interviewBox:
+  why: "Why interviewers ask this: these methods are the building blocks of every string problem, and the edge cases (substring end, compareTo value, split regex) show how carefully you read code."
+  questions:
+    - q: "What does compareTo return for Strings?"
+      a: "It compares in dictionary order. It returns zero if they are equal, a negative number if this string comes first, and a positive number if it comes later. The actual value is the difference of the first different characters, or the difference in length if one is a prefix of the other."
+    - q: "What is the difference between substring(2) and substring(2, 5)?"
+      a: "substring(2) gives everything from index 2 to the end. substring(2, 5) gives indexes 2, 3 and 4 only, because the end index is not included. Its length is 5 minus 2, which is 3."
+    - q: "Why does \"a.b.c\".split(\".\") return an empty array?"
+      a: "Because split takes a regular expression, and a dot in regex means any character. So every character is treated as a separator, all pieces are empty, and trailing empty pieces are removed. To split on a real dot, I write split(\"\\\\.\")."
+    - q: "How do you convert a String to a char array and back?"
+      a: "s.toCharArray() gives a char array. To go back, I use new String(arr) or String.valueOf(arr). This is useful for sorting characters, for example in an anagram check."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String s = "interview";
+      System.out.println(s.substring(2, 5) + s.charAt(s.length() - 1));
+    options: ["terw", "tervw", "terv", "nterw"]
+    answer: 0
+    explanation: "substring(2, 5) takes indexes 2, 3, 4: t, e, r = \"ter\". The last char is at length()-1 = 8, which is 'w'. Result \"terw\". \"terv\" is tempting if you think index 5 ('v') is included."
+  - id: q2
+    type: MCQ
+    prompt: "What does \"Zebra\".compareTo(\"apple\") return?"
+    options: ["A positive number, because Z comes after a", "A negative number, because 'Z' (90) is less than 'a' (97)", "0", "It throws an exception for different cases"]
+    answer: 1
+    explanation: "compareTo uses Unicode values, and all capital letters come before small letters. 'Z' - 'a' = 90 - 97 = -7, which is negative. The alphabet-order intuition (Z after a) is the trap; use compareToIgnoreCase for that."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This code should print 3 (three parts of an IP-like string with dots), but it prints 0. What's wrong?"
+    code: |
+      String ip = "10.0.1";
+      String[] parts = ip.split(".");
+      System.out.println(parts.length);
+    options:
+      - "split only works with commas"
+      - "split takes a regex and . means any character; use split(\"\\\\.\")"
+      - "The array must be created with new String[3] first"
+      - "ip must be trimmed first"
+    answer: 1
+    explanation: "In regex, . matches every character, so every piece is empty, and trailing empty pieces are dropped: length 0. Escaping it as \\\\. splits on the real dot and gives 3 parts."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "\"hello\".substring(5) throws an exception because index 5 does not exist."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. begin may equal length(); the result is simply the empty String \"\". Only substring(6) or more would throw StringIndexOutOfBoundsException."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      char c = 'a';
+      System.out.println(c + 1);
+      System.out.println((char) (c + 1));
+      System.out.println("" + c + 1);
+    options: ["b\nb\nb", "98\nb\na1", "98\n98\na1", "b\nb\na1"]
+    answer: 1
+    explanation: "c + 1 is int arithmetic: 97 + 1 = 98. Casting back to char gives 'b'. With \"\" first, + becomes text joining: \"a\" then \"1\" = \"a1\". Expecting 'b' on the first line is the usual trap."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill the method that turns a String into a char array so you can sort its letters."
+    code: |
+      String word = "listen";
+      char[] letters = word.____();
+      java.util.Arrays.sort(letters);
+    acceptedAnswers: ["toCharArray", "toCharArray()"]
+    explanation: "toCharArray() returns a new char[] with the String's characters. Arrays.sort then sorts it in place."
+  - id: q7
+    type: MATCH
+    prompt: "Match each method call (s = \"banana\") to its result"
+    pairs:
+      - left: "s.indexOf('n')"
+        right: "2"
+      - left: "s.lastIndexOf('a')"
+        right: "5"
+      - left: "s.indexOf('z')"
+        right: "-1"
+      - left: "s.length()"
+        right: "6"
+    explanation: "b0 a1 n2 a3 n4 a5. First n is at 2, last a is at 5, z is missing (-1), and there are 6 characters."
+explainBack:
+  prompt: "Explain to a friend how substring and indexOf work, using the cinema seats idea, and one trap with split or compareTo."
+  rubric:
+    - "I said indexes start at 0 and the last index is length() - 1"
+    - "I said substring's end index is not included"
+    - "I said indexOf returns -1 when not found"
+    - "I explained one trap: split uses regex, or compareTo returns a difference"
+  modelAnswer: |
+    A String is like a row of cinema seats numbered from zero, so the last seat is length minus one. charAt gives me the person in one seat. substring with two numbers gives me the seats from the first number up to, but not including, the second, so substring(2, 5) is three seats. indexOf tells me the first seat where a character sits, and gives minus one if it's not there. One trap: split takes a regex, so splitting on a dot needs "\\." or I get an empty array. Another: compareTo returns the actual difference between the first different characters, not just minus one or one.
+flashcards:
+  - front: "substring(begin, end): is end included?"
+    back: "No. It returns begin..end-1, length end - begin. substring(len) returns \"\"."
+  - front: "indexOf when not found?"
+    back: "-1"
+  - front: "What does compareTo return?"
+    back: "0 if equal; otherwise first-different-char difference (this - other), or length difference if one is a prefix."
+  - front: "Splitting on a dot"
+    back: "split(\"\\\\.\") because split takes a regex and . means any character."
+  - front: "length vs length()"
+    back: "Arrays: arr.length (field). Strings: s.length() (method)."
+  - front: "'a' + 1 in Java"
+    back: "98 (an int). Use (char) ('a' + 1) for 'b'."
+keyTakeaways:
+  - "Indexes run from 0 to length() - 1; charAt outside that throws StringIndexOutOfBoundsException."
+  - "substring(begin, end) excludes end; indexOf returns -1 when not found."
+  - "compareTo returns 0, negative or positive based on the first different character (or length)."
+  - "split takes a regex: escape . | * + ?; trailing empty pieces are dropped."
+  - "toCharArray and new String(char[]) convert back and forth; char math gives ints."
+  - "Every String method returns a new value; the original never changes."

@@ -1,0 +1,2294 @@
+# Spring bank: Annotation Cheat Spells, the Spring concept map, debug challenges and projects.
+# Target: Spring Boot 3 (Jakarta EE namespaces), Java 17+.
+annotations:
+  - name: "@SpringBootApplication"
+    category: "Core"
+    meaning: "Marks the main class of a Spring Boot app. It combines @Configuration, @EnableAutoConfiguration and @ComponentScan, so Spring scans this package and sub-packages and sets up the app."
+    analogy: "The main switch of a building. Flip it and the lights, lifts and fans all start."
+    snippet: |
+      @SpringBootApplication
+      public class TaskApp {
+          public static void main(String[] args) {
+              SpringApplication.run(TaskApp.class, args);
+          }
+      }
+    quiz:
+      prompt: "Which three annotations does @SpringBootApplication combine?"
+      options:
+        - "@Component, @Service, @Repository"
+        - "@Bean, @Autowired, @Value"
+        - "@Configuration, @EnableAutoConfiguration, @ComponentScan"
+        - "@RestController, @RequestMapping, @ResponseBody"
+      answer: 2
+      explanation: "It is a shortcut for @Configuration, @EnableAutoConfiguration and @ComponentScan on the main class."
+  - name: "@Component"
+    category: "Core"
+    meaning: "Tells Spring: create an object of this class and manage it as a bean. It is the general stereotype; @Service, @Repository and @Controller are special kinds of it."
+    analogy: "Registering a worker at the front desk so the manager knows they exist and can send them work."
+    snippet: |
+      @Component
+      public class SlugGenerator {
+          public String toSlug(String title) {
+              return title.trim().toLowerCase().replace(' ', '-');
+          }
+      }
+    quiz:
+      prompt: "What happens to a class marked @Component inside a scanned package?"
+      options:
+        - "It becomes a database table"
+        - "Spring creates and manages one object of it as a bean"
+        - "It becomes a REST endpoint"
+        - "Nothing, unless you call new on it"
+      answer: 1
+      explanation: "Component scanning finds it and Spring creates a bean (singleton by default) that can be injected elsewhere."
+  - name: "@Service"
+    category: "Core"
+    meaning: "A @Component for the business logic layer. It works the same as @Component but clearly says this class holds the rules of the app."
+    analogy: "The chef in a restaurant. The waiter (controller) takes the order, the chef decides how to cook it."
+    snippet: |
+      @Service
+      public class TaskService {
+          private final TaskRepository repo;
+
+          public TaskService(TaskRepository repo) {
+              this.repo = repo;
+          }
+
+          public Task create(Task t) {
+              return repo.save(t);
+          }
+      }
+    quiz:
+      prompt: "Where should business logic like 'a task cannot be due in the past' usually live?"
+      options:
+        - "In the @Entity class constructor only"
+        - "In application.properties"
+        - "In the @SpringBootApplication main method"
+        - "In a @Service class"
+      answer: 3
+      explanation: "The service layer holds business rules. Controllers stay thin and repositories only talk to the database."
+  - name: "@Repository"
+    category: "Data"
+    meaning: "A @Component for the data access layer. It also turns low-level database exceptions into Spring's DataAccessException. With Spring Data JPA, interfaces extending JpaRepository are detected without it."
+    analogy: "The store keeper who goes to the warehouse (database) to fetch or keep things."
+    snippet: |
+      @Repository
+      public interface TaskRepository extends JpaRepository<Task, Long> {
+          List<Task> findByStatus(String status);
+      }
+    quiz:
+      prompt: "Besides marking a bean, what extra job does @Repository do?"
+      options:
+        - "Translates database exceptions into Spring's DataAccessException"
+        - "Creates the database automatically"
+        - "Makes all methods transactional by default"
+        - "Exposes the repository as REST endpoints"
+      answer: 0
+      explanation: "@Repository enables exception translation, so different database errors become one consistent Spring exception family."
+  - name: "@Controller"
+    category: "Web"
+    meaning: "Marks a web controller in Spring MVC. Method return values are treated as view names (like an HTML template), unless the method also has @ResponseBody."
+    analogy: "A receptionist who sends visitors to the right room (page)."
+    snippet: |
+      @Controller
+      public class HomeController {
+          @GetMapping("/")
+          public String home() {
+              return "index"; // renders the template index.html
+          }
+      }
+    quiz:
+      prompt: "In a @Controller method without @ResponseBody, what does returning \"index\" mean?"
+      options:
+        - "Send the text index as the response body"
+        - "Render the view (template) named index"
+        - "Redirect to /index.json"
+        - "Throw an error"
+      answer: 1
+      explanation: "In @Controller, a String return value is a view name. Use @RestController or @ResponseBody to return data."
+  - name: "@RestController"
+    category: "Web"
+    meaning: "@Controller plus @ResponseBody. Every method's return value is written straight into the HTTP response, usually as JSON."
+    analogy: "A vending machine: you press a button (URL) and get the item (JSON) directly, no page around it."
+    snippet: |
+      @RestController
+      @RequestMapping("/api/tasks")
+      public class TaskController {
+          @GetMapping
+          public List<String> all() {
+              return List.of("Learn Spring", "Practise DSA");
+          }
+      }
+    quiz:
+      prompt: "@RestController is equal to which combination?"
+      options:
+        - "@Component + @Bean"
+        - "@Controller + @RequestMapping"
+        - "@Service + @ResponseBody"
+        - "@Controller + @ResponseBody"
+      answer: 3
+      explanation: "@RestController adds @ResponseBody to every handler method, so return values become the response body."
+  - name: "@Autowired"
+    category: "Core"
+    meaning: "Asks Spring to inject a matching bean. If a class has only one constructor, Spring uses it automatically, so @Autowired is optional there. Constructor injection is preferred over field injection."
+    analogy: "Asking the office: please plug in a printer here. You do not buy one; they bring a working one."
+    snippet: |
+      @Service
+      public class ReportService {
+          private final TaskRepository repo;
+
+          @Autowired // optional: this is the only constructor
+          public ReportService(TaskRepository repo) {
+              this.repo = repo;
+          }
+      }
+    quiz:
+      prompt: "Why is constructor injection usually preferred over @Autowired on a field?"
+      options:
+        - "Field injection does not work in Spring Boot 3"
+        - "Constructor injection makes beans prototype-scoped"
+        - "Dependencies can be final and are easy to pass in tests"
+        - "It makes the app start without a database"
+      answer: 2
+      explanation: "With constructor injection, the object is complete when created, fields can be final, and tests can pass mocks through the constructor."
+  - name: "@Qualifier"
+    category: "Core"
+    meaning: "When more than one bean matches a type, @Qualifier picks one by its name."
+    analogy: "Two people called Ravi in the office, so you say 'Ravi from accounts'."
+    snippet: |
+      @Service
+      public class Checkout {
+          private final PaymentGateway gateway;
+
+          public Checkout(@Qualifier("upiGateway") PaymentGateway gateway) {
+              this.gateway = gateway;
+          }
+      }
+    quiz:
+      prompt: "Two beans implement PaymentGateway. Which annotation lets one injection point choose a specific one by name?"
+      options:
+        - "@Qualifier"
+        - "@Value"
+        - "@Profile"
+        - "@Lazy"
+      answer: 0
+      explanation: "@Qualifier(\"beanName\") tells Spring exactly which bean to inject when there are several candidates."
+  - name: "@Primary"
+    category: "Core"
+    meaning: "Marks a bean as the default choice when several beans of the same type exist and no @Qualifier is given."
+    analogy: "The default printer on your computer. It is used unless you choose another."
+    snippet: |
+      @Component
+      @Primary
+      public class CardGateway implements PaymentGateway { }
+
+      @Component("upiGateway")
+      public class UpiGateway implements PaymentGateway { }
+    quiz:
+      prompt: "A bean is marked @Primary, but an injection point uses @Qualifier(\"upiGateway\"). Which bean is injected?"
+      options:
+        - "The @Primary bean, always"
+        - "Both, as a list"
+        - "Startup fails"
+        - "upiGateway, because @Qualifier is more specific"
+      answer: 3
+      explanation: "@Primary is only the default. An explicit @Qualifier wins."
+  - name: "@Bean"
+    category: "Config"
+    meaning: "Placed on a method inside a @Configuration class. The object the method returns is registered as a bean. Useful for classes you cannot annotate, like library classes."
+    analogy: "A recipe card: Spring follows the method to cook the object and keeps it ready to serve."
+    snippet: |
+      @Configuration
+      public class AppConfig {
+          @Bean
+          public PasswordEncoder passwordEncoder() {
+              return new BCryptPasswordEncoder();
+          }
+      }
+    quiz:
+      prompt: "When would you use @Bean instead of @Component?"
+      options:
+        - "When the class is an entity"
+        - "When the class comes from a library and you cannot add annotations to it"
+        - "When you want a REST endpoint"
+        - "Never, they are not allowed together in one app"
+      answer: 1
+      explanation: "You cannot put @Component on BCryptPasswordEncoder (library code), so you create it in a @Bean method."
+  - name: "@Configuration"
+    category: "Config"
+    meaning: "Marks a class that holds @Bean methods. Spring treats it as a source of bean definitions and makes sure each @Bean is created once (singleton)."
+    analogy: "The settings room of a factory where all special machines are set up."
+    snippet: |
+      @Configuration
+      public class ClockConfig {
+          @Bean
+          public Clock clock() {
+              return Clock.systemUTC();
+          }
+      }
+    quiz:
+      prompt: "What does a @Configuration class mainly contain?"
+      options:
+        - "@Bean methods that define beans"
+        - "HTTP handler methods"
+        - "Database table columns"
+        - "JUnit tests"
+      answer: 0
+      explanation: "@Configuration classes declare beans through @Bean methods."
+  - name: "@Value"
+    category: "Config"
+    meaning: "Injects a single value from configuration (application.properties/yml or environment variables), with an optional default after a colon."
+    analogy: "Reading one line from the notice board, like 'office opens at 9'."
+    snippet: |
+      @Service
+      public class MailService {
+          private final String sender;
+
+          public MailService(@Value("${app.mail.sender:no-reply@example.com}") String sender) {
+              this.sender = sender;
+          }
+      }
+    quiz:
+      prompt: "In @Value(\"${app.page-size:20}\"), what is 20?"
+      options:
+        - "The maximum allowed value"
+        - "The line number in the properties file"
+        - "The default used when app.page-size is not set"
+        - "The bean order"
+      answer: 2
+      explanation: "The part after the colon is a default value if the property is missing."
+  - name: "@ConfigurationProperties"
+    category: "Config"
+    meaning: "Binds a whole group of properties with a common prefix into a typed Java object. Cleaner than many @Value fields. Enable it with @ConfigurationPropertiesScan or @EnableConfigurationProperties."
+    analogy: "Reading the whole 'canteen rules' section of the notice board into one folder, instead of copying one line at a time."
+    snippet: |
+      // application.yml:
+      // app:
+      //   jwt:
+      //     secret: change-me
+      //     expiry-minutes: 60
+      @ConfigurationProperties(prefix = "app.jwt")
+      public record JwtProperties(String secret, int expiryMinutes) { }
+
+      @SpringBootApplication
+      @ConfigurationPropertiesScan
+      public class App { }
+    quiz:
+      prompt: "With prefix \"app.jwt\", which property binds to the field expiryMinutes?"
+      options:
+        - "jwt.app.expiryMinutes"
+        - "expiryMinutes.app.jwt"
+        - "app.jwt.expiry-minutes"
+        - "app.expiry-minutes"
+      answer: 2
+      explanation: "Spring uses relaxed binding: app.jwt.expiry-minutes maps to expiryMinutes under the app.jwt prefix."
+  - name: "@RequestMapping"
+    category: "Web"
+    meaning: "Maps HTTP requests to a controller class or method by path (and optionally method, headers, content type). On a class, it sets a common base path."
+    analogy: "The floor number in a building. /api/tasks is the floor; each method is a room on that floor."
+    snippet: |
+      @RestController
+      @RequestMapping("/api/tasks")
+      public class TaskController {
+          @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+          public String one(@PathVariable Long id) {
+              return "task " + id;
+          }
+      }
+    quiz:
+      prompt: "Class has @RequestMapping(\"/api/tasks\") and a method has @GetMapping(\"/{id}\"). What URL calls the method?"
+      options:
+        - "GET /{id}"
+        - "GET /api/tasks/{id}"
+        - "GET /api/{id}/tasks"
+        - "POST /api/tasks"
+      answer: 1
+      explanation: "The class-level path is a prefix for all method paths."
+  - name: "@GetMapping"
+    category: "Web"
+    meaning: "Shortcut for @RequestMapping(method = GET). Used to read data. GET should not change data on the server."
+    analogy: "Looking at the menu. You only read, you do not change anything."
+    snippet: |
+      @GetMapping("/{id}")
+      public TaskDto getOne(@PathVariable Long id) {
+          return service.findById(id);
+      }
+    quiz:
+      prompt: "Which HTTP method should be used to fetch a list of tasks?"
+      options:
+        - "POST"
+        - "DELETE"
+        - "PATCH"
+        - "GET"
+      answer: 3
+      explanation: "GET is for reading. It is safe and should not change server data."
+  - name: "@PostMapping"
+    category: "Web"
+    meaning: "Shortcut for @RequestMapping(method = POST). Used to create a new resource. A successful create usually returns 201 Created."
+    analogy: "Dropping a new form into the submission box."
+    snippet: |
+      @PostMapping
+      @ResponseStatus(HttpStatus.CREATED)
+      public TaskDto create(@Valid @RequestBody CreateTaskRequest req) {
+          return service.create(req);
+      }
+    quiz:
+      prompt: "What status code best fits a successful POST that created a new task?"
+      options:
+        - "201 Created"
+        - "200 OK always"
+        - "204 No Content"
+        - "302 Found"
+      answer: 0
+      explanation: "201 Created tells the client a new resource was made."
+  - name: "@PutMapping"
+    category: "Web"
+    meaning: "Shortcut for @RequestMapping(method = PUT). Used to replace or update a whole resource. Calling it twice with the same data gives the same result (idempotent)."
+    analogy: "Replacing the whole page in a file with a fresh copy."
+    snippet: |
+      @PutMapping("/{id}")
+      public TaskDto update(@PathVariable Long id, @Valid @RequestBody UpdateTaskRequest req) {
+          return service.update(id, req);
+      }
+    quiz:
+      prompt: "Which statement about PUT is true?"
+      options:
+        - "It is only for deleting data"
+        - "It is idempotent: repeating the same request gives the same final state"
+        - "It cannot have a request body"
+        - "It must always return 201"
+      answer: 1
+      explanation: "PUT replaces a resource; sending the same PUT twice leaves the same final state."
+  - name: "@DeleteMapping"
+    category: "Web"
+    meaning: "Shortcut for @RequestMapping(method = DELETE). Used to remove a resource. Often returns 204 No Content."
+    analogy: "Tearing a page out of a register."
+    snippet: |
+      @DeleteMapping("/{id}")
+      @ResponseStatus(HttpStatus.NO_CONTENT)
+      public void delete(@PathVariable Long id) {
+          service.delete(id);
+      }
+    quiz:
+      prompt: "A DELETE succeeds and returns no body. Which status code fits best?"
+      options:
+        - "201 Created"
+        - "404 Not Found"
+        - "500 Internal Server Error"
+        - "204 No Content"
+      answer: 3
+      explanation: "204 means success with nothing to return."
+  - name: "@PathVariable"
+    category: "Web"
+    meaning: "Reads a value from the URL path, like the 5 in /tasks/5. Used to identify one specific resource."
+    analogy: "The house number in an address."
+    snippet: |
+      @GetMapping("/users/{userId}/tasks/{taskId}")
+      public TaskDto one(@PathVariable Long userId, @PathVariable Long taskId) {
+          return service.find(userId, taskId);
+      }
+    quiz:
+      prompt: "For GET /tasks/42, how do you read 42 in the handler?"
+      options:
+        - "@RequestParam Long id"
+        - "@RequestBody Long id"
+        - "@PathVariable Long id with mapping \"/tasks/{id}\""
+        - "@Value(\"id\") Long id"
+      answer: 2
+      explanation: "Values inside the path are read with @PathVariable and a {placeholder} in the mapping."
+  - name: "@RequestParam"
+    category: "Web"
+    meaning: "Reads a query parameter from the URL, like status=DONE in /tasks?status=DONE. Can be optional with required = false or a defaultValue."
+    analogy: "Filters on a shopping site: same shop, but 'show only blue shirts'."
+    snippet: |
+      @GetMapping
+      public List<TaskDto> list(@RequestParam(defaultValue = "OPEN") String status,
+                                @RequestParam(defaultValue = "0") int page) {
+          return service.list(status, page);
+      }
+    quiz:
+      prompt: "Which is the best fit for @RequestParam?"
+      options:
+        - "Optional filters like ?status=DONE&page=2"
+        - "The JSON body of a POST"
+        - "The id in /tasks/7"
+        - "A value from application.yml"
+      answer: 0
+      explanation: "Query parameters are for filtering, sorting and paging. The path identifies the resource."
+  - name: "@RequestBody"
+    category: "Web"
+    meaning: "Converts the JSON body of the request into a Java object using Jackson. The client must send Content-Type: application/json."
+    analogy: "Opening a parcel and placing the items neatly in the right boxes."
+    snippet: |
+      public record CreateTaskRequest(@NotBlank String title, LocalDate dueDate) { }
+
+      @PostMapping
+      public TaskDto create(@Valid @RequestBody CreateTaskRequest req) {
+          return service.create(req);
+      }
+    quiz:
+      prompt: "A client sends JSON but with Content-Type: text/plain to a @RequestBody endpoint. What is the likely response?"
+      options:
+        - "201 Created"
+        - "404 Not Found"
+        - "301 Moved Permanently"
+        - "415 Unsupported Media Type"
+      answer: 3
+      explanation: "No converter can read text/plain into the record, so Spring returns 415."
+  - name: "@ResponseStatus"
+    category: "Web"
+    meaning: "Sets the HTTP status code for a handler method, or for a custom exception class when it is thrown."
+    analogy: "Stamping 'APPROVED' or 'REJECTED' on a returned form."
+    snippet: |
+      @ResponseStatus(HttpStatus.NOT_FOUND)
+      public class TaskNotFoundException extends RuntimeException {
+          public TaskNotFoundException(Long id) {
+              super("Task " + id + " not found");
+          }
+      }
+    quiz:
+      prompt: "A service throws TaskNotFoundException marked @ResponseStatus(HttpStatus.NOT_FOUND). What does the client get?"
+      options:
+        - "A 500 response"
+        - "A 404 response"
+        - "A 200 response with null"
+        - "The app shuts down"
+      answer: 1
+      explanation: "Spring reads @ResponseStatus on the exception and uses that status code."
+  - name: "@Valid"
+    category: "Validation"
+    meaning: "Triggers Bean Validation on a parameter, using rules like @NotBlank, @Email, @Size on its fields. If validation fails on a @RequestBody, Spring returns 400 Bad Request (MethodArgumentNotValidException). Needs spring-boot-starter-validation."
+    analogy: "The security guard checking your ID before you enter."
+    snippet: |
+      public record SignupRequest(
+              @NotBlank String name,
+              @Email @NotBlank String email,
+              @Size(min = 8) String password) { }
+
+      @PostMapping("/signup")
+      public void signup(@Valid @RequestBody SignupRequest req) {
+          service.signup(req);
+      }
+    quiz:
+      prompt: "You added @NotBlank to a field but invalid data still gets saved. What is most likely missing?"
+      options:
+        - "@Valid on the @RequestBody parameter (or the validation starter)"
+        - "@Entity on the request class"
+        - "@Transactional on the controller"
+        - "@Primary on the DTO"
+      answer: 0
+      explanation: "Constraint annotations do nothing until something triggers validation. @Valid does that, and the validation starter must be on the classpath."
+  - name: "@RestControllerAdvice"
+    category: "Web"
+    meaning: "A global helper for all controllers. Combined with @ExceptionHandler methods, it turns exceptions into clean JSON error responses in one place. It is @ControllerAdvice plus @ResponseBody."
+    analogy: "One complaints desk for the whole mall, instead of one in every shop."
+    snippet: |
+      @RestControllerAdvice
+      public class GlobalErrors {
+          @ExceptionHandler(TaskNotFoundException.class)
+          @ResponseStatus(HttpStatus.NOT_FOUND)
+          public Map<String, String> notFound(TaskNotFoundException ex) {
+              return Map.of("error", ex.getMessage());
+          }
+      }
+    quiz:
+      prompt: "What is the difference between @ControllerAdvice and @RestControllerAdvice?"
+      options:
+        - "@ControllerAdvice only works for GET requests"
+        - "@RestControllerAdvice handles only database exceptions"
+        - "@RestControllerAdvice also adds @ResponseBody, so handler results are written as the response body"
+        - "There is no @RestControllerAdvice in Spring"
+      answer: 2
+      explanation: "Same idea as @Controller vs @RestController: the Rest version writes return values straight to the body."
+  - name: "@ExceptionHandler"
+    category: "Web"
+    meaning: "Marks a method that handles a specific exception type. Inside a controller it applies to that controller; inside @RestControllerAdvice it applies to all controllers."
+    analogy: "A first-aid person trained for one kind of injury."
+    snippet: |
+      @ExceptionHandler(MethodArgumentNotValidException.class)
+      @ResponseStatus(HttpStatus.BAD_REQUEST)
+      public Map<String, String> invalid(MethodArgumentNotValidException ex) {
+          Map<String, String> errors = new HashMap<>();
+          ex.getBindingResult().getFieldErrors()
+            .forEach(e -> errors.put(e.getField(), e.getDefaultMessage()));
+          return errors;
+      }
+    quiz:
+      prompt: "An @ExceptionHandler method is written inside one @RestController. Which requests does it cover?"
+      options:
+        - "All controllers in the app"
+        - "Only requests that return 200"
+        - "Only requests handled by that controller"
+        - "None until the app restarts"
+      answer: 2
+      explanation: "Local @ExceptionHandler methods apply to their own controller. Put them in @RestControllerAdvice for global handling."
+  - name: "@Transactional"
+    category: "Data"
+    meaning: "Runs a method inside a database transaction: all changes commit together, or all roll back on a RuntimeException. Works through a Spring proxy, so it applies to public methods called from another bean."
+    analogy: "A bank transfer: money leaves one account and reaches the other, or nothing happens at all."
+    snippet: |
+      @Service
+      public class TransferService {
+          private final AccountRepository repo;
+
+          public TransferService(AccountRepository repo) {
+              this.repo = repo;
+          }
+
+          @Transactional
+          public void transfer(Long from, Long to, BigDecimal amount) {
+              Account a = repo.findById(from).orElseThrow();
+              Account b = repo.findById(to).orElseThrow();
+              a.setBalance(a.getBalance().subtract(amount));
+              b.setBalance(b.getBalance().add(amount));
+          }
+      }
+    quiz:
+      prompt: "By default, which exceptions make @Transactional roll back?"
+      options:
+        - "Only checked exceptions"
+        - "Unchecked exceptions (RuntimeException and Error)"
+        - "Every exception, including checked ones"
+        - "None, rollback must always be manual"
+      answer: 1
+      explanation: "By default Spring rolls back on RuntimeException and Error. For checked exceptions use rollbackFor."
+  - name: "@Entity"
+    category: "Data"
+    meaning: "Marks a class as a JPA entity: one object maps to one row in a database table. It needs an @Id and a no-argument constructor (can be protected)."
+    analogy: "A form template. Each filled form is one row in the register."
+    snippet: |
+      @Entity
+      @Table(name = "tasks")
+      public class Task {
+          @Id
+          @GeneratedValue(strategy = GenerationType.IDENTITY)
+          private Long id;
+
+          @Column(nullable = false)
+          private String title;
+
+          protected Task() { }
+
+          public Task(String title) {
+              this.title = title;
+          }
+      }
+    quiz:
+      prompt: "Which of these is required for a valid JPA @Entity?"
+      options:
+        - "A public static main method"
+        - "@RestController on the same class"
+        - "All fields must be public"
+        - "A field marked @Id and a no-argument constructor"
+      answer: 3
+      explanation: "JPA needs a primary key (@Id) and a no-arg constructor (public or protected) to create objects from rows."
+  - name: "@Id"
+    category: "Data"
+    meaning: "Marks the primary key field of an entity. Usually paired with @GeneratedValue so the database creates the id. IDENTITY uses an auto-increment column (MySQL, PostgreSQL identity)."
+    analogy: "Roll number in a class. Every student has a unique one."
+    snippet: |
+      @Entity
+      public class Student {
+          @Id
+          @GeneratedValue(strategy = GenerationType.IDENTITY)
+          private Long id;
+
+          private String name;
+      }
+    quiz:
+      prompt: "What does @GeneratedValue(strategy = GenerationType.IDENTITY) do?"
+      options:
+        - "Lets the database auto-increment the id when the row is inserted"
+        - "Makes the id a random UUID string"
+        - "Copies the id from another table"
+        - "Makes the id optional"
+      answer: 0
+      explanation: "IDENTITY relies on an auto-increment or identity column, so the id is known after insert."
+  - name: "@OneToMany"
+    category: "Data"
+    meaning: "Maps a one-to-many relationship, like one user with many tasks. Use mappedBy to point to the owning side (the @ManyToOne field). It is LAZY by default."
+    analogy: "One teacher, many students in her class list."
+    snippet: |
+      @Entity
+      public class AppUser {
+          @Id @GeneratedValue
+          private Long id;
+
+          @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
+          private List<Task> tasks = new ArrayList<>();
+      }
+
+      @Entity
+      public class Task {
+          @Id @GeneratedValue
+          private Long id;
+
+          @ManyToOne(fetch = FetchType.LAZY)
+          private AppUser owner;
+      }
+    quiz:
+      prompt: "In @OneToMany(mappedBy = \"owner\"), what does \"owner\" refer to?"
+      options:
+        - "The database table name"
+        - "The field name of the @ManyToOne on the Task side"
+        - "The column type"
+        - "A Spring bean name"
+      answer: 1
+      explanation: "mappedBy names the field on the other entity that owns the foreign key. Here Task.owner holds the owner_id column."
+  - name: "@SpringBootTest"
+    category: "Testing"
+    meaning: "Starts the full Spring application context for an integration test. Slower than a unit test, but tests real wiring. Use webEnvironment = RANDOM_PORT to test over HTTP."
+    analogy: "A full dress rehearsal with the whole cast, not just one actor practising lines."
+    snippet: |
+      @SpringBootTest
+      class TaskServiceIT {
+          @Autowired
+          TaskService service;
+
+          @Test
+          void createsTask() {
+              assertNotNull(service.create(new Task("Learn JPA")).getId());
+          }
+      }
+    quiz:
+      prompt: "When is @SpringBootTest a better choice than a plain Mockito unit test?"
+      options:
+        - "When you test one small method with no dependencies"
+        - "When you want the fastest possible test"
+        - "When you test a static utility method"
+        - "When you want to check that beans, config and database work together"
+      answer: 3
+      explanation: "@SpringBootTest loads the real context, so it tests integration. For fast isolated logic, use plain unit tests with mocks."
+
+topics:
+  # ================= Core =================
+  - code: IOC_DI
+    title: "IoC and Dependency Injection"
+    order: 1
+    group: "Core"
+    summary: "Inversion of Control means Spring, not your code, creates objects and connects them. Dependency Injection is how it connects them: a class lists what it needs (usually as constructor parameters) and Spring passes in the right beans. This keeps classes loosely coupled and easy to test."
+    checklist:
+      - "I can explain IoC and DI in simple words with an example."
+      - "I can write a service that gets its repository through the constructor."
+      - "I can explain why constructor injection is preferred over field injection."
+      - "I can explain how DI makes unit testing with mocks easy."
+    quiz:
+      - prompt: "What does Inversion of Control mean in Spring?"
+        options:
+          - "The Spring container creates and wires objects instead of your code"
+          - "Your code calls new for every object it needs"
+          - "Methods run in reverse order"
+          - "The database controls the application"
+        answer: 0
+        explanation: "Control over object creation moves from your code to the container. That is the 'inversion'."
+      - prompt: "Which injection style lets dependencies be final and is recommended?"
+        options:
+          - "Field injection"
+          - "Setter injection"
+          - "Constructor injection"
+          - "Static injection"
+        answer: 2
+        explanation: "Constructor injection makes required dependencies explicit and allows final fields."
+      - prompt: "How does DI help testing?"
+        options:
+          - "Tests no longer need assertions"
+          - "It removes the need for a database forever"
+          - "It makes all methods static"
+          - "You can pass a mock or fake dependency through the constructor"
+        answer: 3
+        explanation: "Because the class does not create its own dependencies, a test can hand it a mock."
+    explainBack:
+      prompt: "Explain IoC and DI to a friend, using a real-life example and a small Spring example."
+      rubric:
+        - "Says the container creates and manages objects (beans)"
+        - "Says dependencies are passed in, not created with new"
+        - "Gives an everyday analogy"
+        - "Mentions constructor injection"
+        - "Mentions a benefit: loose coupling or easier testing"
+  - code: BEANS_SCOPES
+    title: "Beans and Scopes"
+    order: 2
+    group: "Core"
+    summary: "A bean is any object that Spring creates and manages. By default each bean is a singleton: one shared object for the whole app. Other scopes include prototype (a new object every time it is requested) and web scopes like request and session."
+    checklist:
+      - "I can define what a bean is."
+      - "I can name the default scope and explain what singleton means in Spring."
+      - "I can explain when prototype scope is useful."
+      - "I can explain why singleton beans should not keep per-user state in fields."
+    quiz:
+      - prompt: "What is the default scope of a Spring bean?"
+        options:
+          - "prototype"
+          - "singleton"
+          - "request"
+          - "session"
+        answer: 1
+        explanation: "Singleton is the default: one instance per Spring container."
+      - prompt: "A singleton service stores the current user's name in a normal field. What is the risk?"
+        options:
+          - "No risk, each request gets its own service"
+          - "The app will not compile"
+          - "The bean becomes prototype automatically"
+          - "Many requests share the same object, so users can see each other's data"
+        answer: 3
+        explanation: "Singletons are shared across threads. Keep them stateless, or keep per-request data in local variables."
+      - prompt: "With @Scope(\"prototype\"), what does Spring do?"
+        options:
+          - "Creates a new instance each time the bean is requested"
+          - "Creates one instance per HTTP session"
+          - "Never creates the bean"
+          - "Creates one instance shared by all apps on the server"
+        answer: 0
+        explanation: "Prototype means a fresh object on every request to the container for that bean."
+    explainBack:
+      prompt: "Explain what a bean is and the difference between singleton and prototype scope."
+      rubric:
+        - "Defines a bean as an object managed by the Spring container"
+        - "Says singleton is the default and means one shared instance"
+        - "Says prototype gives a new instance each time"
+        - "Mentions thread-safety or not storing per-user state in singletons"
+  - code: BEAN_LIFECYCLE
+    title: "Bean Lifecycle"
+    order: 3
+    group: "Core"
+    summary: "Spring creates a bean, injects its dependencies, runs any init callback (like a @PostConstruct method), lets the app use it, and calls a destroy callback (like @PreDestroy) when the context closes. Init callbacks are the right place for setup that needs injected dependencies."
+    checklist:
+      - "I can list the main lifecycle steps of a bean in order."
+      - "I can use @PostConstruct and @PreDestroy."
+      - "I can explain why setup code that uses dependencies should not go in a field initialiser."
+    quiz:
+      - prompt: "What is the correct order?"
+        options:
+          - "Init callback, create object, inject dependencies"
+          - "Inject dependencies, create object, init callback"
+          - "Create object, inject dependencies, init callback"
+          - "Destroy, create, inject"
+        answer: 2
+        explanation: "Spring instantiates the object, injects dependencies, then calls init methods like @PostConstruct."
+      - prompt: "When does a @PreDestroy method run?"
+        options:
+          - "Before every method call"
+          - "When the application context is shutting down"
+          - "When the bean is first created"
+          - "Only in tests"
+        answer: 1
+        explanation: "@PreDestroy is for cleanup when the context closes, like closing connections."
+      - prompt: "Which package does @PostConstruct come from in Spring Boot 3?"
+        options:
+          - "javax.annotation"
+          - "org.junit"
+          - "jakarta.annotation"
+          - "java.lang"
+        answer: 2
+        explanation: "Spring Boot 3 moved to Jakarta EE, so it is jakarta.annotation.PostConstruct."
+    explainBack:
+      prompt: "Walk through the life of a Spring bean from creation to shutdown."
+      rubric:
+        - "Mentions instantiation"
+        - "Mentions dependency injection before init"
+        - "Mentions @PostConstruct or an init method"
+        - "Mentions @PreDestroy or a destroy method on shutdown"
+  - code: CONFIG_PROPERTIES
+    title: "Configuration and Properties"
+    order: 4
+    group: "Core"
+    summary: "Settings like database URLs, ports and secrets live outside code, in application.properties or application.yml, and can be overridden by environment variables. You read single values with @Value or bind a group into a typed class with @ConfigurationProperties."
+    checklist:
+      - "I can set server.port and datasource settings in application.yml."
+      - "I can read a property with @Value and give it a default."
+      - "I can bind a group of properties with @ConfigurationProperties."
+      - "I can explain why secrets should come from environment variables, not be committed to Git."
+    quiz:
+      - prompt: "Which is the cleanest way to read five related settings under app.mail?"
+        options:
+          - "Five @Value fields"
+          - "Hard-code them as constants"
+          - "Read the file manually with FileReader"
+          - "One @ConfigurationProperties(prefix = \"app.mail\") class"
+        answer: 3
+        explanation: "@ConfigurationProperties binds a whole group into one typed object."
+      - prompt: "An environment variable SERVER_PORT=9090 is set. What port does Spring Boot use?"
+        options:
+          - "9090, because environment variables override application.properties"
+          - "8080 always"
+          - "It fails to start"
+          - "Both ports"
+        answer: 0
+        explanation: "Environment variables have higher priority than the packaged properties file, and SERVER_PORT maps to server.port."
+      - prompt: "Where should a database password for production be kept?"
+        options:
+          - "In the Git repository in application.yml"
+          - "In an environment variable or a secret store"
+          - "In a Java constant"
+          - "In the README"
+        answer: 1
+        explanation: "Secrets should not be committed. Inject them at runtime from the environment or a secret manager."
+    explainBack:
+      prompt: "Explain how a Spring Boot app gets its settings and how you would change the port without changing code."
+      rubric:
+        - "Mentions application.properties or application.yml"
+        - "Mentions @Value or @ConfigurationProperties"
+        - "Mentions overriding with environment variables or command-line arguments"
+        - "Mentions keeping secrets out of code"
+  - code: PROFILES
+    title: "Profiles"
+    order: 5
+    group: "Core"
+    summary: "Profiles let one app behave differently in different environments, like dev, test and prod. You put environment-specific settings in application-dev.yml or application-prod.yml and activate a profile with spring.profiles.active. Beans can be limited to a profile with @Profile."
+    checklist:
+      - "I can create application-dev.yml and application-prod.yml."
+      - "I can activate a profile using a property or environment variable."
+      - "I can use @Profile to load a bean only in one environment."
+    quiz:
+      - prompt: "How do you activate the prod profile?"
+        options:
+          - "Set spring.profiles.active=prod"
+          - "Rename the main class to Prod"
+          - "Add @Prod to every class"
+          - "Delete application.yml"
+        answer: 0
+        explanation: "spring.profiles.active (or SPRING_PROFILES_ACTIVE env variable) selects active profiles."
+      - prompt: "With profile dev active, which files are loaded?"
+        options:
+          - "Only application-dev.yml"
+          - "Only application.yml"
+          - "application.yml, then application-dev.yml overriding matching keys"
+          - "Neither"
+        answer: 2
+        explanation: "The base file always loads; the profile file adds to it and overrides keys it repeats."
+      - prompt: "What does @Profile(\"dev\") on a @Bean method do?"
+        options:
+          - "Makes the bean prototype"
+          - "Logs the bean in dev"
+          - "Disables the bean in dev"
+          - "Creates that bean only when the dev profile is active"
+        answer: 3
+        explanation: "The bean is registered only when the named profile is active."
+    explainBack:
+      prompt: "Explain how you would use a local database in dev and a cloud database in prod with the same code."
+      rubric:
+        - "Mentions separate profile files like application-dev.yml and application-prod.yml"
+        - "Mentions activating with spring.profiles.active or an environment variable"
+        - "Says the code stays the same, only config changes"
+  - code: AUTO_CONFIGURATION
+    title: "Auto-configuration and Starters"
+    order: 6
+    group: "Core"
+    summary: "Spring Boot looks at what is on the classpath and what you have already defined, then sets up sensible defaults. Add spring-boot-starter-web and you get an embedded Tomcat and JSON support; add spring-boot-starter-data-jpa and a datasource, and you get JPA set up. Your own beans and properties always win over the defaults."
+    checklist:
+      - "I can explain what a starter dependency is."
+      - "I can explain how auto-configuration decides what to set up (conditions on classpath and existing beans)."
+      - "I can override a default by defining my own bean or property."
+      - "I can find what was auto-configured using the debug report."
+    quiz:
+      - prompt: "What does a starter like spring-boot-starter-web give you?"
+        options:
+          - "A free cloud server"
+          - "A ready set of dependencies, such as Spring MVC, Jackson and embedded Tomcat"
+          - "A database"
+          - "Generated controllers"
+        answer: 1
+        explanation: "Starters are curated dependency bundles; auto-configuration then sets them up."
+      - prompt: "You define your own ObjectMapper bean. What happens to the default one?"
+        options:
+          - "Both are always used"
+          - "Startup fails"
+          - "Yours is ignored"
+          - "Spring Boot backs off and uses yours"
+        answer: 3
+        explanation: "Most auto-configurations use @ConditionalOnMissingBean, so your bean replaces the default."
+      - prompt: "How can you see which auto-configurations matched?"
+        options:
+          - "Run with debug=true to print the conditions evaluation report"
+          - "Read the jar file manually"
+          - "It cannot be seen"
+          - "Call System.gc()"
+        answer: 0
+        explanation: "debug=true prints a report of positive and negative matches at startup."
+    explainBack:
+      prompt: "Explain how Spring Boot knows to start a web server when you add one dependency."
+      rubric:
+        - "Mentions starters bringing libraries onto the classpath"
+        - "Mentions auto-configuration reacting to classes on the classpath"
+        - "Mentions conditions like missing bean, so user config wins"
+        - "Gives an example such as embedded Tomcat or DataSource"
+
+  # ================= Web =================
+  - code: LAYERED_ARCHITECTURE
+    title: "Layered Architecture"
+    order: 7
+    group: "Web"
+    summary: "A typical Spring app has three layers: controllers handle HTTP and convert data, services hold business rules and transactions, and repositories talk to the database. Each layer only calls the layer below it, which keeps code organised and easy to test."
+    checklist:
+      - "I can name the controller, service and repository layers and the job of each."
+      - "I can explain why business logic should not sit in controllers."
+      - "I can draw the flow of one request through the layers."
+    quiz:
+      - prompt: "Where should a rule like 'a user can have at most 50 open tasks' be checked?"
+        options:
+          - "Controller"
+          - "Repository interface"
+          - "Service"
+          - "Entity getter"
+        answer: 2
+        explanation: "Business rules belong in the service layer, so they apply no matter which controller calls them."
+      - prompt: "What is the main job of a controller?"
+        options:
+          - "Writing SQL"
+          - "Handling HTTP: reading input, calling the service and returning a response"
+          - "Holding database transactions"
+          - "Storing configuration"
+        answer: 1
+        explanation: "Controllers are the HTTP layer. They should stay thin."
+      - prompt: "Which call direction is normal?"
+        options:
+          - "Repository -> Controller -> Service"
+          - "Service -> Controller -> Repository"
+          - "Controller -> Service -> Repository"
+          - "Repository -> Service -> Controller"
+        answer: 2
+        explanation: "Requests flow down from the web layer to the data layer."
+    explainBack:
+      prompt: "Explain the three layers of a Spring Boot app using a 'create task' request as an example."
+      rubric:
+        - "Controller receives the HTTP request and validates input"
+        - "Service applies business rules"
+        - "Repository saves to the database"
+        - "Mentions a benefit: separation, reuse or testability"
+  - code: REST_DESIGN
+    title: "REST Design and Status Codes"
+    order: 8
+    group: "Web"
+    summary: "Good REST APIs use nouns for URLs (/tasks, /tasks/5), HTTP methods for actions (GET, POST, PUT, PATCH, DELETE) and the right status codes: 200 OK, 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict, 500 Internal Server Error."
+    checklist:
+      - "I can design URLs for a resource using nouns and plural names."
+      - "I can choose the right HTTP method for create, read, update and delete."
+      - "I can pick the correct status code for common situations."
+      - "I can explain the difference between 401 and 403."
+      - "I can explain what idempotent means."
+    quiz:
+      - prompt: "Which URL is the best REST design for deleting task 7?"
+        options:
+          - "POST /deleteTask?id=7"
+          - "GET /tasks/delete/7"
+          - "PUT /tasks/7/remove"
+          - "DELETE /tasks/7"
+        answer: 3
+        explanation: "Use the noun in the URL and the HTTP method for the action."
+      - prompt: "A logged-in user tries to open an admin-only page. Which status fits?"
+        options:
+          - "403 Forbidden"
+          - "401 Unauthorized"
+          - "404 Not Found"
+          - "200 OK"
+        answer: 0
+        explanation: "401 means not logged in (no valid credentials). 403 means logged in but not allowed."
+      - prompt: "Which methods are idempotent?"
+        options:
+          - "Only POST"
+          - "GET, PUT and DELETE"
+          - "POST and PATCH only"
+          - "None of them"
+        answer: 1
+        explanation: "Repeating GET, PUT or DELETE gives the same final state. POST usually creates a new item each time."
+    explainBack:
+      prompt: "Design the REST endpoints for a 'books' resource and say which status code each returns on success."
+      rubric:
+        - "Uses plural noun URLs like /books and /books/{id}"
+        - "Maps GET, POST, PUT/PATCH and DELETE correctly"
+        - "Uses 201 for create and 204 or 200 for delete"
+        - "Mentions 404 for a missing book or 400 for bad input"
+  - code: CONTROLLERS_MAPPING
+    title: "Controllers and Request Mapping"
+    order: 9
+    group: "Web"
+    summary: "A @RestController maps URLs to methods using @GetMapping, @PostMapping and friends. Inputs come from the path (@PathVariable), the query string (@RequestParam), the JSON body (@RequestBody) or headers (@RequestHeader). ResponseEntity lets you control the status code and headers."
+    checklist:
+      - "I can write a @RestController with GET, POST, PUT and DELETE methods."
+      - "I can read path variables, query parameters and a JSON body."
+      - "I can return ResponseEntity with a custom status."
+      - "I can explain the difference between @Controller and @RestController."
+    quiz:
+      - prompt: "For GET /tasks?status=DONE, how do you read DONE?"
+        options:
+          - "@RequestParam String status"
+          - "@PathVariable String status"
+          - "@RequestBody String status"
+          - "@RequestHeader String status"
+        answer: 0
+        explanation: "Values after ? are query parameters, read with @RequestParam."
+      - prompt: "Which return type lets you set status 201 and a Location header?"
+        options:
+          - "void"
+          - "String"
+          - "ResponseEntity"
+          - "Optional"
+        answer: 2
+        explanation: "ResponseEntity.created(uri).body(dto) sets both."
+      - prompt: "Spring has GET /tasks but receives POST /tasks with no POST mapping. What status is returned?"
+        options:
+          - "404 Not Found"
+          - "400 Bad Request"
+          - "500 Internal Server Error"
+          - "405 Method Not Allowed"
+        answer: 3
+        explanation: "The path exists but not for that method, so Spring returns 405."
+    explainBack:
+      prompt: "Explain the four ways a controller method can receive input, with one example each."
+      rubric:
+        - "Path variable for identifying a resource"
+        - "Request param for filters or paging"
+        - "Request body for JSON data"
+        - "Header for things like tokens or language"
+  - code: VALIDATION
+    title: "Validation"
+    order: 10
+    group: "Web"
+    summary: "Bean Validation (Jakarta Validation) checks input with annotations like @NotNull, @NotBlank, @Size, @Email, @Min and @Positive. Put @Valid on the @RequestBody parameter to trigger it. Failures throw MethodArgumentNotValidException, which Spring turns into 400 Bad Request; you can format the errors in a global handler."
+    checklist:
+      - "I can add validation annotations to a request DTO."
+      - "I can trigger validation with @Valid."
+      - "I can explain the difference between @NotNull, @NotEmpty and @NotBlank."
+      - "I can return field-wise error messages from a global handler."
+    quiz:
+      - prompt: "Which annotation rejects null, an empty string and a string of only spaces?"
+        options:
+          - "@NotNull"
+          - "@NotBlank"
+          - "@NotEmpty"
+          - "@Size(min = 0)"
+        answer: 1
+        explanation: "@NotBlank requires at least one non-whitespace character. @NotEmpty allows \"   \"; @NotNull allows \"\"."
+      - prompt: "Which dependency is needed for @Valid to work in Spring Boot 3?"
+        options:
+          - "spring-boot-starter-security"
+          - "spring-boot-devtools"
+          - "lombok"
+          - "spring-boot-starter-validation"
+        answer: 3
+        explanation: "The validation starter brings Hibernate Validator, the implementation of Jakarta Validation."
+      - prompt: "What exception does a failed @Valid @RequestBody throw?"
+        options:
+          - "MethodArgumentNotValidException"
+          - "NullPointerException"
+          - "TransactionRequiredException"
+          - "HttpMediaTypeNotSupportedException"
+        answer: 0
+        explanation: "Spring MVC throws MethodArgumentNotValidException, which results in 400 Bad Request by default."
+    explainBack:
+      prompt: "Explain how you would make sure a signup request has a valid email and a password of at least 8 characters."
+      rubric:
+        - "Uses @Email and @NotBlank on email"
+        - "Uses @Size(min = 8) on password"
+        - "Puts @Valid on the @RequestBody parameter"
+        - "Mentions 400 response and a handler for readable errors"
+  - code: GLOBAL_EXCEPTIONS
+    title: "Global Exception Handling"
+    order: 11
+    group: "Web"
+    summary: "Instead of try-catch in every controller, create one @RestControllerAdvice class with @ExceptionHandler methods. Each method maps an exception type to a status code and a consistent JSON error body. Spring Boot 3 also supports the standard ProblemDetail format."
+    checklist:
+      - "I can create a custom exception like ResourceNotFoundException."
+      - "I can write a @RestControllerAdvice that returns 404 for it."
+      - "I can return a consistent error body (status, message, time)."
+      - "I can explain why stack traces should not be sent to clients."
+    quiz:
+      - prompt: "What is the main benefit of @RestControllerAdvice?"
+        options:
+          - "Faster database queries"
+          - "It removes the need for services"
+          - "One central place for error handling across all controllers"
+          - "It auto-generates tests"
+        answer: 2
+        explanation: "Errors are handled consistently in one place instead of repeated try-catch blocks."
+      - prompt: "Which Spring Boot 3 class represents the standard RFC 7807/9457 error body?"
+        options:
+          - "ErrorBean"
+          - "ProblemDetail"
+          - "HttpError"
+          - "ExceptionModel"
+        answer: 1
+        explanation: "ProblemDetail models the standard 'problem details' JSON format."
+      - prompt: "Why should a public API not return the full stack trace?"
+        options:
+          - "It is too short"
+          - "JSON cannot hold it"
+          - "It can leak internal details useful to attackers"
+          - "It slows the database"
+        answer: 2
+        explanation: "Stack traces reveal class names, libraries and sometimes data. Log them on the server instead."
+    explainBack:
+      prompt: "Explain how you return a clean 404 JSON error when a task is not found."
+      rubric:
+        - "Creates a custom exception thrown from the service"
+        - "Uses @RestControllerAdvice with @ExceptionHandler"
+        - "Sets status 404 with @ResponseStatus or ResponseEntity"
+        - "Returns a consistent JSON body with a message"
+  - code: DTO_MAPPING
+    title: "DTOs and Mapping"
+    order: 12
+    group: "Web"
+    summary: "A DTO (Data Transfer Object) is a simple class or record shaped for the API, separate from the database entity. Using DTOs hides internal fields (like password hashes), avoids lazy-loading and recursion problems in JSON, and lets the API and database change independently. Mapping can be manual or with a tool like MapStruct."
+    checklist:
+      - "I can explain what a DTO is and why we do not return entities directly."
+      - "I can write a request DTO and a response DTO as Java records."
+      - "I can map an entity to a DTO manually."
+      - "I can name a mapping library such as MapStruct."
+    quiz:
+      - prompt: "Which is a good reason to return a DTO instead of the User entity?"
+        options:
+          - "Entities cannot be converted to JSON"
+          - "DTOs are faster to save in the database"
+          - "Spring requires DTOs"
+          - "To avoid exposing fields like passwordHash and to control the API shape"
+        answer: 3
+        explanation: "DTOs control exactly what leaves the API and decouple it from the database model."
+      - prompt: "Which Java feature is a neat fit for simple immutable DTOs?"
+        options:
+          - "record"
+          - "enum"
+          - "abstract class"
+          - "interface with default methods"
+        answer: 0
+        explanation: "Records give constructor, accessors, equals, hashCode and toString with one line."
+      - prompt: "Returning entities with two-way relationships directly as JSON often causes what?"
+        options:
+          - "Faster responses"
+          - "Infinite recursion and lazy-loading errors"
+          - "Automatic pagination"
+          - "Compile errors"
+        answer: 1
+        explanation: "Jackson follows both sides of the relationship forever, and lazy fields may load outside a session."
+    explainBack:
+      prompt: "Explain what a DTO is and give two reasons to use one in a REST API."
+      rubric:
+        - "Defines DTO as an object shaped for transferring data in the API"
+        - "Mentions hiding sensitive or internal fields"
+        - "Mentions avoiding recursion or lazy-loading issues"
+        - "Mentions decoupling API from database structure"
+
+  # ================= Data =================
+  - code: JPA_ENTITIES
+    title: "JPA and Entities"
+    order: 13
+    group: "Data"
+    summary: "JPA is the Java standard for mapping objects to database tables (ORM). Hibernate is the most common implementation and Spring Data JPA builds on top of it. An @Entity class maps to a table, its fields map to columns, and @Id marks the primary key."
+    checklist:
+      - "I can explain ORM, JPA and Hibernate and how they relate."
+      - "I can write an @Entity with @Id, @GeneratedValue and @Column."
+      - "I can explain why an entity needs a no-argument constructor."
+      - "I can explain what spring.jpa.hibernate.ddl-auto does and why we avoid 'update' in production."
+    quiz:
+      - prompt: "What is the relationship between JPA and Hibernate?"
+        options:
+          - "JPA is a specification; Hibernate is an implementation of it"
+          - "They are competing databases"
+          - "Hibernate is a specification; JPA implements it"
+          - "They are unrelated"
+        answer: 0
+        explanation: "JPA defines the API; Hibernate provides the actual working code."
+      - prompt: "Which annotation changes the column name for a field?"
+        options:
+          - "@Table"
+          - "@Entity"
+          - "@Column(name = \"...\")"
+          - "@Id"
+        answer: 2
+        explanation: "@Column customises the column name, nullability, length and more."
+      - prompt: "Why prefer a migration tool over ddl-auto=update in production?"
+        options:
+          - "update is slower to type"
+          - "update deletes all data every time"
+          - "Migrations are required by Java"
+          - "Migrations are versioned, reviewed and repeatable; update can make unsafe or missing changes"
+        answer: 3
+        explanation: "Schema changes should be explicit and versioned, for example with Flyway."
+    explainBack:
+      prompt: "Explain what JPA does for you, using a Task entity as an example."
+      rubric:
+        - "Explains mapping a class to a table and fields to columns"
+        - "Mentions @Entity and @Id"
+        - "Mentions Hibernate as the implementation"
+        - "Mentions that you work with objects instead of writing all SQL"
+  - code: REPOSITORIES
+    title: "Spring Data Repositories"
+    order: 14
+    group: "Data"
+    summary: "Extend JpaRepository<Entity, IdType> and Spring generates the implementation at runtime: save, findById, findAll, deleteById, paging and sorting. You can add query methods by naming them (findByStatusAndOwnerId) or write JPQL with @Query."
+    checklist:
+      - "I can create a repository by extending JpaRepository."
+      - "I can write derived query methods like findByEmail."
+      - "I can write a custom query with @Query."
+      - "I can use Pageable to page results."
+    quiz:
+      - prompt: "What does findById return in Spring Data JPA?"
+        options:
+          - "The entity or null"
+          - "Optional of the entity"
+          - "A List"
+          - "A boolean"
+        answer: 1
+        explanation: "findById returns Optional<T>, so you handle the missing case with orElseThrow and similar methods."
+      - prompt: "Which method name is a valid derived query for tasks of a status, newest first?"
+        options:
+          - "getTasksWhereStatus(String s)"
+          - "selectStatusDesc(String s)"
+          - "queryByStatusSorted(String s)"
+          - "findByStatusOrderByCreatedAtDesc(String status)"
+        answer: 3
+        explanation: "Spring parses findBy + property + OrderBy + property + Desc."
+      - prompt: "Who writes the implementation class of a JpaRepository interface?"
+        options:
+          - "Spring Data generates a proxy at runtime"
+          - "You must write it"
+          - "MySQL generates it"
+          - "The Java compiler"
+        answer: 0
+        explanation: "Spring Data creates a runtime implementation based on the interface."
+    explainBack:
+      prompt: "Explain how you get CRUD operations for a Task entity without writing SQL."
+      rubric:
+        - "Mentions extending JpaRepository with entity and id types"
+        - "Lists built-in methods like save, findById, findAll, deleteById"
+        - "Mentions derived query methods"
+        - "Mentions @Query for custom cases"
+  - code: RELATIONSHIPS
+    title: "Entity Relationships"
+    order: 15
+    group: "Data"
+    summary: "JPA maps table relationships with @OneToOne, @OneToMany, @ManyToOne and @ManyToMany. In a two-way relationship, the side with the foreign key (usually @ManyToOne) is the owner; the other side uses mappedBy. Cascade decides whether saving or deleting a parent also affects its children."
+    checklist:
+      - "I can map a one-to-many User-Task relationship both ways."
+      - "I can explain the owning side and mappedBy."
+      - "I can explain what cascade and orphanRemoval do."
+      - "I can explain how many-to-many uses a join table."
+    quiz:
+      - prompt: "In a User-Task relationship where tasks has a user_id column, which side owns the relationship?"
+        options:
+          - "User, with @OneToMany"
+          - "Both equally"
+          - "Task, with @ManyToOne"
+          - "Neither"
+        answer: 2
+        explanation: "The side holding the foreign key column is the owning side."
+      - prompt: "What does cascade = CascadeType.ALL on User.tasks mean?"
+        options:
+          - "Tasks load eagerly"
+          - "Saving or deleting a User also saves or deletes its tasks"
+          - "Tasks are copied to a new table"
+          - "Users cannot be deleted"
+        answer: 1
+        explanation: "Cascade passes operations from the parent to the children."
+      - prompt: "How is @ManyToMany between Student and Course stored in the database?"
+        options:
+          - "A column with a comma-separated list"
+          - "Two copies of every row"
+          - "A separate join table with both foreign keys"
+          - "It cannot be stored"
+        answer: 2
+        explanation: "A join table like student_course holds student_id and course_id pairs."
+    explainBack:
+      prompt: "Explain how you would map 'one user has many tasks' in JPA, including which side owns it."
+      rubric:
+        - "Uses @ManyToOne on Task and @OneToMany(mappedBy) on User"
+        - "Explains the foreign key is in the tasks table"
+        - "Explains owning side vs inverse side"
+        - "Mentions cascade or fetch type"
+  - code: LAZY_EAGER_N_PLUS_1
+    title: "Lazy vs Eager Loading and N+1"
+    order: 16
+    group: "Data"
+    summary: "LAZY loading fetches related data only when you touch it; EAGER loads it immediately. Collections are lazy by default; @ManyToOne is eager by default. The N+1 problem is when one query loads N parents and then N more queries load each parent's children. Fix it with a JOIN FETCH query, @EntityGraph or batch fetching."
+    checklist:
+      - "I can explain lazy and eager loading with an example."
+      - "I can state the default fetch types for @OneToMany and @ManyToOne."
+      - "I can spot the N+1 problem in SQL logs."
+      - "I can fix N+1 with JOIN FETCH or @EntityGraph."
+    quiz:
+      - prompt: "Loading 100 users and then their tasks one by one runs how many queries?"
+        options:
+          - "1"
+          - "2"
+          - "100"
+          - "101"
+        answer: 3
+        explanation: "One query for users plus one per user for tasks: 1 + 100 = 101. That is N+1."
+      - prompt: "What is the default fetch type of @ManyToOne?"
+        options:
+          - "EAGER"
+          - "LAZY"
+          - "NONE"
+          - "BATCH"
+        answer: 0
+        explanation: "To-one relationships default to EAGER; to-many default to LAZY. Many teams set @ManyToOne to LAZY explicitly."
+      - prompt: "Which JPQL fixes N+1 when loading users with their tasks?"
+        options:
+          - "select u from User u"
+          - "select distinct u from User u join fetch u.tasks"
+          - "select u.tasks from User"
+          - "delete from User u"
+        answer: 1
+        explanation: "JOIN FETCH loads users and tasks in one query."
+    explainBack:
+      prompt: "Explain the N+1 problem and two ways to fix it."
+      rubric:
+        - "Explains one query for parents then one per parent for children"
+        - "Mentions it is caused by lazy loading in a loop"
+        - "Mentions JOIN FETCH"
+        - "Mentions @EntityGraph or batch size"
+  - code: TRANSACTIONAL
+    title: "Transactions with @Transactional"
+    order: 17
+    group: "Data"
+    summary: "@Transactional wraps a method in a database transaction, so all its changes commit together or roll back together. Spring does this with a proxy around the bean, so it only works when the method is called from outside the bean, on a public method. By default it rolls back on unchecked exceptions."
+    checklist:
+      - "I can explain ACID and why transactions matter, with a bank transfer example."
+      - "I can put @Transactional on a service method correctly."
+      - "I can explain why self-invocation skips the transaction."
+      - "I can explain readOnly = true and rollbackFor."
+    quiz:
+      - prompt: "A method in a bean calls another @Transactional method in the same bean (this.save()). What happens?"
+        options:
+          - "The @Transactional on save() is skipped, because the call does not go through the proxy"
+          - "A new transaction always starts"
+          - "Compile error"
+          - "The app crashes at startup"
+        answer: 0
+        explanation: "Spring's proxy only intercepts calls coming from outside the bean."
+      - prompt: "A @Transactional method throws a checked IOException. By default, what happens?"
+        options:
+          - "The transaction rolls back"
+          - "The method retries"
+          - "The transaction commits"
+          - "The database restarts"
+        answer: 2
+        explanation: "Default rollback is only for RuntimeException and Error. Use rollbackFor = IOException.class to change this."
+      - prompt: "Which layer is usually the right place for @Transactional?"
+        options:
+          - "Controller"
+          - "Entity"
+          - "DTO"
+          - "Service"
+        answer: 3
+        explanation: "A service method usually represents one business operation, which is one unit of work."
+    explainBack:
+      prompt: "Explain @Transactional using a money transfer, and mention one common mistake."
+      rubric:
+        - "Says all changes commit together or roll back together"
+        - "Uses the transfer example correctly"
+        - "Mentions proxy-based behaviour"
+        - "Mentions self-invocation, private methods or checked exceptions as a pitfall"
+  - code: FLYWAY
+    title: "Database Migrations with Flyway"
+    order: 18
+    group: "Data"
+    summary: "Flyway keeps the database schema under version control. You write numbered SQL files like V1__create_tasks.sql and V2__add_due_date.sql in db/migration. On startup Flyway runs the new ones in order and records them in a history table, so every environment has the same schema."
+    checklist:
+      - "I can explain why schema changes should be versioned."
+      - "I can name a migration file correctly."
+      - "I can explain why you never edit a migration that already ran."
+      - "I can add a new column with a new migration."
+    quiz:
+      - prompt: "Which is a valid Flyway migration file name?"
+        options:
+          - "create_tasks.sql"
+          - "V1__create_tasks.sql"
+          - "1_create_tasks.sql"
+          - "V1-create-tasks.sql"
+        answer: 1
+        explanation: "Versioned migrations use V<version>__<description>.sql with two underscores."
+      - prompt: "You need a new column after V3 has run in production. What should you do?"
+        options:
+          - "Edit V3 to add the column"
+          - "Delete the history table"
+          - "Turn on ddl-auto=create"
+          - "Add a new V4 migration"
+        answer: 3
+        explanation: "Applied migrations are checksummed. Changes go in a new migration."
+      - prompt: "Where does Flyway record which migrations ran?"
+        options:
+          - "In a history table, flyway_schema_history"
+          - "In application.yml"
+          - "In the Git log"
+          - "Nowhere"
+        answer: 0
+        explanation: "flyway_schema_history stores version, checksum and success for each migration."
+    explainBack:
+      prompt: "Explain what Flyway does and how you would add a 'priority' column to tasks."
+      rubric:
+        - "Explains versioned SQL migrations run in order"
+        - "Mentions the history table"
+        - "Says to add a new V file, not edit an old one"
+        - "Writes or describes an ALTER TABLE statement"
+
+  # ================= Security =================
+  - code: SECURITY_FILTER_CHAIN
+    title: "Spring Security Filter Chain"
+    order: 19
+    group: "Security"
+    summary: "Spring Security works as a chain of servlet filters that run before your controller. Each filter does one job, like reading credentials, checking a token or checking permissions. In Spring Boot 3 you configure it by declaring a SecurityFilterChain bean with HttpSecurity, listing which URLs are public and which need login."
+    checklist:
+      - "I can explain authentication vs authorization."
+      - "I can write a SecurityFilterChain bean that permits /api/auth/** and secures the rest."
+      - "I can explain why CSRF is often disabled for stateless JWT APIs."
+      - "I can explain where a request is rejected if it is not allowed."
+    quiz:
+      - prompt: "What is the difference between authentication and authorization?"
+        options:
+          - "They are the same"
+          - "Authorization checks who you are; authentication checks what you may do"
+          - "Authentication checks who you are; authorization checks what you may do"
+          - "Authentication is only for admins"
+        answer: 2
+        explanation: "First prove identity (authn), then check permissions (authz)."
+      - prompt: "In Spring Boot 3, how do you configure security rules?"
+        options:
+          - "Extend WebSecurityConfigurerAdapter"
+          - "Declare a SecurityFilterChain @Bean using HttpSecurity"
+          - "Add rules to application.yml only"
+          - "Put @Secure on the main class"
+        answer: 1
+        explanation: "WebSecurityConfigurerAdapter was removed in Spring Security 6. Use a SecurityFilterChain bean."
+      - prompt: "When does Spring Security check a request?"
+        options:
+          - "After the controller returns"
+          - "Only at startup"
+          - "In filters, before the request reaches the controller"
+          - "Inside the repository"
+        answer: 2
+        explanation: "Security filters run before the DispatcherServlet sends the request to your controller."
+    explainBack:
+      prompt: "Explain how a request passes through Spring Security before reaching your controller."
+      rubric:
+        - "Mentions a chain of filters"
+        - "Distinguishes authentication and authorization"
+        - "Mentions configuring public vs protected URLs in SecurityFilterChain"
+        - "Mentions 401 or 403 for rejected requests"
+  - code: JWT_AUTH
+    title: "JWT Authentication"
+    order: 20
+    group: "Security"
+    summary: "A JWT (JSON Web Token) is a signed token the server gives after login. The client sends it in the Authorization: Bearer header on each request. A filter checks the signature and expiry, then sets the user in the SecurityContext. Because the token carries the identity, the server does not need sessions (stateless)."
+    checklist:
+      - "I can describe the three parts of a JWT: header, payload, signature."
+      - "I can explain the login flow that issues a token."
+      - "I can explain how a filter validates the token on each request."
+      - "I can explain why a JWT payload must not hold secrets."
+      - "I can explain token expiry and why short-lived tokens are safer."
+    quiz:
+      - prompt: "Where does the client usually send a JWT?"
+        options:
+          - "In the URL path"
+          - "In the request body of every GET"
+          - "In a database column"
+          - "In the Authorization header as Bearer <token>"
+        answer: 3
+        explanation: "The standard is Authorization: Bearer <token>."
+      - prompt: "Is the JWT payload encrypted by default?"
+        options:
+          - "No, it is only Base64URL-encoded and signed, so anyone can read it"
+          - "Yes, nobody can read it"
+          - "It is hashed with BCrypt"
+          - "It is compressed so it cannot be read"
+        answer: 0
+        explanation: "Signing stops changes, not reading. Never put passwords or secrets in the payload."
+      - prompt: "What does the signature part of a JWT protect against?"
+        options:
+          - "Slow networks"
+          - "Someone changing the payload without the server noticing"
+          - "SQL injection"
+          - "Expired passwords"
+        answer: 1
+        explanation: "If the payload changes, the signature no longer matches the server's secret or key."
+    explainBack:
+      prompt: "Explain the full JWT login flow from entering a password to calling a protected API."
+      rubric:
+        - "User logs in and the server checks the password"
+        - "Server issues a signed token with an expiry"
+        - "Client sends Bearer token on later requests"
+        - "A filter validates the token and sets the authenticated user"
+        - "Mentions stateless, no server session"
+  - code: PASSWORD_ROLES
+    title: "Password Hashing and Roles"
+    order: 21
+    group: "Security"
+    summary: "Never store plain passwords. Hash them with a slow, salted algorithm like BCrypt using PasswordEncoder, and check with matches(). Users get roles such as ROLE_USER and ROLE_ADMIN, and you restrict URLs or methods with hasRole or @PreAuthorize."
+    checklist:
+      - "I can explain hashing vs encryption."
+      - "I can hash and check a password with BCryptPasswordEncoder."
+      - "I can restrict an endpoint to admins with hasRole(\"ADMIN\")."
+      - "I can use @PreAuthorize on a service method."
+    quiz:
+      - prompt: "Why is BCrypt better than plain SHA-256 for passwords?"
+        options:
+          - "It is deliberately slow and salted, which makes brute-force attacks hard"
+          - "It is faster"
+          - "It can be decrypted when needed"
+          - "It produces shorter output"
+        answer: 0
+        explanation: "BCrypt adds a random salt and a cost factor that slows down guessing."
+      - prompt: "How do you check a login password against a stored BCrypt hash?"
+        options:
+          - "encoder.encode(raw).equals(hash)"
+          - "hash.equals(raw)"
+          - "encoder.matches(raw, hash)"
+          - "Decrypt the hash and compare"
+        answer: 2
+        explanation: "encode() gives a different result each time because of the salt, so use matches()."
+      - prompt: "hasRole(\"ADMIN\") checks for which authority?"
+        options:
+          - "ADMIN"
+          - "admin"
+          - "AUTH_ADMIN"
+          - "ROLE_ADMIN"
+        answer: 3
+        explanation: "hasRole adds the ROLE_ prefix automatically. hasAuthority checks the exact string."
+    explainBack:
+      prompt: "Explain how you store passwords safely and how you make an endpoint admin-only."
+      rubric:
+        - "Says passwords are hashed, not encrypted or stored plain"
+        - "Mentions BCrypt and salt"
+        - "Mentions matches() for checking"
+        - "Mentions roles with hasRole or @PreAuthorize"
+
+  # ================= Testing =================
+  - code: UNIT_TESTS_MOCKITO
+    title: "Unit Tests with JUnit and Mockito"
+    order: 22
+    group: "Testing"
+    summary: "A unit test checks one class alone. Mockito creates fake versions (mocks) of its dependencies, so you control what they return and verify how they were called. JUnit 5 runs the tests with @Test and assertions. Constructor injection makes this easy."
+    checklist:
+      - "I can write a JUnit 5 test with arrange, act, assert."
+      - "I can mock a repository with Mockito and stub it with when().thenReturn()."
+      - "I can verify a method was called with verify()."
+      - "I can test that a method throws an exception with assertThrows."
+    quiz:
+      - prompt: "What is a mock?"
+        options:
+          - "A real database"
+          - "A fake object whose behaviour you control in a test"
+          - "A type of Spring bean scope"
+          - "A production log"
+        answer: 1
+        explanation: "Mocks stand in for real dependencies so the test focuses on one class."
+      - prompt: "Which code makes a mocked repo return a task for id 1?"
+        options:
+          - "repo.findById(1L) = task;"
+          - "verify(repo).save(task);"
+          - "assertEquals(repo, task);"
+          - "when(repo.findById(1L)).thenReturn(Optional.of(task));"
+        answer: 3
+        explanation: "when(...).thenReturn(...) stubs a method call."
+      - prompt: "How do you check that a method throws TaskNotFoundException?"
+        options:
+          - "assertThrows(TaskNotFoundException.class, () -> service.get(99L));"
+          - "assertTrue(false)"
+          - "try { } finally { }"
+          - "@Test(expected) in JUnit 5"
+        answer: 0
+        explanation: "JUnit 5 uses assertThrows with a lambda."
+    explainBack:
+      prompt: "Explain how you would unit test TaskService.get(id) without a database."
+      rubric:
+        - "Mocks TaskRepository with Mockito"
+        - "Stubs findById for found and not-found cases"
+        - "Asserts the returned value"
+        - "Uses assertThrows for the missing case"
+  - code: INTEGRATION_TESTS
+    title: "Integration Tests"
+    order: 23
+    group: "Testing"
+    summary: "Integration tests check that parts work together: controllers, services, repositories and the real database. @SpringBootTest loads the full context; slice tests like @WebMvcTest (web layer only, with MockMvc) and @DataJpaTest (JPA only) are faster. Testcontainers can start a real PostgreSQL or MySQL in Docker for the test."
+    checklist:
+      - "I can explain unit tests vs integration tests."
+      - "I can write a @WebMvcTest using MockMvc to test a controller."
+      - "I can write a @DataJpaTest for a repository query."
+      - "I can explain why Testcontainers gives more realistic tests than an in-memory database."
+    quiz:
+      - prompt: "Which annotation loads only the web layer for testing controllers?"
+        options:
+          - "@DataJpaTest"
+          - "@SpringBootApplication"
+          - "@WebMvcTest"
+          - "@MockBean"
+        answer: 2
+        explanation: "@WebMvcTest loads controllers, advice and MVC config, not services or repositories."
+      - prompt: "Why might a test pass on H2 but fail on PostgreSQL?"
+        options:
+          - "PostgreSQL does not support Java"
+          - "H2 and PostgreSQL support different SQL features and behaviours"
+          - "Tests cannot use databases"
+          - "H2 is always more strict"
+        answer: 1
+        explanation: "Dialect differences are why many teams test against the real database with Testcontainers."
+      - prompt: "In Spring Boot 3.4+, which annotation adds a Mockito mock bean into the test context?"
+        options:
+          - "@Bean"
+          - "@Primary"
+          - "@MockitoBean"
+          - "@Spy only"
+        answer: 2
+        explanation: "@MockitoBean replaces the older, deprecated @MockBean."
+    explainBack:
+      prompt: "Explain the difference between a unit test and an integration test, with one Spring example of each."
+      rubric:
+        - "Unit test checks one class in isolation with mocks"
+        - "Integration test checks multiple parts or a real context"
+        - "Names @SpringBootTest, @WebMvcTest or @DataJpaTest"
+        - "Mentions speed vs realism trade-off"
+
+  # ================= Ops =================
+  - code: DOCKER_BASICS
+    title: "Docker Basics"
+    order: 24
+    group: "Ops"
+    summary: "Docker packages your app with everything it needs into an image, and runs it as a container that behaves the same on any machine. A Dockerfile describes how to build the image. Docker Compose can start your app and its database together."
+    checklist:
+      - "I can explain image vs container."
+      - "I can read a simple Dockerfile for a Spring Boot jar."
+      - "I can run a PostgreSQL or MySQL container with a port mapping."
+      - "I can explain what docker compose up does."
+    quiz:
+      - prompt: "What is the difference between an image and a container?"
+        options:
+          - "No difference"
+          - "A container is the template; an image runs it"
+          - "Images only exist in the cloud"
+          - "An image is a template; a container is a running instance of it"
+        answer: 3
+        explanation: "Like a class and an object: the image is the blueprint, the container is the running copy."
+      - prompt: "What does -p 8080:8080 do in docker run?"
+        options:
+          - "Maps host port 8080 to container port 8080"
+          - "Sets the process id"
+          - "Sets 8080 MB of memory"
+          - "Runs 8080 containers"
+        answer: 0
+        explanation: "The format is hostPort:containerPort."
+      - prompt: "Which file describes several services (app + database) to run together?"
+        options:
+          - "pom.xml"
+          - "compose.yaml (docker-compose.yml)"
+          - "application.yml"
+          - "Dockerfile.lock"
+        answer: 1
+        explanation: "Docker Compose reads compose.yaml or docker-compose.yml to start multiple containers."
+    explainBack:
+      prompt: "Explain why teams use Docker and how you would run your Spring Boot app with a database using it."
+      rubric:
+        - "Explains 'works the same everywhere' packaging"
+        - "Distinguishes image and container"
+        - "Mentions a Dockerfile for the app"
+        - "Mentions Docker Compose or a database container with port mapping"
+  - code: MICROSERVICES_OVERVIEW
+    title: "Microservices Overview"
+    order: 25
+    group: "Ops"
+    summary: "A monolith is one deployable app; microservices split the system into small services that each own one business area and its data, and talk over HTTP or messaging. They scale and deploy independently, but add complexity: network failures, distributed data and more operations work. Common helpers are an API gateway, service discovery, config server and circuit breakers."
+    checklist:
+      - "I can compare a monolith and microservices with pros and cons."
+      - "I can explain why each microservice should own its database."
+      - "I can name an API gateway and a circuit breaker and say what each does."
+      - "I can explain why a fresher project is usually better as a well-structured monolith."
+    quiz:
+      - prompt: "Which is a real downside of microservices?"
+        options:
+          - "More moving parts: network calls can fail and debugging spans many services"
+          - "You cannot use Java"
+          - "They cannot scale"
+          - "They cannot use databases"
+        answer: 0
+        explanation: "Distributed systems bring network, consistency and operational complexity."
+      - prompt: "What does an API gateway do?"
+        options:
+          - "Stores all data"
+          - "Compiles Java code"
+          - "Acts as a single entry point that routes requests to the right service"
+          - "Replaces the database"
+        answer: 2
+        explanation: "The gateway handles routing and often auth, rate limiting and logging."
+      - prompt: "What does a circuit breaker do?"
+        options:
+          - "Turns off the server at night"
+          - "Encrypts traffic"
+          - "Deletes old logs"
+          - "Stops calling a failing service for a while so failures do not spread"
+        answer: 3
+        explanation: "It fails fast and gives the failing service time to recover, protecting the caller."
+    explainBack:
+      prompt: "Explain monolith vs microservices to an interviewer, and say which you would choose for a small team."
+      rubric:
+        - "Defines both clearly"
+        - "Gives at least one pro and one con of microservices"
+        - "Mentions independent deployment or scaling"
+        - "Makes a reasoned choice, such as starting with a modular monolith"
+
+debugChallenges:
+  - id: dbg-001
+    title: "NoSuchBeanDefinitionException"
+    error: |
+      ***************************
+      APPLICATION FAILED TO START
+      ***************************
+
+      Description:
+
+      Parameter 0 of constructor in com.codequest.app.web.TaskController required a bean of type 'com.codequest.tasks.TaskService' that could not be found.
+
+      Action:
+
+      Consider defining a bean of type 'com.codequest.tasks.TaskService' in your configuration.
+    code: |
+      package com.codequest.app;
+
+      @SpringBootApplication
+      public class TaskApp {
+          public static void main(String[] args) {
+              SpringApplication.run(TaskApp.class, args);
+          }
+      }
+
+      // ---- another file ----
+      package com.codequest.tasks;
+
+      @Service
+      public class TaskService {
+          public List<String> all() { return List.of("Learn Spring"); }
+      }
+
+      // ---- another file ----
+      package com.codequest.app.web;
+
+      @RestController
+      public class TaskController {
+          private final TaskService service;
+          public TaskController(TaskService service) { this.service = service; }
+      }
+    question: "What is the cause?"
+    options:
+      - "TaskService needs @Autowired on the class"
+      - "TaskService is in com.codequest.tasks, outside the package scanned from com.codequest.app"
+      - "Controllers cannot have constructors"
+      - "The database is not running"
+    answer: 1
+    explanation: "@SpringBootApplication scans its own package (com.codequest.app) and sub-packages only. com.codequest.tasks is a sibling, so TaskService is never found and no bean is created. The other very common cause of the same error is forgetting @Service (or @Component) on the class."
+    fix: |
+      Option 1 (best): move the main class up to the root package so it covers everything.
+        package com.codequest;   // TaskApp here; com.codequest.tasks and com.codequest.app.web are now sub-packages
+
+      Option 2: tell Spring where to scan.
+        @SpringBootApplication(scanBasePackages = "com.codequest")
+        public class TaskApp { ... }
+
+      Also check: the class has @Service, @Component, @Repository or @Controller.
+  - id: dbg-002
+    title: "LazyInitializationException"
+    error: |
+      org.hibernate.LazyInitializationException: failed to lazily initialize a collection of role: com.codequest.user.AppUser.tasks: could not initialize proxy - no Session
+          at org.hibernate.collection.spi.AbstractPersistentCollection.throwLazyInitializationException(...)
+          at com.codequest.user.UserController.taskCount(UserController.java:24)
+    code: |
+      # application.yml
+      spring:
+        jpa:
+          open-in-view: false
+
+      @Entity
+      public class AppUser {
+          @Id @GeneratedValue private Long id;
+          @OneToMany(mappedBy = "owner")          // LAZY by default
+          private List<Task> tasks = new ArrayList<>();
+          public List<Task> getTasks() { return tasks; }
+      }
+
+      @RestController
+      public class UserController {
+          private final AppUserRepository users;
+          public UserController(AppUserRepository users) { this.users = users; }
+
+          @GetMapping("/users/{id}/task-count")
+          public int taskCount(@PathVariable Long id) {
+              AppUser u = users.findById(id).orElseThrow();
+              return u.getTasks().size();          // line 24
+          }
+      }
+    question: "Why does this fail?"
+    options:
+      - "The tasks table is empty"
+      - "@OneToMany must always be EAGER"
+      - "tasks is lazy, and it is accessed after the transaction and Hibernate session have closed"
+      - "findById cannot be used in a controller"
+    answer: 2
+    explanation: "findById runs in its own short transaction. When it returns, the session is closed. tasks is LAZY, so it is only a placeholder. Calling size() tries to load it from the database, but there is no open session any more. Switching everything to EAGER hides the problem but loads too much data."
+    fix: |
+      Load what you need inside a transaction and return a DTO.
+
+      public interface AppUserRepository extends JpaRepository<AppUser, Long> {
+          @Query("select u from AppUser u left join fetch u.tasks where u.id = :id")
+          Optional<AppUser> findWithTasks(@Param("id") Long id);
+      }
+
+      @Service
+      public class UserService {
+          private final AppUserRepository users;
+          public UserService(AppUserRepository users) { this.users = users; }
+
+          @Transactional(readOnly = true)
+          public int taskCount(Long id) {
+              return users.findWithTasks(id).orElseThrow().getTasks().size();
+          }
+      }
+
+      // Even better for a count: a query like
+      // @Query("select count(t) from Task t where t.owner.id = :id") long countByOwner(@Param("id") Long id);
+  - id: dbg-003
+    title: "404 vs 405"
+    error: |
+      POST http://localhost:8080/api/tasks
+
+      {
+        "timestamp": "2026-10-31T10:15:30.123+00:00",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/tasks"
+      }
+
+      WARN  .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported]
+    code: |
+      @RestController
+      @RequestMapping("/api/tasks")
+      public class TaskController {
+
+          @GetMapping
+          public List<TaskDto> all() {
+              return service.all();
+          }
+
+          @GetMapping("/{id}")
+          public TaskDto one(@PathVariable Long id) {
+              return service.one(id);
+          }
+      }
+    question: "Why did the client get 405 and not 404?"
+    options:
+      - "The path /api/tasks exists, but no handler accepts the POST method on it"
+      - "The server is down"
+      - "The JSON body is invalid"
+      - "The user is not logged in"
+    answer: 0
+    explanation: "404 means no handler matches the path at all. 405 means the path matches, but not for this HTTP method. Here /api/tasks only has a GET mapping, so POST is not allowed. If the client had called /api/taskz, it would get 404."
+    fix: |
+      Add a POST handler (or call the endpoint with the right method):
+
+          @PostMapping
+          @ResponseStatus(HttpStatus.CREATED)
+          public TaskDto create(@Valid @RequestBody CreateTaskRequest req) {
+              return service.create(req);
+          }
+  - id: dbg-004
+    title: "Circular dependency"
+    error: |
+      ***************************
+      APPLICATION FAILED TO START
+      ***************************
+
+      Description:
+
+      The dependencies of some of the beans in the application context form a cycle:
+
+      ┌─────┐
+      |  orderService defined in file [.../OrderService.class]
+      ↑     ↓
+      |  paymentService defined in file [.../PaymentService.class]
+      └─────┘
+
+      Action:
+
+      Relying upon circular references is discouraged and they are prohibited by default. Update your application to remove the dependency cycle between beans. As a last resort, it may be possible to break the cycle automatically by setting spring.main.allow-circular-references to true.
+    code: |
+      @Service
+      public class OrderService {
+          private final PaymentService payments;
+          public OrderService(PaymentService payments) { this.payments = payments; }
+
+          public void placeOrder(Long id) { payments.charge(id); }
+          public void markPaid(Long id) { /* update order status */ }
+      }
+
+      @Service
+      public class PaymentService {
+          private final OrderService orders;
+          public PaymentService(OrderService orders) { this.orders = orders; }
+
+          public void charge(Long orderId) {
+              // call payment gateway...
+              orders.markPaid(orderId);
+          }
+      }
+    question: "What is the cause?"
+    options:
+      - "Two services cannot exist in one package"
+      - "PaymentService is missing @Primary"
+      - "The payment gateway is down"
+      - "OrderService needs PaymentService and PaymentService needs OrderService, so neither can be created first"
+    answer: 3
+    explanation: "With constructor injection, Spring must build one bean before the other. Each one needs the other first, so it is a cycle. Since Spring Boot 2.6, cycles are not allowed by default. The real fix is a better design, not turning the setting on."
+    fix: |
+      Remove the back-call. Let PaymentService only charge, and let OrderService update itself.
+
+      @Service
+      public class PaymentService {
+          public void charge(Long orderId) { /* call payment gateway */ }
+      }
+
+      @Service
+      public class OrderService {
+          private final PaymentService payments;
+          public OrderService(PaymentService payments) { this.payments = payments; }
+
+          @Transactional
+          public void placeOrder(Long id) {
+              payments.charge(id);
+              markPaid(id);
+          }
+          void markPaid(Long id) { /* update order status */ }
+      }
+
+      Other options: move shared logic into a third service, or publish an event (ApplicationEventPublisher) instead of calling back.
+  - id: dbg-005
+    title: "NoUniqueBeanDefinitionException"
+    error: |
+      ***************************
+      APPLICATION FAILED TO START
+      ***************************
+
+      Description:
+
+      Parameter 0 of constructor in com.codequest.shop.Checkout required a single bean, but 2 were found:
+          - cardGateway: defined in file [.../CardGateway.class]
+          - upiGateway: defined in file [.../UpiGateway.class]
+
+      Action:
+
+      Consider marking one of the beans as @Primary, updating the consumer to accept multiple beans, or using @Qualifier to identify the bean that should be consumed
+    code: |
+      public interface PaymentGateway { void pay(long paise); }
+
+      @Component
+      public class CardGateway implements PaymentGateway {
+          public void pay(long paise) { /* card */ }
+      }
+
+      @Component
+      public class UpiGateway implements PaymentGateway {
+          public void pay(long paise) { /* upi */ }
+      }
+
+      @Service
+      public class Checkout {
+          private final PaymentGateway gateway;
+          public Checkout(PaymentGateway gateway) { this.gateway = gateway; }
+      }
+    question: "What is the cause?"
+    options:
+      - "Interfaces cannot be injected"
+      - "Two beans implement PaymentGateway, so Spring does not know which one to inject"
+      - "@Component cannot be used on classes that implement an interface"
+      - "The pay method must be static"
+    answer: 1
+    explanation: "Spring injects by type. There are two beans of type PaymentGateway and nothing says which to pick, so startup fails."
+    fix: |
+      Pick one way:
+
+      1) Choose at the injection point:
+         public Checkout(@Qualifier("upiGateway") PaymentGateway gateway) { ... }
+
+      2) Make one the default:
+         @Component @Primary
+         public class CardGateway implements PaymentGateway { ... }
+
+      3) Accept all of them:
+         public Checkout(List<PaymentGateway> gateways) { ... }
+         // or Map<String, PaymentGateway> keyed by bean name
+  - id: dbg-006
+    title: "415 Unsupported Media Type"
+    error: |
+      {
+        "timestamp": "2026-10-31T10:20:00.000+00:00",
+        "status": 415,
+        "error": "Unsupported Media Type",
+        "path": "/api/tasks"
+      }
+
+      WARN  .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.web.HttpMediaTypeNotSupportedException: Content-Type 'text/plain;charset=UTF-8' is not supported]
+    code: |
+      // Frontend (JavaScript)
+      fetch("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({ title: "Revise joins" })
+      });
+
+      // Backend
+      @PostMapping("/api/tasks")
+      public TaskDto create(@RequestBody CreateTaskRequest req) {
+          return service.create(req);
+      }
+    question: "What is the cause?"
+    options:
+      - "The request has no Content-Type: application/json header, so fetch sends text/plain and Spring cannot convert it"
+      - "The URL is wrong"
+      - "@RequestBody only works with GET"
+      - "The title is too short"
+    answer: 0
+    explanation: "When fetch gets a string body and no header, it sends Content-Type text/plain;charset=UTF-8. Spring only has a JSON converter for CreateTaskRequest, so it rejects the request with 415. The body text is valid JSON, but the label on it is wrong."
+    fix: |
+      fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Revise joins" })
+      });
+
+      With curl:  curl -X POST -H "Content-Type: application/json" -d '{"title":"Revise joins"}' http://localhost:8080/api/tasks
+  - id: dbg-007
+    title: "400 Bad Request from @Valid"
+    error: |
+      POST /api/tasks  body: {"title": "", "dueDate": "2026-11-05"}
+
+      {
+        "timestamp": "2026-10-31T10:25:00.000+00:00",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/tasks"
+      }
+
+      WARN  .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public com.codequest.task.TaskDto com.codequest.task.TaskController.create(com.codequest.task.CreateTaskRequest): [Field error in object 'createTaskRequest' on field 'title': rejected value []; ... default message [must not be blank]] ]
+    code: |
+      public record CreateTaskRequest(
+              @NotBlank String title,
+              @FutureOrPresent LocalDate dueDate) { }
+
+      @PostMapping("/api/tasks")
+      public TaskDto create(@Valid @RequestBody CreateTaskRequest req) {
+          return service.create(req);
+      }
+    question: "Why does the API return 400?"
+    options:
+      - "The dueDate format is wrong"
+      - "@Valid is not allowed on records"
+      - "The server crashed"
+      - "title is an empty string, which breaks @NotBlank, so validation fails before the method runs"
+    answer: 3
+    explanation: "The log names the field (title), the rejected value (empty) and the rule (must not be blank). Validation is working correctly. The client is sending bad data, and the default error body just does not say which field is wrong."
+    fix: |
+      1) Client: send a non-blank title.
+      2) Server: return readable field errors with a global handler.
+
+      @RestControllerAdvice
+      public class GlobalErrors {
+          @ExceptionHandler(MethodArgumentNotValidException.class)
+          @ResponseStatus(HttpStatus.BAD_REQUEST)
+          public Map<String, String> invalid(MethodArgumentNotValidException ex) {
+              Map<String, String> errors = new HashMap<>();
+              ex.getBindingResult().getFieldErrors()
+                .forEach(e -> errors.put(e.getField(), e.getDefaultMessage()));
+              return errors;   // {"title": "must not be blank"}
+          }
+      }
+  - id: dbg-008
+    title: "TransactionRequiredException: @Transactional not applied (self-invocation)"
+    error: |
+      org.springframework.dao.InvalidDataAccessApiUsageException: Executing an update/delete query
+          ...
+      Caused by: jakarta.persistence.TransactionRequiredException: Executing an update/delete query
+          at org.hibernate.query.sqm.internal.QuerySqmImpl.executeUpdate(...)
+          at com.codequest.task.TaskService.archiveAll(TaskService.java:31)
+          at com.codequest.task.TaskService.cleanUp(TaskService.java:24)
+    code: |
+      public interface TaskRepository extends JpaRepository<Task, Long> {
+          @Modifying
+          @Query("update Task t set t.archived = true where t.dueDate < :date")
+          int archiveOlderThan(@Param("date") LocalDate date);
+      }
+
+      @Service
+      public class TaskService {
+          private final TaskRepository repo;
+          public TaskService(TaskRepository repo) { this.repo = repo; }
+
+          public void cleanUp() {                       // called from the controller
+              archiveAll();                             // line 24: same-class call
+          }
+
+          @Transactional
+          public void archiveAll() {
+              repo.archiveOlderThan(LocalDate.now().minusDays(30));   // line 31
+          }
+      }
+    question: "archiveAll() has @Transactional. Why is there no transaction?"
+    options:
+      - "@Transactional only works on private methods"
+      - "The update query has a syntax error"
+      - "cleanUp() calls archiveAll() on 'this', which skips the Spring proxy, so the @Transactional advice never runs"
+      - "Spring Data repositories never support update queries"
+    answer: 2
+    explanation: "Spring adds transactions with a proxy that wraps the bean. Only calls that come in through the proxy (from another bean) are intercepted. cleanUp() is not transactional, and its internal call to archiveAll() goes straight to the real object, so no transaction starts. Declared @Modifying query methods do not get a transaction by default either, so Hibernate refuses to run the update."
+    fix: |
+      Pick one:
+
+      1) Put @Transactional on the entry point that is called from outside:
+         @Transactional
+         public void cleanUp() { archiveAll(); }
+
+      2) Put @Transactional on the modifying repository method:
+         @Modifying
+         @Transactional
+         @Query("update Task t set t.archived = true where t.dueDate < :date")
+         int archiveOlderThan(@Param("date") LocalDate date);
+
+      3) Move archiveAll() into a different bean and call it through that bean.
+  - id: dbg-009
+    title: "N+1 queries in the SQL log"
+    error: |
+      Hibernate: select u1_0.id,u1_0.name from app_user u1_0
+      Hibernate: select t1_0.owner_id,t1_0.id,t1_0.title from task t1_0 where t1_0.owner_id=?
+      Hibernate: select t1_0.owner_id,t1_0.id,t1_0.title from task t1_0 where t1_0.owner_id=?
+      Hibernate: select t1_0.owner_id,t1_0.id,t1_0.title from task t1_0 where t1_0.owner_id=?
+      ... (the same query 200 times, one per user)
+      GET /api/users/summary took 2.8 s
+    code: |
+      @Service
+      public class UserService {
+          private final AppUserRepository users;
+          public UserService(AppUserRepository users) { this.users = users; }
+
+          @Transactional(readOnly = true)
+          public List<UserSummary> summary() {
+              return users.findAll().stream()
+                      .map(u -> new UserSummary(u.getName(), u.getTasks().size()))
+                      .toList();
+          }
+      }
+
+      public record UserSummary(String name, int taskCount) { }
+    question: "What is the cause of the many repeated queries?"
+    options:
+      - "Missing index on app_user.name"
+      - "findAll loads users in one query, then each lazy u.getTasks() runs one more query per user"
+      - "Hibernate is logging the same query many times by mistake"
+      - "readOnly = true makes Hibernate repeat queries"
+    answer: 1
+    explanation: "This is the N+1 problem: 1 query for N users, then N queries for their tasks because tasks is LAZY and is touched inside the loop. It works, but gets slower as data grows."
+    fix: |
+      Load users and tasks in one query:
+
+      public interface AppUserRepository extends JpaRepository<AppUser, Long> {
+          @Query("select distinct u from AppUser u left join fetch u.tasks")
+          List<AppUser> findAllWithTasks();
+
+          // or: @EntityGraph(attributePaths = "tasks") List<AppUser> findAll();
+      }
+
+      Even better when you only need counts, ask the database directly:
+          @Query("select new com.codequest.user.UserSummary(u.name, count(t)) " +
+                 "from AppUser u left join u.tasks t group by u.id, u.name")
+          List<UserSummary> summaries();
+      (UserSummary would then take a long count, since count() returns Long.)
+  - id: dbg-010
+    title: "Jackson infinite recursion on a bidirectional relation"
+    error: |
+      org.springframework.http.converter.HttpMessageNotWritableException: Could not write JSON: Infinite recursion (StackOverflowError)
+      Caused by: com.fasterxml.jackson.databind.JsonMappingException: Infinite recursion (StackOverflowError) (through reference chain: com.codequest.user.AppUser["tasks"]->java.util.ArrayList[0]->com.codequest.task.Task["owner"]->com.codequest.user.AppUser["tasks"]->...)
+    code: |
+      @Entity
+      public class AppUser {
+          @Id @GeneratedValue private Long id;
+          private String name;
+          @OneToMany(mappedBy = "owner")
+          private List<Task> tasks = new ArrayList<>();
+          // getters
+      }
+
+      @Entity
+      public class Task {
+          @Id @GeneratedValue private Long id;
+          private String title;
+          @ManyToOne
+          private AppUser owner;
+          // getters
+      }
+
+      @GetMapping("/users/{id}")
+      @Transactional(readOnly = true)
+      public AppUser get(@PathVariable Long id) {
+          return users.findById(id).orElseThrow();   // returning the entity directly
+      }
+    question: "What is the cause?"
+    options:
+      - "The user has too many tasks"
+      - "Long ids cannot be written as JSON"
+      - "@GetMapping cannot return objects"
+      - "Jackson writes user.tasks, each task writes task.owner, which writes owner.tasks again, forever"
+    answer: 3
+    explanation: "The two entities point to each other. Jackson follows every getter, so it goes User -> tasks -> Task -> owner -> User -> tasks ... until the stack overflows. Returning entities directly from controllers also risks lazy-loading errors and leaking fields."
+    fix: |
+      Best: return DTOs shaped for the API.
+
+      public record TaskDto(Long id, String title) { }
+      public record UserDto(Long id, String name, List<TaskDto> tasks) { }
+
+      UserDto toDto(AppUser u) {
+          return new UserDto(u.getId(), u.getName(),
+                  u.getTasks().stream().map(t -> new TaskDto(t.getId(), t.getTitle())).toList());
+      }
+
+      Quick alternative: break the loop on one side.
+          @OneToMany(mappedBy = "owner") @JsonManagedReference private List<Task> tasks;
+          @ManyToOne @JsonBackReference private AppUser owner;
+      (or @JsonIgnore on Task.owner)
+
+projects:
+  - code: TASK_MANAGER
+    title: "Task Manager API"
+    description: "A REST API where users create, update, filter and complete tasks. Your first full Spring Boot project: layers, JPA, validation and clean errors. Small enough to finish, big enough to talk about in an interview."
+    milestones:
+      - "Create the project with Spring Initializr (Web, Data JPA, Validation, PostgreSQL or MySQL driver) and run it."
+      - "Add a Task entity, a TaskRepository and a Flyway V1 migration for the tasks table."
+      - "Build CRUD endpoints in TaskController with a TaskService in between, using request and response DTOs."
+      - "Add validation (@NotBlank title, @FutureOrPresent due date) and a @RestControllerAdvice for 400 and 404 errors."
+      - "Add filtering by status and due date, plus pagination and sorting with Pageable."
+      - "Write unit tests for TaskService with Mockito and one @WebMvcTest for the controller."
+      - "Write a README with setup steps, an API table and sample curl commands."
+  - code: PLACEMENT_TRACKER
+    title: "Library / Placement Tracker"
+    description: "Track companies, job openings and your applications through stages (applied, test, interview, offer), or books and loans in a library. Practises one-to-many and many-to-many relationships, queries and reports."
+    milestones:
+      - "Design the tables: Company, Opening, Application (or Book, Member, Loan) and draw the relationships."
+      - "Create the entities with @ManyToOne and @OneToMany, and Flyway migrations with foreign keys."
+      - "Build CRUD APIs for each resource using DTOs and a service layer."
+      - "Add a status workflow (APPLIED -> TEST -> INTERVIEW -> OFFER/REJECTED) with rules in the service and 409 for invalid moves."
+      - "Add search and report endpoints: applications per stage, upcoming interview dates, using derived queries and @Query."
+      - "Find and fix one N+1 problem using SQL logs and a JOIN FETCH or @EntityGraph."
+      - "Add @DataJpaTest tests for custom queries and a @SpringBootTest happy-path test."
+  - code: AUTH_SERVICE
+    title: "Auth Service with JWT"
+    description: "A stand-alone authentication service with signup, login, JWT access tokens and role-based access. Teaches Spring Security 6, password hashing and stateless APIs."
+    milestones:
+      - "Add Spring Security and a User entity with email, BCrypt password hash and roles."
+      - "Build POST /api/auth/signup with validation and a 409 response for duplicate email."
+      - "Build POST /api/auth/login that checks the password with PasswordEncoder.matches and returns a signed JWT with expiry."
+      - "Write a JWT filter that reads the Bearer token, validates it and sets the SecurityContext."
+      - "Configure a stateless SecurityFilterChain: public /api/auth/**, everything else authenticated."
+      - "Add role-based rules: /api/admin/** needs ROLE_ADMIN; return clean 401 and 403 JSON errors."
+      - "Keep the JWT secret in an environment variable via @ConfigurationProperties, never in Git."
+      - "Write integration tests for signup, login, an authorised call and a forbidden call."
+  - code: CAPSTONE
+    title: "Capstone: this Code Quest platform"
+    description: "Study and extend the real Code Quest backend you are learning on. Read how content is seeded, how progress is stored and how the API is secured, then add a feature of your own end to end."
+    milestones:
+      - "Clone and run the platform locally with Docker Compose (app + database) and log in."
+      - "Trace one request (for example, loading Spring topics) from controller to service to repository to database, and draw it."
+      - "Read how the YAML content banks are loaded and seeded at startup, and explain it in your own words."
+      - "Add a small feature end to end, such as bookmarking a question: migration, entity, repository, service, controller, DTO."
+      - "Add validation and error handling for the new endpoints, matching the existing error format."
+      - "Write unit and integration tests for your feature and make sure the whole test suite passes."
+      - "Write a short design note and a 2-minute spoken project explanation using the PROJECT speaking prompts."

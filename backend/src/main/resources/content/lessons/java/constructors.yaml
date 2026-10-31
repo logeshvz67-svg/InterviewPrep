@@ -1,0 +1,387 @@
+slug: constructors
+world: JAVA_CORE
+section: C
+order: 2
+title: "Constructors and chaining"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common OOP question in SP and DSE technical rounds; constructor chaining with this() and super() is a frequent output and compile-error question."
+otherCompanies: "A common OOP basics question at TCS, Wipro, Cognizant, Accenture, Capgemini; product companies ask the chaining and default-constructor traps."
+why: |
+  In the last lesson we created a `Student` and then set every field by hand, line by line. That's boring and risky: forget one line and the object is half-ready. **Constructors** fix this: they set up an object correctly at the moment it is born.
+
+  Interviewers ask:
+  - "What is a default constructor? When does Java give you one?"
+  - "What's the difference between a constructor and a method?"
+  - "What is constructor chaining? What do `this()` and `super()` do?"
+
+  And output questions love to test **which constructor runs first** in a parent/child class.
+analogy: |
+  Think of **getting a new SIM card** at a mobile shop.
+
+  - You can't walk out with an "empty" SIM. The shop **sets it up when it's issued**: number, plan, activation. That set-up step is the **constructor**.
+  - **Default constructor**: "just give me a standard prepaid SIM" (no choices, default plan).
+  - **Parameterized constructor**: "I want this number and this plan" (you pass values).
+  - **Chaining with `this()`**: the "quick SIM" counter doesn't repeat all the steps; it just says "do the full setup with the default plan", reusing the main counter's process.
+  - **`super()`**: before your SIM is activated, the network company's own base set-up must run first. The parent is always built before the child.
+visual:
+  diagram: |
+    new Student("Ravi")
+         |
+         v
+    Student(String n) {  this(n, 0);  }      <- this(): same class
+         |
+         v
+    Student(String n, int m) {  super();  ...  }
+         |                         |
+         |                         v
+         |                  Person() { ... }  <- super(): parent class
+         |                         |
+         |                         v
+         |                  Object()          <- top of every chain
+         |
+    bodies finish: Object -> Person -> Student(n,m) -> Student(n)
+
+    Rule: this(...) or super(...) must be the FIRST line,
+          and you can use only ONE of them in a constructor.
+  caption: "Constructor chaining: this() jumps to another constructor of the same class, super() jumps to the parent. Parent bodies always finish before child bodies."
+  visualizer: null
+explanation: |
+  ### What is a constructor?
+  A **constructor** is a special block of code that runs **automatically** when you create an object with `new`. Its job is to give the new object a correct starting state.
+
+  Rules:
+  - Its name is **exactly the same as the class name**.
+  - It has **no return type**, not even `void`.
+  - It runs once per object, at creation.
+
+  ```java
+  class Student {
+      String name;
+      int marks;
+
+      Student(String name, int marks) {   // constructor
+          this.name = name;   // this.name = the field; name = the parameter
+          this.marks = marks;
+      }
+  }
+  Student s = new Student("Ravi", 85);    // ready in one line
+  ```
+  (`this.name` means "this object's field called name". The next lesson covers `this` in depth.)
+
+  ### Types of constructors
+  | Type | What it is |
+  |---|---|
+  | **Default constructor** | Added by the **compiler** only when you write **no constructor at all**. It takes no arguments and just calls `super()`. |
+  | **No-arg constructor** | One that *you* write with no parameters, e.g. to set default values. |
+  | **Parameterized constructor** | Takes values to set up the object. |
+  | **Copy constructor** | Takes another object of the same class and copies its values: `Student(Student other)`. Java doesn't create it for you. |
+
+  **The big trap:** as soon as you write *any* constructor, the compiler **stops** giving you the free default one.
+  ```java
+  class Book {
+      Book(String title) { }
+  }
+  Book b = new Book();   // COMPILE ERROR: no Book() constructor exists
+  ```
+
+  ### Constructor overloading
+  **Overloading** means several constructors with the same name but **different parameter lists** (different number, types or order). Java picks one by matching the arguments.
+  ```java
+  Student()                       { ... }
+  Student(String name)            { ... }
+  Student(String name, int marks) { ... }
+  ```
+
+  ### Constructor chaining with `this()`
+  **Constructor chaining** means one constructor calling another, so you write the set-up logic **once**.
+  ```java
+  class Student {
+      String name; int marks;
+
+      Student() {
+          this("Unknown");          // calls Student(String)
+      }
+      Student(String name) {
+          this(name, 0);            // calls Student(String, int)
+      }
+      Student(String name, int marks) {
+          this.name = name;         // the real work happens once, here
+          this.marks = marks;
+      }
+  }
+  ```
+
+  ### Chaining to the parent with `super()`
+  When a class **extends** another (inheritance, covered fully in C7), the parent part of the object must be built first. `super(...)` calls the **parent's** constructor.
+  - If you don't write `this(...)` or `super(...)` as the first line, the compiler **inserts `super();`** for you (call the parent's no-arg constructor).
+  - Every chain ends at `Object()`, because every class extends `Object`.
+  - So **parent constructor bodies always finish before child constructor bodies**.
+
+  **Second big trap:** if the parent has **only** a parameterized constructor, the automatic `super();` has nothing to call, so the child **won't compile** unless it calls `super(...)` with arguments itself.
+
+  ### Rules for `this()` and `super()`
+  1. Must be the **first statement** in the constructor.
+  2. So you can use **only one** of them in a constructor, never both.
+  3. Can only be used **inside constructors**, not in normal methods.
+  4. Constructors calling each other in a circle (A calls B, B calls A) is a **compile error** ("recursive constructor invocation").
+
+  ### Constructor vs method
+  | | Constructor | Method |
+  |---|---|---|
+  | Name | Same as class | Any name |
+  | Return type | None | Must have one (`void` if nothing) |
+  | Called | Automatically by `new` | Explicitly, as often as you like |
+  | Inherited? | **No** | Yes (if not private) |
+  | Can be `static`, `final`, `abstract`? | **No** | Yes |
+  | Default provided? | Yes, if you write none | No |
+
+  > Trick: `void Student() { }` is **not** a constructor. Because it has a return type, it is an ordinary method that happens to have the class's name.
+
+  ### Private constructors
+  A constructor can be `private`. Then no other class can call `new` on it. This is used by the **Singleton** pattern (only one object ever) and by utility classes like `Math`, which are never meant to be instantiated.
+tinyCode:
+  code: |
+    public class ChainDemo {
+        static class Person {
+            Person() {
+                System.out.println("1. Person()");
+            }
+        }
+
+        static class Student extends Person {
+            String name;
+            int marks;
+
+            Student() {
+                this("Unknown");
+                System.out.println("4. Student()");
+            }
+
+            Student(String name) {
+                this(name, 0);
+                System.out.println("3. Student(name)");
+            }
+
+            Student(String name, int marks) {
+                // compiler inserts super(); here
+                this.name = name;
+                this.marks = marks;
+                System.out.println("2. Student(name, marks)");
+            }
+        }
+
+        public static void main(String[] args) {
+            Student s = new Student();
+            System.out.println(s.name + " " + s.marks);
+        }
+    }
+  walkthrough: |
+    - `new Student()` calls the no-arg constructor. Its first line `this("Unknown")` jumps to `Student(String)` **before** printing anything.
+    - `Student(String)` first does `this(name, 0)`, jumping to `Student(String, int)`.
+    - `Student(String, int)` has no `this()`/`super()` written, so the compiler adds `super();`, which runs `Person()` first: prints `1. Person()`.
+    - Back in `Student(String, int)`: fields are set and it prints `2. ...`.
+    - Then control returns to `Student(String)`, which prints `3. ...`, then to `Student()`, which prints `4. ...`.
+    - Finally `main` prints the fields.
+
+    Output:
+    ```
+    1. Person()
+    2. Student(name, marks)
+    3. Student(name)
+    4. Student()
+    Unknown 0
+    ```
+    The calls go **down** the chain first; the bodies finish **back up** in reverse order, like stacked plates.
+tryIt:
+  instructions: "Type this BankAccount class with three overloaded constructors chained with this(). Then add a fourth constructor BankAccount(BankAccount other) that copies another account (a copy constructor) and test it."
+  code: |
+    public class Bank {
+        static class BankAccount {
+            String holder;
+            double balance;
+            String type;
+
+            BankAccount(String holder) {
+                this(holder, 0.0);
+            }
+
+            BankAccount(String holder, double balance) {
+                this(holder, balance, "SAVINGS");
+            }
+
+            BankAccount(String holder, double balance, String type) {
+                this.holder = holder;
+                this.balance = balance;
+                this.type = type;
+            }
+        }
+
+        public static void main(String[] args) {
+            BankAccount a = new BankAccount("Ravi");
+            BankAccount b = new BankAccount("Priya", 5000, "CURRENT");
+            System.out.println(a.holder + " " + a.balance + " " + a.type);
+            System.out.println(b.holder + " " + b.balance + " " + b.type);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static class A {
+            A() { System.out.println("A()"); }
+            A(int x) { this(); System.out.println("A(" + x + ")"); }
+        }
+
+        static class B extends A {
+            B() { super(5); System.out.println("B()"); }
+            B(int y) { System.out.println("B(" + y + ")"); }
+        }
+
+        public static void main(String[] args) {
+            new B();
+            System.out.println("--");
+            new B(7);
+        }
+    }
+  expectedOutput: |
+    A()
+    A(5)
+    B()
+    --
+    A()
+    B(7)
+  explanation: |
+    - `new B()`: `B()` starts with `super(5)`, so it goes to `A(int)`. `A(int)` starts with `this()`, so `A()` runs first and prints `A()`. Then `A(int)` prints `A(5)`. Then `B()` prints `B()`.
+    - `new B(7)`: `B(int)` has no `this()`/`super()` written, so the compiler inserts `super();`, which runs `A()`: prints `A()`. Then `B(7)`.
+    - Notice `A(int)` never runs for `new B(7)`: the automatic `super()` always calls the parent's **no-arg** constructor.
+commonMistakes:
+  - "Expecting a default constructor after writing your own parameterized one. The compiler adds it only if you wrote none."
+  - "Giving a constructor a return type (void Student()). That makes it a normal method, not a constructor."
+  - "Putting this() or super() anywhere other than the first line, or trying to use both."
+  - "Forgetting that the child must call super(args) when the parent has only parameterized constructors."
+  - "Saying constructors are inherited. They are not; a child must declare its own."
+interviewBox:
+  why: "Why interviewers ask this: constructors show whether you understand how objects are born, and chaining questions test if you can trace code across classes."
+  questions:
+    - q: "What is a default constructor?"
+      a: "It's a no-argument constructor that the compiler adds automatically, but only when the class has no constructor written at all. It simply calls super(). If I write any constructor myself, the compiler doesn't add it."
+    - q: "What is constructor chaining?"
+      a: "It means one constructor calling another. Inside the same class we use this() with matching arguments, and to call the parent class constructor we use super(). It avoids repeating set-up code. The call must be the first statement, so a constructor can have either this() or super(), not both."
+    - q: "What are the differences between a constructor and a method?"
+      a: "A constructor has the same name as the class and no return type, and it runs automatically when the object is created with new. A method can have any name, must have a return type, and is called whenever we want. Constructors are not inherited and can't be static, final or abstract."
+    - q: "Can a constructor be private? Why would you do that?"
+      a: "Yes. Then other classes can't create objects with new. It's used in the Singleton pattern, where the class controls creating its single instance, and in utility classes that should never be instantiated."
+quiz:
+  - id: q1
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      class Animal {
+          String name;
+          Animal(String name) { this.name = name; }
+      }
+      class Dog extends Animal {
+          Dog() {
+              System.out.println("Dog created");
+          }
+      }
+    options:
+      - "Dog must also have a field called name"
+      - "The compiler inserts super(); but Animal has no no-arg constructor; Dog() must call super(\"...\")"
+      - "Constructors cannot contain println"
+      - "Dog needs a return type void"
+    answer: 1
+    explanation: "Because Dog() has no explicit this()/super(), the compiler adds super();. Animal has only Animal(String), so there's nothing to call: compile error. Fix: Dog() { super(\"Dog\"); ... }. Adding void would turn Dog() into a method, not fix anything."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "If a class has a constructor Book(String title), you can still write new Book() because Java always provides a default constructor."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The default constructor is added only when you write NO constructor. Once Book(String) exists, new Book() is a compile error unless you also write Book() yourself."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      class P {
+          P() { System.out.print("P"); }
+      }
+      class C extends P {
+          C() { this(1); System.out.print("C"); }
+          C(int x) { System.out.print("X"); }
+      }
+      public class Main {
+          public static void main(String[] args) {
+              new C();
+          }
+      }
+    options: ["CXP", "PXC", "XPC", "PCX"]
+    answer: 1
+    explanation: "C() calls this(1) first. C(int) has no explicit call, so super() runs P() first: P. Then C(int)'s body: X. Then back in C(): C. Result PXC. Note P() runs only once, because C() itself used this() and so got no automatic super()."
+  - id: q4
+    type: MCQ
+    prompt: "Which of these is a valid constructor for class Car?"
+    options: ["void Car() { }", "Car() { }", "static Car() { }", "public int Car() { return 0; }"]
+    answer: 1
+    explanation: "A constructor has the class name and no return type. void Car() and int Car() compile but are ordinary methods. Constructors can't be static, so static Car() doesn't compile."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill the keyword so this constructor reuses the two-argument constructor of the SAME class."
+    code: |
+      Student(String name) {
+          ____(name, 0);
+      }
+    acceptedAnswers: ["this"]
+    explanation: "this(...) calls another constructor of the same class. super(...) would call the parent class's constructor instead."
+  - id: q6
+    type: MCQ
+    prompt: "Which statement about this() and super() is TRUE?"
+    options:
+      - "You can call both, as long as super() comes first"
+      - "They can be called from any method"
+      - "Either one must be the first statement, so only one can appear in a constructor"
+      - "super() is optional in the parent but required in every child"
+    answer: 2
+    explanation: "Both must be the very first statement, so a constructor can have only one. They work only inside constructors. super() is inserted automatically when you write neither, so it's never strictly required unless the parent lacks a no-arg constructor."
+  - id: q7
+    type: MATCH
+    prompt: "Match each constructor type to its description"
+    pairs:
+      - left: "Default constructor"
+        right: "Added by the compiler when you write none"
+      - left: "Parameterized constructor"
+        right: "Takes values to initialise fields"
+      - left: "Copy constructor"
+        right: "Takes another object of the same class and copies it"
+      - left: "Private constructor"
+        right: "Stops other classes from calling new"
+    explanation: "Only the default constructor is generated for you; the others you write yourself."
+explainBack:
+  prompt: "Explain to a friend what a constructor is, when Java gives a default one, and what this() and super() do. Use the SIM card idea or your own."
+  rubric:
+    - "I said a constructor sets up a new object and runs automatically with new"
+    - "I said it has the class name and no return type"
+    - "I said the default constructor is added only if no constructor is written"
+    - "I explained this() (same class) vs super() (parent), first line only"
+    - "I said the parent constructor finishes before the child's"
+  modelAnswer: |
+    A constructor is the set-up step that runs automatically when I create an object with new, like a shop activating a SIM before handing it over. It has the same name as the class and no return type. If I don't write any constructor, Java adds a default empty one, but once I write my own, that free one disappears. Constructors can call each other: this() calls another constructor in the same class, so I write the set-up logic once, and super() calls the parent's constructor. Either must be the first line, so I can use only one. Because of super, the parent part is always built before the child part.
+flashcards:
+  - front: "When does Java add a default constructor?"
+    back: "Only when the class has NO constructor written. It takes no args and calls super()."
+  - front: "this() vs super() in a constructor"
+    back: "this() calls another constructor in the same class; super() calls the parent's. Must be first line; only one allowed."
+  - front: "What if you write neither this() nor super()?"
+    back: "The compiler inserts super(); calling the parent's no-arg constructor."
+  - front: "Constructor vs method (3 differences)"
+    back: "Constructor: class name, no return type, runs on new, not inherited, can't be static/final/abstract."
+  - front: "Is void Student() a constructor?"
+    back: "No, it has a return type, so it's an ordinary method."
+keyTakeaways:
+  - "A constructor initialises a new object; same name as the class, no return type."
+  - "The compiler adds a default constructor only if you write none."
+  - "this() chains within the class; super() chains to the parent; first line only, one of them."
+  - "If you write neither, super(); is inserted, so parent bodies finish before child bodies."
+  - "Constructors are not inherited and can't be static, final or abstract; they can be private."

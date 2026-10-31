@@ -1,0 +1,314 @@
+slug: variables-data-types
+world: JAVA_CORE
+section: A
+order: 3
+title: "Variables and data types"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common in MCQs and output questions; choosing long over int correctly avoids wrong answers on large test cases in SP coding problems."
+otherCompanies: "Sizes, ranges and default values are standard MCQ material at TCS, Wipro, Cognizant, Accenture and Capgemini. Product companies care about overflow in coding rounds."
+why: |
+  Every program stores values: a count, a price, a name, a yes/no answer. A **variable** is a named box that holds one value, and the **data type** decides what kind of value fits in the box and how big the box is.
+
+  Why this matters in interviews and tests:
+  - MCQs love questions like *"What is the size of `char` in Java?"* or *"What is the default value of a `boolean` field?"*
+  - In coding rounds, using `int` where the answer can exceed about **2.1 billion** gives a **wrong answer** on the big hidden test cases, even if your logic is perfect. Picking `long` is often the only fix needed.
+  - Knowing that `0.1 + 0.2` is not exactly `0.3` saves you from strange bugs with decimals.
+analogy: |
+  Think of a **kitchen with steel containers of different sizes**.
+
+  - A tiny container (a `byte`) holds a pinch of salt. A big drum (a `long`) holds a whole sack of rice.
+  - Each container has a **label** (the variable name) so you can find it later.
+  - You cannot pour a sack of rice into the salt container; it overflows. In Java, putting too big a number into a small type also "overflows" and gives a wrong value.
+  - A `String` is different: it is not the rice itself, it is a **slip with the address** of a big storeroom where the text is kept. That is what a **reference** is.
+visual:
+  diagram: |
+    PRIMITIVE TYPES (value stored directly in the box)
+    +---------+-------+----------------------------+---------+
+    | type    | bytes | range (approx)             | default |
+    +---------+-------+----------------------------+---------+
+    | byte    |   1   | -128 .. 127                | 0       |
+    | short   |   2   | -32,768 .. 32,767          | 0       |
+    | int     |   4   | about +/- 2.1 billion      | 0       |
+    | long    |   8   | about +/- 9.2 x 10^18      | 0L      |
+    | float   |   4   | ~7 decimal digits          | 0.0f    |
+    | double  |   8   | ~15-16 decimal digits      | 0.0     |
+    | char    |   2   | 0 .. 65,535 (Unicode)      | '\u0000'|
+    | boolean |   -   | true / false               | false   |
+    +---------+-------+----------------------------+---------+
+
+    int age = 21;           String name = "Asha";
+    +------+                +------+        +--------+
+    | 21   | age            | ref -+------> | "Asha" |  (object)
+    +------+                +------+ name   +--------+
+  caption: "Eight primitive types hold the value itself. Everything else (like String) is a reference type: the variable holds an arrow to an object."
+  visualizer: null
+explanation: |
+  ### What is a variable?
+  A **variable** is a named place in memory that stores a value. You **declare** it (give type and name) and **initialize** it (give it a first value):
+  ```java
+  int marks;        // declaration
+  marks = 90;       // assignment
+  int age = 21;     // declare + initialize together
+  ```
+  Java is **statically typed**: the type is fixed when you write the code, and the compiler checks it. You cannot later put text into an `int`.
+
+  ### The 8 primitive types
+  A **primitive** is a basic built-in type that stores the actual value, not an object.
+  - **Whole numbers:** `byte`, `short`, `int`, `long`
+  - **Decimal numbers:** `float`, `double`
+  - **Single character:** `char` (2 bytes in Java because it stores Unicode, unlike 1 byte in C)
+  - **True/false:** `boolean`
+
+  Everything else, such as `String`, arrays, and your own classes, is a **reference type**: the variable stores a reference (like an address) to an object somewhere in memory.
+
+  ### Literals: how you write values
+  A **literal** is a value typed directly in code.
+  | Literal | Type | Note |
+  |---|---|---|
+  | `100` | int | Whole numbers are `int` by default |
+  | `100L` | long | Add `L` for long (capital L, small l looks like 1) |
+  | `3.14` | double | Decimals are `double` by default |
+  | `3.14f` | float | Add `f` for float, otherwise compile error |
+  | `'A'` | char | Single quotes, exactly one character |
+  | `"A"` | String | Double quotes |
+  | `1_000_000` | int | Underscores allowed for readability |
+  | `0b101`, `017`, `0x1F` | int | Binary (5), octal (15), hex (31) |
+
+  A classic trap: `long big = 3000000000;` does **not** compile, because `3000000000` is an int literal and is too large for int. Write `3000000000L`.
+
+  ### int vs long: the coding round rule
+  `int` holds up to `2,147,483,647` (about 2.1 x 10^9). Use **`long`** when:
+  - you add or multiply many values (sums of big arrays, factorials, products),
+  - the problem says values up to 10^9 and you multiply two of them,
+  - you count pairs or subarrays in large inputs (n up to 10^5 gives about 5 x 10^9 pairs).
+
+  If an `int` goes past its maximum, it **wraps around** to a negative number. This is called **overflow** and Java does not warn you:
+  ```java
+  int x = Integer.MAX_VALUE;   // 2147483647
+  x = x + 1;                   // -2147483648, silently
+  ```
+  Also watch out: `long r = a * b;` where `a` and `b` are `int` still overflows, because the multiplication happens in `int` *before* it is stored. Write `long r = (long) a * b;`.
+
+  ### float vs double
+  Use `double` by default; it is more precise. Neither is exact for many decimals: `0.1 + 0.2` prints `0.30000000000000004`. For money in real projects, people use `BigDecimal`.
+
+  ### Default values: fields vs local variables
+  - **Fields** (variables declared inside a class, outside methods) and **array elements** get default values: `0`, `0.0`, `false`, `'\u0000'`, and `null` for references.
+  - **Local variables** (inside a method) get **no default**. Using one before assigning it is a **compile error**: *"variable might not have been initialized"*.
+
+  ### var (Java 10+)
+  `var count = 10;` lets the compiler **infer** (work out) the type from the value. It is still an `int`; the type is fixed. `var` works only for local variables with an initial value.
+
+  ### Constants and naming
+  - `final int MAX = 100;` makes a **constant**: it cannot be changed after it is set.
+  - Names: start with a letter, `_` or `$`; no spaces; cannot be a keyword (`int class = 5;` fails). Style: `camelCase` for variables, `UPPER_SNAKE_CASE` for constants.
+
+  ### Handy wrapper constants
+  `Integer.MAX_VALUE`, `Integer.MIN_VALUE`, `Long.MAX_VALUE` are often used as starting values for "find minimum/maximum" problems.
+tinyCode:
+  code: |
+    public class Types {
+        static int fieldCount;      // field: default 0
+        static boolean fieldFlag;   // field: default false
+
+        public static void main(String[] args) {
+            int a = 1_000_000;
+            int b = 3_000;
+            long wrong = a * b;           // int multiplication overflows first
+            long right = (long) a * b;    // long multiplication
+            System.out.println(wrong);
+            System.out.println(right);
+            System.out.println(Integer.MAX_VALUE + 1);
+            System.out.println(0.1 + 0.2);
+            char c = 'A';
+            System.out.println(c + 1);
+            System.out.println(fieldCount + " " + fieldFlag);
+        }
+    }
+  walkthrough: |
+    - `fieldCount` and `fieldFlag` are fields, so Java gives them defaults `0` and `false`.
+    - `a * b` is `3,000,000,000`, which is bigger than the int maximum. The multiply happens in `int`, overflows to `-1294967296`, and only then is stored in the long.
+    - `(long) a * b` turns `a` into a long first, so the multiply happens in long: `3000000000`.
+    - `Integer.MAX_VALUE + 1` wraps around to the smallest int: `-2147483648`.
+    - `0.1 + 0.2` shows the tiny decimal error of `double`.
+    - `c + 1`: a `char` in arithmetic becomes its number. `'A'` is 65, so it prints `66`.
+    - The last line prints the field defaults.
+
+    Output:
+    ```
+    -1294967296
+    3000000000
+    -2147483648
+    0.30000000000000004
+    66
+    0 false
+    ```
+tryIt:
+  instructions: "Type this program and run it. Then change the type of total from long to int and run again to see overflow happen with your own eyes."
+  code: |
+    public class SumBig {
+        public static void main(String[] args) {
+            int[] prices = {2_000_000_000, 2_000_000_000, 500};
+            long total = 0;
+            for (int p : prices) {
+                total += p;
+            }
+            System.out.println("Total: " + total);
+            final double GST = 0.18;
+            double withTax = 1000 * (1 + GST);
+            System.out.println("With tax: " + withTax);
+            var count = prices.length;
+            System.out.println("Items: " + count);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            byte b = 127;
+            b++;
+            System.out.println(b);
+            char ch = 'a';
+            ch += 2;
+            System.out.println(ch);
+            System.out.println('a' + 'b');
+            System.out.println("" + 'a' + 'b');
+        }
+    }
+  expectedOutput: |
+    -128
+    c
+    195
+    ab
+  explanation: |
+    - A `byte` goes up to 127. One more wraps around to -128.
+    - `ch += 2` moves the character two places: `a` to `c`. It stays a `char`, so it prints a letter.
+    - `'a' + 'b'` adds the numbers 97 + 98 = 195, because two chars with `+` do arithmetic, not joining.
+    - `"" + 'a' + 'b'` starts with a String, so `+` joins text: `ab`.
+commonMistakes:
+  - "Using int for sums or products that can go above about 2.1 billion. Use long."
+  - "Writing `long x = a * b;` with int a and b and expecting no overflow. Cast first: `(long) a * b`."
+  - "Forgetting the L in big long literals or the f in float literals (`float f = 1.5;` is a compile error)."
+  - "Using a local variable before giving it a value. Only fields and array elements get defaults."
+  - "Thinking char is 1 byte like in C. In Java it is 2 bytes (Unicode)."
+  - "Comparing doubles with == after arithmetic (0.1 + 0.2 == 0.3 is false)."
+interviewBox:
+  why: "Why interviewers ask this: data types show whether you understand memory and limits. Overflow awareness is a sign you will write code that works on large inputs."
+  questions:
+    - q: "What are the primitive data types in Java?"
+      a: "There are eight: byte, short, int and long for whole numbers; float and double for decimals; char for a single Unicode character; and boolean for true or false. Everything else, like String or arrays, is a reference type."
+    - q: "What is the difference between primitive and reference types?"
+      a: "A primitive variable stores the actual value, like the number 5. A reference variable stores the address of an object in memory. So for a String, the variable holds a reference and the text lives in the object."
+    - q: "Why is char 2 bytes in Java?"
+      a: "Because Java uses Unicode, so a char can represent characters from many languages, not just English. Unicode needs 16 bits, which is 2 bytes."
+    - q: "What happens when an int overflows?"
+      a: "It wraps around silently. For example, Integer.MAX_VALUE plus 1 becomes Integer.MIN_VALUE, a large negative number. Java does not throw an error, so we use long when values can be big."
+    - q: "Do local variables have default values?"
+      a: "No. Fields and array elements get defaults like 0, false or null, but a local variable must be assigned before use, otherwise the compiler gives an error."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the size of a char in Java?"
+    code: null
+    options: ["1 byte", "2 bytes", "4 bytes", "Depends on the operating system"]
+    answer: 1
+    explanation: "Java's char is 16-bit Unicode, so 2 bytes. 1 byte is the C answer, which is the tempting wrong choice. Java sizes are fixed on every OS."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int x = Integer.MAX_VALUE;
+      x++;
+      System.out.println(x == Integer.MIN_VALUE);
+    options: ["true", "false", "Compile error", "ArithmeticException"]
+    answer: 0
+    explanation: "int overflow wraps around silently, so MAX_VALUE + 1 becomes exactly MIN_VALUE. Java never throws an exception for int overflow, so ArithmeticException is wrong."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              int total;
+              for (int i = 1; i <= 3; i++) {
+                  System.out.println(i);
+              }
+              System.out.println(total);
+          }
+      }
+    options:
+      - "total is a local variable that was never given a value"
+      - "int total should be Integer total"
+      - "i must be declared outside the loop"
+      - "println cannot print an int"
+    answer: 0
+    explanation: "Local variables get no default value, so the compiler reports 'variable total might not have been initialized'. If total were a field it would default to 0 and compile, which is why this trap catches people."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "long big = 3000000000; compiles fine because big is a long."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The literal 3000000000 is treated as an int first, and it is too big for int, so it is a compile error ('integer number too large'). Write 3000000000L."
+  - id: q5
+    type: MATCH
+    prompt: "Match each declaration to its default value as a field"
+    pairs:
+      - left: "int count;"
+        right: "0"
+      - left: "boolean done;"
+        right: "false"
+      - left: "String name;"
+        right: "null"
+      - left: "double price;"
+        right: "0.0"
+    explanation: "Fields and array elements get defaults: numbers become zero, boolean becomes false, and any reference type such as String becomes null."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the blank so the multiplication happens in long and does not overflow."
+    code: |
+      int a = 100000, b = 100000;
+      long product = (____) a * b;
+    acceptedAnswers: ["long"]
+    explanation: "Casting a to long makes the whole multiplication happen in long arithmetic, giving 10000000000. Casting the result after (long)(a * b) would be too late; the overflow already happened."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      char c = 'A';
+      System.out.println(c + 2);
+      System.out.println((char) (c + 2));
+    options: ["C\nC", "67\nC", "A2\nC", "67\n67"]
+    answer: 1
+    explanation: "c + 2 is arithmetic on the char's number (65 + 2 = 67) and the result is an int, so 67 prints. Casting back to char turns 67 into 'C'. A2 would need a String in the expression."
+explainBack:
+  prompt: "Explain to a friend what a data type is, and why choosing long instead of int can change a coding test result."
+  rubric:
+    - "I said a variable is a named box and the type decides what fits in it"
+    - "I named the 8 primitives or at least the number groups"
+    - "I explained primitive vs reference in simple words"
+    - "I explained overflow and when to use long"
+    - "I mentioned that local variables have no default value"
+  modelAnswer: |
+    A variable is like a labelled container, and the data type says what can go inside and how big the container is. Java has eight primitive types: byte, short, int and long for whole numbers, float and double for decimals, char for one character, and boolean for true or false. Other things, like Strings, are reference types, where the variable holds an address of an object. The int type only goes up to about 2.1 billion. If the answer is bigger, it silently wraps to a negative number, so the output is wrong. That is why I use long for big sums and products. Also, local variables must be given a value before use.
+flashcards:
+  - front: "The 8 primitive types"
+    back: "byte, short, int, long, float, double, char, boolean."
+  - front: "int max value (approx)"
+    back: "2,147,483,647 (about 2.1 x 10^9). Integer.MAX_VALUE + 1 wraps to Integer.MIN_VALUE."
+  - front: "Default value of a local variable?"
+    back: "None. Using it before assigning is a compile error. Fields and array elements get 0/false/null."
+  - front: "How to multiply two ints without overflow?"
+    back: "(long) a * b, so the multiply happens in long."
+  - front: "Size of char and boolean literal types"
+    back: "char is 2 bytes (Unicode). 10 is int, 10L is long, 1.5 is double, 1.5f is float."
+keyTakeaways:
+  - "Java has 8 primitive types; everything else is a reference type."
+  - "Whole-number literals are int and decimal literals are double by default; use L and f suffixes."
+  - "int overflows silently past about 2.1 billion; use long and cast before multiplying."
+  - "Fields and array elements get default values; local variables do not."
+  - "char is 2 bytes and behaves like a number in arithmetic."
+  - "double is not exact for decimals like 0.1."

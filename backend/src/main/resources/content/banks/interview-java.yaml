@@ -1,0 +1,2552 @@
+# Java interview practice Q&A (practice questions only, not claims about any real interview).
+# Categories: JAVA 30, OOP 30, COLLECTIONS 25, EXCEPTIONS 15, JAVA8 20, MULTITHREADING 15, JVM 15.
+questions:
+  # ---------------------------------------------------------------- JAVA basics (001-030)
+  - id: java-001
+    category: JAVA
+    topic: "Features of Java"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is Java and what are its main features?"
+    answer: |
+      Java is a high-level, object-oriented programming language. Its main features are:
+      first, it is platform independent - we write code once and run it anywhere a JVM is installed.
+      Second, it is object-oriented, so we organise code using classes and objects.
+      Third, it is robust - it has strong type checking, exception handling and automatic
+      garbage collection, so we do not free memory by hand. Fourth, it is secure, because code
+      runs inside the JVM and there are no pointers. It also supports multithreading,
+      and it has a very large standard library. That is why it is popular for backend and enterprise apps.
+    keyPoints: ["Platform independent (write once, run anywhere)", "Object-oriented", "Robust: strong typing, exceptions, garbage collection", "Secure, no explicit pointers", "Multithreading and rich library"]
+
+  - id: java-002
+    category: JAVA
+    topic: "JDK vs JRE vs JVM"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, WIPRO, ALL]
+    question: "What is the difference between JDK, JRE and JVM?"
+    answer: |
+      JVM means Java Virtual Machine. It runs the bytecode, that is the .class file, and converts it
+      into machine code for the current system. JRE means Java Runtime Environment. It is the JVM plus
+      the core libraries needed to run a Java program. JDK means Java Development Kit. It is the JRE plus
+      development tools like the compiler javac, the debugger, and javadoc. So simply:
+      JDK contains JRE, and JRE contains JVM. To write and compile code, we need the JDK.
+      To only run code, the runtime is enough. Note: from Java 11, a separate JRE download is not
+      usually provided; we just install the JDK.
+    keyPoints: ["JVM runs bytecode", "JRE = JVM + libraries (to run)", "JDK = JRE + tools like javac (to develop)", "JDK contains JRE contains JVM"]
+
+  - id: java-003
+    category: JAVA
+    topic: "Platform independence"
+    difficulty: EASY
+    companies: [ALL]
+    question: "Why is Java called platform independent?"
+    answer: |
+      When we compile Java code with javac, it does not become machine code for Windows or Linux.
+      It becomes bytecode, stored in a .class file. Bytecode is a common, in-between format.
+      Each operating system has its own JVM, and that JVM understands the same bytecode.
+      So the same .class file runs on Windows, Linux or Mac without changes. That is the meaning of
+      "write once, run anywhere". One small point: Java the language is platform independent,
+      but the JVM itself is platform dependent, because each OS needs its own JVM.
+    keyPoints: ["javac produces bytecode (.class), not machine code", "Each OS has its own JVM that runs the same bytecode", "Write once, run anywhere", "JVM itself is platform dependent"]
+
+  - id: java-004
+    category: JAVA
+    topic: "main method"
+    difficulty: EASY
+    companies: [TCS, WIPRO, ALL]
+    question: "Explain public static void main(String[] args)."
+    answer: |
+      This is the entry point of a Java program. The JVM looks for this exact method to start.
+      public - so the JVM can call it from outside the class.
+      static - so the JVM can call it without creating an object of the class.
+      void - it does not return anything to the JVM.
+      main - the fixed name the JVM searches for.
+      String[] args - it holds command-line arguments passed when we run the program,
+      like java App hello, then args[0] is "hello".
+    keyPoints: ["Entry point the JVM calls", "public: accessible to JVM", "static: no object needed", "void: returns nothing", "args holds command-line arguments"]
+
+  - id: java-005
+    category: JAVA
+    topic: "Primitive data types"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What are the primitive data types in Java?"
+    answer: |
+      Java has eight primitive types. For whole numbers: byte (1 byte), short (2 bytes),
+      int (4 bytes) and long (8 bytes). For decimal numbers: float (4 bytes) and double (8 bytes).
+      char (2 bytes) stores a single Unicode character, and boolean stores true or false.
+      Primitives store the actual value directly, not a reference, so they are fast.
+      Default values for fields are 0 for numbers, '\u0000' for char and false for boolean.
+      Everything else, like String or arrays, is a reference type, not a primitive.
+    keyPoints: ["Eight primitives: byte, short, int, long, float, double, char, boolean", "Sizes, e.g. int 4 bytes, long 8 bytes, char 2 bytes", "Store actual value, not reference", "String is not primitive"]
+
+  - id: java-006
+    category: JAVA
+    topic: "Wrapper classes and autoboxing"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What are wrapper classes? What is autoboxing and unboxing?"
+    answer: |
+      Wrapper classes are object versions of primitives: Integer for int, Double for double,
+      Character for char, Boolean for boolean, and so on. We need them because collections like
+      ArrayList can only store objects, not primitives. Autoboxing is when Java automatically converts
+      a primitive into its wrapper. Unboxing is the reverse.
+      Example:
+        List<Integer> list = new ArrayList<>();
+        list.add(5);          // autoboxing: int to Integer
+        int x = list.get(0);  // unboxing: Integer to int
+      One caution: unboxing a null Integer throws NullPointerException.
+    keyPoints: ["Wrapper = object form of a primitive (Integer, Double...)", "Needed for collections and generics", "Autoboxing: primitive to wrapper automatically", "Unboxing: wrapper to primitive; null causes NPE"]
+
+  - id: java-007
+    category: JAVA
+    topic: "== vs equals()"
+    difficulty: EASY
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, ALL]
+    question: "What is the difference between == and equals() in Java?"
+    answer: |
+      The == operator compares references for objects, meaning it checks if both variables point to
+      the same object in memory. For primitives, == compares the actual values.
+      The equals() method compares content, if the class overrides it, like String does.
+      Example:
+        String a = new String("hi");
+        String b = new String("hi");
+        a == b       // false, two different objects
+        a.equals(b)  // true, same content
+      If a class does not override equals(), it uses Object's version, which behaves just like ==.
+    keyPoints: ["== compares references for objects, values for primitives", "equals() compares content when overridden", "String overrides equals()", "Default Object.equals() is the same as =="]
+
+  - id: java-008
+    category: JAVA
+    topic: "String immutability"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, ALL]
+    question: "Why is String immutable in Java?"
+    answer: |
+      Immutable means once a String object is created, its value cannot change. Any change like
+      concat or toUpperCase creates a new String. There are four main reasons.
+      First, the String pool: many variables can share one literal safely, which saves memory.
+      Second, security: strings hold things like file paths, URLs and usernames, and they cannot be
+      changed after a check. Third, thread safety: immutable objects can be shared across threads
+      without locking. Fourth, hashCode caching: the hash is calculated once and reused, which makes
+      String a great HashMap key.
+        String s = "java";
+        s.concat("17");      // new object, s is still "java"
+    keyPoints: ["Value cannot change; operations return new String", "Enables safe String pool sharing", "Security of paths/URLs/credentials", "Thread safe by default", "hashCode cached, good HashMap key"]
+
+  - id: java-009
+    category: JAVA
+    topic: "String vs StringBuilder vs StringBuffer"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, COGNIZANT, ALL]
+    question: "What is the difference between String, StringBuilder and StringBuffer?"
+    answer: |
+      String is immutable, so every change creates a new object. StringBuilder and StringBuffer are
+      mutable, so they change the same object, which is faster when we modify text many times,
+      like in a loop. The difference between the two: StringBuffer is synchronized, so it is thread safe
+      but slower. StringBuilder is not synchronized, so it is faster, and we use it in most cases
+      because usually only one thread builds the string.
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 3; i++) sb.append(i);
+        System.out.println(sb); // 012
+    keyPoints: ["String is immutable", "StringBuilder and StringBuffer are mutable", "StringBuffer is synchronized (thread safe, slower)", "StringBuilder is faster, preferred in single thread"]
+
+  - id: java-010
+    category: JAVA
+    topic: "Integer cache"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is the output? Integer a = 127, b = 127; Integer c = 128, d = 128; print a == b and c == d."
+    answer: |
+      The output is true for a == b and false for c == d.
+      The reason is the Integer cache. When we autobox, Java calls Integer.valueOf(), and it keeps
+      ready-made Integer objects for values from -128 to 127. So both a and b point to the same cached
+      object, and == is true. 128 is outside the cache, so c and d are two different objects,
+      and == compares references, so it is false. The lesson: always compare wrapper objects with
+      equals(), like c.equals(d), which gives true.
+    keyPoints: ["Output: true then false", "Integer.valueOf caches -128 to 127", "== compares references for wrappers", "Use equals() to compare wrapper values"]
+
+  - id: java-011
+    category: JAVA
+    topic: "static keyword"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, WIPRO, ALL]
+    question: "What is the static keyword in Java?"
+    answer: |
+      static means the member belongs to the class, not to any single object.
+      A static variable has only one copy shared by all objects, like a counter of how many objects
+      were created. A static method can be called using the class name without creating an object,
+      like Math.max(). A static method cannot directly use instance variables or "this",
+      because no object is involved. We also have static blocks, which run once when the class is loaded,
+      and static nested classes.
+        class Student { static int count = 0; Student() { count++; } }
+    keyPoints: ["Belongs to class, not object", "One shared copy of static variable", "Static method called with class name, cannot use this/instance members", "Static block runs once at class loading"]
+
+  - id: java-012
+    category: JAVA
+    topic: "final keyword"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is the use of the final keyword?"
+    answer: |
+      final means "cannot be changed", and it works at three levels.
+      A final variable can be assigned only once, so it acts like a constant, for example
+      final int MAX = 100. A final method cannot be overridden by a child class.
+      A final class cannot be extended at all, for example String is a final class.
+      One point to remember: if a final variable holds an object reference, the reference cannot change,
+      but the object's inside data can still change, like adding items to a final List.
+    keyPoints: ["final variable: assigned once (constant)", "final method: cannot be overridden", "final class: cannot be inherited, e.g. String", "final reference: object contents can still change"]
+
+  - id: java-013
+    category: JAVA
+    topic: "Static block and initialization order"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "In what order do static blocks, instance blocks and constructors run?"
+    answer: |
+      The static block runs first, and only once, when the class is loaded by the JVM.
+      Then, every time we create an object, the instance initializer block runs, and after that
+      the constructor runs. With inheritance, the parent's static block runs before the child's static
+      block. Then for each object: parent instance block, parent constructor, then child instance block,
+      child constructor.
+        class A {
+          static { System.out.println("static"); }
+          { System.out.println("instance"); }
+          A() { System.out.println("constructor"); }
+        }
+      Creating two objects prints: static, instance, constructor, instance, constructor.
+    keyPoints: ["Static block runs once at class loading", "Instance block runs before constructor, for every object", "Parent before child", "Example output order"]
+
+  - id: java-014
+    category: JAVA
+    topic: "Pass by value"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "Is Java pass by value or pass by reference?"
+    answer: |
+      Java is always pass by value. For primitives, a copy of the value is passed, so changing it
+      inside the method does not affect the caller. For objects, a copy of the reference is passed.
+      So inside the method we can change the object's data, and the caller sees that change.
+      But if we point the parameter to a new object, the caller's variable does not change.
+        void change(StringBuilder sb) {
+          sb.append("!");          // caller sees this
+          sb = new StringBuilder(); // caller does NOT see this
+        }
+      That is why people get confused, but it is still pass by value of the reference.
+    keyPoints: ["Java is always pass by value", "Primitives: copy of value", "Objects: copy of reference is passed", "Can modify object state, cannot reassign caller's variable"]
+
+  - id: java-015
+    category: JAVA
+    topic: "Type casting"
+    difficulty: MEDIUM
+    companies: [TCS, ALL]
+    question: "What is widening and narrowing type casting?"
+    answer: |
+      Widening means converting a smaller type to a bigger type, like int to long or int to double.
+      Java does it automatically because no data is lost. Narrowing means converting a bigger type to a
+      smaller type, like double to int. We must write the cast ourselves, because data can be lost.
+        int i = 10;
+        double d = i;          // widening, automatic
+        int x = (int) 9.8;     // narrowing, x = 9 (decimal cut off)
+        byte b = (byte) 130;   // overflow, b = -126
+      The last one wraps around because byte only holds -128 to 127.
+    keyPoints: ["Widening: small to big, automatic, safe", "Narrowing: big to small, explicit cast needed", "Narrowing can lose data or overflow", "(int) cuts the decimal part"]
+
+  - id: java-016
+    category: JAVA
+    topic: "Arrays basics"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is an array in Java and what are its default values?"
+    answer: |
+      An array is a fixed-size container that stores many values of the same type in continuous
+      memory. We access elements by index, starting from 0. Once created, its size cannot change.
+      In Java, arrays are objects, and they have a length field.
+        int[] nums = new int[3];   // [0, 0, 0]
+        nums[0] = 5;
+        System.out.println(nums.length); // 3
+      Default values: 0 for numeric types, false for boolean, '\u0000' for char, and null for objects
+      like String. Accessing an invalid index throws ArrayIndexOutOfBoundsException.
+    keyPoints: ["Fixed size, same type, index from 0", "Arrays are objects with length field", "Defaults: 0, false, null", "Invalid index throws ArrayIndexOutOfBoundsException"]
+
+  - id: java-017
+    category: JAVA
+    topic: "Array vs ArrayList"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, COGNIZANT, ALL]
+    question: "What is the difference between an array and an ArrayList?"
+    answer: |
+      An array has a fixed size, decided when we create it. An ArrayList is dynamic, it grows
+      automatically when we add elements. Arrays can store primitives and objects, but ArrayList stores
+      only objects, so int becomes Integer through autoboxing. Arrays use the length field,
+      ArrayList uses the size() method. ArrayList also gives ready methods like add, remove, contains.
+      Arrays are slightly faster and use less memory, so we use them when the size is known.
+        int[] a = new int[5];
+        List<Integer> list = new ArrayList<>();
+        list.add(10);
+    keyPoints: ["Array fixed size, ArrayList resizable", "Array holds primitives; ArrayList only objects", "length vs size()", "ArrayList has built-in methods"]
+
+  - id: java-018
+    category: JAVA
+    topic: "var keyword"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "What is the var keyword in Java?"
+    answer: |
+      var was added in Java 10 for local variable type inference. It means the compiler finds the type
+      from the value on the right side, so we do not repeat long type names.
+        var list = new ArrayList<String>();  // type is ArrayList<String>
+        var count = 10;                       // type is int
+      Java is still statically typed. The type is fixed at compile time, so later we cannot assign
+      a String to count. var works only for local variables with an initializer, and in for loops.
+      We cannot use it for fields, method parameters or return types, and var x = null is not allowed.
+    keyPoints: ["Java 10 local variable type inference", "Type decided at compile time, still static typing", "Only local variables with initializer", "Not for fields, parameters, return types; not with null"]
+
+  - id: java-019
+    category: JAVA
+    topic: "Short-circuit operators"
+    difficulty: EASY
+    companies: [TCS, ALL]
+    question: "What is the difference between & and && in Java?"
+    answer: |
+      && is the logical AND with short-circuit. If the left side is false, it does not check the right
+      side, because the result is already false. & always checks both sides. & is also used as the
+      bitwise AND on numbers. Short-circuit is useful to avoid errors:
+        if (s != null && s.length() > 0) { ... }
+      If s is null, the second part is skipped, so no NullPointerException. With a single &, it would
+      still call s.length() and crash. In the same way, || skips the right side when the left side is true.
+    keyPoints: ["&& short-circuits: skips right side if left is false", "& evaluates both sides; also bitwise AND", "|| skips right side if left is true", "Used to avoid NullPointerException"]
+
+  - id: java-020
+    category: JAVA
+    topic: "Pre and post increment"
+    difficulty: MEDIUM
+    companies: [TCS, WIPRO, ALL]
+    question: "What is the difference between i++ and ++i? What does int i = 5; i = i++ + ++i; give?"
+    answer: |
+      i++ is post-increment: it uses the current value first, then increases i.
+      ++i is pre-increment: it increases i first, then uses the new value.
+      For i = 5; i = i++ + ++i:
+      i++ gives 5, and i becomes 6. Then ++i makes i 7 and gives 7.
+      So the sum is 5 + 7 = 12, and i is assigned 12. The output is 12.
+      In real code we should avoid such expressions because they are hard to read,
+      but they are common in output-guessing questions.
+    keyPoints: ["i++ uses value then increments", "++i increments then uses value", "Step-by-step: 5 + 7", "Answer is 12"]
+
+  - id: java-021
+    category: JAVA
+    topic: "String concatenation order"
+    difficulty: MEDIUM
+    companies: [TCS, COGNIZANT, ALL]
+    question: "What do System.out.println(1 + 2 + \"3\") and System.out.println(\"1\" + 2 + 3) print?"
+    answer: |
+      The first prints 33 and the second prints 123.
+      The + operator works from left to right. In the first one, 1 + 2 are both numbers, so it adds
+      them to get 3, then 3 + "3" becomes the string "33". In the second one, "1" + 2 is already a string,
+      "12", and then "12" + 3 gives "123". So once a String appears on the left, the rest is joined
+      as text. A similar trick: 'a' + 1 prints 98, because char is treated as a number,
+      but "" + 'a' + 1 prints a1.
+    keyPoints: ["+ is evaluated left to right", "Numbers add until a String appears", "1 + 2 + \"3\" = 33", "\"1\" + 2 + 3 = 123"]
+
+  - id: java-022
+    category: JAVA
+    topic: "Integer division and modulo"
+    difficulty: MEDIUM
+    companies: [TCS, ALL]
+    question: "What do 7 / 2 and -7 % 3 give in Java?"
+    answer: |
+      7 / 2 gives 3, not 3.5, because both are int, so Java does integer division and drops
+      the decimal part. To get 3.5 we write 7 / 2.0 or cast one side to double.
+      -7 % 3 gives -1. In Java, the sign of the remainder follows the left number, the dividend.
+      So -7 % 3 is -1, and 7 % -3 is 1. This matters when we use % for things like checking
+      odd numbers: n % 2 == 1 fails for negative odd numbers, so n % 2 != 0 is safer.
+    keyPoints: ["int / int truncates: 7 / 2 = 3", "Use a double to get 3.5", "Remainder takes sign of the dividend: -7 % 3 = -1", "Use n % 2 != 0 for odd check"]
+
+  - id: java-023
+    category: JAVA
+    topic: "enum"
+    difficulty: MEDIUM
+    companies: [ALL]
+    question: "What is an enum in Java?"
+    answer: |
+      An enum is a special type that has a fixed set of constants, like days of the week or order status.
+      It is type safe: a variable of that enum can only hold one of those values.
+        enum Status { PENDING, SHIPPED, DELIVERED }
+        Status s = Status.SHIPPED;
+      Enums in Java are more powerful than in C. They are actually classes, so they can have fields,
+      constructors, which are always private, and methods. Useful built-in methods are values(),
+      valueOf() and ordinal(). Enums work well in switch statements and can implement interfaces,
+      but they cannot extend another class.
+    keyPoints: ["Fixed set of named constants, type safe", "Enum is a class: can have fields, constructors, methods", "values(), valueOf(), ordinal()", "Can implement interfaces, cannot extend classes"]
+
+  - id: java-024
+    category: JAVA
+    topic: "Types of variables"
+    difficulty: EASY
+    companies: [WIPRO, ALL]
+    question: "What are local, instance and static variables?"
+    answer: |
+      A local variable is declared inside a method or block. It lives only while that method runs,
+      and it must be given a value before we use it, because it has no default value.
+      An instance variable is declared inside the class but outside methods. Each object gets its own copy,
+      and it gets a default value like 0 or null. A static variable is also declared in the class,
+      but with the static keyword, so there is only one copy shared by all objects.
+        class Car {
+          static int wheels = 4;   // static
+          String color;            // instance
+          void drive() { int speed = 60; } // local
+        }
+    keyPoints: ["Local: inside method, no default value", "Instance: one copy per object, has default", "Static: one shared copy per class", "Small example"]
+
+  - id: java-025
+    category: JAVA
+    topic: "Access modifiers"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "What are the access modifiers in Java?"
+    answer: |
+      Java has four access levels. private: visible only inside the same class.
+      default, which means no keyword: visible only inside the same package.
+      protected: visible in the same package, and also in child classes in other packages.
+      public: visible everywhere. From most restricted to least: private, default, protected, public.
+      In practice we keep fields private and give public getters and setters. This is encapsulation.
+      A top-level class can only be public or default.
+    keyPoints: ["private: same class only", "default: same package", "protected: package + subclasses", "public: everywhere", "Top-level class only public or default"]
+
+  - id: java-026
+    category: JAVA
+    topic: "Overloading main"
+    difficulty: MEDIUM
+    companies: [TCS, WIPRO, ALL]
+    question: "Can we overload the main method? Can a program run without main?"
+    answer: |
+      Yes, we can overload main, like main(int x) or main(String s), because it is just a method.
+      But the JVM always starts from the standard public static void main(String[] args).
+      Other versions run only if we call them ourselves. For a normal standalone program, we need main.
+      In very old Java, people used a static block trick, but since Java 7 the JVM checks for main
+      first, so that trick does not work anymore. Note: very new Java versions (Java 25) also allow
+      a simpler instance main method, but in Java 17 we use the standard static signature.
+    keyPoints: ["main can be overloaded", "JVM only calls main(String[] args)", "Other overloads run only when called", "Static block trick no longer works since Java 7"]
+
+  - id: java-027
+    category: JAVA
+    topic: "Common String methods"
+    difficulty: EASY
+    companies: [ALL]
+    question: "Name some commonly used String methods."
+    answer: |
+      Some common ones: length() gives the number of characters. charAt(i) gives the character at index i.
+      substring(begin, end) gives part of the string, end index not included.
+      indexOf() finds the position of a character or word. toUpperCase() and toLowerCase() change case.
+      trim() or strip() removes spaces at the ends. split() breaks a string into an array.
+      replace() replaces characters. contains(), startsWith() and endsWith() return true or false.
+      equals() and equalsIgnoreCase() compare content, and compareTo() compares in dictionary order.
+        "hello".substring(1, 3)   // "el"
+    keyPoints: ["length, charAt, substring", "indexOf, contains, split, replace", "toUpperCase/toLowerCase, trim/strip", "equals, equalsIgnoreCase, compareTo"]
+
+  - id: java-028
+    category: JAVA
+    topic: "Reverse a string"
+    difficulty: EASY
+    companies: [TCS, COGNIZANT, ACCENTURE, ALL]
+    question: "How do you reverse a String and check if it is a palindrome in Java?"
+    answer: |
+      The easy way is StringBuilder's reverse() method. A palindrome is a word that reads the same
+      both ways, like "madam".
+        String s = "madam";
+        String rev = new StringBuilder(s).reverse().toString();
+        boolean isPal = s.equals(rev);   // true
+      In an interview, they may ask without built-in methods. Then we use two pointers: one at the start,
+      one at the end, compare characters and move them towards the middle. If any pair is different,
+      it is not a palindrome. This takes O(n) time and O(1) extra space.
+    keyPoints: ["StringBuilder.reverse()", "Compare with equals(), not ==", "Two-pointer approach without built-ins", "O(n) time"]
+
+  - id: java-029
+    category: JAVA
+    topic: "char[] for passwords"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "Why is char[] preferred over String for storing passwords?"
+    answer: |
+      String is immutable, and literals can stay in the String pool. So once a password is in a String,
+      we cannot erase it. It stays in memory until the garbage collector removes it, and we do not know
+      when that will happen. If someone takes a memory dump, they might see it.
+      With a char array, we can overwrite the data after use, for example with Arrays.fill(pwd, '0').
+      Also, if we print a char array by mistake in logs, it shows an address-like value instead of
+      the text. That is why APIs like Console.readPassword() return char[].
+    keyPoints: ["String is immutable, cannot be cleared", "May stay in memory/pool until GC", "char[] can be wiped with Arrays.fill", "Less risk of accidental logging; Console.readPassword returns char[]"]
+
+  - id: java-030
+    category: JAVA
+    topic: "Floating point and BigDecimal"
+    difficulty: HARD
+    companies: [PRODUCT, ALL]
+    question: "Why does 0.1 + 0.2 not print 0.3 in Java? What should we use for money?"
+    answer: |
+      It prints 0.30000000000000004. double and float store numbers in binary, and many decimal values
+      like 0.1 cannot be stored exactly in binary, just like 1/3 cannot be written exactly in decimal.
+      So small rounding errors appear. For money and exact calculations, we use BigDecimal,
+      and we create it from a String, not from a double.
+        BigDecimal a = new BigDecimal("0.1");
+        BigDecimal b = new BigDecimal("0.2");
+        System.out.println(a.add(b));   // 0.3
+      Also, compare BigDecimal values with compareTo(), because equals() also checks the scale,
+      so 2.0 and 2.00 are not equal with equals().
+    keyPoints: ["Output is 0.30000000000000004", "Binary floating point cannot store 0.1 exactly", "Use BigDecimal for money", "Create BigDecimal from String", "Compare with compareTo, not equals"]
+
+  # ---------------------------------------------------------------- OOP (031-060)
+  - id: java-031
+    category: OOP
+    topic: "Four pillars of OOP"
+    difficulty: EASY
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, ALL]
+    question: "What are the four pillars of OOP?"
+    answer: |
+      The four pillars are encapsulation, inheritance, polymorphism and abstraction.
+      Encapsulation means wrapping data and methods together in a class and hiding the data with
+      private fields. Inheritance means one class can reuse the properties of another class using extends.
+      Polymorphism means one name, many forms, like the same method behaving differently in different
+      classes. Abstraction means showing only what is needed and hiding the internal details, using
+      abstract classes and interfaces. A simple example is a car: we use the steering and brake,
+      but we do not see how the engine works inside. That is abstraction.
+    keyPoints: ["Encapsulation: bundle and hide data", "Inheritance: reuse via extends", "Polymorphism: one name, many forms", "Abstraction: show what, hide how"]
+
+  - id: java-032
+    category: OOP
+    topic: "Class vs object"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is the difference between a class and an object?"
+    answer: |
+      A class is a blueprint or template. It describes what data and behaviour something will have,
+      but it does not take memory for that data by itself. An object is a real instance created from
+      the class using the new keyword. It has actual values and it lives in heap memory.
+      For example, Car is a class with fields like color and speed. myCar = new Car() is an object,
+      with color red and speed 60. From one class, we can create many objects,
+      each with its own values.
+    keyPoints: ["Class = blueprint/template", "Object = instance created with new", "Objects live in heap with real values", "One class, many objects"]
+
+  - id: java-033
+    category: OOP
+    topic: "Encapsulation"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "What is encapsulation? Give an example."
+    answer: |
+      Encapsulation means keeping the data and the methods that work on that data together in one class,
+      and hiding the data from direct outside access. We make fields private and give public getter
+      and setter methods. This lets us add checks, so the data always stays valid.
+        class Account {
+          private double balance;
+          public double getBalance() { return balance; }
+          public void deposit(double amt) {
+            if (amt > 0) balance += amt;
+          }
+        }
+      Here nobody can set balance to a negative value directly. Benefits are data safety,
+      control, and easier changes later.
+    keyPoints: ["Bundle data and methods in a class", "Private fields, public getters/setters", "Validation inside methods", "Data protection and maintainability"]
+
+  - id: java-034
+    category: OOP
+    topic: "Inheritance and multiple inheritance"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, ALL]
+    question: "What types of inheritance does Java support? Why not multiple inheritance with classes?"
+    answer: |
+      Inheritance means a child class gets the fields and methods of a parent class using extends.
+      Java supports single, multilevel and hierarchical inheritance with classes.
+      It does not support multiple inheritance with classes, meaning one class cannot extend two classes.
+      The reason is the diamond problem: if two parents have the same method, the child does not know
+      which one to use. This creates confusion. But a class can implement many interfaces,
+      so we get multiple inheritance of type through interfaces. If two interfaces have the same
+      default method, the class must override it and choose.
+    keyPoints: ["Child reuses parent members with extends", "Supported: single, multilevel, hierarchical", "No multiple class inheritance due to diamond problem", "Multiple interfaces are allowed"]
+
+  - id: java-035
+    category: OOP
+    topic: "Polymorphism types"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, WIPRO, ALL]
+    question: "What is polymorphism? What are its types?"
+    answer: |
+      Polymorphism means "many forms". The same method name can behave differently.
+      There are two types in Java. Compile-time polymorphism is method overloading: same method name,
+      different parameters, and the compiler decides which one to call. Runtime polymorphism is method
+      overriding: a child class gives its own version of a parent method, and the JVM decides at runtime
+      based on the actual object.
+        Animal a = new Dog();
+        a.sound();   // calls Dog's sound() at runtime
+    keyPoints: ["Many forms of one name", "Compile-time = overloading", "Runtime = overriding", "JVM picks method by actual object type"]
+
+  - id: java-036
+    category: OOP
+    topic: "Overloading vs overriding"
+    difficulty: EASY
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT, ALL]
+    question: "What is the difference between method overloading and method overriding?"
+    answer: |
+      Overloading means same method name with different parameters, in the same class.
+      The parameters must differ in number, type or order. The return type alone is not enough.
+      It is decided at compile time. Overriding means a child class gives a new body for a method that
+      already exists in the parent, with the same name and same parameters. It is decided at runtime.
+        int add(int a, int b)          // overloading
+        double add(double a, double b)
+        @Override void sound() { ... } // overriding in child
+      Static, private and final methods cannot be overridden, but they can be overloaded.
+    keyPoints: ["Overloading: same name, different parameters, compile time", "Overriding: same signature in child, runtime", "Return type alone cannot overload", "static/private/final cannot be overridden"]
+
+  - id: java-037
+    category: OOP
+    topic: "Abstraction"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is abstraction and how do we achieve it in Java?"
+    answer: |
+      Abstraction means hiding the internal details and showing only the important features.
+      The user knows what an object does, not how it does it. For example, when we call list.sort(),
+      we do not care which sorting algorithm runs inside. In Java, we achieve abstraction in two ways:
+      abstract classes and interfaces. An abstract class can have abstract methods without a body,
+      and normal methods. An interface defines a contract that classes must follow.
+      Abstraction makes code simpler to use and easier to change, because the inside can change
+      without affecting the users.
+    keyPoints: ["Hide how, show what", "Achieved with abstract classes and interfaces", "Real example (sort, ATM, car)", "Implementation can change without affecting users"]
+
+  - id: java-038
+    category: OOP
+    topic: "Abstract class vs interface"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, CAPGEMINI, ALL]
+    question: "What is the difference between an abstract class and an interface?"
+    answer: |
+      An abstract class can have abstract and normal methods, instance variables, and constructors.
+      A class can extend only one abstract class. An interface mainly defines a contract.
+      Its variables are always public static final, meaning constants, and it has no constructors.
+      Since Java 8, interfaces can have default and static methods, and since Java 9, private methods.
+      A class can implement many interfaces. When to use what: use an abstract class when classes are
+      closely related and share common state or code. Use an interface when unrelated classes should
+      share a capability, like Comparable or Runnable.
+    keyPoints: ["Abstract class: state, constructors, mix of methods; single extends", "Interface: constants only, no constructors; many can be implemented", "Java 8 default/static methods in interfaces", "Choose: shared state vs shared capability"]
+
+  - id: java-039
+    category: OOP
+    topic: "Constructors"
+    difficulty: EASY
+    companies: [TCS, WIPRO, ALL]
+    question: "What is a constructor? What is a default constructor?"
+    answer: |
+      A constructor is a special block that runs when we create an object with new. It is used to set
+      initial values. Its name is the same as the class name, and it has no return type, not even void.
+      If we do not write any constructor, the compiler adds a default no-argument constructor.
+      But if we write any constructor ourselves, the compiler does not add the default one.
+        class Student {
+          String name;
+          Student(String name) { this.name = name; }
+        }
+      Here new Student() will not compile, because only the one-argument constructor exists.
+    keyPoints: ["Runs on object creation, initializes fields", "Same name as class, no return type", "Compiler adds default constructor only if none written", "Constructors can be overloaded"]
+
+  - id: java-040
+    category: OOP
+    topic: "Constructor chaining"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "What is constructor chaining? How do this() and super() work?"
+    answer: |
+      Constructor chaining means one constructor calls another constructor. this() calls another
+      constructor of the same class. super() calls the parent class constructor. Either call must be
+      the first statement, so we cannot use both in the same constructor. If we do not write super(),
+      the compiler adds super() automatically, so the parent is always built first.
+        class Box {
+          int w, h;
+          Box() { this(1, 1); }
+          Box(int w, int h) { this.w = w; this.h = h; }
+        }
+      Chaining avoids duplicate code. If the parent has no no-argument constructor, the child must call
+      super(...) with arguments, or it will not compile.
+    keyPoints: ["this() calls same-class constructor", "super() calls parent constructor", "Must be the first statement; only one of them", "Compiler adds super() if missing", "Avoids duplicate code"]
+
+  - id: java-041
+    category: OOP
+    topic: "this vs super"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is the difference between this and super keywords?"
+    answer: |
+      this refers to the current object. We use it to tell apart a field and a parameter with the same
+      name, like this.name = name, to call another constructor of the same class with this(),
+      or to pass the current object to a method. super refers to the parent class part of the object.
+      We use it to call the parent's method when the child has overridden it, like super.display(),
+      to access a parent field, or to call the parent constructor with super().
+      Neither can be used inside a static method, because static code has no object.
+    keyPoints: ["this = current object", "super = parent part of object", "this.name = name; super.method()", "Not usable in static context"]
+
+  - id: java-042
+    category: OOP
+    topic: "Constructor rules"
+    difficulty: MEDIUM
+    companies: [TCS, ALL]
+    question: "Can a constructor be private, inherited, overridden, static or final?"
+    answer: |
+      A constructor can be private. This is used in singleton classes and utility classes,
+      so outsiders cannot create objects. Constructors are not inherited, so a child class does not get
+      the parent's constructors. Because they are not inherited, they cannot be overridden either.
+      But they can be overloaded, meaning many constructors with different parameters.
+      A constructor cannot be static, final or abstract. Those keywords make no sense, because a
+      constructor always works on a new object and is never inherited.
+    keyPoints: ["Private allowed (singleton, utility class)", "Not inherited, so not overridden", "Can be overloaded", "Cannot be static, final or abstract"]
+
+  - id: java-043
+    category: OOP
+    topic: "Static method hiding"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "Can we override a static method in Java?"
+    answer: |
+      No. Static methods belong to the class, not the object, so runtime polymorphism does not apply.
+      If a child class writes a static method with the same signature, it is called method hiding,
+      not overriding. Which method runs depends on the reference type, decided at compile time.
+        class A { static void show() { System.out.println("A"); } }
+        class B extends A { static void show() { System.out.println("B"); } }
+        A obj = new B();
+        obj.show();   // prints A
+      With a real override of an instance method, it would print B. Also, @Override on a static method
+      gives a compile error.
+    keyPoints: ["Static methods cannot be overridden", "Same static method in child = method hiding", "Decided by reference type at compile time", "Example prints A"]
+
+  - id: java-044
+    category: OOP
+    topic: "Rules of overriding"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What are the rules for method overriding in Java?"
+    answer: |
+      First, the method name and parameter list must be exactly the same.
+      Second, the return type must be the same or a subtype. This is called a covariant return type,
+      for example parent returns Animal and child returns Dog.
+      Third, the access level cannot be reduced. If the parent method is public, the child cannot make it
+      protected or private, but it can widen access.
+      Fourth, the child cannot throw new or broader checked exceptions. It can throw fewer,
+      narrower, or any unchecked exceptions.
+      Fifth, final, static and private methods cannot be overridden.
+      We should add @Override so the compiler catches mistakes.
+    keyPoints: ["Same name and parameters", "Same or covariant return type", "Cannot reduce access", "No new/broader checked exceptions", "final/static/private cannot be overridden; use @Override"]
+
+  - id: java-045
+    category: OOP
+    topic: "Dynamic method dispatch"
+    difficulty: MEDIUM
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "What is upcasting and dynamic method dispatch?"
+    answer: |
+      Upcasting means storing a child object in a parent type reference, like Animal a = new Dog().
+      It happens automatically. Dynamic method dispatch means when we call an overridden method using
+      that reference, the JVM checks the actual object at runtime and calls the child's version.
+        class Animal { void sound() { System.out.println("..."); } }
+        class Dog extends Animal { void sound() { System.out.println("Bark"); } }
+        Animal a = new Dog();
+        a.sound();    // Bark
+      But with a parent reference, we can only call methods that exist in the parent. For a Dog-only
+      method, we must downcast, and should check with instanceof first. Fields are not polymorphic,
+      only methods are.
+    keyPoints: ["Upcasting: parent reference, child object", "Overridden method chosen at runtime by actual object", "Only parent's methods visible through reference", "Downcast needs instanceof check; fields are not polymorphic"]
+
+  - id: java-046
+    category: OOP
+    topic: "Composition vs inheritance"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "What is the difference between IS-A and HAS-A relationships? Which is preferred?"
+    answer: |
+      IS-A is inheritance: a Dog is an Animal, so Dog extends Animal. HAS-A is composition: a Car has an
+      Engine, so the Car class keeps an Engine object as a field. Many developers say "prefer composition
+      over inheritance". The reason is inheritance creates tight coupling: if the parent changes,
+      all children can break, and Java allows only one parent. With composition we can change parts
+      easily, even at runtime, and test them separately.
+        class Car {
+          private Engine engine;
+          Car(Engine engine) { this.engine = engine; }
+        }
+      Use inheritance only when there is a true "is a" relationship.
+    keyPoints: ["IS-A = inheritance (extends)", "HAS-A = composition (field)", "Prefer composition: loose coupling, flexible", "Use inheritance only for true is-a"]
+
+  - id: java-047
+    category: OOP
+    topic: "Association, aggregation, composition"
+    difficulty: MEDIUM
+    companies: [CAPGEMINI, ALL]
+    question: "Explain association, aggregation and composition."
+    answer: |
+      Association is a general relationship between two classes, where one uses the other, like a Teacher
+      and a Student. Aggregation is a weak HAS-A relationship: the part can live without the whole.
+      For example, a Department has Teachers, but if the department closes, the teachers still exist.
+      Composition is a strong HAS-A relationship: the part cannot live without the whole.
+      For example, a House has Rooms; if the house is destroyed, the rooms are gone too.
+      In code, in composition the whole usually creates and owns the part, while in aggregation
+      the part is passed in from outside.
+    keyPoints: ["Association: general uses-a relationship", "Aggregation: weak has-a, part lives independently", "Composition: strong has-a, part dies with whole", "Examples: Department-Teacher, House-Room"]
+
+  - id: java-048
+    category: OOP
+    topic: "Default and static methods in interfaces"
+    difficulty: MEDIUM
+    companies: [INFOSYS_DSE, ALL]
+    question: "Why were default and static methods added to interfaces in Java 8?"
+    answer: |
+      Before Java 8, if we added a new method to an interface, every class implementing it would break,
+      because they must implement all methods. Default methods solve this. A default method has a body,
+      so old classes get it for free, and they can still override it. This is how Java added methods like
+      forEach to existing interfaces. Static methods in interfaces are helper methods that belong to the
+      interface itself, and we call them with the interface name, like Comparator.naturalOrder().
+        interface Greeter {
+          default void hello() { System.out.println("Hello"); }
+          static Greeter create() { return new Greeter() {}; }
+        }
+    keyPoints: ["Add methods without breaking existing classes (backward compatibility)", "Default method has a body, can be overridden", "Static interface methods called via interface name", "Example: forEach, Comparator.naturalOrder"]
+
+  - id: java-049
+    category: OOP
+    topic: "Marker interface"
+    difficulty: EASY
+    companies: [TCS, ALL]
+    question: "What is a marker interface?"
+    answer: |
+      A marker interface is an interface with no methods at all. It just "marks" a class,
+      to tell the JVM or a framework that this class has some special ability.
+      Examples are Serializable, which means objects of the class can be converted into a byte stream,
+      and Cloneable, which means clone() is allowed. If we call clone() on a class that does not
+      implement Cloneable, we get CloneNotSupportedException. Today, annotations are often used for
+      the same purpose, but marker interfaces have one benefit: the compiler can check the type.
+    keyPoints: ["Interface with no methods", "Marks a class with a special ability", "Examples: Serializable, Cloneable", "Annotations are a modern alternative"]
+
+  - id: java-050
+    category: OOP
+    topic: "Object class methods"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "What are the important methods of the Object class?"
+    answer: |
+      Object is the parent of every class in Java. Its important methods are:
+      equals(), to compare two objects; hashCode(), which returns an int used by hash-based collections;
+      toString(), which gives a text form of the object - by default the class name, @ and a hex hash,
+      so we usually override it; getClass(), which gives the runtime class; clone(), to copy an object;
+      wait(), notify() and notifyAll(), used for communication between threads; and finalize(),
+      which is deprecated now. Most often we override equals, hashCode and toString.
+    keyPoints: ["Object is root of all classes", "equals, hashCode, toString (commonly overridden)", "getClass, clone", "wait, notify, notifyAll for threads; finalize deprecated"]
+
+  - id: java-051
+    category: OOP
+    topic: "instanceof and pattern matching"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "What is the instanceof operator? What is pattern matching for instanceof?"
+    answer: |
+      instanceof checks whether an object is of a given type, including child types. It returns true
+      or false, and it returns false for null. We use it before downcasting, to avoid
+      ClassCastException. In old Java we checked and then cast separately. From Java 16,
+      pattern matching lets us check and cast in one step:
+        Object obj = "hello";
+        if (obj instanceof String s) {
+          System.out.println(s.length());   // s is already a String
+        }
+      This is shorter and safer, because we cannot cast to the wrong type by mistake.
+    keyPoints: ["Checks object type at runtime, false for null", "Use before downcasting to avoid ClassCastException", "Java 16 pattern matching: obj instanceof String s", "Removes manual cast"]
+
+  - id: java-052
+    category: OOP
+    topic: "Immutable class"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "How do you create an immutable class in Java?"
+    answer: |
+      An immutable class is one whose object state cannot change after creation, like String.
+      Steps: make the class final so no child can change behaviour. Make all fields private and final.
+      Set fields only in the constructor. Do not give setters. For mutable fields like a List or Date,
+      make a defensive copy in the constructor and return a copy or unmodifiable view in getters.
+        final class Person {
+          private final String name;
+          private final List<String> skills;
+          Person(String name, List<String> skills) {
+            this.name = name;
+            this.skills = List.copyOf(skills);
+          }
+          String getName() { return name; }
+          List<String> getSkills() { return skills; }
+        }
+      A Java record also gives a simple immutable data class.
+    keyPoints: ["final class", "private final fields, set in constructor", "No setters", "Defensive copies for mutable fields", "Records are a shortcut"]
+
+  - id: java-053
+    category: OOP
+    topic: "Singleton class"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is a singleton class? How do you make it thread safe?"
+    answer: |
+      A singleton class allows only one object in the whole application, like a config manager or logger.
+      Steps: make the constructor private, keep a static field for the single instance, and give a static
+      method to return it. A simple thread-safe way is eager creation:
+        class Config {
+          private static final Config INSTANCE = new Config();
+          private Config() {}
+          public static Config getInstance() { return INSTANCE; }
+        }
+      For lazy creation, we can use double-checked locking with a volatile field, or the holder class idiom.
+      The safest way is an enum with one constant, because it also protects against reflection and
+      serialization creating a second object.
+    keyPoints: ["Only one instance", "Private constructor + static instance + static getter", "Thread safety: eager init, double-checked locking with volatile, or holder idiom", "Enum singleton is safest"]
+
+  - id: java-054
+    category: OOP
+    topic: "Shallow vs deep copy"
+    difficulty: HARD
+    companies: [PRODUCT, ALL]
+    question: "What is the difference between a shallow copy and a deep copy?"
+    answer: |
+      A shallow copy creates a new object, but copies only the references of inner objects.
+      So both the original and the copy share the same inner objects. If one changes an inner object,
+      the other sees it. The default Object.clone() does a shallow copy.
+      A deep copy creates a new object and also creates new copies of all inner objects,
+      so the two are fully independent.
+        class Student implements Cloneable {
+          List<String> marks = new ArrayList<>();
+          public Student clone() throws CloneNotSupportedException {
+            Student s = (Student) super.clone();   // shallow
+            s.marks = new ArrayList<>(marks);      // make it deep
+            return s;
+          }
+        }
+      Many developers prefer a copy constructor instead of clone().
+    keyPoints: ["Shallow: new outer object, shared inner objects", "Deep: inner objects also copied", "Object.clone() is shallow; needs Cloneable", "Copy constructor is a cleaner alternative"]
+
+  - id: java-055
+    category: OOP
+    topic: "Inner classes"
+    difficulty: MEDIUM
+    companies: [ALL]
+    question: "What are the types of nested and inner classes in Java?"
+    answer: |
+      There are four types. A static nested class is declared static inside another class. It does not
+      need an outer object and cannot directly use outer instance fields. A member inner class is non-static,
+      so it needs an outer object and can access all outer fields, even private ones.
+      A local inner class is declared inside a method and is visible only there.
+      An anonymous inner class has no name. It is created and used at the same place, often to implement
+      an interface quickly:
+        Runnable r = new Runnable() {
+          public void run() { System.out.println("run"); }
+        };
+      Today lambdas replace many anonymous classes for functional interfaces.
+    keyPoints: ["Static nested: no outer object needed", "Member inner: needs outer object, accesses private members", "Local inner: inside a method", "Anonymous: no name, one-time use; often replaced by lambdas"]
+
+  - id: java-056
+    category: OOP
+    topic: "Private and final methods"
+    difficulty: EASY
+    companies: [TCS, ALL]
+    question: "Can we override a private or final method?"
+    answer: |
+      No to both. A private method is visible only inside its own class, so the child class cannot even
+      see it. If the child writes a method with the same name, it is a completely new method,
+      not an override. A final method is visible to the child, but the final keyword blocks overriding.
+      If we try, we get a compile error. We make a method final when its behaviour must not change,
+      for example for security or correctness.
+    keyPoints: ["Private methods are not inherited, so not overridden", "Same name in child = new method", "Final method: compile error if overridden", "final used to lock behaviour"]
+
+  - id: java-057
+    category: OOP
+    topic: "Coupling and cohesion"
+    difficulty: EASY
+    companies: [CAPGEMINI, ACCENTURE, ALL]
+    question: "What are coupling and cohesion? What do we want?"
+    answer: |
+      Coupling means how much one class depends on another class. Cohesion means how focused a class is
+      on one single job. We want low coupling and high cohesion.
+      Low coupling means classes depend on each other loosely, usually through interfaces, so changing one
+      class does not break others. High cohesion means each class does one clear job, for example
+      a UserService handles only user logic, not emails and reports too.
+      This makes code easier to understand, test and change. Spring dependency injection helps
+      achieve low coupling.
+    keyPoints: ["Coupling = dependency between classes", "Cohesion = focus of a class on one job", "Goal: low coupling, high cohesion", "Interfaces / dependency injection reduce coupling"]
+
+  - id: java-058
+    category: OOP
+    topic: "SOLID principles"
+    difficulty: HARD
+    companies: [PRODUCT, INFOSYS_SP, ALL]
+    question: "What are the SOLID principles?"
+    answer: |
+      SOLID is five design rules for clean object-oriented code.
+      S - Single Responsibility: a class should have only one reason to change.
+      O - Open/Closed: open for extension, closed for modification; add new behaviour with new classes,
+      not by editing old tested code.
+      L - Liskov Substitution: a child object should work anywhere the parent is expected, without breaking things.
+      I - Interface Segregation: many small interfaces are better than one big interface, so classes do not
+      implement methods they do not need.
+      D - Dependency Inversion: depend on interfaces, not concrete classes. Spring dependency injection
+      follows this idea.
+    keyPoints: ["Single Responsibility", "Open/Closed", "Liskov Substitution", "Interface Segregation", "Dependency Inversion"]
+
+  - id: java-059
+    category: OOP
+    topic: "Abstract class and interface instantiation"
+    difficulty: EASY
+    companies: [WIPRO, ALL]
+    question: "Can we create an object of an abstract class or interface? Can an abstract class have a constructor?"
+    answer: |
+      No, we cannot create an object of an abstract class or an interface directly with new,
+      because they may have methods without a body. But we can create a reference of that type,
+      pointing to a child object, like List<String> list = new ArrayList<>().
+      An abstract class can have a constructor. It runs when a child object is created,
+      through super(), and it is used to set up common fields. An interface cannot have a constructor.
+      We can also use an anonymous class to give the missing method bodies on the spot.
+    keyPoints: ["Cannot instantiate abstract class or interface with new", "Reference type can be abstract/interface", "Abstract class can have constructor, called via super()", "Interface has no constructor"]
+
+  - id: java-060
+    category: OOP
+    topic: "Method signature and overloading by return type"
+    difficulty: EASY
+    companies: [TCS, COGNIZANT, ALL]
+    question: "What is a method signature? Can we overload a method just by changing the return type?"
+    answer: |
+      A method signature is the method name plus its parameter list - the number, types and order of
+      parameters. The return type and the throws clause are not part of the signature.
+      So we cannot overload by changing only the return type. For example:
+        int getValue() { ... }
+        double getValue() { ... }   // compile error
+      When we call getValue(), the compiler cannot decide which one we mean.
+      To overload, the parameter list must be different.
+    keyPoints: ["Signature = name + parameter list", "Return type not part of signature", "Only return type change gives compile error", "Parameters must differ to overload"]
+
+  # ---------------------------------------------------------------- COLLECTIONS (061-085)
+  - id: java-061
+    category: COLLECTIONS
+    topic: "Collection framework hierarchy"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "What is the Java Collection Framework? Explain its main interfaces."
+    answer: |
+      The Collection Framework is a set of ready-made interfaces and classes to store and work with
+      groups of objects. At the top is the Collection interface. Its main child interfaces are List,
+      Set and Queue. List keeps order and allows duplicates - ArrayList, LinkedList. Set does not allow
+      duplicates - HashSet, LinkedHashSet, TreeSet. Queue is for processing elements in order -
+      PriorityQueue, ArrayDeque. Map is separate from Collection. It stores key-value pairs - HashMap,
+      LinkedHashMap, TreeMap. The framework saves us from writing our own data structures and gives
+      tested, fast implementations.
+    keyPoints: ["Ready-made data structures for groups of objects", "Collection -> List, Set, Queue", "Map is separate (key-value)", "Examples of each implementation"]
+
+  - id: java-062
+    category: COLLECTIONS
+    topic: "Collection vs Collections"
+    difficulty: EASY
+    companies: [TCS, WIPRO, ALL]
+    question: "What is the difference between Collection and Collections?"
+    answer: |
+      Collection, without s, is an interface. It is the root interface for List, Set and Queue,
+      and it declares methods like add, remove, size and contains.
+      Collections, with s, is a utility class with static helper methods that work on collections.
+      For example, Collections.sort(list), Collections.reverse(list), Collections.max(list),
+      Collections.unmodifiableList(list) and Collections.synchronizedList(list).
+      So one is a type, and the other is a toolbox.
+    keyPoints: ["Collection = root interface", "Collections = utility class with static methods", "Examples: sort, reverse, max, unmodifiableList", "Type vs toolbox"]
+
+  - id: java-063
+    category: COLLECTIONS
+    topic: "ArrayList vs LinkedList"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT, ALL]
+    question: "What is the difference between ArrayList and LinkedList?"
+    answer: |
+      ArrayList uses a dynamic array inside. LinkedList uses a doubly linked list, where each node holds
+      the data and links to the previous and next nodes.
+      Getting an element by index is fast in ArrayList, O(1), but slow in LinkedList, O(n), because it
+      must walk through nodes. Adding or removing in the middle needs shifting in ArrayList, O(n).
+      In LinkedList the link change itself is O(1), but finding the position is still O(n).
+      LinkedList uses more memory because of the extra links. LinkedList also works as a Queue or Deque.
+      In practice, ArrayList is the default choice for most cases.
+    keyPoints: ["ArrayList: dynamic array; LinkedList: doubly linked list", "get(index): O(1) vs O(n)", "Middle insert/remove: shifting vs relinking", "LinkedList uses more memory; ArrayList usually preferred"]
+
+  - id: java-064
+    category: COLLECTIONS
+    topic: "List vs Set vs Map"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is the difference between List, Set and Map?"
+    answer: |
+      A List is an ordered collection that allows duplicates, and we can access elements by index.
+      Use it for things like a list of orders. A Set does not allow duplicates. Most sets do not keep
+      index-based access. Use it for unique items like unique email ids. A Map stores key-value pairs.
+      Keys are unique, values can repeat. Use it for lookups, like student id to student name.
+        List<String> l = List.of("a", "a");         // duplicates ok
+        Set<String> s = new HashSet<>(l);           // [a]
+        Map<Integer, String> m = Map.of(1, "Ravi");
+    keyPoints: ["List: ordered, duplicates, index access", "Set: no duplicates", "Map: key-value, unique keys", "Use case for each"]
+
+  - id: java-065
+    category: COLLECTIONS
+    topic: "HashMap internal working"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "How does HashMap work internally?"
+    answer: |
+      HashMap stores data in an array of buckets. Default capacity is 16, and load factor is 0.75.
+      When we call put(key, value), it calls key.hashCode(), mixes the bits, and finds the bucket index
+      using hash and (n - 1). If the bucket is empty, it stores a new node there. If not, that is a
+      collision. It checks each node with equals(): if the key matches, it replaces the value; otherwise it
+      adds a new node to the list. Since Java 8, if one bucket gets more than 8 nodes and the table has at
+      least 64 buckets, the list turns into a red-black tree, so lookup becomes O(log n) instead of O(n).
+      When size goes above capacity times load factor, the table doubles and entries are rehashed.
+      get() follows the same hashCode then equals steps. Average time is O(1).
+    keyPoints: ["Array of buckets; index from hashCode", "Collision handled by linked list; equals() finds key", "Java 8 treeify after 8 nodes (table >= 64)", "Resize at capacity x 0.75, doubles", "Average O(1) get/put"]
+
+  - id: java-066
+    category: COLLECTIONS
+    topic: "equals and hashCode contract"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is the equals() and hashCode() contract? What happens if we override only equals()?"
+    answer: |
+      The contract says: if two objects are equal by equals(), they must have the same hashCode.
+      But two objects with the same hashCode need not be equal - that is just a collision.
+      Also, hashCode should return the same value each time if the object does not change.
+      If we override only equals() and not hashCode(), two equal objects can get different hash codes.
+      Then HashMap and HashSet look in different buckets, so a HashSet can store "duplicates"
+      and map.get() can return null for an equal key. So we always override both together:
+        @Override public int hashCode() { return Objects.hash(id, name); }
+    keyPoints: ["Equal objects must have equal hashCode", "Same hashCode does not mean equal", "Override only equals -> HashSet/HashMap break", "Always override both; Objects.hash helps"]
+
+  - id: java-067
+    category: COLLECTIONS
+    topic: "HashMap vs Hashtable vs ConcurrentHashMap"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is the difference between HashMap, Hashtable and ConcurrentHashMap?"
+    answer: |
+      HashMap is not thread safe. It allows one null key and many null values, and it is fast in a
+      single thread. Hashtable is an old, legacy class. It is thread safe because every method is
+      synchronized, so only one thread works at a time, which makes it slow. It does not allow null keys
+      or values. ConcurrentHashMap is the modern thread-safe map. It locks only small parts, so many threads
+      can read and write together, which gives much better performance. It also does not allow null keys
+      or values. So today: HashMap for single thread, ConcurrentHashMap for multi-thread,
+      and we avoid Hashtable.
+    keyPoints: ["HashMap: not thread safe, allows null key/values", "Hashtable: legacy, fully synchronized, slow, no nulls", "ConcurrentHashMap: fine-grained locking, fast, no nulls", "Avoid Hashtable"]
+
+  - id: java-068
+    category: COLLECTIONS
+    topic: "How HashSet works"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "How does HashSet work internally? How does it avoid duplicates?"
+    answer: |
+      HashSet uses a HashMap inside. When we add an element, it is stored as a key in that HashMap,
+      and a fixed dummy object is stored as the value. Since HashMap keys are unique, the set cannot have
+      duplicates. add() returns true if the element was new, and false if it already existed.
+      To check if an element already exists, it uses hashCode() to find the bucket and equals() to compare.
+      That is why our own classes must override both hashCode and equals properly to be used in a HashSet.
+        Set<String> set = new HashSet<>();
+        set.add("a");   // true
+        set.add("a");   // false
+    keyPoints: ["Backed by a HashMap", "Element stored as key, dummy value", "Uniqueness via hashCode + equals", "add returns false for duplicate"]
+
+  - id: java-069
+    category: COLLECTIONS
+    topic: "HashSet vs LinkedHashSet vs TreeSet"
+    difficulty: MEDIUM
+    companies: [TCS, ALL]
+    question: "What is the difference between HashSet, LinkedHashSet and TreeSet?"
+    answer: |
+      All three do not allow duplicates. The difference is order and speed.
+      HashSet gives no guaranteed order, and add, remove and contains are O(1) on average.
+      LinkedHashSet keeps insertion order, meaning elements come out in the order we added them.
+      It is a little slower and uses a bit more memory. TreeSet keeps elements sorted, in natural order
+      or by a Comparator. It uses a red-black tree, so operations are O(log n), and it does not allow null.
+        new TreeSet<>(List.of(5, 1, 3))   // [1, 3, 5]
+    keyPoints: ["All unique elements", "HashSet: no order, O(1)", "LinkedHashSet: insertion order", "TreeSet: sorted, O(log n), no null"]
+
+  - id: java-070
+    category: COLLECTIONS
+    topic: "HashMap vs LinkedHashMap vs TreeMap"
+    difficulty: MEDIUM
+    companies: [INFOSYS_DSE, ALL]
+    question: "When would you use HashMap, LinkedHashMap or TreeMap?"
+    answer: |
+      HashMap gives no order guarantee and is the fastest, with O(1) average get and put.
+      Use it by default. LinkedHashMap keeps insertion order, or access order if we ask for it,
+      which is useful for building an LRU cache. TreeMap keeps keys sorted, using a red-black tree,
+      so get and put are O(log n). It also gives helpful methods like firstKey(), floorKey() and
+      headMap(). TreeMap does not allow a null key. So: speed, use HashMap; insertion order, use
+      LinkedHashMap; sorted keys, use TreeMap.
+    keyPoints: ["HashMap: no order, O(1)", "LinkedHashMap: insertion/access order, LRU cache", "TreeMap: sorted keys, O(log n), navigation methods", "TreeMap no null key"]
+
+  - id: java-071
+    category: COLLECTIONS
+    topic: "Comparable vs Comparator"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, ALL]
+    question: "What is the difference between Comparable and Comparator?"
+    answer: |
+      Comparable is used to give a class its natural, default sort order. The class itself implements
+      Comparable and its compareTo() method. It is in java.lang, and we get only one sort order.
+      Comparator is a separate object that defines a custom order with the compare() method.
+      It is in java.util, and we can create many comparators, like by name, by salary, and so on,
+      without changing the class.
+        class Emp implements Comparable<Emp> {
+          int id; String name;
+          public int compareTo(Emp o) { return Integer.compare(id, o.id); }
+        }
+        list.sort(Comparator.comparing(e -> e.name));   // custom order
+    keyPoints: ["Comparable: natural order, compareTo, inside the class", "Comparator: custom order, compare, separate", "Comparable: one order; Comparator: many", "Comparator.comparing with lambdas"]
+
+  - id: java-072
+    category: COLLECTIONS
+    topic: "Fail-fast vs fail-safe iterators"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is the difference between fail-fast and fail-safe iterators?"
+    answer: |
+      A fail-fast iterator throws ConcurrentModificationException if the collection is changed while we
+      are looping, except through the iterator's own remove(). ArrayList and HashMap iterators are
+      fail-fast. They track a modification count called modCount and check it on every step.
+      A fail-safe iterator does not throw this exception. It works on a copy or a snapshot, or it is
+      designed for concurrent changes. Examples are CopyOnWriteArrayList and ConcurrentHashMap.
+      The trade-off is that a fail-safe iterator may not show the latest changes, and copying
+      uses extra memory.
+    keyPoints: ["Fail-fast throws ConcurrentModificationException", "Uses modCount; ArrayList, HashMap", "Fail-safe works on snapshot/concurrent structure", "CopyOnWriteArrayList, ConcurrentHashMap; may not see latest data"]
+
+  - id: java-073
+    category: COLLECTIONS
+    topic: "Removing while iterating"
+    difficulty: MEDIUM
+    companies: [TCS, ALL]
+    question: "How do you safely remove elements from a list while iterating? What is Iterator vs ListIterator?"
+    answer: |
+      If we remove inside a for-each loop, we can get ConcurrentModificationException.
+      The safe way is to use the Iterator's remove() method, or the removeIf() method from Java 8.
+        Iterator<Integer> it = list.iterator();
+        while (it.hasNext()) {
+          if (it.next() % 2 == 0) it.remove();
+        }
+        list.removeIf(n -> n % 2 == 0);   // simpler
+      Iterator works on any collection and moves only forward. ListIterator works only on lists.
+      It can move both forward and backward, and it can also add and set elements during the loop.
+    keyPoints: ["Removing in for-each can cause ConcurrentModificationException", "Use iterator.remove() or removeIf()", "Iterator: forward only, any collection", "ListIterator: both directions, add/set, lists only"]
+
+  - id: java-074
+    category: COLLECTIONS
+    topic: "ArrayList internal growth"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "How does ArrayList grow internally?"
+    answer: |
+      ArrayList keeps its elements in an internal Object array. When we create it with new ArrayList<>(),
+      the array starts empty, and on the first add it gets a capacity of 10. When the array becomes full,
+      ArrayList creates a new bigger array, about 1.5 times the old size, and copies all elements into it.
+      This copy is O(n), but because it happens rarely, add() is still O(1) on average, which we call
+      amortized O(1). If we know the size in advance, we can pass an initial capacity, like
+      new ArrayList<>(1000), to avoid many resizes.
+    keyPoints: ["Backed by an Object array", "Default capacity 10 on first add", "Grows about 1.5x and copies elements", "Amortized O(1) add; set initial capacity if known"]
+
+  - id: java-075
+    category: COLLECTIONS
+    topic: "Queue, Deque and PriorityQueue"
+    difficulty: MEDIUM
+    companies: [PRODUCT, INFOSYS_SP, ALL]
+    question: "What are Queue, Deque and PriorityQueue in Java?"
+    answer: |
+      A Queue is first in, first out, like a line at a ticket counter. Main methods are offer() to add,
+      poll() to remove the head, and peek() to see the head. A Deque, or double-ended queue,
+      lets us add and remove from both ends, so it works as a queue and as a stack.
+      ArrayDeque is the common implementation. A PriorityQueue removes elements by priority, not by
+      insertion order. By default it is a min-heap, so the smallest comes out first. For a max-heap
+      we pass Comparator.reverseOrder().
+        PriorityQueue<Integer> pq = new PriorityQueue<>(List.of(5, 1, 3));
+        pq.poll();   // 1
+    keyPoints: ["Queue: FIFO; offer, poll, peek", "Deque: both ends, queue or stack; ArrayDeque", "PriorityQueue: min-heap by default", "Max-heap with Comparator.reverseOrder()"]
+
+  - id: java-076
+    category: COLLECTIONS
+    topic: "Stack class vs ArrayDeque"
+    difficulty: EASY
+    companies: [ALL]
+    question: "How do you use a stack in Java? Why is ArrayDeque preferred over Stack?"
+    answer: |
+      A stack is last in, first out, like a pile of plates. Java has an old Stack class with push(),
+      pop() and peek(). But Stack extends Vector, so every method is synchronized, which is slower,
+      and it is considered a legacy class. The Java docs recommend using ArrayDeque instead.
+        Deque<Integer> stack = new ArrayDeque<>();
+        stack.push(1);
+        stack.push(2);
+        stack.pop();   // 2
+      ArrayDeque is faster and gives the same push, pop and peek methods.
+    keyPoints: ["Stack = LIFO", "Stack class extends Vector, synchronized, legacy", "Use Deque/ArrayDeque push, pop, peek", "ArrayDeque is faster"]
+
+  - id: java-077
+    category: COLLECTIONS
+    topic: "Mutable keys in HashMap"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "Why should HashMap keys be immutable? What happens if a key object changes after insertion?"
+    answer: |
+      HashMap puts an entry into a bucket based on the key's hashCode at the time of put().
+      If we later change a field of the key that is used in hashCode, its hash changes. Now when we
+      call get() with that key, HashMap looks in a different bucket and cannot find it, so it returns
+      null, even though the entry is still inside the map. This also causes memory leaks, because the
+      entry is stuck. That is why immutable classes like String and Integer are the best keys.
+      If we use our own class as a key, we should make it immutable, or at least never change the fields
+      used in equals and hashCode.
+    keyPoints: ["Bucket chosen by hashCode at put time", "Changing key changes hash -> wrong bucket", "get returns null, entry stuck (leak)", "Use immutable keys like String, Integer, records"]
+
+  - id: java-078
+    category: COLLECTIONS
+    topic: "Arrays.asList vs List.of"
+    difficulty: HARD
+    companies: [PRODUCT, ALL]
+    question: "What is the difference between Arrays.asList() and List.of()?"
+    answer: |
+      Arrays.asList() returns a fixed-size list backed by the original array. We can change elements
+      with set(), and that also changes the array, but add() or remove() throws
+      UnsupportedOperationException. It allows null values.
+      List.of(), from Java 9, returns a fully immutable list. set(), add() and remove() all throw
+      UnsupportedOperationException, and it does not allow null at all - it throws NullPointerException.
+        List<Integer> a = Arrays.asList(1, 2, 3);
+        a.set(0, 9);   // works: [9, 2, 3]
+        a.add(4);      // UnsupportedOperationException
+      If we need a normal changeable list, we wrap it: new ArrayList<>(List.of(1, 2, 3)).
+    keyPoints: ["Arrays.asList: fixed size, set allowed, backed by array, allows null", "List.of: fully immutable, no nulls", "add/remove throw UnsupportedOperationException", "Wrap in new ArrayList<> for a mutable list"]
+
+  - id: java-079
+    category: COLLECTIONS
+    topic: "Null handling in collections"
+    difficulty: MEDIUM
+    companies: [TCS, ALL]
+    question: "Which collections allow null keys or values?"
+    answer: |
+      HashMap allows one null key and many null values. LinkedHashMap is the same.
+      TreeMap does not allow a null key with natural ordering, because it must compare keys,
+      but it allows null values. Hashtable and ConcurrentHashMap do not allow null keys or values.
+      For sets: HashSet and LinkedHashSet allow one null, TreeSet does not.
+      ArrayList and LinkedList allow many nulls. Immutable collections from List.of, Set.of and Map.of
+      do not allow null at all. One tip: in a HashMap, get() returning null can mean the key is missing
+      or the value is null, so use containsKey() to be sure.
+    keyPoints: ["HashMap: one null key, many null values", "TreeMap/TreeSet: no null key (comparison)", "Hashtable, ConcurrentHashMap, List.of: no nulls", "Use containsKey to distinguish missing vs null value"]
+
+  - id: java-080
+    category: COLLECTIONS
+    topic: "Sorting a list of objects"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, COGNIZANT, ALL]
+    question: "How do you sort a list of objects by a field, for example employees by salary?"
+    answer: |
+      We can use list.sort() or Collections.sort() with a Comparator. With Java 8, Comparator.comparing
+      makes it short and readable.
+        record Emp(String name, int salary) {}
+        List<Emp> list = new ArrayList<>(List.of(new Emp("A", 500), new Emp("B", 300)));
+        list.sort(Comparator.comparingInt(Emp::salary));
+        list.sort(Comparator.comparingInt(Emp::salary).reversed());   // high to low
+        list.sort(Comparator.comparing(Emp::name).thenComparing(Emp::salary));
+      If the class implements Comparable, we can just call Collections.sort(list).
+      Java's object sort is stable, so equal elements keep their original order.
+    keyPoints: ["list.sort / Collections.sort with Comparator", "Comparator.comparing / comparingInt", "reversed() and thenComparing()", "Comparable gives natural order"]
+
+  - id: java-081
+    category: COLLECTIONS
+    topic: "ConcurrentHashMap internals"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "How does ConcurrentHashMap achieve thread safety with good performance?"
+    answer: |
+      ConcurrentHashMap does not lock the whole map like Hashtable. In Java 8 and later, reads like get()
+      usually use no lock at all, because node values are volatile, so threads see the latest data.
+      For writes, if the bucket is empty, it inserts using CAS, which is compare-and-swap, a lock-free
+      atomic operation. If the bucket already has nodes, it locks only that one bucket's first node using
+      synchronized. So different threads can update different buckets at the same time. Older versions,
+      Java 7, used segments, which were small locked parts of the map. It also gives atomic methods like
+      putIfAbsent, computeIfAbsent and merge. Iterators are weakly consistent and never throw
+      ConcurrentModificationException.
+    keyPoints: ["No whole-map lock", "Reads mostly lock-free (volatile)", "Writes: CAS for empty bucket, lock only that bucket", "Java 7 used segments", "Atomic methods; weakly consistent iterators"]
+
+  - id: java-082
+    category: COLLECTIONS
+    topic: "Character frequency with HashMap"
+    difficulty: EASY
+    companies: [TCS, ACCENTURE, COGNIZANT, ALL]
+    question: "How do you count the frequency of each character in a string using a HashMap?"
+    answer: |
+      We loop over each character and keep a count in a HashMap, with the character as key and count
+      as value. The merge() or getOrDefault() method makes it short.
+        String s = "banana";
+        Map<Character, Integer> freq = new HashMap<>();
+        for (char c : s.toCharArray()) {
+          freq.merge(c, 1, Integer::sum);
+        }
+        System.out.println(freq);   // {a=3, b=1, n=2}
+      Another way is freq.put(c, freq.getOrDefault(c, 0) + 1). If we want the order of first appearance,
+      we use LinkedHashMap. The time is O(n).
+    keyPoints: ["Character as key, count as value", "merge(c, 1, Integer::sum) or getOrDefault", "LinkedHashMap for insertion order", "O(n) time"]
+
+  - id: java-083
+    category: COLLECTIONS
+    topic: "Remove duplicates from a list"
+    difficulty: EASY
+    companies: [TCS, WIPRO, CAPGEMINI, ALL]
+    question: "How do you remove duplicates from a List in Java?"
+    answer: |
+      The simplest way is to put the list into a Set, because a Set does not allow duplicates.
+      If we want to keep the original order, we use LinkedHashSet.
+        List<Integer> list = List.of(3, 1, 3, 2, 1);
+        List<Integer> unique = new ArrayList<>(new LinkedHashSet<>(list));   // [3, 1, 2]
+      With streams we can write list.stream().distinct().toList(), which also keeps order.
+      A plain HashSet removes duplicates too, but the order may change. For our own objects,
+      equals and hashCode must be overridden, or duplicates will not be detected.
+    keyPoints: ["Use a Set to remove duplicates", "LinkedHashSet keeps order", "stream().distinct()", "Custom objects need equals/hashCode"]
+
+  - id: java-084
+    category: COLLECTIONS
+    topic: "Thread-safe lists"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "What is the difference between Collections.synchronizedList and CopyOnWriteArrayList?"
+    answer: |
+      Both give a thread-safe list, but they work differently. Collections.synchronizedList wraps a list,
+      and every method takes a lock on one object. So only one thread can use it at a time. While
+      iterating, we must manually synchronize on the list, or we can get ConcurrentModificationException.
+      CopyOnWriteArrayList creates a new copy of the internal array on every write, like add or set.
+      Reads need no lock and iterators work on a snapshot, so they never throw that exception.
+      So CopyOnWriteArrayList is great when reads are many and writes are few, like a list of listeners.
+      If writes are frequent, it is slow because of copying.
+    keyPoints: ["synchronizedList: one lock for all methods", "Must synchronize manually while iterating", "CopyOnWriteArrayList: copies array on every write", "Best for many reads, few writes"]
+
+  - id: java-085
+    category: COLLECTIONS
+    topic: "Generics and type erasure"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "What are generics in Java and what is type erasure?"
+    answer: |
+      Generics let us write classes and methods that work with any type, while still keeping type safety.
+      For example, List<String> can only hold Strings. The compiler checks this, so we get errors at
+      compile time instead of ClassCastException at runtime, and we do not need casts.
+        List<String> names = new ArrayList<>();
+        names.add("Ravi");
+        String n = names.get(0);   // no cast needed
+      Type erasure means the generic type information is removed after compilation. At runtime,
+      List<String> and List<Integer> are both just List. That is why we cannot write new T() or
+      check list instanceof List<String>.
+    keyPoints: ["Type safety at compile time", "No casting needed", "Type erasure: generic info removed at runtime", "Cannot do new T() or instanceof List<String>"]
+
+  # ---------------------------------------------------------------- EXCEPTIONS (086-100)
+  - id: java-086
+    category: EXCEPTIONS
+    topic: "Exception hierarchy"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "What is an exception in Java? Explain the exception hierarchy."
+    answer: |
+      An exception is an unwanted event during program execution that breaks the normal flow,
+      like dividing by zero or opening a missing file. Exception handling lets us handle it and continue,
+      instead of the program crashing. At the top is Throwable. It has two children: Error and Exception.
+      Error means serious problems in the JVM, like OutOfMemoryError, that we normally should not catch.
+      Exception has two groups: checked exceptions like IOException and SQLException, and unchecked
+      exceptions, which are RuntimeException and its children, like NullPointerException and
+      ArithmeticException.
+    keyPoints: ["Exception = event that breaks normal flow", "Throwable at top", "Error vs Exception", "Checked vs RuntimeException (unchecked)"]
+
+  - id: java-087
+    category: EXCEPTIONS
+    topic: "Checked vs unchecked"
+    difficulty: EASY
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT, ALL]
+    question: "What is the difference between checked and unchecked exceptions?"
+    answer: |
+      Checked exceptions are checked by the compiler. If a method can throw one, we must either catch it
+      with try-catch or declare it with throws, otherwise the code does not compile. Examples are
+      IOException, SQLException and FileNotFoundException. These are usually outside problems we should
+      expect, like a missing file. Unchecked exceptions are RuntimeException and its subclasses.
+      The compiler does not force us to handle them. Examples are NullPointerException,
+      ArrayIndexOutOfBoundsException and ArithmeticException. They are usually programming mistakes,
+      which we should fix in code.
+    keyPoints: ["Checked: compiler forces handle or declare", "Examples: IOException, SQLException", "Unchecked: RuntimeException subclasses, not forced", "Examples: NPE, ArithmeticException; usually bugs"]
+
+  - id: java-088
+    category: EXCEPTIONS
+    topic: "Error vs Exception"
+    difficulty: EASY
+    companies: [TCS, ALL]
+    question: "What is the difference between Error and Exception?"
+    answer: |
+      Both extend Throwable. An Exception is a problem that the application can handle and recover from,
+      like a file not found or bad user input. An Error is a serious problem, mostly in the JVM or system,
+      that the application usually cannot recover from, like OutOfMemoryError or StackOverflowError.
+      We normally catch exceptions, but we should not try to catch errors in normal code.
+      Errors are unchecked, so the compiler never forces us to handle them.
+    keyPoints: ["Both extend Throwable", "Exception: recoverable, app-level", "Error: serious JVM/system problem", "Do not normally catch Errors"]
+
+  - id: java-089
+    category: EXCEPTIONS
+    topic: "throw vs throws"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, WIPRO, ALL]
+    question: "What is the difference between throw and throws?"
+    answer: |
+      throw is used inside a method to actually throw one exception object. throws is used in the method
+      declaration to say which exceptions this method might throw, so the caller can handle them.
+        void withdraw(int amt) throws InsufficientFundsException {
+          if (amt > balance) {
+            throw new InsufficientFundsException("Low balance");
+          }
+        }
+      throw is followed by an object, and we throw only one at a time. throws is followed by class names,
+      and we can list many, separated by commas.
+    keyPoints: ["throw: actually throws an exception object, inside method", "throws: declares possible exceptions in signature", "throw one object; throws can list many classes", "Example"]
+
+  - id: java-090
+    category: EXCEPTIONS
+    topic: "final vs finally vs finalize"
+    difficulty: MEDIUM
+    companies: [INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ALL]
+    question: "What is the difference between final, finally and finalize?"
+    answer: |
+      They only sound similar. final is a keyword: a final variable cannot be reassigned, a final method
+      cannot be overridden, and a final class cannot be extended.
+      finally is a block used with try. It runs whether an exception happens or not, so we use it for
+      cleanup, like closing a file or a database connection.
+      finalize() was a method of the Object class that the garbage collector could call before removing
+      an object. It was unreliable, so it is deprecated since Java 9 and we should not use it.
+      Today we use try-with-resources for cleanup instead.
+    keyPoints: ["final: keyword for constants, no override, no inheritance", "finally: block that always runs for cleanup", "finalize: GC hook, deprecated", "Use try-with-resources instead of finalize"]
+
+  - id: java-091
+    category: EXCEPTIONS
+    topic: "try-with-resources"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "What is try-with-resources?"
+    answer: |
+      try-with-resources, added in Java 7, automatically closes resources like files, streams and database
+      connections when the try block ends, even if an exception happens. We declare the resource inside
+      brackets after try. The resource must implement AutoCloseable.
+        try (BufferedReader br = new BufferedReader(new FileReader("a.txt"))) {
+          System.out.println(br.readLine());
+        } catch (IOException e) {
+          System.out.println("Error: " + e.getMessage());
+        }
+      We do not need a finally block to close it. If we open many resources, they are closed in reverse
+      order. If close() also fails, that exception is added as a suppressed exception.
+    keyPoints: ["Java 7, auto-closes resources", "Resource must implement AutoCloseable", "No manual finally needed", "Closed in reverse order; suppressed exceptions"]
+
+  - id: java-092
+    category: EXCEPTIONS
+    topic: "finally and return"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "Does finally always run? What if both try and finally have a return statement?"
+    answer: |
+      finally runs in almost all cases: after normal completion, after an exception, and even after a
+      return in try. It does not run if System.exit() is called, if the JVM crashes, or if the thread
+      is killed. If try returns a value and finally also returns, the finally value wins:
+        static int test() {
+          try { return 1; }
+          finally { return 2; }
+        }
+      This returns 2. A return in finally also hides any exception thrown in try,
+      so it is a bad practice. If finally only prints something and does not return, the method returns 1,
+      and the print happens before the value goes back to the caller.
+    keyPoints: ["finally runs even after return in try", "Not run on System.exit, JVM crash", "Return in finally overrides try's return (gives 2)", "Return in finally swallows exceptions - bad practice"]
+
+  - id: java-093
+    category: EXCEPTIONS
+    topic: "Custom exceptions"
+    difficulty: MEDIUM
+    companies: [INFOSYS_DSE, CAPGEMINI, ALL]
+    question: "How do you create a custom exception?"
+    answer: |
+      We create a class that extends Exception for a checked exception, or RuntimeException for an
+      unchecked one. We usually add a constructor that passes a message to the parent.
+        class InsufficientBalanceException extends RuntimeException {
+          InsufficientBalanceException(String msg) { super(msg); }
+        }
+        if (amount > balance) {
+          throw new InsufficientBalanceException("Balance is low");
+        }
+      Custom exceptions make errors clear and specific to our business logic. In Spring Boot apps we often
+      use unchecked custom exceptions and handle them in one place with @ControllerAdvice.
+      It is good to also add a constructor that takes a cause, so we do not lose the original error.
+    keyPoints: ["Extend Exception (checked) or RuntimeException (unchecked)", "Constructor passes message to super", "Makes business errors clear", "Keep cause; handled centrally in Spring with @ControllerAdvice"]
+
+  - id: java-094
+    category: EXCEPTIONS
+    topic: "Multiple catch blocks"
+    difficulty: MEDIUM
+    companies: [TCS, ALL]
+    question: "What are the rules for multiple catch blocks? What is multi-catch?"
+    answer: |
+      One try can have many catch blocks. Java checks them from top to bottom and runs only the first
+      matching one. The rule is: child exceptions must come before parent exceptions. If we put
+      catch (Exception e) first, the later catch blocks can never be reached, and the compiler gives an error.
+      Since Java 7, multi-catch lets us handle several unrelated exceptions in one block with a pipe:
+        try { ... }
+        catch (NumberFormatException | ArithmeticException e) { ... }
+        catch (Exception e) { ... }
+      In multi-catch, the types cannot be parent and child of each other, and the variable e is final.
+    keyPoints: ["Checked top to bottom, first match runs", "Specific (child) before general (parent)", "Multi-catch with | since Java 7", "Multi-catch types cannot be related; e is final"]
+
+  - id: java-095
+    category: EXCEPTIONS
+    topic: "Exception propagation"
+    difficulty: MEDIUM
+    companies: [ALL]
+    question: "What is exception propagation?"
+    answer: |
+      If a method throws an exception and does not catch it, the exception goes up to the method that
+      called it. If that method also does not catch it, it goes up again, through the call stack.
+      This is called exception propagation. If nobody catches it, even main, the JVM prints the stack
+      trace and the thread stops.
+        void a() { b(); }
+        void b() { c(); }
+        void c() { int x = 5 / 0; }   // ArithmeticException goes c -> b -> a
+      Unchecked exceptions propagate automatically. Checked exceptions also propagate, but each method
+      must declare them with throws.
+    keyPoints: ["Uncaught exception moves up the call stack", "Caught by first method that handles it", "Uncaught at top: stack trace, thread ends", "Checked exceptions need throws on each method"]
+
+  - id: java-096
+    category: EXCEPTIONS
+    topic: "NullPointerException"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is NullPointerException and how can we avoid it?"
+    answer: |
+      NullPointerException happens when we use a reference that points to nothing, which is null.
+      For example, calling a method on it, like name.length() when name is null, or unboxing a null Integer.
+      To avoid it: check for null before using objects. Put the known constant first in comparisons,
+      like "yes".equals(input), so it works even if input is null. Use Objects.requireNonNull() to fail
+      early with a clear message. Return empty collections instead of null. Use Optional for values that
+      may be missing. Since Java 14, helpful NPE messages tell us exactly which variable was null.
+    keyPoints: ["Using a null reference causes NPE", "Null checks, constant.equals(variable)", "Return empty collections; use Optional", "Objects.requireNonNull; helpful NPE messages (Java 14+)"]
+
+  - id: java-097
+    category: EXCEPTIONS
+    topic: "ClassNotFoundException vs NoClassDefFoundError"
+    difficulty: HARD
+    companies: [PRODUCT, ALL]
+    question: "What is the difference between ClassNotFoundException and NoClassDefFoundError?"
+    answer: |
+      ClassNotFoundException is a checked exception. It happens when we load a class dynamically by its
+      name, for example with Class.forName("com.mysql.cj.jdbc.Driver"), and the class is not on the
+      classpath. NoClassDefFoundError is an Error. It happens when the class was present at compile time,
+      but is missing at runtime, for example a jar was not added to the deployed app. It can also happen
+      when the class failed to initialize earlier, like an exception inside its static block.
+      So the first is about dynamic loading by name, and the second is about a class the code
+      directly depends on.
+    keyPoints: ["ClassNotFoundException: checked, dynamic loading (Class.forName)", "NoClassDefFoundError: Error, present at compile time, missing at runtime", "Can also come from failed static initialization", "Fix by checking classpath/dependencies"]
+
+  - id: java-098
+    category: EXCEPTIONS
+    topic: "Exception handling best practices"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ACCENTURE, ALL]
+    question: "What are some best practices for exception handling?"
+    answer: |
+      First, catch specific exceptions, not just Exception, so we handle each case correctly.
+      Second, never swallow exceptions with an empty catch block. At least log them.
+      Third, do not use exceptions for normal flow control, because they are slow and confusing.
+      Fourth, clean up resources with try-with-resources. Fifth, when we wrap an exception in our own
+      exception, pass the original as the cause, so the stack trace is not lost.
+      Sixth, throw early and catch late: check bad input at the start, and handle errors at a level that
+      knows what to do, like a global handler in Spring. Finally, give clear error messages.
+    keyPoints: ["Catch specific exceptions", "Never swallow; log them", "Don't use exceptions for flow control", "try-with-resources; keep cause when wrapping", "Throw early, catch late"]
+
+  - id: java-099
+    category: EXCEPTIONS
+    topic: "StackOverflowError vs OutOfMemoryError"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "What causes StackOverflowError and OutOfMemoryError?"
+    answer: |
+      StackOverflowError happens when the thread's stack memory is full. The most common cause is
+      recursion without a correct base case, so the method keeps calling itself and each call adds a
+      new frame to the stack.
+        int fact(int n) { return n * fact(n - 1); }   // no base case
+      OutOfMemoryError happens when the heap is full and the garbage collector cannot free enough space.
+      Causes are creating too many objects, memory leaks like an ever-growing static list, or a heap size
+      set too small. Both are Errors, not Exceptions. We fix them by correcting the code, or by tuning
+      sizes with -Xss for the stack and -Xmx for the heap.
+    keyPoints: ["StackOverflowError: stack full, usually infinite recursion", "OutOfMemoryError: heap full, GC cannot free", "Causes: leaks, too many objects", "Both are Errors; -Xss / -Xmx"]
+
+  - id: java-100
+    category: EXCEPTIONS
+    topic: "try without catch"
+    difficulty: EASY
+    companies: [TCS, WIPRO, ALL]
+    question: "Can we have a try block without a catch block?"
+    answer: |
+      Yes. A try block must be followed by either catch, or finally, or both. So try with only finally
+      is valid. The finally block runs, and then the exception continues to the caller.
+        try {
+          System.out.println("work");
+        } finally {
+          System.out.println("cleanup");
+        }
+      Also, try-with-resources can be used alone, without catch or finally, because it closes the resource
+      automatically. But a plain try alone, with no catch, no finally and no resources, is a compile error.
+    keyPoints: ["try needs catch or finally (or both)", "try-finally is valid; exception still propagates", "try-with-resources can stand alone", "Plain try alone does not compile"]
+
+  # ---------------------------------------------------------------- JAVA8 and modern Java (101-120)
+  - id: java-101
+    category: JAVA8
+    topic: "Java 8 features"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, COGNIZANT, ALL]
+    question: "What are the main features introduced in Java 8?"
+    answer: |
+      Java 8 was a big release that brought functional programming style into Java. The main features are:
+      lambda expressions, to write short anonymous functions; functional interfaces, which have exactly
+      one abstract method; the Stream API, to process collections with filter, map and collect;
+      method references like String::length; default and static methods in interfaces;
+      the Optional class, to handle missing values without null checks everywhere;
+      and the new Date and Time API in java.time, like LocalDate. These features make code shorter
+      and more readable.
+    keyPoints: ["Lambda expressions", "Functional interfaces", "Stream API", "Default/static interface methods, method references", "Optional and java.time API"]
+
+  - id: java-102
+    category: JAVA8
+    topic: "Lambda expressions"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "What is a lambda expression? Give an example."
+    answer: |
+      A lambda expression is a short way to write a function without a name. We can pass it as an
+      argument, like data. The syntax is: parameters, an arrow, then the body.
+        (a, b) -> a + b
+      A lambda can only be used where a functional interface is expected, meaning an interface with
+      exactly one abstract method. It replaces bulky anonymous classes.
+        // before
+        Runnable r1 = new Runnable() { public void run() { System.out.println("Hi"); } };
+        // with lambda
+        Runnable r2 = () -> System.out.println("Hi");
+      Lambdas make code with collections and threads much shorter.
+    keyPoints: ["Anonymous function: (params) -> body", "Works with functional interfaces", "Replaces anonymous inner classes", "Shorter, readable code"]
+
+  - id: java-103
+    category: JAVA8
+    topic: "Functional interfaces"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    question: "What is a functional interface? Name some built-in ones."
+    answer: |
+      A functional interface has exactly one abstract method. It can still have default and static
+      methods. We can mark it with @FunctionalInterface, so the compiler gives an error if someone adds
+      a second abstract method. Lambdas and method references are written for these interfaces.
+      Common built-in ones in java.util.function are:
+      Predicate<T> takes a value and returns boolean, used in filter.
+      Function<T, R> takes a value and returns another value, used in map.
+      Consumer<T> takes a value and returns nothing, used in forEach.
+      Supplier<T> takes nothing and returns a value.
+        Predicate<Integer> isEven = n -> n % 2 == 0;
+      Older ones like Runnable and Comparator are also functional interfaces.
+    keyPoints: ["Exactly one abstract method", "@FunctionalInterface annotation", "Predicate, Function, Consumer, Supplier", "Runnable, Comparator are also functional"]
+
+  - id: java-104
+    category: JAVA8
+    topic: "Stream API basics"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    question: "What is a Stream? What are intermediate and terminal operations?"
+    answer: |
+      A Stream is a sequence of elements from a source like a list, that we can process in a pipeline,
+      in a declarative way. A stream does not store data, and it does not change the source.
+      Intermediate operations return another stream, like filter, map, sorted and distinct.
+      They are lazy, which means they do not run until a terminal operation is called.
+      Terminal operations produce a result or a side effect, like collect, forEach, count, reduce and
+      findFirst. After a terminal operation, the stream is used up and cannot be reused.
+        long n = names.stream().filter(s -> s.startsWith("A")).count();
+    keyPoints: ["Pipeline over a source, does not store or modify data", "Intermediate: filter, map, sorted - lazy, return stream", "Terminal: collect, forEach, count, reduce - produce result", "Stream can be used only once"]
+
+  - id: java-105
+    category: JAVA8
+    topic: "map vs flatMap"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is the difference between map() and flatMap() in streams?"
+    answer: |
+      map() transforms each element into exactly one new element. So one input gives one output.
+      For example, converting names to their lengths. flatMap() transforms each element into a stream
+      of elements, and then flattens all those streams into one single stream. So one input can give
+      zero, one or many outputs. It is used for nested structures like a list of lists.
+        List<List<Integer>> nested = List.of(List.of(1, 2), List.of(3));
+        nested.stream().flatMap(List::stream).toList();   // [1, 2, 3]
+        List.of("a", "bb").stream().map(String::length).toList();   // [1, 2]
+      Simply: map is one-to-one, flatMap is one-to-many and then flatten.
+    keyPoints: ["map: one-to-one transformation", "flatMap: each element to a stream, then flatten", "Use flatMap for nested lists", "Example output [1, 2, 3]"]
+
+  - id: java-106
+    category: JAVA8
+    topic: "filter, map, collect example"
+    difficulty: EASY
+    companies: [TCS, COGNIZANT, ACCENTURE, ALL]
+    question: "Using streams, how do you get the squares of all even numbers from a list?"
+    answer: |
+      We use filter to keep even numbers, map to square them, and collect or toList to get the result.
+        List<Integer> nums = List.of(1, 2, 3, 4, 5, 6);
+        List<Integer> result = nums.stream()
+            .filter(n -> n % 2 == 0)
+            .map(n -> n * n)
+            .collect(Collectors.toList());
+        System.out.println(result);   // [4, 16, 36]
+      From Java 16, we can simply write .toList() at the end, which returns an unmodifiable list.
+      The original list is not changed.
+    keyPoints: ["filter keeps even numbers", "map squares them", "collect(Collectors.toList()) or toList()", "Output [4, 16, 36]; source unchanged"]
+
+  - id: java-107
+    category: JAVA8
+    topic: "Optional"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is Optional in Java and how do you use it?"
+    answer: |
+      Optional is a container that may or may not hold a value. It was added to avoid
+      NullPointerException and to clearly show that a method may return nothing.
+      We create it with Optional.of(value), Optional.ofNullable(value), or Optional.empty().
+      To use the value safely, we use methods like orElse(), orElseGet(), orElseThrow(), ifPresent()
+      and map().
+        Optional<String> name = Optional.ofNullable(findName());
+        String result = name.map(String::toUpperCase).orElse("UNKNOWN");
+      Good practice: use Optional mainly as a return type. Do not use it for fields or method parameters,
+      and avoid calling get() without checking, because it throws an exception when empty.
+    keyPoints: ["Container that may be empty", "of, ofNullable, empty", "orElse, orElseGet, orElseThrow, ifPresent, map", "Use as return type; avoid bare get()"]
+
+  - id: java-108
+    category: JAVA8
+    topic: "Method references"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What are method references in Java 8?"
+    answer: |
+      A method reference is a shorter form of a lambda that only calls an existing method.
+      We write it with a double colon. There are four types:
+      static method, like Integer::parseInt;
+      instance method of a particular object, like System.out::println;
+      instance method of any object of a type, like String::toUpperCase;
+      and constructor reference, like ArrayList::new.
+        names.forEach(System.out::println);
+        // same as names.forEach(n -> System.out.println(n));
+      They make code shorter and easier to read when the lambda just passes its argument to a method.
+    keyPoints: ["Shorthand for a lambda calling one method", "Syntax Class::method", "Four types: static, particular object, arbitrary object, constructor", "Example System.out::println"]
+
+  - id: java-109
+    category: JAVA8
+    topic: "Collectors.groupingBy"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "How do you group a list of employees by department using streams?"
+    answer: |
+      We use Collectors.groupingBy. It returns a Map where the key is the group and the value is a list of
+      elements in that group. We can also pass a second collector to count or sum.
+        record Emp(String name, String dept, int salary) {}
+        List<Emp> emps = List.of(new Emp("A", "IT", 50), new Emp("B", "HR", 40), new Emp("C", "IT", 60));
+        Map<String, List<Emp>> byDept = emps.stream()
+            .collect(Collectors.groupingBy(Emp::dept));
+        Map<String, Long> countByDept = emps.stream()
+            .collect(Collectors.groupingBy(Emp::dept, Collectors.counting()));   // {HR=1, IT=2}
+      For only two groups, like pass or fail, partitioningBy is simpler and gives keys true and false.
+    keyPoints: ["Collectors.groupingBy(classifier)", "Returns Map<key, List>", "Downstream collector: counting, summingInt", "partitioningBy for true/false split"]
+
+  - id: java-110
+    category: JAVA8
+    topic: "Lazy evaluation in streams"
+    difficulty: HARD
+    companies: [PRODUCT, INFOSYS_SP, ALL]
+    question: "What does it mean that streams are lazy? What is short-circuiting?"
+    answer: |
+      Lazy means intermediate operations like filter and map do nothing until a terminal operation runs.
+      If we write a stream with filter and map but no terminal operation, no code inside them executes.
+      When the terminal operation runs, elements flow one by one through the whole pipeline, not stage by
+      stage. Short-circuiting operations, like findFirst, anyMatch and limit, stop as soon as they have the
+      answer.
+        Stream.of(1, 2, 3, 4)
+            .filter(n -> { System.out.println("check " + n); return n > 1; })
+            .findFirst();
+      This prints only "check 1" and "check 2", because findFirst stops after finding 2.
+      Laziness saves work and allows processing of infinite streams with limit.
+    keyPoints: ["Intermediate ops run only when terminal op is called", "Elements flow one at a time through the pipeline", "Short-circuit: findFirst, anyMatch, limit stop early", "Example prints only two checks; enables infinite streams"]
+
+  - id: java-111
+    category: JAVA8
+    topic: "Parallel streams"
+    difficulty: HARD
+    companies: [PRODUCT, ALL]
+    question: "What are parallel streams? When should you not use them?"
+    answer: |
+      A parallel stream splits the data into parts and processes them on many threads at the same time,
+      using the common ForkJoinPool. We create one with list.parallelStream() or stream().parallel().
+      It can be faster for large data with heavy, independent CPU work. But we should avoid it when the
+      data is small, because splitting and joining have overhead. Avoid it when the code changes shared
+      state, like adding to a normal ArrayList, because that causes race conditions. Avoid it for blocking
+      work like database or network calls, because it can block the shared pool. Also, forEach does not
+      keep order in parallel; we need forEachOrdered. Always measure before using it.
+    keyPoints: ["Splits work across threads using common ForkJoinPool", "Good for large, CPU-heavy, independent tasks", "Bad for small data, shared mutable state, blocking I/O", "Order not guaranteed with forEach; measure first"]
+
+  - id: java-112
+    category: JAVA8
+    topic: "reduce, findFirst, findAny"
+    difficulty: MEDIUM
+    companies: [ALL]
+    question: "What is reduce() in streams? What is the difference between findFirst() and findAny()?"
+    answer: |
+      reduce() combines all elements into one result, by applying an operation again and again,
+      like sum, product or max. We give an identity value and an operation.
+        int sum = List.of(1, 2, 3, 4).stream().reduce(0, Integer::sum);   // 10
+      Without the identity, reduce returns an Optional, because the stream may be empty.
+      findFirst() returns the first element in encounter order, wrapped in Optional.
+      findAny() can return any element. In a sequential stream it usually returns the first one,
+      but in a parallel stream it can return whichever element is found fastest, so it can be quicker.
+      Use findFirst when order matters.
+    keyPoints: ["reduce combines elements into one value", "Identity + accumulator; without identity returns Optional", "findFirst: first in order", "findAny: any element, faster in parallel"]
+
+  - id: java-113
+    category: JAVA8
+    topic: "Collection vs Stream"
+    difficulty: EASY
+    companies: [TCS, ALL]
+    question: "What is the difference between a Collection and a Stream?"
+    answer: |
+      A Collection is a data structure that stores elements in memory, like a List or Set.
+      We can add, remove and loop over it many times. A Stream does not store anything.
+      It is a pipeline that takes elements from a source and processes them. It can be used only once,
+      and it does not change the source. Collections are about data, streams are about computation.
+      Collections are filled eagerly, while stream operations are lazy. Also, with collections we write
+      external loops ourselves, while streams use internal iteration, where the library does the looping.
+    keyPoints: ["Collection stores data; Stream does not", "Stream single-use, does not modify source", "Streams are lazy", "External vs internal iteration"]
+
+  - id: java-114
+    category: JAVA8
+    topic: "Default method conflict"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "If a class implements two interfaces that have the same default method, what happens?"
+    answer: |
+      This is the diamond problem with interfaces. The code will not compile until the class
+      overrides that method itself and decides what to do. Inside the override, it can call a specific
+      interface's version using InterfaceName.super.method().
+        interface A { default void hello() { System.out.println("A"); } }
+        interface B { default void hello() { System.out.println("B"); } }
+        class C implements A, B {
+          public void hello() { A.super.hello(); }   // prints A
+        }
+      There is one more rule: if a superclass has the same method, the class method always wins over
+      the interface default method. And a more specific child interface wins over its parent interface.
+    keyPoints: ["Compile error unless class overrides", "Use A.super.hello() to choose", "Class method wins over interface default", "More specific interface wins"]
+
+  - id: java-115
+    category: JAVA8
+    topic: "Records"
+    difficulty: MEDIUM
+    companies: [PRODUCT, INFOSYS_SP, ALL]
+    question: "What is a record in Java?"
+    answer: |
+      A record, final in Java 16, is a short way to create an immutable data class. We just list the
+      fields, and Java automatically creates a constructor, private final fields, getter-like accessor
+      methods, and proper equals(), hashCode() and toString().
+        record Student(String name, int marks) {}
+        Student s = new Student("Ravi", 90);
+        System.out.println(s.name());   // Ravi, not getName()
+      Records are final, so they cannot be extended, and their fields cannot be changed. But they can
+      implement interfaces and have extra methods. We can add validation in a compact constructor.
+      They are great for DTOs, API responses and map keys.
+    keyPoints: ["Immutable data carrier, Java 16", "Auto constructor, accessors, equals, hashCode, toString", "Accessors are name(), not getName()", "Final, can implement interfaces; compact constructor for validation"]
+
+  - id: java-116
+    category: JAVA8
+    topic: "Switch expressions"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What are switch expressions in modern Java?"
+    answer: |
+      From Java 14, switch can be used as an expression that returns a value. We use the arrow syntax,
+      so there is no fall-through and no need for break. We can also group many labels with commas.
+        String type = switch (day) {
+          case "SAT", "SUN" -> "Weekend";
+          case "MON", "TUE", "WED", "THU", "FRI" -> "Weekday";
+          default -> "Invalid";
+        };
+      If a case needs many lines, we use a block and the yield keyword to return the value.
+      With enums, the compiler checks that all cases are covered. It is shorter and safer than the old
+      switch statement.
+    keyPoints: ["Java 14: switch returns a value", "Arrow syntax, no fall-through, no break", "Multiple labels with commas", "yield for block cases"]
+
+  - id: java-117
+    category: JAVA8
+    topic: "Text blocks"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What are text blocks in Java?"
+    answer: |
+      Text blocks, final in Java 15, let us write multi-line strings easily using three double quotes.
+      We do not need \n or + to join lines, and we do not need to escape normal double quotes.
+      They are very useful for JSON, SQL and HTML inside code.
+        String sql = """
+            SELECT id, name
+            FROM students
+            WHERE marks > 80
+            """;
+      Java removes the common leading spaces, so the indentation in code does not go into the string.
+      The result is a normal String object.
+    keyPoints: ["Java 15 multi-line string with triple quotes", "No \\n or + needed", "Good for SQL, JSON, HTML", "Common indentation removed; result is a normal String"]
+
+  - id: java-118
+    category: JAVA8
+    topic: "Sealed classes"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "What are sealed classes in Java 17?"
+    answer: |
+      A sealed class or interface controls exactly which classes are allowed to extend or implement it.
+      We use the sealed keyword and list the allowed children with permits. Each child must be final,
+      sealed, or non-sealed.
+        sealed interface Shape permits Circle, Square {}
+        record Circle(double r) implements Shape {}
+        record Square(double side) implements Shape {}
+      This is useful when we know all possible types, like a payment that is only Card or UPI.
+      It is safer than open inheritance, and in newer Java, switch with pattern matching can check that
+      all permitted types are covered, so we do not need a default case.
+    keyPoints: ["sealed + permits restricts subclasses", "Children must be final, sealed or non-sealed", "Models a fixed set of types", "Works with exhaustive pattern matching switch"]
+
+  - id: java-119
+    category: JAVA8
+    topic: "Date and Time API"
+    difficulty: EASY
+    companies: [ALL]
+    question: "What is the new Date and Time API in Java 8?"
+    answer: |
+      Java 8 added the java.time package to replace the old Date and Calendar classes, which were mutable,
+      not thread safe and confusing, for example months started from 0. The new classes are immutable and
+      thread safe. Main classes: LocalDate for a date without time, LocalTime for time only,
+      LocalDateTime for both, ZonedDateTime with a time zone, Instant for a machine timestamp,
+      and Duration and Period for differences.
+        LocalDate today = LocalDate.now();
+        LocalDate next = today.plusDays(7);
+      We use DateTimeFormatter to format and parse dates.
+    keyPoints: ["java.time package replaces Date/Calendar", "Immutable and thread safe", "LocalDate, LocalTime, LocalDateTime, ZonedDateTime, Instant", "Duration, Period, DateTimeFormatter"]
+
+  - id: java-120
+    category: JAVA8
+    topic: "Effectively final"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "Why must local variables used inside a lambda be final or effectively final?"
+    answer: |
+      Effectively final means the variable is not marked final, but its value is never changed after it is
+      assigned. A lambda can use local variables from outside, but only if they are final or effectively
+      final. The reason: local variables live on the stack of the method, and the lambda may run later,
+      even on another thread, after the method has finished. So Java gives the lambda a copy of the value.
+      If the variable could change, the copy and the original would not match, which causes confusing bugs
+      and thread-safety problems.
+        int count = 0;
+        list.forEach(x -> count++);   // compile error
+      Instance fields can be changed inside a lambda, but that has its own thread-safety risks.
+    keyPoints: ["Effectively final = never reassigned", "Lambda captures a copy of local value", "Lambda may run later or on another thread", "count++ inside lambda is a compile error"]
+
+  # ---------------------------------------------------------------- MULTITHREADING (121-135)
+  - id: java-121
+    category: MULTITHREADING
+    topic: "Process vs thread"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "What is the difference between a process and a thread?"
+    answer: |
+      A process is a program in execution. It has its own separate memory space. For example, Chrome and
+      VS Code are different processes. A thread is a smaller unit of work inside a process. All threads in
+      one process share the same heap memory, but each thread has its own stack.
+      Threads are lighter: creating and switching threads is cheaper than processes, and threads can
+      communicate easily through shared memory. But because they share memory, we must handle
+      synchronization to avoid wrong data. Multithreading lets a Java program do many tasks at once,
+      like handling many web requests.
+    keyPoints: ["Process: program in execution with own memory", "Thread: unit inside a process", "Threads share heap, own stack", "Threads are lightweight but need synchronization"]
+
+  - id: java-122
+    category: MULTITHREADING
+    topic: "Creating threads"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, WIPRO, ALL]
+    question: "What are the ways to create a thread in Java?"
+    answer: |
+      There are two basic ways. First, extend the Thread class and override run(). Second, implement the
+      Runnable interface and pass it to a Thread object. Implementing Runnable is preferred, because Java
+      allows only one parent class, so our class can still extend something else, and it separates the
+      task from the thread.
+        Runnable task = () -> System.out.println("Running");
+        Thread t = new Thread(task);
+        t.start();
+      We can also use Callable when we need a return value, and in real projects we usually use an
+      ExecutorService thread pool instead of creating threads by hand.
+    keyPoints: ["Extend Thread and override run()", "Implement Runnable (preferred)", "Call start() to begin", "Callable and ExecutorService in practice"]
+
+  - id: java-123
+    category: MULTITHREADING
+    topic: "start() vs run()"
+    difficulty: EASY
+    companies: [TCS, ALL]
+    question: "What is the difference between calling start() and run() on a thread?"
+    answer: |
+      start() creates a new thread, and the JVM then calls run() inside that new thread. So the code runs
+      in parallel with the main thread. If we call run() directly, no new thread is created. It is just a
+      normal method call, and the code runs in the current thread, one after another.
+        Thread t = new Thread(() -> System.out.println(Thread.currentThread().getName()));
+        t.start();   // prints Thread-0
+        t.run();     // prints main
+      Also, we can call start() only once on a thread. Calling it again throws IllegalThreadStateException.
+    keyPoints: ["start(): new thread, JVM calls run()", "run(): normal method call in current thread", "Example: Thread-0 vs main", "start() twice throws IllegalThreadStateException"]
+
+  - id: java-124
+    category: MULTITHREADING
+    topic: "Thread lifecycle"
+    difficulty: MEDIUM
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "Explain the lifecycle or states of a thread in Java."
+    answer: |
+      A thread has six states in Java. NEW: the thread object is created but start() is not called yet.
+      RUNNABLE: after start(), it is running or ready to run, waiting for the CPU.
+      BLOCKED: it is waiting to get a lock, for example to enter a synchronized block.
+      WAITING: it is waiting forever for another thread, like after wait() or join() without a timeout.
+      TIMED_WAITING: it is waiting for a fixed time, like sleep(1000) or wait with a timeout.
+      TERMINATED: run() has finished or an exception stopped it. A terminated thread cannot be started
+      again. We can check the state with getState().
+    keyPoints: ["NEW, RUNNABLE, BLOCKED", "WAITING, TIMED_WAITING", "TERMINATED", "Transitions: start, lock, wait/join, sleep; getState()"]
+
+  - id: java-125
+    category: MULTITHREADING
+    topic: "synchronized keyword"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    question: "What is synchronization and how does the synchronized keyword work?"
+    answer: |
+      When many threads change shared data at the same time, the result can be wrong. Synchronization makes
+      sure only one thread at a time runs a critical section. In Java, every object has a lock, also called
+      a monitor. A synchronized instance method locks the current object, this. A static synchronized method
+      locks the Class object. A synchronized block locks any object we choose, and it is better because we
+      lock only the needed lines.
+        synchronized (this) {
+          count++;
+        }
+      Other threads wait until the lock is released. synchronized also makes changes visible to other
+      threads. Too much locking makes the code slow and can cause deadlocks.
+    keyPoints: ["Only one thread in critical section at a time", "Instance method locks this; static locks Class", "Synchronized block locks chosen object, smaller scope", "Gives visibility too; overuse slows and risks deadlock"]
+
+  - id: java-126
+    category: MULTITHREADING
+    topic: "volatile vs synchronized"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is the difference between volatile and synchronized?"
+    answer: |
+      volatile solves the visibility problem. Normally a thread may keep a cached copy of a variable,
+      so it may not see another thread's update. A volatile variable is always read from and written to
+      main memory, so all threads see the latest value. But volatile does not give atomicity.
+      count++ is read, add, then write, so two threads can still lose updates.
+      synchronized gives both visibility and atomicity, because only one thread runs the block at a time,
+      but it is slower due to locking. volatile is used for variables only, synchronized for methods and blocks.
+        private volatile boolean running = true;   // stop flag
+      For a thread-safe counter, use synchronized or AtomicInteger, not volatile.
+    keyPoints: ["volatile: visibility only, no caching", "volatile has no atomicity (count++ unsafe)", "synchronized: visibility + atomicity via lock", "volatile on variables; synchronized on methods/blocks", "Use volatile for flags, AtomicInteger/synchronized for counters"]
+
+  - id: java-127
+    category: MULTITHREADING
+    topic: "Deadlock"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, ALL]
+    question: "What is a deadlock? How can we avoid it?"
+    answer: |
+      A deadlock happens when two or more threads wait for each other forever, and none can continue.
+      For example, thread 1 holds lock A and waits for lock B, while thread 2 holds lock B and waits for
+      lock A. Both are stuck. To avoid it: always take locks in the same fixed order in every thread,
+      so a circle of waiting cannot form. Avoid nested locks when possible, and keep locked sections short.
+      Use tryLock() with a timeout from ReentrantLock, so a thread gives up instead of waiting forever.
+      To detect a deadlock, we can take a thread dump using jstack, which shows the blocked threads.
+    keyPoints: ["Threads wait for each other's locks forever", "Example: T1 holds A wants B, T2 holds B wants A", "Avoid: consistent lock ordering, fewer nested locks", "tryLock with timeout; detect with thread dump"]
+
+  - id: java-128
+    category: MULTITHREADING
+    topic: "wait() vs sleep()"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, TCS, ALL]
+    question: "What is the difference between wait() and sleep()?"
+    answer: |
+      sleep() is a static method of the Thread class. It pauses the current thread for a fixed time,
+      and it does not release any lock it holds. After the time, it continues.
+      wait() is a method of the Object class. It must be called inside a synchronized block on that object.
+      It releases the lock and waits until another thread calls notify() or notifyAll() on the same object,
+      or until a timeout. So wait is used for communication between threads, like producer and consumer,
+      while sleep is just a pause. wait() should be called in a while loop that checks the condition,
+      because a thread can wake up without a real notify.
+    keyPoints: ["sleep: Thread method, keeps lock, fixed time", "wait: Object method, releases lock", "wait needs synchronized; woken by notify/notifyAll", "Use wait in a while loop (spurious wakeups)"]
+
+  - id: java-129
+    category: MULTITHREADING
+    topic: "ExecutorService and thread pools"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is ExecutorService and why should we use a thread pool?"
+    answer: |
+      Creating a new thread for every task is costly, and too many threads can crash the system.
+      A thread pool keeps a fixed number of ready threads and reuses them for many tasks.
+      ExecutorService is the Java interface for managing such pools.
+        ExecutorService pool = Executors.newFixedThreadPool(4);
+        for (int i = 0; i < 10; i++) {
+          int id = i;
+          pool.submit(() -> System.out.println("Task " + id));
+        }
+        pool.shutdown();
+      Common types are fixed thread pool, cached thread pool, single thread executor and scheduled pool.
+      We must call shutdown() at the end, otherwise the program may not exit.
+    keyPoints: ["Reuses threads instead of creating new ones", "ExecutorService manages the pool", "submit tasks; fixed, cached, single, scheduled pools", "Always call shutdown()"]
+
+  - id: java-130
+    category: MULTITHREADING
+    topic: "Runnable vs Callable and Future"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "What is the difference between Runnable and Callable? What is a Future?"
+    answer: |
+      Runnable's run() method returns nothing and cannot throw checked exceptions. Callable's call() method
+      returns a value and can throw checked exceptions. When we submit a Callable to an ExecutorService,
+      we get back a Future. A Future is like a receipt for a result that will be ready later.
+      We call get() to get the result, and get() waits until the task is done.
+        ExecutorService ex = Executors.newSingleThreadExecutor();
+        Future<Integer> f = ex.submit(() -> 10 + 20);
+        System.out.println(f.get());   // 30
+        ex.shutdown();
+      Future also has isDone() and cancel(). For chaining async tasks, Java 8 added CompletableFuture.
+    keyPoints: ["Runnable: no return, no checked exceptions", "Callable: returns value, can throw", "Future holds the later result; get() blocks", "isDone, cancel; CompletableFuture for chaining"]
+
+  - id: java-131
+    category: MULTITHREADING
+    topic: "Race condition and atomic variables"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "What is a race condition? How does AtomicInteger help?"
+    answer: |
+      A race condition happens when two or more threads change shared data at the same time, and the final
+      result depends on timing. For example, count++ looks like one step, but it is three steps: read,
+      add one, write. If two threads read the same old value, one update is lost. We can fix it with
+      synchronized, or with AtomicInteger, which does the update as one atomic step using CAS,
+      compare-and-swap, without a lock.
+        AtomicInteger count = new AtomicInteger();
+        count.incrementAndGet();
+      Atomic classes are fast for simple counters and flags. For updates across many variables,
+      we still need locks.
+    keyPoints: ["Result depends on thread timing", "count++ is read-modify-write, not atomic", "AtomicInteger uses CAS, lock-free", "Locks still needed for multi-variable updates"]
+
+  - id: java-132
+    category: MULTITHREADING
+    topic: "join() method"
+    difficulty: EASY
+    companies: [TCS, ALL]
+    question: "What does the join() method do?"
+    answer: |
+      join() makes the current thread wait until another thread finishes. For example, if main calls
+      t.join(), main pauses until thread t completes, and then main continues.
+        Thread t = new Thread(() -> System.out.println("Loading data"));
+        t.start();
+        t.join();
+        System.out.println("Data loaded, continue");
+      This is useful when we need the result of another thread before going ahead. We can also give a
+      timeout, like t.join(2000), to wait at most two seconds. join() throws InterruptedException,
+      so we must handle it.
+    keyPoints: ["Current thread waits for another to finish", "Example: main waits for t", "Timeout version join(ms)", "Throws InterruptedException"]
+
+  - id: java-133
+    category: MULTITHREADING
+    topic: "Daemon threads"
+    difficulty: EASY
+    companies: [TCS, WIPRO, ALL]
+    question: "What is a daemon thread?"
+    answer: |
+      A daemon thread is a low-priority background thread that supports other threads. The JVM does not
+      wait for daemon threads to finish. When all normal, user threads end, the JVM exits and stops any
+      running daemon threads. The garbage collector is a good example of a daemon thread.
+      We make a thread a daemon with setDaemon(true), and we must call it before start(), otherwise it
+      throws IllegalThreadStateException.
+        Thread t = new Thread(() -> { /* background work */ });
+        t.setDaemon(true);
+        t.start();
+      We should not use daemon threads for important work like saving files, because they can stop suddenly.
+    keyPoints: ["Background service thread", "JVM does not wait for daemon threads", "Example: garbage collector", "setDaemon(true) before start()"]
+
+  - id: java-134
+    category: MULTITHREADING
+    topic: "ReentrantLock vs synchronized"
+    difficulty: HARD
+    companies: [PRODUCT, INFOSYS_SP, ALL]
+    question: "What is ReentrantLock? How is it different from synchronized?"
+    answer: |
+      ReentrantLock is a lock class from java.util.concurrent.locks. Like synchronized, it allows only one
+      thread at a time and is reentrant, meaning the same thread can take the lock again. But it gives
+      more control. tryLock() lets a thread try to get the lock, optionally with a timeout, instead of
+      waiting forever. lockInterruptibly() lets a waiting thread be interrupted. It can be fair, giving the
+      lock to the longest waiting thread. And it supports many Condition objects for waiting.
+      The risk is we must unlock manually in finally:
+        lock.lock();
+        try { count++; } finally { lock.unlock(); }
+      synchronized is simpler and releases automatically, so use it unless we need these extra features.
+    keyPoints: ["Explicit lock from java.util.concurrent.locks", "tryLock with timeout, interruptible, fairness, Conditions", "Must unlock in finally", "synchronized is simpler, auto-release"]
+
+  - id: java-135
+    category: MULTITHREADING
+    topic: "Virtual threads"
+    difficulty: HARD
+    companies: [PRODUCT, ALL]
+    question: "What are virtual threads in Java 21?"
+    answer: |
+      Virtual threads, final in Java 21, are very lightweight threads managed by the JVM, not directly by
+      the operating system. Normal platform threads are heavy, so we can create only a few thousand.
+      We can create millions of virtual threads. When a virtual thread waits for I/O, like a database or
+      HTTP call, the JVM parks it and uses the real carrier thread for other work. So we can write simple
+      blocking code, one thread per request, and still handle huge numbers of requests.
+        try (var ex = Executors.newVirtualThreadPerTaskExecutor()) {
+          ex.submit(() -> System.out.println("hello"));
+        }
+      They help I/O-heavy apps, not CPU-heavy ones, and we should not pool them. Spring Boot 3.2 and later
+      can enable them with a property.
+    keyPoints: ["Java 21, lightweight threads managed by JVM", "Millions possible; parked during blocking I/O", "Simple blocking code scales", "Good for I/O-bound, not CPU-bound; do not pool"]
+
+  # ---------------------------------------------------------------- JVM (136-150)
+  - id: java-136
+    category: JVM
+    topic: "JVM architecture"
+    difficulty: EASY
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    question: "Explain the architecture of the JVM in simple words."
+    answer: |
+      The JVM has three main parts. First, the class loader subsystem: it loads .class files, verifies the
+      bytecode is safe, and prepares classes in memory. Second, the runtime data areas, meaning memory:
+      the heap for objects, the method area or Metaspace for class information, a stack for each thread,
+      the program counter register, and the native method stack. Third, the execution engine: it runs
+      the bytecode using an interpreter and the JIT compiler, which turns frequently used code into fast
+      machine code. The garbage collector is part of the execution side and cleans unused objects.
+      JNI connects Java with native C or C++ code.
+    keyPoints: ["Class loader subsystem", "Runtime data areas: heap, method area/Metaspace, stack, PC, native stack", "Execution engine: interpreter + JIT", "Garbage collector, JNI"]
+
+  - id: java-137
+    category: JVM
+    topic: "Heap vs stack memory"
+    difficulty: EASY
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, ALL]
+    question: "What is the difference between heap and stack memory in Java?"
+    answer: |
+      Stack memory is created for each thread. It stores method calls, local variables and references.
+      Each method call adds a frame, and the frame is removed when the method ends, so memory is freed
+      automatically and fast. Heap memory is shared by all threads. It stores all objects and arrays,
+      created with new. The garbage collector cleans unused objects from the heap.
+        void test() {
+          int x = 10;                    // x on stack
+          Student s = new Student();     // s (reference) on stack, object on heap
+        }
+      Stack is small and fast, heap is bigger. Full stack gives StackOverflowError, full heap gives
+      OutOfMemoryError.
+    keyPoints: ["Stack: per thread, method frames, locals, references", "Heap: shared, objects and arrays", "Stack freed on method return; heap cleaned by GC", "StackOverflowError vs OutOfMemoryError"]
+
+  - id: java-138
+    category: JVM
+    topic: "Garbage collection"
+    difficulty: EASY
+    companies: [INFOSYS_DSE, TCS, ALL]
+    question: "What is garbage collection in Java?"
+    answer: |
+      Garbage collection is the automatic process of freeing heap memory used by objects that are no longer
+      needed. In C, the programmer must free memory by hand, which can cause leaks and crashes. In Java,
+      the garbage collector, which runs as a background daemon thread, finds objects that cannot be reached
+      from any live reference and removes them. This makes Java safer and easier. We cannot force garbage
+      collection; we can only request it. Common collectors are G1, which is the default in modern Java,
+      Parallel GC, and low-pause collectors like ZGC.
+    keyPoints: ["Automatic freeing of unused heap memory", "Removes unreachable objects", "No manual free like C", "Cannot force; G1 default, others like ZGC"]
+
+  - id: java-139
+    category: JVM
+    topic: "GC eligibility"
+    difficulty: MEDIUM
+    companies: [TCS, ALL]
+    question: "When does an object become eligible for garbage collection?"
+    answer: |
+      An object becomes eligible when no live part of the program can reach it anymore. Common cases:
+      first, we set the reference to null, like s = null. Second, we point the reference to another
+      object, so the old one has no reference. Third, the object was created inside a method, and the
+      method finished, so the local reference is gone. Fourth, island of isolation: two objects refer to
+      each other, but nothing else refers to them. Java's GC handles this, because it checks reachability
+      from GC roots, like local variables and static fields, not just reference counts.
+      Eligible does not mean it is removed immediately.
+    keyPoints: ["Unreachable from GC roots", "Reference set to null or reassigned", "Local objects after method ends", "Island of isolation is still collected; not immediate"]
+
+  - id: java-140
+    category: JVM
+    topic: "Generational heap"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What are the young generation and old generation in the heap?"
+    answer: |
+      The heap is divided by object age, because most objects die young, like temporary objects in a
+      method. The young generation has Eden, where new objects are created, and two survivor spaces.
+      When Eden fills up, a minor GC runs. It is fast. Live objects move to a survivor space, and each time
+      they survive, their age increases. Objects that survive many minor GCs are promoted to the old
+      generation, which holds long-living objects like caches. When the old generation fills, a major or
+      full GC runs, which is slower and may pause the application longer. This design makes GC efficient.
+    keyPoints: ["Most objects die young", "Young gen: Eden + two survivor spaces; minor GC", "Survivors promoted to old gen after aging", "Major/full GC is slower"]
+
+  - id: java-141
+    category: JVM
+    topic: "String pool and new String()"
+    difficulty: HARD
+    companies: [INFOSYS_SP, INFOSYS_DSE, TCS, ALL]
+    question: "What is the String constant pool? How many objects does String s = new String(\"hello\") create?"
+    answer: |
+      The String pool is a special area in the heap where Java keeps one copy of each string literal.
+      When we write String a = "hello", Java checks the pool. If "hello" is there, it reuses it; if not,
+      it adds it. So literals with the same value share one object, which saves memory.
+      new String("hello") can create up to two objects. The literal "hello" goes into the pool, if it is
+      not already there, and new always creates one more separate object on the heap. If "hello" is already
+      in the pool, only one new object is created.
+        String a = "hello";
+        String b = new String("hello");
+        a == b   // false
+      Since Java 7, the pool lives in the main heap, not PermGen.
+    keyPoints: ["Pool keeps one shared copy of each literal", "Literals reuse pooled object", "new String(\"x\") creates up to two objects", "new always creates a separate heap object; pool in heap since Java 7"]
+
+  - id: java-142
+    category: JVM
+    topic: "String intern()"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "What does the intern() method of String do?"
+    answer: |
+      intern() returns the pooled version of a string. If the pool already has a string with the same
+      content, it returns that pooled reference. If not, it adds this string to the pool and returns it.
+        String a = "java";
+        String b = new String("java");
+        String c = b.intern();
+        System.out.println(a == b);   // false
+        System.out.println(a == c);   // true
+      It can save memory when we have many duplicate strings created at runtime, for example from a file.
+      But in normal code we should still compare strings with equals(), not depend on ==.
+    keyPoints: ["Returns the canonical pooled reference", "Adds to pool if not present", "Example: a == b false, a == c true", "Can save memory; still use equals()"]
+
+  - id: java-143
+    category: JVM
+    topic: "Class loaders"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What are class loaders in Java? What is the delegation model?"
+    answer: |
+      Class loaders load .class files into the JVM when a class is first needed, not all at the start.
+      There are three built-in ones. The Bootstrap class loader loads core Java classes like java.lang.String.
+      The Platform class loader, called Extension class loader before Java 9, loads platform modules.
+      The Application or System class loader loads our own classes from the classpath.
+      They follow the parent delegation model: when asked to load a class, a loader first asks its parent.
+      Only if the parent cannot find it does the child load it itself. This prevents anyone from replacing
+      core classes, like a fake java.lang.String, and avoids loading the same class twice.
+      Loading has three steps: loading, linking, which is verify, prepare and resolve, and initialization.
+    keyPoints: ["Load classes lazily on first use", "Bootstrap, Platform (Extension), Application loaders", "Parent delegation: ask parent first", "Protects core classes; loading, linking, initialization"]
+
+  - id: java-144
+    category: JVM
+    topic: "JIT compiler"
+    difficulty: MEDIUM
+    companies: [ALL]
+    question: "What is the JIT compiler?"
+    answer: |
+      JIT means Just-In-Time compiler. It is part of the JVM execution engine. At first, the JVM interprets
+      bytecode line by line, which is slow. The JVM watches which methods and loops run very often,
+      called hot spots. The JIT compiler converts this hot code into native machine code at runtime and
+      caches it. Next time, the fast machine code runs directly. It also does smart optimizations, like
+      inlining small methods. That is why Java programs often get faster after running for a while,
+      which is called warm-up. HotSpot JVM uses two JIT compilers, C1 for quick compile and C2 for
+      heavy optimization.
+    keyPoints: ["Compiles hot bytecode to native code at runtime", "Interpreter first, JIT for frequently used code", "Optimizations like inlining; warm-up", "C1 and C2 in HotSpot"]
+
+  - id: java-145
+    category: JVM
+    topic: "Memory leaks in Java"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "Can a memory leak happen in Java even with garbage collection?"
+    answer: |
+      Yes. The garbage collector only removes objects that are unreachable. If our code keeps references to
+      objects we no longer need, the GC cannot remove them, and memory keeps growing. Common causes:
+      static collections like a static List or Map that keep growing and are never cleared; caches without
+      a size limit or expiry; not closing resources like connections and streams; listeners that are
+      registered but never removed; ThreadLocal values not removed in thread pools; and mutable HashMap keys.
+      We find leaks using heap dumps and tools like VisualVM or Eclipse MAT.
+    keyPoints: ["Yes, if references to unused objects remain", "Static collections, unbounded caches", "Unclosed resources, listeners, ThreadLocal", "Diagnose with heap dump, VisualVM, MAT"]
+
+  - id: java-146
+    category: JVM
+    topic: "System.gc()"
+    difficulty: EASY
+    companies: [TCS, ALL]
+    question: "Can we force garbage collection in Java?"
+    answer: |
+      No, we cannot force it. We can call System.gc() or Runtime.getRuntime().gc(), but this is only a
+      request or suggestion to the JVM. The JVM may run GC, or it may ignore the request. The JVM decides
+      the best time to collect garbage on its own. Calling System.gc() in production code is a bad practice,
+      because a full GC can pause the application. Some JVM options can even disable explicit GC calls.
+      The better way is to write code that does not hold unnecessary references.
+    keyPoints: ["Cannot force GC", "System.gc() is only a request", "JVM decides when to collect", "Bad practice in production; can cause pauses"]
+
+  - id: java-147
+    category: JVM
+    topic: "Metaspace vs PermGen"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, ALL]
+    question: "What is Metaspace? How is it different from PermGen?"
+    answer: |
+      Both store class metadata, meaning information about loaded classes, like method details and field
+      names. PermGen, or Permanent Generation, was used up to Java 7. It was part of the JVM heap area and
+      had a fixed maximum size, so applications that loaded many classes often failed with
+      "OutOfMemoryError: PermGen space". In Java 8, PermGen was removed and replaced by Metaspace.
+      Metaspace uses native memory, outside the heap, and grows automatically by default. We can still
+      limit it with -XX:MaxMetaspaceSize. Also note, the String pool was moved from PermGen to the main heap
+      in Java 7.
+    keyPoints: ["Both store class metadata", "PermGen: up to Java 7, fixed size, PermGen OOM errors", "Metaspace: Java 8+, native memory, grows automatically", "-XX:MaxMetaspaceSize; String pool in heap since Java 7"]
+
+  - id: java-148
+    category: JVM
+    topic: "Reference types"
+    difficulty: HARD
+    companies: [PRODUCT, ALL]
+    question: "What are strong, soft, weak and phantom references?"
+    answer: |
+      A strong reference is the normal one, like Student s = new Student(). As long as it exists,
+      the object is never collected. A soft reference lets the GC collect the object only when memory is low.
+      It is useful for memory-sensitive caches. A weak reference lets the GC collect the object at the next
+      GC if no strong reference exists. WeakHashMap uses weak keys, so entries disappear when keys are no
+      longer used elsewhere. A phantom reference is used to know when an object has been collected, for
+      cleanup work, together with a ReferenceQueue. Its get() always returns null.
+        WeakReference<Student> w = new WeakReference<>(new Student());
+    keyPoints: ["Strong: never collected while reachable", "Soft: collected when memory is low (caches)", "Weak: collected at next GC (WeakHashMap)", "Phantom: cleanup tracking, get() returns null"]
+
+  - id: java-149
+    category: JVM
+    topic: "JVM memory flags"
+    difficulty: MEDIUM
+    companies: [PRODUCT, ALL]
+    question: "What do the JVM options -Xms, -Xmx and -Xss mean?"
+    answer: |
+      These options control memory sizes when we start a Java program. -Xms sets the starting, or initial,
+      heap size. -Xmx sets the maximum heap size. -Xss sets the stack size for each thread.
+        java -Xms512m -Xmx2g -Xss1m -jar app.jar
+      If the app needs more heap than -Xmx, we get OutOfMemoryError: Java heap space. If recursion goes too
+      deep for the stack size, we get StackOverflowError. In production, people often set -Xms and -Xmx to
+      the same value to avoid resizing the heap. We can choose the collector with flags like -XX:+UseG1GC.
+    keyPoints: ["-Xms: initial heap", "-Xmx: maximum heap", "-Xss: per-thread stack size", "Related errors: OutOfMemoryError, StackOverflowError"]
+
+  - id: java-150
+    category: JVM
+    topic: "Compile-time string constants"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is the output? String s1 = \"ab\"; String s2 = \"a\" + \"b\"; String h = \"a\"; String s3 = h + \"b\"; print s1 == s2 and s1 == s3."
+    answer: |
+      s1 == s2 is true, and s1 == s3 is false.
+      "a" + "b" uses only literals, so the compiler joins them at compile time into "ab". Both s1 and s2
+      then point to the same pooled literal. But h + "b" uses a variable, so the joining happens at
+      runtime and creates a new String object on the heap, not the pooled one. So == is false.
+      If we declare final String h = "a", then h is a compile-time constant, and h + "b" is again joined
+      at compile time, so == becomes true. And s3.intern() == s1 is also true.
+      The lesson: always use equals() to compare string content.
+    keyPoints: ["s1 == s2 true: literals joined at compile time", "s1 == s3 false: runtime concat makes new object", "final variable makes it a compile-time constant (true)", "Use equals() for content"]

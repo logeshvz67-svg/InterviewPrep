@@ -1,0 +1,358 @@
+slug: recursion-basics
+world: JAVA_CORE
+section: A
+order: 11
+title: "Recursion basics"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, TCS]
+infosysRelevance: "Important for SP-level DSA: trees, backtracking, divide-and-conquer sorting and many dynamic programming solutions start as recursion."
+otherCompanies: "Recursion output questions (factorial, Fibonacci, printing before or after the call) are common in TCS and product-company rounds; product companies build on it for trees and backtracking."
+why: |
+  **Recursion** means a method that **calls itself** to solve a smaller version of the same problem.
+
+  It feels strange at first, but it is one of the most important ideas in DSA:
+  - Tree and graph traversals (DFS), merge sort, quick sort, backtracking (subsets, permutations) and many dynamic programming solutions are all recursive.
+  - Output questions love recursion: *"What does `fun(4)` print?"* You can only answer by tracing the **call stack**.
+  - Interviewers ask *"What is a base case?"* and *"What is StackOverflowError?"* to check if you really understand it.
+
+  The good news: every recursive method follows the same two-part recipe. Learn the recipe and the call stack picture, and recursion stops being magic.
+analogy: |
+  Think of **standing in a long queue at a ration shop** and wanting to know your position.
+
+  - You cannot see the front, so you **ask the person ahead of you**: "What is your position?"
+  - They do not know either, so they ask the person ahead of them, and so on. Each person is waiting for an answer (that is the **call stack** growing).
+  - Finally the **first person** says "I am number 1". They do not need to ask anyone: this is the **base case**.
+  - The answer travels back: "I am 2", "I am 3"... each person adds 1 to the answer they received. This is the **unwinding** of the stack.
+  - If the first person also kept asking someone ahead (no base case), the asking would never stop. In Java, that is a **StackOverflowError**.
+visual:
+  diagram: |
+    factorial(4)  =  4 * factorial(3)
+
+    CALLS GO DOWN (stack grows)          RETURNS COME UP (stack shrinks)
+    +---------------------------+
+    | factorial(1) -> base case |  returns 1
+    +---------------------------+            |
+    | factorial(2) = 2 * f(1)   |  returns 2 * 1  = 2
+    +---------------------------+            |
+    | factorial(3) = 3 * f(2)   |  returns 3 * 2  = 6
+    +---------------------------+            |
+    | factorial(4) = 4 * f(3)   |  returns 4 * 6  = 24
+    +---------------------------+            |
+    | main: print(factorial(4)) |  prints 24  <--+
+    +---------------------------+
+          (bottom of stack)
+
+    Each box = one stack frame with its OWN copy of n.
+  caption: "Each call waits on the stack for the smaller call to finish. The base case stops the calls, and the answers are combined on the way back up."
+  visualizer: recursion
+explanation: |
+  ### The recipe: two parts
+  Every correct recursive method has:
+  1. **Base case:** the smallest input whose answer you know directly, with **no further call**. It stops the recursion.
+  2. **Recursive case:** solve the problem using the answer for a **smaller** input, by calling the same method. Each call must move **closer** to the base case.
+
+  ```java
+  static int factorial(int n) {
+      if (n <= 1) return 1;          // base case
+      return n * factorial(n - 1);   // recursive case: smaller problem
+  }
+  ```
+  Think of it as **trusting** the smaller call: "If someone gives me `factorial(n - 1)`, I just multiply by `n`." This trust is sometimes called the **leap of faith**.
+
+  ### How Java runs it: the call stack
+  The **call stack** is a pile of **stack frames**. A stack frame is a small memory box for one method call, holding its parameters and local variables.
+  - Each call pushes a **new frame** on top, with its **own copy** of `n`.
+  - The top frame runs. Frames below it are **paused**, waiting for a return value.
+  - When a call returns, its frame is removed (**popped**), and the frame below continues from where it paused.
+
+  For `factorial(4)`, four frames are stacked (n = 4, 3, 2, 1). Then they return 1, 2, 6, 24 in reverse order.
+
+  ### StackOverflowError
+  The stack has limited memory. If recursion never reaches a base case (or goes too deep, like a million levels), Java throws **`StackOverflowError`**.
+  Common causes:
+  - No base case at all.
+  - A base case that is never reached, for example `factorial(n - 2)` jumping over `n == 1` for even n when the base case is `n == 1`.
+  - Forgetting to make the input smaller (`factorial(n)` instead of `factorial(n - 1)`).
+
+  Using `n <= 1` instead of `n == 1` is a small habit that protects against such skips and against `n = 0`.
+
+  ### Work before vs after the call (head and tail)
+  Where you put the print statement changes the order completely:
+  ```java
+  static void down(int n) {      // prints 3 2 1
+      if (n == 0) return;
+      System.out.print(n + " ");  // work BEFORE the call
+      down(n - 1);
+  }
+
+  static void up(int n) {        // prints 1 2 3
+      if (n == 0) return;
+      up(n - 1);
+      System.out.print(n + " ");  // work AFTER the call (while unwinding)
+  }
+  ```
+  - Work **before** the call happens on the way **down**.
+  - Work **after** the call happens on the way **back up**, in reverse order.
+
+  When the recursive call is the very **last** thing a method does (like `down`), it is called **tail recursion**. Java does **not** optimize tail recursion, so deep tail recursion can still overflow.
+
+  ### Classic examples
+  | Problem | Base case | Recursive case |
+  |---|---|---|
+  | Sum 1..n | `n == 0` gives 0 | `n + sum(n - 1)` |
+  | Power a^b | `b == 0` gives 1 | `a * power(a, b - 1)` |
+  | Digit sum | `n == 0` gives 0 | `n % 10 + digitSum(n / 10)` |
+  | Reverse string | length 0 or 1 gives s | `rev(s.substring(1)) + s.charAt(0)` |
+  | Fibonacci | `n <= 1` gives n | `fib(n - 1) + fib(n - 2)` |
+
+  ### Multiple recursive calls: Fibonacci
+  ```java
+  static int fib(int n) {
+      if (n <= 1) return n;
+      return fib(n - 1) + fib(n - 2);
+  }
+  ```
+  Each call makes **two** more calls, so the calls form a **recursion tree**. `fib(5)` calls `fib(3)` twice and `fib(2)` three times. The total work grows roughly like **2^n** (exponential), which is very slow for n = 45. Later, **memoization** (remembering answers already computed, in dynamic programming) fixes this.
+
+  ### Recursion vs iteration (loops)
+  | | Recursion | Iteration |
+  |---|---|---|
+  | Code | Often shorter, matches the problem (trees!) | Sometimes longer |
+  | Memory | Uses a stack frame per call: O(depth) extra space | Usually O(1) extra space |
+  | Risk | StackOverflowError for very deep calls | Infinite loop if the condition is wrong |
+  | Speed | Small overhead per call | Usually a bit faster |
+
+  Any recursion can be rewritten with a loop (sometimes with your own stack). Use recursion when the problem is naturally "a smaller copy of itself": trees, divide and conquer, backtracking.
+
+  ### How to write one in an interview
+  1. Define in words what the method returns: "`sum(n)` returns 1 + 2 + ... + n".
+  2. Write the base case first.
+  3. Assume the smaller call works; combine its answer.
+  4. Check that every call gets smaller and reaches the base case.
+  5. Dry run with a tiny input (n = 2 or 3) by drawing the stack.
+tinyCode:
+  code: |
+    public class Recursion {
+        static int factorial(int n) {
+            if (n <= 1) return 1;
+            return n * factorial(n - 1);
+        }
+
+        static int digitSum(int n) {
+            if (n == 0) return 0;
+            return n % 10 + digitSum(n / 10);
+        }
+
+        static void countDown(int n) {
+            if (n == 0) {
+                System.out.println("Go!");
+                return;
+            }
+            System.out.print(n + " ");
+            countDown(n - 1);
+        }
+
+        public static void main(String[] args) {
+            System.out.println(factorial(5));
+            System.out.println(digitSum(4721));
+            countDown(3);
+        }
+    }
+  walkthrough: |
+    - `factorial(5)` calls factorial(4), (3), (2), (1). factorial(1) is the base case and returns 1. Then the answers multiply on the way back: 2, 6, 24, `120`.
+    - `digitSum(4721)` = 1 + digitSum(472) = 1 + 2 + digitSum(47) = 1 + 2 + 7 + digitSum(4) = 1 + 2 + 7 + 4 + digitSum(0) = `14`.
+    - `countDown(3)` prints before calling, so the numbers appear on the way down: `3 2 1 `, then the base case prints `Go!`.
+
+    Output:
+    ```
+    120
+    14
+    3 2 1 Go!
+    ```
+tryIt:
+  instructions: "Type this program and run it. Then swap the two lines inside show() (print first, then call) and predict how the output changes before running it again."
+  code: |
+    public class Trace {
+        static int power(int a, int b) {
+            if (b == 0) return 1;
+            return a * power(a, b - 1);
+        }
+
+        static void show(int n) {
+            if (n == 0) return;
+            show(n - 1);
+            System.out.println("returning from show(" + n + ")");
+        }
+
+        public static void main(String[] args) {
+            System.out.println("2^10 = " + power(2, 10));
+            show(3);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static void fun(int n) {
+            if (n <= 0) return;
+            System.out.print(n);
+            fun(n - 2);
+            System.out.print(n);
+        }
+
+        static int sum(int n) {
+            if (n == 0) return 0;
+            return n + sum(n - 1);
+        }
+
+        public static void main(String[] args) {
+            fun(5);
+            System.out.println();
+            System.out.println(sum(4));
+        }
+    }
+  expectedOutput: |
+    531135
+    10
+  explanation: |
+    - `fun(5)` prints 5, calls fun(3), which prints 3 and calls fun(1), which prints 1 and calls fun(-1). fun(-1) hits the base case (`n <= 0`).
+    - Now the stack unwinds: fun(1) prints its second `1`, fun(3) prints `3`, fun(5) prints `5`. So the numbers appear going down and then again coming up, in reverse: `531135`. Then `println()` ends the line.
+    - `sum(4)` = 4 + 3 + 2 + 1 + 0 = `10`.
+commonMistakes:
+  - "Forgetting the base case, or writing one that is never reached, causing StackOverflowError."
+  - "Not making the input smaller in the recursive call (calling f(n) inside f(n))."
+  - "Forgetting to return the recursive result: writing factorial(n - 1); instead of return n * factorial(n - 1);."
+  - "Thinking all calls share one variable n. Each call has its own copy in its own stack frame."
+  - "Using plain recursive Fibonacci for large n; it is exponential and times out."
+  - "Ignoring the order of work: code after the recursive call runs in reverse order while unwinding."
+interviewBox:
+  why: "Why interviewers ask this: recursion is the gateway to trees, backtracking and dynamic programming. Explaining the base case and call stack clearly shows you can reason about code you cannot simply 'see'."
+  questions:
+    - q: "What is recursion and what are its two essential parts?"
+      a: "Recursion is when a method calls itself to solve a smaller version of the same problem. It needs a base case, which is the simplest input answered directly without another call, and a recursive case, which calls the method with a smaller input and uses that answer."
+    - q: "What is a StackOverflowError?"
+      a: "Each method call uses a frame on the call stack. If recursion never stops, or goes very deep, the stack runs out of memory, and Java throws StackOverflowError. It usually means the base case is missing or never reached."
+    - q: "Recursion vs iteration: which is better?"
+      a: "It depends. Recursion is often shorter and natural for trees and divide-and-conquer, but it uses extra stack memory for every call and can overflow. Iteration uses less memory and is usually faster. For simple counting, I prefer loops; for trees or backtracking, recursion."
+    - q: "Why is the simple recursive Fibonacci slow?"
+      a: "Because each call makes two more calls, and the same values like fib(3) are calculated again and again. The number of calls grows roughly like 2 to the power n. Memoization, which stores answers already computed, makes it linear."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      static void p(int n) {
+          if (n == 0) return;
+          p(n - 1);
+          System.out.print(n);
+      }
+      public static void main(String[] args) {
+          p(4);
+      }
+    options: ["4321", "1234", "4", "Nothing"]
+    answer: 1
+    explanation: "The print comes after the recursive call, so nothing prints on the way down. On the way back up, p(1) prints first, then p(2), p(3), p(4): 1234. 4321 is the answer if the print came before the call."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Calling count(5) throws StackOverflowError. Why?"
+    code: |
+      static int count(int n) {
+          if (n == 0) return 0;
+          return 1 + count(n - 2);
+      }
+      public static void main(String[] args) {
+          System.out.println(count(5));
+      }
+    options:
+      - "Recursive methods cannot return int"
+      - "For odd n, n goes 5, 3, 1, -1, ... and skips 0, so the base case is never reached"
+      - "1 + count(...) must be written count(...) + 1"
+      - "main cannot call a recursive method"
+    answer: 1
+    explanation: "Subtracting 2 from an odd number never lands on 0, so the recursion goes negative forever until the stack overflows. Using if (n <= 0) as the base case fixes it. The order of 1 + count(...) does not matter."
+  - id: q3
+    type: MCQ
+    prompt: "What is stored in each stack frame of a recursive call?"
+    code: null
+    options:
+      - "Nothing; all calls share the same variables"
+      - "That call's own parameters and local variables, plus where to return"
+      - "Only the return value"
+      - "A copy of the entire program"
+    answer: 1
+    explanation: "Each call gets its own frame with its own copies of parameters and locals, and the place to continue in the caller. That is why n can be 4 in one frame and 1 in another at the same time."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Java automatically optimizes tail recursion, so deep tail-recursive methods never cause StackOverflowError."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The JVM does not do tail-call optimization. Every call still uses a stack frame, so very deep recursion overflows even if the call is the last statement."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      static int f(int n) {
+          if (n <= 1) return n;
+          return f(n - 1) + f(n - 2);
+      }
+      public static void main(String[] args) {
+          System.out.println(f(6));
+      }
+    options: ["6", "8", "13", "5"]
+    answer: 1
+    explanation: "This is Fibonacci: f(0)=0, f(1)=1, f(2)=1, f(3)=2, f(4)=3, f(5)=5, f(6)=8. 13 is f(7), a common off-by-one slip when people start counting from 1."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the base case value so that power(a, b) returns a to the power b."
+    code: |
+      static int power(int a, int b) {
+          if (b == 0) return ____;
+          return a * power(a, b - 1);
+      }
+    acceptedAnswers: ["1"]
+    explanation: "Any number to the power 0 is 1, and 1 is also the neutral value for multiplication. Returning 0 would make every answer 0."
+  - id: q7
+    type: MATCH
+    prompt: "Match each recursion term to its meaning"
+    pairs:
+      - left: "Base case"
+        right: "Smallest input answered without another call"
+      - left: "Recursive case"
+        right: "Calls itself with a smaller input"
+      - left: "Stack frame"
+        right: "Memory box for one call's variables"
+      - left: "StackOverflowError"
+        right: "Thrown when calls go too deep"
+      - left: "Unwinding"
+        right: "Returning back up through waiting calls"
+    explanation: "Together these describe the full life of a recursive call: calls stack up toward the base case, then unwind back with answers."
+explainBack:
+  prompt: "Explain recursion to a friend who has never coded, using the factorial example and the call stack."
+  rubric:
+    - "I said a recursive method calls itself on a smaller problem"
+    - "I explained the base case and why it is needed"
+    - "I described the call stack: calls pile up, then return in reverse"
+    - "I mentioned StackOverflowError"
+    - "I used an everyday analogy like a queue"
+  modelAnswer: |
+    Recursion is when a method solves a problem by calling itself on a smaller version of the same problem. For factorial of 4, I say it is 4 times factorial of 3, which is 3 times factorial of 2, and so on until factorial of 1, which I simply know is 1. That simple stopping point is the base case. Each call waits on a pile called the call stack, with its own copy of n. Once the base case returns, the answers come back up the pile: 1, 2, 6, 24. It is like asking the person ahead in a queue for their position. If there is no base case, the calls never stop and Java throws a StackOverflowError.
+flashcards:
+  - front: "Two parts of every recursive method"
+    back: "Base case (stops, no call) + recursive case (calls itself on a smaller input)."
+  - front: "What causes StackOverflowError?"
+    back: "Too many nested calls: missing or unreachable base case, or input not getting smaller."
+  - front: "Print before vs after the recursive call"
+    back: "Before: runs on the way down (n, n-1, ...). After: runs while unwinding (reverse order)."
+  - front: "Space cost of recursion"
+    back: "O(depth) extra space for stack frames."
+  - front: "Why is naive recursive Fibonacci slow?"
+    back: "Two calls each time and repeated work: about O(2^n). Memoization makes it O(n)."
+keyTakeaways:
+  - "Recursion = a method calling itself on a smaller input until a base case."
+  - "Always write the base case first and make sure every call moves toward it."
+  - "Each call has its own stack frame; frames return in reverse order."
+  - "Work before the call happens going down; work after happens while unwinding."
+  - "No base case or too much depth causes StackOverflowError; Java has no tail-call optimization."
+  - "Recursion uses O(depth) extra space; multiple calls per step (Fibonacci) can be exponential."

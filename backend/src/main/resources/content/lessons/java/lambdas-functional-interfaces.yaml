@@ -1,0 +1,330 @@
+slug: lambdas-functional-interfaces
+world: JAVA_CORE
+section: F
+order: 1
+title: "Lambdas and functional interfaces"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Frequently asked 'Java 8 features' question in SP and DSE rounds; lambdas are also the base for streams, which appear in coding answers."
+otherCompanies: "'What are the Java 8 features?' is a common question at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies expect you to write lambdas fluently."
+why: |
+  Before Java 8, passing a small piece of **behaviour** (like "how to compare two students" or "what to do on a button click") needed a whole **anonymous class**: 5-6 lines of ceremony for one line of logic.
+
+  **Lambdas** (Java 8) let you write that behaviour in one short line and pass it around like data. They power:
+  - the **Stream API** (`filter`, `map`, `reduce`),
+  - `Comparator.comparing(...)`, `list.forEach(...)`, `list.removeIf(...)`, `map.computeIfAbsent(...)`,
+  - Spring Boot code you will see at work.
+
+  "What are the Java 8 features?" and "What is a functional interface?" are very common interview questions. This lesson gives you both answers with real understanding.
+analogy: |
+  Think of giving instructions to a **cook at a wedding**.
+
+  - Old Java (anonymous class) was like writing a **formal letter**: "Dear Cook, I, the host, hereby request that, for every guest, you shall..." Lots of words around one instruction.
+  - A **lambda** is a **sticky note**: "guest -> serve(guest)". Same instruction, no ceremony.
+
+  A **functional interface** is the **shape of the sticky note**: a form with exactly one blank to fill. `Predicate` is a form that says "given X, answer yes/no". `Function` says "given X, give back Y". The lambda is what you write in that one blank.
+visual:
+  diagram: |
+    Anonymous class (Java 7)            Lambda (Java 8)
+    +-------------------------------+
+    | new Predicate<Integer>() {    |
+    |   public boolean test(        |   n -> n % 2 == 0
+    |       Integer n) {            |   ^    ^
+    |     return n % 2 == 0;        |   |    +-- body (the answer)
+    |   }                           |   +------- parameter
+    | }                             |
+    +-------------------------------+
+
+    The four core functional interfaces (java.util.function)
+    Predicate<T>   T ----> boolean   test(t)    "is it ...?"
+    Function<T,R>  T ----> R         apply(t)   "turn into ..."
+    Consumer<T>    T ----> (nothing) accept(t)  "do something"
+    Supplier<T>    () ---> T         get()      "give me one"
+  caption: "A lambda is a short way to write the single method of a functional interface. Predicate, Function, Consumer and Supplier cover most needs."
+  visualizer: null
+explanation: |
+  ### What is a functional interface?
+  A **functional interface** is an interface with **exactly one abstract method** (a method with no body). Examples you already know: `Runnable` (`run()`), `Comparator` (`compare()`), `Comparable` (`compareTo()`).
+  ```java
+  @FunctionalInterface
+  interface Greeter {
+      String greet(String name);   // the ONE abstract method
+  }
+  ```
+  - `@FunctionalInterface` is optional, but the compiler then **checks** there is exactly one abstract method. Add a second one and it won't compile.
+  - It may still have **default** and **static** methods (they have bodies), and methods from `Object` like `equals` don't count.
+
+  ### What is a lambda?
+  A **lambda expression** is an anonymous function: a block of code with parameters and a body, but no name and no class. Java turns it into an object of the functional interface.
+  ```java
+  Greeter g = name -> "Namaste, " + name;
+  System.out.println(g.greet("Asha"));   // Namaste, Asha
+  ```
+
+  ### Lambda syntax forms
+  | Form | Example |
+  |---|---|
+  | no parameters | `() -> System.out.println("hi")` |
+  | one parameter (brackets optional) | `x -> x * 2` |
+  | many parameters | `(a, b) -> a + b` |
+  | with types | `(int a, int b) -> a + b` |
+  | block body (needs `return`) | `(a, b) -> { int s = a + b; return s; }` |
+
+  Java figures out the parameter types from the **target type** (the interface the lambda is assigned to). This is called **type inference**.
+
+  ### The four core interfaces in java.util.function
+  | Interface | Method | Takes -> Gives | Typical use |
+  |---|---|---|---|
+  | `Predicate<T>` | `boolean test(T t)` | T -> boolean | filtering, conditions |
+  | `Function<T, R>` | `R apply(T t)` | T -> R | converting, mapping |
+  | `Consumer<T>` | `void accept(T t)` | T -> nothing | printing, saving |
+  | `Supplier<T>` | `T get()` | nothing -> T | creating, default values |
+
+  Useful relatives:
+  | Interface | Meaning |
+  |---|---|
+  | `BiFunction<T, U, R>` | two inputs -> R |
+  | `BiPredicate<T, U>`, `BiConsumer<T, U>` | two-input versions |
+  | `UnaryOperator<T>` | `Function<T, T>`, same type in and out |
+  | `BinaryOperator<T>` | `BiFunction<T, T, T>`, like `(a, b) -> a + b` |
+  | `IntPredicate`, `IntFunction`, `ToIntFunction`... | primitive versions that avoid **boxing** (wrapping `int` in `Integer`) |
+
+  ### Combining them (default methods)
+  ```java
+  Predicate<Integer> even = n -> n % 2 == 0;
+  Predicate<Integer> big  = n -> n > 10;
+  even.and(big).test(12);      // true
+  even.negate().test(3);       // true
+  even.or(big).test(7);        // false
+
+  Function<Integer, Integer> dbl = x -> x * 2;
+  Function<Integer, Integer> inc = x -> x + 1;
+  dbl.andThen(inc).apply(5);   // (5*2)+1 = 11
+  dbl.compose(inc).apply(5);   // (5+1)*2 = 12
+  ```
+  `andThen` = "do me first, then the other". `compose` = "do the other first, then me".
+
+  ### Effectively final: the capture rule
+  A lambda can use local variables from the surrounding method, but only if they are **effectively final**: never changed after being set (even without the `final` keyword).
+  ```java
+  int bonus = 5;
+  Function<Integer, Integer> add = m -> m + bonus;  // OK
+  // bonus++;   // would make the line above a compile error
+  ```
+  Why? The lambda may run later, even on another thread, so Java copies the value. If the variable could change, the copy would be confusing. (Fields of objects and static fields **can** be changed inside a lambda.)
+
+  ### Lambda vs anonymous class
+  | | Lambda | Anonymous class |
+  |---|---|---|
+  | Works with | functional interfaces only | any interface or abstract class |
+  | `this` means | the enclosing object | the anonymous object itself |
+  | Own state (fields) | no | yes |
+  | Code size | one line | many lines |
+
+  ### Where you will use lambdas
+  ```java
+  list.forEach(x -> System.out.println(x));
+  list.removeIf(x -> x < 0);
+  list.sort((a, b) -> a.compareTo(b));
+  map.computeIfAbsent(key, k -> new ArrayList<>());
+  new Thread(() -> System.out.println("running")).start();
+  ```
+tinyCode:
+  code: |
+    import java.util.*;
+    import java.util.function.*;
+
+    public class FourFriends {
+        public static void main(String[] args) {
+            Predicate<Integer> passed = m -> m >= 40;
+            Function<Integer, String> grade = m -> m >= 75 ? "Distinction" : "Pass";
+            Consumer<String> shout = s -> System.out.println(s.toUpperCase());
+            Supplier<List<Integer>> newList = () -> new ArrayList<>();
+
+            List<Integer> marks = newList.get();
+            marks.addAll(List.of(82, 35, 64));
+            for (int m : marks) {
+                if (passed.test(m)) {
+                    shout.accept(m + " " + grade.apply(m));
+                }
+            }
+            BinaryOperator<Integer> add = (a, b) -> a + b;
+            System.out.println(add.apply(10, 20));
+        }
+    }
+  walkthrough: |
+    - `passed` is a **Predicate**: takes a mark, answers true/false.
+    - `grade` is a **Function**: turns a mark (Integer) into a String.
+    - `shout` is a **Consumer**: takes a String, prints it in capitals, returns nothing.
+    - `newList` is a **Supplier**: takes nothing, gives a new empty list.
+    - The loop checks each mark with `test`, converts with `apply`, prints with `accept`. 35 fails, so it is skipped.
+    - `BinaryOperator<Integer>` takes two Integers and returns one: `30`.
+
+    Output:
+    ```
+    82 DISTINCTION
+    64 PASS
+    30
+    ```
+tryIt:
+  instructions: "Type your own functional interface and three lambdas for it. Then add a second abstract method to Calc and see the compiler complain because of @FunctionalInterface."
+  code: |
+    public class MyCalc {
+        @FunctionalInterface
+        interface Calc {
+            int apply(int a, int b);
+        }
+
+        public static void main(String[] args) {
+            Calc add = (a, b) -> a + b;
+            Calc max = (a, b) -> a > b ? a : b;
+            Calc power = (a, b) -> {
+                int result = 1;
+                for (int i = 0; i < b; i++) result *= a;
+                return result;
+            };
+            System.out.println(add.apply(7, 3));
+            System.out.println(max.apply(7, 3));
+            System.out.println(power.apply(2, 10));
+        }
+    }
+predict:
+  code: |
+    import java.util.function.*;
+
+    public class Chain {
+        public static void main(String[] args) {
+            Function<Integer, Integer> twice = x -> x * 2;
+            Function<Integer, Integer> plus3 = x -> x + 3;
+            System.out.println(twice.andThen(plus3).apply(4));
+            System.out.println(twice.compose(plus3).apply(4));
+            Predicate<String> empty = String::isEmpty;
+            System.out.println(empty.negate().test(""));
+        }
+    }
+  expectedOutput: |
+    11
+    14
+    false
+  explanation: |
+    `twice.andThen(plus3)` runs `twice` first, then `plus3`: (4 x 2) + 3 = **11**. `twice.compose(plus3)` runs `plus3` first, then `twice`: (4 + 3) x 2 = **14**. `empty.test("")` is true, and `negate()` flips it, so it prints **false**. (`String::isEmpty` is a method reference, a shortcut for `s -> s.isEmpty()`; next lesson covers it.)
+commonMistakes:
+  - "Changing a local variable that a lambda uses (count++ outside or inside). Captured locals must be effectively final."
+  - "Forgetting return in a block-body lambda: (a, b) -> { a + b; } does not compile; write { return a + b; } or just (a, b) -> a + b."
+  - "Thinking a functional interface can't have default or static methods. It can; only ONE abstract method is the rule."
+  - "Mixing up andThen and compose. f.andThen(g) runs f first; f.compose(g) runs g first."
+  - "Using Function<Integer, Integer> in hot loops when IntUnaryOperator avoids boxing."
+interviewBox:
+  why: "Why interviewers ask this: lambdas are the foundation of modern Java (streams, Spring, async code), and explaining them shows you have moved beyond Java 7."
+  questions:
+    - q: "What is a functional interface? Give examples."
+      a: "An interface with exactly one abstract method. It can still have default and static methods. Examples are Runnable, Comparator, and the java.util.function ones like Predicate, Function, Consumer and Supplier. The @FunctionalInterface annotation makes the compiler check that rule."
+    - q: "What is a lambda expression and why was it added?"
+      a: "A lambda is a short anonymous function, like (a, b) -> a + b. It provides the implementation of a functional interface's single method. It was added in Java 8 to pass behaviour as data without writing bulky anonymous classes, and it makes streams and functional-style code possible."
+    - q: "Explain Predicate, Function, Consumer and Supplier."
+      a: "Predicate takes a value and returns a boolean, using test. Function takes a value and returns another value, using apply. Consumer takes a value and returns nothing, using accept, like printing. Supplier takes nothing and returns a value, using get, like creating a default object."
+    - q: "Why must local variables used in a lambda be effectively final?"
+      a: "Because the lambda gets a copy of the variable's value and may run later, maybe on another thread. If the variable could still change, the copy and the original could differ and cause bugs. So Java only allows variables that are never reassigned."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which of these is NOT a functional interface?"
+    code: null
+    options: ["Runnable", "Comparator<T>", "Predicate<T>", "List<E>"]
+    answer: 3
+    explanation: "List has many abstract methods (add, get, size...), so a lambda can't implement it. Runnable, Comparator and Predicate each have exactly one abstract method. Comparator looks tempting because it has many default methods, but defaults don't count."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              int count = 0;
+              List<String> names = List.of("Ravi", "Anu");
+              names.forEach(n -> count++);
+              System.out.println(count);
+          }
+      }
+    options:
+      - "forEach does not accept lambdas"
+      - "count is a local variable changed inside the lambda; captured locals must be effectively final"
+      - "List.of cannot be used with forEach"
+      - "count must be declared as Integer"
+    answer: 1
+    explanation: "The compiler says 'local variables referenced from a lambda expression must be final or effectively final'. Use names.size(), a stream count(), or an AtomicInteger/array holder if you really need a counter. Changing the type to Integer doesn't help: it's still a local being reassigned."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      Predicate<Integer> even = n -> n % 2 == 0;
+      Predicate<Integer> big = n -> n > 10;
+      System.out.println(even.and(big).test(8) + " " + even.or(big).test(8));
+    options: ["true true", "false true", "false false", "true false"]
+    answer: 1
+    explanation: "8 is even but not > 10. and needs both, so false; or needs one, so true. 'true true' is tempting if you only check the first condition."
+  - id: q4
+    type: MATCH
+    prompt: "Match each functional interface to its single method"
+    pairs:
+      - left: "Predicate<T>"
+        right: "boolean test(T t)"
+      - left: "Function<T, R>"
+        right: "R apply(T t)"
+      - left: "Consumer<T>"
+        right: "void accept(T t)"
+      - left: "Supplier<T>"
+        right: "T get()"
+    explanation: "Predicate answers yes/no, Function converts, Consumer uses up a value, Supplier produces one."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "An interface marked @FunctionalInterface may contain default methods."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Only abstract methods are limited to one. Predicate itself has default methods and(), or() and negate()."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the functional interface that takes nothing and returns a value."
+    code: |
+      ____<String> greeting = () -> "Good morning";
+      System.out.println(greeting.get());
+    acceptedAnswers: ["Supplier"]
+    explanation: "Supplier<T> has T get() with no parameters, matching () -> value."
+  - id: q7
+    type: MCQ
+    prompt: "Which lambda correctly implements BiFunction<Integer, Integer, Integer> for the larger of two numbers?"
+    code: null
+    options: ["a, b -> Math.max(a, b)", "(a, b) -> Math.max(a, b)", "(a, b) -> { Math.max(a, b); }", "() -> Math.max(a, b)"]
+    answer: 1
+    explanation: "Two parameters need brackets: (a, b). The block-body version is missing 'return', and the first option lacks brackets around two parameters. The last one takes no parameters at all."
+explainBack:
+  prompt: "Explain to a friend what a lambda and a functional interface are, and name the four core functional interfaces."
+  rubric:
+    - "I said a functional interface has exactly one abstract method"
+    - "I said a lambda is a short anonymous function that implements that method"
+    - "I named Predicate, Function, Consumer and Supplier with what each takes and returns"
+    - "I mentioned the effectively final rule"
+    - "I gave a real use (forEach, removeIf, sort, streams)"
+  modelAnswer: |
+    A functional interface is an interface with just one abstract method, like Runnable or Comparator. A lambda is a short, nameless function, like n -> n * 2, that fills in that one method, so I can pass behaviour around like data instead of writing a whole anonymous class. Java 8 gives ready-made ones: Predicate takes a value and returns true or false, Function converts one value into another, Consumer takes a value and returns nothing, and Supplier takes nothing and gives a value. Lambdas can use local variables only if they're effectively final. I use them every day in forEach, removeIf, sorting and streams.
+flashcards:
+  - front: "Functional interface"
+    back: "An interface with exactly one abstract method (default/static methods allowed). @FunctionalInterface makes the compiler check it."
+  - front: "Predicate / Function / Consumer / Supplier"
+    back: "test: T -> boolean. apply: T -> R. accept: T -> void. get: () -> T."
+  - front: "f.andThen(g) vs f.compose(g)"
+    back: "andThen: f first, then g. compose: g first, then f."
+  - front: "Effectively final"
+    back: "A local variable never reassigned after initialisation; only these can be used inside a lambda."
+  - front: "UnaryOperator and BinaryOperator"
+    back: "UnaryOperator<T> = Function<T, T>. BinaryOperator<T> = BiFunction<T, T, T>."
+keyTakeaways:
+  - "A functional interface has exactly one abstract method; a lambda implements it in one line."
+  - "Core interfaces: Predicate (test), Function (apply), Consumer (accept), Supplier (get)."
+  - "Combine with and/or/negate (Predicate) and andThen/compose (Function)."
+  - "Captured local variables must be effectively final."
+  - "Lambdas power forEach, removeIf, Comparator chains and the Stream API."

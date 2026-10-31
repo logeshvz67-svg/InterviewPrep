@@ -1,0 +1,332 @@
+slug: collections-hierarchy
+world: JAVA_CORE
+section: E
+order: 3
+title: "Collections hierarchy"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A top-asked topic for SP and DSE: choosing the right collection is the first step of almost every coding-round solution, and the hierarchy is classic theory."
+otherCompanies: "One of the most common Java questions at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies ('List vs Set vs Map', 'Collection vs Collections')."
+why: |
+  In coding rounds you constantly need to store groups of things: a list of marks, unique visitors, a word-count map, a queue for BFS. Java gives you a ready-made toolbox for this: the **Collections Framework**.
+
+  The toolbox is big, so it's organised as a **family tree of interfaces** (rules) and **classes** (real implementations). If you know the tree, you can:
+  - pick the right structure in seconds ("I need uniqueness → Set"),
+  - answer "**List vs Set vs Map**" and "**Collection vs Collections**" confidently,
+  - write flexible code like `List<String> names = new ArrayList<>();`.
+
+  This lesson is the map; the following lessons zoom into each part.
+analogy: |
+  Think of the **Indian Railways system**.
+
+  - **Collection** is the general idea of "a group of passengers".
+  - **List** is a **reserved train coach**: every seat has a **number** (index), order matters, and two people named "Ravi" can both travel (duplicates allowed).
+  - **Set** is the **list of registered Aadhaar numbers**: **no duplicates** allowed.
+  - **Queue** is the **ticket counter line**: first come, first served.
+  - **Map** is the **PNR system**: each **PNR number (key)** gives you exactly one booking (value). It's so different that it isn't a "group of passengers" at all; it's a lookup table. That's why **Map does not extend Collection**.
+visual:
+  diagram: |2
+                         Iterable<E>
+                              |
+                        Collection<E>
+             +----------------+----------------+
+             |                |                |
+          List<E>           Set<E>          Queue<E>
+          ordered,          unique          waiting line
+          index, dups       elements           |
+             |                |             Deque<E>
+       ArrayList        HashSet          (both ends)
+       LinkedList       LinkedHashSet    ArrayDeque
+       Vector           TreeSet          LinkedList
+         Stack          (SortedSet)      PriorityQueue (Queue)
+
+          Map<K,V>   <-- separate tree, NOT a Collection
+             |
+       HashMap, LinkedHashMap, TreeMap (SortedMap), Hashtable
+  caption: "List, Set and Queue extend Collection, which extends Iterable. Map is a separate hierarchy of key-value pairs. Interfaces are on the lines; real classes are listed under each."
+  visualizer: null
+explanation: |
+  ### Interfaces vs classes
+  - An **interface** (like `List`) is a **set of rules**: "a List must have `get(index)`, `add`, `remove`...". You can't create an object of it directly.
+  - A **class** (like `ArrayList`) is a **real implementation** of those rules.
+
+  Good practice: declare the variable by the **interface**, create the object from a **class**:
+  ```java
+  List<String> names = new ArrayList<>();
+  ```
+  Later you can switch to `new LinkedList<>()` without changing the rest of the code. This is "programming to an interface".
+
+  ### The top: Iterable and Collection
+  - **`Iterable`**: anything you can loop over with a for-each loop. It gives an `iterator()`.
+  - **`Collection`**: the root interface for groups of elements. Common methods: `add`, `remove`, `contains`, `size`, `isEmpty`, `clear`, `iterator`, `stream`.
+
+  ### List: ordered, indexed, duplicates allowed
+  Elements keep their **insertion order**, each has an **index** starting at 0, and duplicates are fine.
+  | Class | Inside | Note |
+  |---|---|---|
+  | `ArrayList` | Resizable array | Default choice; fast `get(i)` |
+  | `LinkedList` | Doubly linked list | Also a Deque |
+  | `Vector` | Synchronized array | Legacy (old) |
+  | `Stack` | Extends Vector | Legacy; use ArrayDeque |
+
+  ### Set: no duplicates
+  Adding an element that is already there does nothing (`add` returns `false`). Uniqueness is decided by `equals()` and `hashCode()` (or by comparison, for TreeSet).
+  | Class | Order | Inside |
+  |---|---|---|
+  | `HashSet` | No guaranteed order | Hash table (a HashMap) |
+  | `LinkedHashSet` | Insertion order | Hash table + linked list |
+  | `TreeSet` | Sorted order | Red-black tree (`SortedSet`/`NavigableSet`) |
+
+  ### Queue and Deque: waiting lines
+  - **`Queue`**: usually **FIFO** (first in, first out). Methods `offer`, `poll`, `peek`.
+  - **`Deque`** ("deck", double-ended queue): add/remove at **both** ends; works as a queue **or** a stack.
+  - Classes: `ArrayDeque` (best general choice), `LinkedList`, `PriorityQueue` (removes the **smallest** first, not FIFO).
+
+  ### Map: key → value (not a Collection!)
+  A **Map** stores **pairs**: a unique **key** and its **value**. Keys are unique; values may repeat. Map does **not** extend Collection because its basic unit is a pair, not a single element, and methods like `add(E)` don't make sense for it. You can still view it as collections: `keySet()`, `values()`, `entrySet()`.
+  | Class | Key order | Note |
+  |---|---|---|
+  | `HashMap` | No guaranteed order | Most used; one null key allowed |
+  | `LinkedHashMap` | Insertion order | Can be used for LRU cache |
+  | `TreeMap` | Sorted by key | `SortedMap`/`NavigableMap` |
+  | `Hashtable` | No order | Legacy, synchronized, no nulls |
+
+  ### Which one should I pick?
+  | I need... | Use |
+  |---|---|
+  | Ordered items, access by position | `ArrayList` |
+  | Only unique items | `HashSet` (`LinkedHashSet` to keep order, `TreeSet` for sorted) |
+  | Look up a value by a key (counts, frequencies) | `HashMap` |
+  | FIFO queue (BFS) or stack | `ArrayDeque` |
+  | Always take the smallest/largest next | `PriorityQueue` |
+
+  ### Collection vs Collections (classic trick question)
+  - **`Collection`** (no s) is the **root interface**.
+  - **`Collections`** (with s) is a **utility class** full of static helper methods: `Collections.sort(list)`, `Collections.reverse(list)`, `Collections.max(list)`, `Collections.unmodifiableList(list)`.
+  Similarly, `Arrays` is a utility class for arrays.
+
+  ### Legacy classes
+  `Vector`, `Stack`, `Hashtable` and `Enumeration` existed before the framework (Java 1.0). They are synchronized (thread-safe but slower). Modern code prefers `ArrayList`, `ArrayDeque`, `HashMap`, and `ConcurrentHashMap` when thread safety is needed.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Toolbox {
+        public static void main(String[] args) {
+            List<String> coach = new ArrayList<>();
+            coach.add("Ravi"); coach.add("Asha"); coach.add("Ravi");
+            System.out.println("List: " + coach + " size=" + coach.size());
+
+            Set<String> unique = new LinkedHashSet<>(coach);
+            System.out.println("Set: " + unique);
+
+            Set<String> sorted = new TreeSet<>(coach);
+            System.out.println("TreeSet: " + sorted);
+
+            Queue<String> line = new ArrayDeque<>(coach);
+            System.out.println("Queue poll: " + line.poll());
+
+            Map<String, Integer> count = new TreeMap<>();
+            for (String name : coach) {
+                count.put(name, count.getOrDefault(name, 0) + 1);
+            }
+            System.out.println("Map: " + count);
+        }
+    }
+  walkthrough: |
+    - The **List** keeps insertion order and the duplicate "Ravi": size is 3.
+    - `new LinkedHashSet<>(coach)` copies the list into a **Set**: the duplicate disappears, insertion order is kept.
+    - `TreeSet` keeps elements **sorted**: "Asha" comes before "Ravi".
+    - `ArrayDeque` used as a **Queue**: `poll()` removes the **first** element added, "Ravi".
+    - The **Map** counts how many times each name appears. `getOrDefault(name, 0)` returns 0 the first time. `TreeMap` prints keys in sorted order.
+
+    Output:
+    ```
+    List: [Ravi, Asha, Ravi] size=3
+    Set: [Ravi, Asha]
+    TreeSet: [Asha, Ravi]
+    Queue poll: Ravi
+    Map: {Asha=1, Ravi=2}
+    ```
+tryIt:
+  instructions: "Type this program. It adds the same numbers to a List, a Set and a Map, so you can see how each one treats duplicates and order."
+  code: |
+    import java.util.*;
+
+    public class SameData {
+        public static void main(String[] args) {
+            int[] data = {5, 3, 5, 1, 3};
+            List<Integer> list = new ArrayList<>();
+            Set<Integer> set = new TreeSet<>();
+            Map<Integer, Integer> freq = new LinkedHashMap<>();
+            for (int x : data) {
+                list.add(x);
+                boolean added = set.add(x);
+                System.out.println("set.add(" + x + ") -> " + added);
+                freq.put(x, freq.getOrDefault(x, 0) + 1);
+            }
+            System.out.println("List: " + list);
+            System.out.println("Set:  " + set);
+            System.out.println("Freq: " + freq);
+        }
+    }
+predict:
+  code: |
+    import java.util.*;
+
+    public class Guess {
+        public static void main(String[] args) {
+            List<String> list = new ArrayList<>(List.of("b", "a", "b", "c"));
+            Set<String> linked = new LinkedHashSet<>(list);
+            Set<String> tree = new TreeSet<>(list);
+            Map<String, Integer> map = new LinkedHashMap<>();
+            map.put("x", 1);
+            map.put("y", 2);
+            map.put("x", 3);
+            System.out.println(list.size() + " " + linked.size());
+            System.out.println(linked + " " + tree);
+            System.out.println(map);
+        }
+    }
+  expectedOutput: |
+    4 3
+    [b, a, c] [a, b, c]
+    {x=3, y=2}
+  explanation: |
+    The list keeps all 4 elements. The LinkedHashSet removes the duplicate "b" and keeps first-insertion order: b, a, c. The TreeSet sorts them: a, b, c. In the map, putting key "x" again **replaces** its value (1 becomes 3) but does **not** move it; LinkedHashMap keeps the original insertion position.
+commonMistakes:
+  - "Saying Map extends Collection. It doesn't; Map is a separate hierarchy of key-value pairs."
+  - "Confusing Collection (root interface) with Collections (utility class with static methods)."
+  - "Expecting HashSet or HashMap to keep insertion order. Use LinkedHashSet / LinkedHashMap for that."
+  - "Writing ArrayList<String> list = new ArrayList<>() everywhere instead of declaring by the interface (List<String>)."
+  - "Thinking PriorityQueue is FIFO. It always removes the smallest (highest-priority) element first."
+  - "Using legacy Vector, Stack or Hashtable in new code without a reason."
+interviewBox:
+  why: "Why interviewers ask this: the hierarchy shows you can choose the right data structure, which is the core skill behind every coding problem."
+  questions:
+    - q: "Explain the Java Collections hierarchy."
+      a: "At the top is Iterable, then Collection. Collection has three main child interfaces: List for ordered, indexed elements with duplicates; Set for unique elements; and Queue for waiting lines, with Deque for both ends. Main classes are ArrayList and LinkedList for List, HashSet, LinkedHashSet and TreeSet for Set, and ArrayDeque and PriorityQueue for queues. Map is a separate hierarchy for key-value pairs, with HashMap, LinkedHashMap and TreeMap."
+    - q: "Why doesn't Map extend Collection?"
+      a: "Because a Map stores key-value pairs, not single elements. Collection methods like add(element) don't fit. Instead, Map gives collection views: keySet(), values() and entrySet()."
+    - q: "What is the difference between Collection and Collections?"
+      a: "Collection is the root interface of the framework. Collections is a utility class with static methods like sort, reverse, max, shuffle and unmodifiableList."
+    - q: "List vs Set vs Map in one line each?"
+      a: "List: ordered, index-based, allows duplicates. Set: no duplicates. Map: unique keys mapped to values."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which of these does NOT extend the Collection interface?"
+    code: null
+    options: ["List", "Set", "Queue", "Map"]
+    answer: 3
+    explanation: "Map is a separate hierarchy because it stores key-value pairs. List, Set and Queue all extend Collection."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              Set<Integer> s = new TreeSet<>();
+              System.out.print(s.add(30) + " ");
+              System.out.print(s.add(10) + " ");
+              System.out.print(s.add(30) + " ");
+              System.out.println(s);
+          }
+      }
+    options: ["true true true [30, 10, 30]", "true true false [10, 30]", "true true false [30, 10]", "true true true [10, 30]"]
+    answer: 1
+    explanation: "Adding 30 again returns false because a Set keeps no duplicates. TreeSet sorts, so it prints [10, 30]. [30, 10] would be insertion order, which is LinkedHashSet behaviour."
+  - id: q3
+    type: MATCH
+    prompt: "Match the need with the best collection"
+    pairs:
+      - left: "Count frequency of each word"
+        right: "HashMap"
+      - left: "Keep only unique values, sorted"
+        right: "TreeSet"
+      - left: "Ordered items with fast access by index"
+        right: "ArrayList"
+      - left: "Queue for BFS"
+        right: "ArrayDeque"
+      - left: "Always take the smallest item next"
+        right: "PriorityQueue"
+    explanation: "Map for key-to-count, TreeSet for unique and sorted, ArrayList for index access, ArrayDeque for FIFO queues, PriorityQueue for 'smallest first'."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Collections.sort(list) is a static method of the Collection interface."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. sort is a static method of the Collections utility class (with an s). Collection without s is the root interface."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the Set class that removes duplicates but keeps insertion order."
+    code: |
+      Set<String> visited = new ____<>();
+      visited.add("Delhi"); visited.add("Pune"); visited.add("Delhi");
+      System.out.println(visited);   // [Delhi, Pune]
+    acceptedAnswers: ["LinkedHashSet", "java.util.LinkedHashSet"]
+    explanation: "LinkedHashSet keeps insertion order. HashSet gives no order guarantee, and TreeSet would sort (here also Delhi, Pune, but by alphabet, not by insertion)."
+  - id: q6
+    type: SPOT_THE_BUG
+    prompt: "Why does this code not compile?"
+    code: |
+      import java.util.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              List<String> names = new List<>();
+              names.add("Asha");
+              System.out.println(names);
+          }
+      }
+    options:
+      - "List needs a size in the constructor"
+      - "List is an interface; you must create a class like new ArrayList<>()"
+      - "add is not a List method"
+      - "names must be declared as ArrayList"
+    answer: 1
+    explanation: "Interfaces can't be instantiated. Declare by the interface but create a real class: List<String> names = new ArrayList<>(). Declaring the variable as List is good practice, so the last option is wrong."
+  - id: q7
+    type: MCQ
+    prompt: "Which statement about List and Set is correct?"
+    code: null
+    options:
+      - "Both allow duplicates"
+      - "List allows duplicates and has indexes; Set does not allow duplicates"
+      - "Set keeps elements sorted always"
+      - "List does not keep insertion order"
+    answer: 1
+    explanation: "List is ordered, indexed and allows duplicates. Set rejects duplicates. Only TreeSet sorts; HashSet has no order and LinkedHashSet keeps insertion order."
+explainBack:
+  prompt: "Explain the Java Collections hierarchy to a friend and how to choose between List, Set, Queue and Map."
+  rubric:
+    - "I said Iterable -> Collection -> List, Set, Queue"
+    - "I said Map is separate (key-value pairs) and explained why"
+    - "I named at least one class for each type"
+    - "I explained how to choose (duplicates? order? lookup by key? FIFO?)"
+    - "I mentioned Collection vs Collections"
+  modelAnswer: |
+    Java's collections are a family tree. At the top is Iterable, so we can loop over things, then Collection. Under it are List, which is ordered with indexes and allows duplicates, like ArrayList; Set, which allows no duplicates, like HashSet, LinkedHashSet or TreeSet; and Queue, a waiting line, like ArrayDeque or PriorityQueue. Map is separate because it stores pairs, a key and a value, like a PNR number and its booking; HashMap is the common one. To choose, I ask: do I need duplicates and positions? List. Uniqueness? Set. Lookup by key? Map. First come first served? Queue. And Collections with an s is just a helper class with sort and reverse.
+flashcards:
+  - front: "Top of the Collections hierarchy"
+    back: "Iterable -> Collection -> List / Set / Queue (Deque under Queue). Map is separate."
+  - front: "List vs Set vs Map"
+    back: "List: ordered, indexed, duplicates OK. Set: unique. Map: unique keys -> values."
+  - front: "HashSet vs LinkedHashSet vs TreeSet order"
+    back: "No guaranteed order / insertion order / sorted order."
+  - front: "Collection vs Collections"
+    back: "Collection = root interface. Collections = utility class with static methods (sort, reverse, max...)."
+  - front: "Why declare 'List<String> x = new ArrayList<>()'?"
+    back: "Programming to an interface: you can switch implementation later without changing other code."
+keyTakeaways:
+  - "Iterable -> Collection -> List, Set, Queue; Deque extends Queue."
+  - "Map is a separate hierarchy of key-value pairs, not a Collection."
+  - "List = order + index + duplicates; Set = unique; Queue = waiting line; Map = lookup by key."
+  - "Hash* = no order, LinkedHash* = insertion order, Tree* = sorted."
+  - "Collection is an interface; Collections is a utility class."
+  - "Declare by interface, create by class: List<String> x = new ArrayList<>()."

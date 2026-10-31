@@ -1,0 +1,359 @@
+slug: solid
+world: JAVA_CORE
+section: I
+order: 6
+title: "SOLID in simple language"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common design question: naming and explaining the five SOLID principles with a small Java example is good prep for SP and DSE technical rounds."
+otherCompanies: "A common question in service and product companies, often as \"What is SOLID?\" or \"Explain any two principles with code\"."
+why: |
+  Code is written once but **changed many times**. **SOLID** is a set of five rules that make code easy to change without breaking other parts.
+
+  - It is a very common interview question: "What does SOLID stand for? Explain with an example."
+  - It explains *why* Spring Boot code looks the way it does: small services, interfaces everywhere, objects passed in through constructors (dependency injection).
+  - It gives you words to talk about your project design: "I kept this class single-responsibility", "I depended on an interface".
+
+  You don't need to memorise definitions word by word. You need **one simple sentence and one example for each letter**.
+analogy: |
+  Think of a well-run **wedding function**.
+
+  - **S**: the cook cooks, the decorator decorates, the photographer takes photos. If the cook also does photos, a change in the menu can spoil the album. One job each.
+  - **O**: to add a new sweet counter you **add** a new stall; you don't break down the existing kitchen.
+  - **L**: if you booked "a photographer", any photographer sent must actually take photos. One who only draws sketches breaks the promise.
+  - **I**: the guest list for the caterer doesn't need the priest's ritual timings. Give each person only the information they need.
+  - **D**: the hall has standard **plug points**. Any decorator's lights fit. The hall depends on the *standard*, not on one particular decorator's plug.
+visual:
+  diagram: |
+    Letter  Rule (one line)                    Smell when broken
+    ------  ---------------------------------  ----------------------
+      S     One class = one reason to change   God class: 2000 lines
+      O     Add new code, don't edit old code  Long if/else on type
+      L     Child must work wherever parent    Child throws "not
+            works                              supported"
+      I     Small, focused interfaces          Empty/dummy methods
+      D     Depend on interfaces, not on       new MySqlRepo() inside
+            concrete classes                   business code
+
+    DIP picture:
+      OrderService ---> <<interface>> Notifier
+                              ^            ^
+                              |            |
+                       EmailNotifier   SmsNotifier
+  caption: "Each SOLID letter is one rule, and each has a clear warning sign. DIP: the service depends on an interface; concrete classes plug in."
+  visualizer: null
+explanation: |
+  ### S: Single Responsibility Principle (SRP)
+  **A class should have only one reason to change.** In simple words: one class, one job.
+
+  Bad: an `Invoice` class that calculates the total, prints the PDF **and** saves to the database. A change in the PDF design and a change in the database both touch the same class.
+
+  Good: split it.
+  ```java
+  class InvoiceCalculator { double total(Invoice i) { ... } }
+  class InvoicePrinter    { void print(Invoice i) { ... } }
+  class InvoiceRepository { void save(Invoice i) { ... } }
+  ```
+
+  ### O: Open/Closed Principle (OCP)
+  **Open for extension, closed for modification.** You should be able to add new behaviour by **adding new code**, not by editing working code.
+
+  Bad: a `switch` on type that you must edit every time a new type arrives.
+  ```java
+  double discount(String type, double amt) {
+      if (type.equals("FESTIVAL")) return amt * 0.2;
+      else if (type.equals("STUDENT")) return amt * 0.1;
+      // every new offer = edit this method again
+      return 0;
+  }
+  ```
+  Good: an interface, one class per offer. A new offer is a **new class**; old code is untouched.
+  ```java
+  interface Discount { double apply(double amt); }
+  class FestivalDiscount implements Discount { public double apply(double a) { return a * 0.2; } }
+  class StudentDiscount  implements Discount { public double apply(double a) { return a * 0.1; } }
+  ```
+  This uses **polymorphism**: the same method call behaves differently depending on the object.
+
+  ### L: Liskov Substitution Principle (LSP)
+  **A child class must be usable anywhere its parent is expected, without surprises.** If code works with a `Bird`, it must work with every subclass of `Bird`.
+
+  Classic example: `Square extends Rectangle`. A rectangle lets you set width and height separately. A square must change both together. Code that sets width 5 and height 4 expects area 20, but gets 16 for a Square. The child broke the parent's promise.
+
+  Warning signs: a subclass method that throws `UnsupportedOperationException`, or does nothing, or needs `instanceof` checks in callers.
+  Fix: rethink the hierarchy (for example, a common `Shape` interface with `area()`, and `Rectangle` and `Square` as separate classes).
+
+  ### I: Interface Segregation Principle (ISP)
+  **Don't force a class to implement methods it doesn't need.** Prefer several small interfaces over one fat interface.
+
+  Bad: `interface Worker { void work(); void eat(); }`. A `Robot` worker has to implement `eat()` with nothing sensible.
+  Good: `interface Workable { void work(); }` and `interface Eatable { void eat(); }`. A `Human` implements both; a `Robot` implements only `Workable`.
+
+  ### D: Dependency Inversion Principle (DIP)
+  **High-level code should depend on abstractions (interfaces), not on concrete classes.**
+  - **High-level** = business logic (placing an order).
+  - **Low-level** = details (sending an email, talking to MySQL).
+
+  Bad:
+  ```java
+  class OrderService {
+      private EmailSender sender = new EmailSender(); // stuck with email forever
+  }
+  ```
+  Good:
+  ```java
+  class OrderService {
+      private final Notifier notifier;               // interface
+      OrderService(Notifier notifier) { this.notifier = notifier; }
+  }
+  ```
+  Now you can pass `EmailNotifier`, `SmsNotifier`, or a fake one in tests. Passing dependencies in from outside is called **dependency injection**, and this is exactly what Spring does with constructor injection.
+
+  ### Summary table
+  | Letter | Name | One line |
+  |---|---|---|
+  | S | Single Responsibility | One class, one job |
+  | O | Open/Closed | Add new classes instead of editing old ones |
+  | L | Liskov Substitution | Children keep the parent's promises |
+  | I | Interface Segregation | Many small interfaces beat one fat one |
+  | D | Dependency Inversion | Depend on interfaces; inject the details |
+
+  ### A word of balance
+  SOLID is guidance, not law. Splitting a 20-line program into ten interfaces makes it *harder* to read. Apply these rules when code is growing and changing.
+tinyCode:
+  code: |
+    import java.util.List;
+
+    public class SolidDemo {
+        // D + O: business code depends on this interface
+        interface Notifier { void send(String msg); }
+
+        static class EmailNotifier implements Notifier {
+            public void send(String msg) { System.out.println("Email: " + msg); }
+        }
+        static class SmsNotifier implements Notifier {
+            public void send(String msg) { System.out.println("SMS: " + msg); }
+        }
+
+        // S: this class only places orders; sending is someone else's job
+        static class OrderService {
+            private final List<Notifier> notifiers;
+            OrderService(List<Notifier> notifiers) { this.notifiers = notifiers; }
+
+            void placeOrder(String item) {
+                System.out.println("Order placed: " + item);
+                for (Notifier n : notifiers) n.send(item + " confirmed");
+            }
+        }
+
+        public static void main(String[] args) {
+            OrderService service = new OrderService(
+                List.of(new EmailNotifier(), new SmsNotifier()));
+            service.placeOrder("Headphones");
+        }
+    }
+  walkthrough: |
+    - `Notifier` is an **interface**: a promise that anything implementing it has `send(String)`.
+    - `EmailNotifier` and `SmsNotifier` are two **details**. Adding WhatsApp later means **adding** a `WhatsAppNotifier` class; `OrderService` does not change (**O**pen/closed).
+    - `OrderService` only knows about `Notifier`, never `new EmailNotifier()` inside it (**D**ependency inversion). The notifiers are **injected** through the constructor, just like Spring constructor injection.
+    - `OrderService` has one job: placing orders (**S**ingle responsibility).
+    - Both notifiers can stand in for `Notifier` without surprises (**L**iskov).
+
+    Output:
+    ```
+    Order placed: Headphones
+    Email: Headphones confirmed
+    SMS: Headphones confirmed
+    ```
+tryIt:
+  instructions: "Type this Open/Closed example. Then add a new class `SeniorDiscount` (15 percent) and add it to the list WITHOUT changing the checkout loop."
+  code: |
+    import java.util.List;
+
+    public class Offers {
+        interface Discount { double apply(double amount); }
+
+        static class FestivalDiscount implements Discount {
+            public double apply(double amount) { return amount * 0.20; }
+        }
+        static class StudentDiscount implements Discount {
+            public double apply(double amount) { return amount * 0.10; }
+        }
+
+        public static void main(String[] args) {
+            double bill = 1000;
+            List<Discount> offers = List.of(new FestivalDiscount(), new StudentDiscount());
+            for (Discount d : offers) {
+                String name = d.getClass().getSimpleName();
+                System.out.println(name + " saves " + d.apply(bill));
+            }
+        }
+    }
+predict:
+  code: |
+    public class Liskov {
+        static class Rect {
+            int w, h;
+            void setW(int w) { this.w = w; }
+            void setH(int h) { this.h = h; }
+            int area() { return w * h; }
+        }
+        static class Square extends Rect {
+            void setW(int w) { this.w = w; this.h = w; }
+            void setH(int h) { this.w = h; this.h = h; }
+        }
+        static int test(Rect r) {
+            r.setW(5);
+            r.setH(4);
+            return r.area();
+        }
+
+        public static void main(String[] args) {
+            System.out.println(test(new Rect()) + " " + test(new Square()));
+        }
+    }
+  expectedOutput: |
+    20 16
+  explanation: |
+    For a `Rect`, width 5 and height 4 give 20. For a `Square`, `setH(4)` also changes the width to 4, so the area is 16. The method `test` was written for rectangles and expected 20; the `Square` child broke that expectation. This is a **Liskov Substitution** violation.
+commonMistakes:
+  - "Mixing up D (Dependency Inversion) with dependency injection. DIP is the rule (depend on interfaces); DI is one technique to follow it."
+  - "Thinking SRP means 'one method per class'. It means one reason to change, one job."
+  - "Writing a subclass that throws UnsupportedOperationException for a parent method. That breaks Liskov."
+  - "Making one huge interface 'to keep things together'. Fat interfaces force dummy implementations (breaks ISP)."
+  - "Over-applying SOLID to tiny programs, creating many interfaces with only one implementation and no reason to change."
+interviewBox:
+  why: "Why interviewers ask this: SOLID shows whether you can write code that a team can maintain. A short example for each letter proves real understanding."
+  questions:
+    - q: "What is SOLID?"
+      a: "SOLID is five design principles for maintainable code. S is Single Responsibility: one class, one job. O is Open/Closed: add new code instead of changing old code. L is Liskov Substitution: a child class must work wherever the parent works. I is Interface Segregation: small specific interfaces instead of one fat one. D is Dependency Inversion: depend on interfaces, not concrete classes."
+    - q: "Explain the Open/Closed principle with an example."
+      a: "Suppose discounts are calculated with a long if-else on the discount type. Every new offer means editing that method, which can break old offers. Instead I create a Discount interface and one class per offer. A new offer is just a new class, and the checkout code that loops over Discount objects never changes."
+    - q: "Give an example of a Liskov violation."
+      a: "Square extending Rectangle. Code that sets width 5 and height 4 expects area 20, but a Square forces both sides equal and gives 16. So a Square cannot safely replace a Rectangle. Another sign is a subclass that throws UnsupportedOperationException for a parent method."
+    - q: "How does Spring help with the Dependency Inversion principle?"
+      a: "In Spring, my service declares an interface type in its constructor, like a PaymentGateway, and Spring injects the actual implementation bean. My service never calls new on the concrete class, so I can swap the implementation or use a mock in tests without changing the service."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "A UserService class validates input, saves users to MySQL, AND sends welcome emails. Which principle does it break most clearly?"
+    code: null
+    options: ["Single Responsibility", "Liskov Substitution", "Interface Segregation", "Open/Closed"]
+    answer: 0
+    explanation: "It has three jobs, so three different reasons to change (validation rules, database, email template). That is a Single Responsibility violation. Open/Closed is about extending without editing; it may also suffer, but the clearest problem is too many jobs."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "Dependency Inversion says high-level business classes should create their low-level helpers with new inside them."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. That is exactly what DIP warns against. Business classes should depend on interfaces and receive the concrete objects from outside, for example through the constructor (dependency injection)."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      import java.util.List;
+
+      public class Ocp {
+          interface Discount { int apply(int amt); }
+
+          public static void main(String[] args) {
+              List<Discount> list = List.of(
+                  a -> a / 10,
+                  a -> a / 4,
+                  a -> 50
+              );
+              int total = 0;
+              for (Discount d : list) total += d.apply(400);
+              System.out.println(total);
+          }
+      }
+    options: ["150", "190", "100", "50"]
+    answer: 1
+    explanation: "Each Discount is a lambda implementing the interface: 400/10 = 40, 400/4 = 100, and the flat one gives 50. 40 + 100 + 50 = 190. The loop never changes when you add a new discount; that is the Open/Closed idea. 150 forgets the first discount."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This program crashes. Which SOLID principle is broken, causing the problem?"
+    code: |
+      import java.util.List;
+
+      public class Staff {
+          interface Worker { void work(); void eat(); }
+
+          static class Human implements Worker {
+              public void work() { System.out.println("Human works"); }
+              public void eat() { System.out.println("Human eats"); }
+          }
+          static class Robot implements Worker {
+              public void work() { System.out.println("Robot works"); }
+              public void eat() { throw new UnsupportedOperationException("Robots don't eat"); }
+          }
+
+          public static void main(String[] args) {
+              for (Worker w : List.of(new Human(), new Robot())) {
+                  w.work();
+                  w.eat();
+              }
+          }
+      }
+    options:
+      - "Single Responsibility: Human does two things"
+      - "Interface Segregation: Worker is a fat interface forcing Robot to implement eat()"
+      - "Open/Closed: the for-loop should be a while-loop"
+      - "Nothing is wrong; robots should not be in a list"
+    answer: 1
+    explanation: "Worker mixes two unrelated abilities. Robot is forced to implement eat() and can only throw, so the program prints Human works, Human eats, Robot works and then throws UnsupportedOperationException. Fix: split into Workable and Eatable. (It also breaks Liskov, since Robot cannot fully stand in for a Worker.) Human doing two actions is not an SRP problem; both belong to being a human worker."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Dependency Inversion: fill the TYPE of the field so OrderService depends on an abstraction, not on EmailNotifier."
+    code: |
+      class OrderService {
+          private final ____ notifier;
+          OrderService(Notifier notifier) { this.notifier = notifier; }
+      }
+    acceptedAnswers: ["Notifier"]
+    explanation: "The field should be the interface type Notifier. Any implementation (email, SMS, a test fake) can then be injected through the constructor."
+  - id: q6
+    type: MATCH
+    prompt: "Match each principle to its warning sign"
+    pairs:
+      - left: "Single Responsibility"
+        right: "A 2000-line class that does everything"
+      - left: "Open/Closed"
+        right: "Editing a long if-else every time a new type arrives"
+      - left: "Liskov Substitution"
+        right: "A child class throws UnsupportedOperationException"
+      - left: "Interface Segregation"
+        right: "Classes forced to write empty dummy methods"
+      - left: "Dependency Inversion"
+        right: "new MySqlRepository() hard-coded in business logic"
+    explanation: "Each smell points to one letter: too many jobs (S), editing instead of extending (O), broken promises in children (L), fat interfaces (I), hard-wired concrete classes (D)."
+explainBack:
+  prompt: "Explain SOLID to a friend: one simple sentence and one tiny example for each letter."
+  rubric:
+    - "I gave a correct one-line meaning for all five letters"
+    - "I gave an example for Open/Closed (new class instead of editing if-else)"
+    - "I gave the Square/Rectangle or 'throws not supported' example for Liskov"
+    - "I linked Dependency Inversion to interfaces and constructor injection in Spring"
+    - "I said SOLID is guidance, not something to overuse in tiny programs"
+  modelAnswer: |
+    SOLID is five rules for code that's easy to change. S, single responsibility: one class, one job, like a cook who only cooks. O, open/closed: add new behaviour by adding classes, like a new Discount class, instead of editing a big if-else. L, Liskov: a child must work wherever the parent works; a Square that breaks Rectangle's area is the classic violation. I, interface segregation: small interfaces, so a Robot isn't forced to implement eat. D, dependency inversion: business code depends on interfaces, and the real objects are injected from outside, which is what Spring does with constructor injection. I use these when code grows, not to overcomplicate tiny programs.
+flashcards:
+  - front: "S in SOLID"
+    back: "Single Responsibility: one class, one reason to change."
+  - front: "O in SOLID"
+    back: "Open/Closed: open for extension (new classes), closed for modification (don't edit working code)."
+  - front: "L in SOLID"
+    back: "Liskov Substitution: a subclass must be usable anywhere the parent is, without surprises (Square/Rectangle)."
+  - front: "I in SOLID"
+    back: "Interface Segregation: many small interfaces instead of one fat one."
+  - front: "D in SOLID"
+    back: "Dependency Inversion: depend on abstractions; inject concrete classes (Spring constructor injection)."
+keyTakeaways:
+  - "SOLID = five rules for code that is easy to change."
+  - "S: one job per class. O: extend with new classes, don't edit old ones."
+  - "L: children must keep the parent's promises. I: keep interfaces small."
+  - "D: depend on interfaces and inject the details; Spring does this for you."
+  - "Use SOLID when code grows; don't over-engineer tiny programs."

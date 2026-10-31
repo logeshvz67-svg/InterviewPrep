@@ -64,3 +64,23 @@ app:
     secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me}
     access-token-minutes: ${JWT_ACCESS_MINUTES:15}
     refresh-token-days: ${JWT_REFRESH_DAYS:14}
+
+# AI mentor (Phase 3). Optional: the app works fully with AI_ENABLED=false.
+ai:
+  enabled: ${AI_ENABLED:false}
+  api-key: ${OPENROUTER_API_KEY:}
+  model: ${OPENROUTER_MODEL:}                       # exact current Nemotron ":free" id from openrouter.ai/models
+  fallback-models: ${OPENROUTER_FALLBACK_MODELS:}   # comma-separated, tried in order on failure/429
+  daily-limit-per-user: ${AI_DAILY_LIMIT_PER_USER:30}
+  max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:1500}   # generous: reasoning models "think" before answering
+  timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
+  history-messages: ${AI_HISTORY_MESSAGES:6}        # only the last N chat messages are sent
+  global-per-minute: ${AI_GLOBAL_PER_MINUTE:8}      # soft throttle across all users
+  base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+  app-url: ${APP_PUBLIC_URL:https://github.com/logeshvz67-svg/InterviewPrep}
+
+# Optional code runner (Judge0 CE). Off unless JUDGE0_URL is set.
+code-runner:
+  url: ${JUDGE0_URL:}
+  api-key: ${JUDGE0_API_KEY:}
+  api-host: ${JUDGE0_API_HOST:}

@@ -1,0 +1,773 @@
+# Aptitude and reasoning PRACTICE questions (Infosys-style basics level).
+# These are original practice items, not questions from any real test.
+questions:
+- id: apt-001
+  section: QUANT
+  topic: Percentages
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: What is 20% of 450?
+  options: ['90', '110', '80', '100']
+  answer: 0
+  explanation: 20% means 20/100. So 20/100 x 450 = 0.2 x 450 = 90.
+- id: apt-002
+  section: QUANT
+  topic: Percentages
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: A number increased by 25% becomes 150. What is the number?
+  options: ['130', '120', '112.5', '125']
+  answer: 1
+  explanation: 'Increase by 25% means the new value is 125% of the number. So 1.25 x N = 150. N = 150 / 1.25 = 120. Check:
+    25% of 120 is 30, and 120 + 30 = 150.'
+- id: apt-003
+  section: QUANT
+  topic: Percentages
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: The price of a phone is increased by 20% and then decreased by 20%. What is the net change in price?
+  options: [4% increase, 2% decrease, 4% decrease, No change]
+  answer: 2
+  explanation: 'Take the price as 100. After a 20% increase it becomes 120. A 20% decrease on 120 is 24, so the price becomes
+    96. From 100 to 96 is a 4% decrease. Shortcut: x + y + xy/100 = 20 - 20 - 400/100 = -4.'
+- id: apt-004
+  section: QUANT
+  topic: Percentages
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: In an exam, a student must get 40% marks to pass. He got 180 marks and failed by 20 marks. What are the maximum
+    marks?
+  options: ['550', '400', '450', '500']
+  answer: 3
+  explanation: Pass marks = 180 + 20 = 200. 200 is 40% of the maximum. So maximum = 200 / 0.4 = 500.
+- id: apt-005
+  section: QUANT
+  topic: Profit and Loss
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: An article is bought for Rs. 400 and sold for Rs. 500. What is the profit percentage?
+  options: [25%, 30%, 20%, 100%]
+  answer: 0
+  explanation: Profit = 500 - 400 = 100. Profit% = profit / cost price x 100 = 100 / 400 x 100 = 25%. Always divide by cost
+    price, not selling price.
+- id: apt-006
+  section: QUANT
+  topic: Profit and Loss
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: A watch is sold for Rs. 720 at a loss of 10%. What is its cost price?
+  options: [Rs. 780, Rs. 800, Rs. 792, Rs. 648]
+  answer: 1
+  explanation: 'Loss of 10% means SP = 90% of CP. So 0.9 x CP = 720. CP = 720 / 0.9 = 800. Check: 10% of 800 = 80, and 800
+    - 80 = 720.'
+- id: apt-007
+  section: QUANT
+  topic: Profit and Loss
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: A shirt has a marked price of Rs. 1,000 and is sold at a 15% discount. If the cost price is Rs. 680, what is the
+    profit percentage?
+  options: [15%, 30%, 25%, 20%]
+  answer: 2
+  explanation: Discount = 15% of 1000 = 150, so selling price = 850. Profit = 850 - 680 = 170. Profit% = 170 / 680 x 100 =
+    25%.
+- id: apt-008
+  section: QUANT
+  topic: Profit and Loss
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: A shopkeeper buys 10 pens for Rs. 80 and sells 8 pens for Rs. 80. What is his profit percentage?
+  options: [10%, 15%, 20%, 25%]
+  answer: 3
+  explanation: Cost of 1 pen = 80 / 10 = Rs. 8. Selling price of 1 pen = 80 / 8 = Rs. 10. Profit per pen = 2. Profit% = 2
+    / 8 x 100 = 25%.
+- id: apt-009
+  section: QUANT
+  topic: Ratio and Proportion
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Rs. 1,200 is divided between A and B in the ratio 3 : 5. What is B''s share?'
+  options: [Rs. 750, Rs. 800, Rs. 700, Rs. 450]
+  answer: 0
+  explanation: Total parts = 3 + 5 = 8. One part = 1200 / 8 = 150. B gets 5 parts = 5 x 150 = 750.
+- id: apt-010
+  section: QUANT
+  topic: Ratio and Proportion
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: 'If A : B = 2 : 3 and B : C = 4 : 5, what is A : B : C?'
+  options: ['6 : 9 : 10', '8 : 12 : 15', '4 : 6 : 5', '2 : 3 : 5']
+  answer: 1
+  explanation: 'Make B the same in both ratios. B is 3 in the first and 4 in the second; LCM of 3 and 4 is 12. A : B = 2 :
+    3 = 8 : 12. B : C = 4 : 5 = 12 : 15. So A : B : C = 8 : 12 : 15.'
+- id: apt-011
+  section: QUANT
+  topic: Ratio and Proportion
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: 'The ages of Anu and Bala are in the ratio 4 : 5. The sum of their ages is 54. What will be the ratio of their
+    ages after 6 years?'
+  options: ['4 : 5', '7 : 8', '5 : 6', '6 : 7']
+  answer: 2
+  explanation: 'Total parts = 9. One part = 54 / 9 = 6. Anu = 4 x 6 = 24, Bala = 5 x 6 = 30. After 6 years: 30 and 36. 30
+    : 36 = 5 : 6.'
+- id: apt-012
+  section: QUANT
+  topic: Averages
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: The average of 5 numbers is 20. If one number is removed, the average of the remaining 4 numbers is 18. What number
+    was removed?
+  options: ['20', '24', '30', '28']
+  answer: 3
+  explanation: Sum of 5 numbers = 5 x 20 = 100. Sum of 4 numbers = 4 x 18 = 72. Removed number = 100 - 72 = 28.
+- id: apt-013
+  section: QUANT
+  topic: Averages
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: The average age of 30 students in a class is 15 years. When the teacher's age is included, the average becomes
+    16 years. What is the teacher's age?
+  options: [46 years, 45 years, 48 years, 31 years]
+  answer: 0
+  explanation: Total age of 30 students = 30 x 15 = 450. With the teacher there are 31 people, total = 31 x 16 = 496. Teacher's
+    age = 496 - 450 = 46 years.
+- id: apt-014
+  section: QUANT
+  topic: Averages
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: A batsman scored 40, 60, 55 and 45 runs in four matches. How many runs must he score in the fifth match to make
+    his average 52?
+  options: ['55', '60', '58', '52']
+  answer: 1
+  explanation: Needed total for 5 matches = 5 x 52 = 260. Current total = 40 + 60 + 55 + 45 = 200. Runs needed = 260 - 200
+    = 60.
+- id: apt-015
+  section: QUANT
+  topic: Time and Work
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: A can finish a work in 10 days and B can finish it in 15 days. In how many days can they finish it working together?
+  options: [5 days, 12.5 days, 6 days, 8 days]
+  answer: 2
+  explanation: In one day A does 1/10 and B does 1/15. Together = 1/10 + 1/15 = 3/30 + 2/30 = 5/30 = 1/6. So together they
+    need 6 days.
+- id: apt-016
+  section: QUANT
+  topic: Time and Work
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: A and B together can do a job in 12 days. A alone can do it in 20 days. How long will B alone take?
+  options: [32 days, 36 days, 24 days, 30 days]
+  answer: 3
+  explanation: Together per day = 1/12. A per day = 1/20. B per day = 1/12 - 1/20 = 5/60 - 3/60 = 2/60 = 1/30. So B alone
+    takes 30 days.
+- id: apt-017
+  section: QUANT
+  topic: Time and Work
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: 12 men can build a wall in 10 days. How many days will 20 men take to build the same wall?
+  options: [6 days, 5 days, 8 days, 16 days]
+  answer: 0
+  explanation: 'Total work = men x days = 12 x 10 = 120 man-days. With 20 men: 120 / 20 = 6 days. More men means fewer days.'
+- id: apt-018
+  section: QUANT
+  topic: Time and Work
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Pipe A can fill a tank in 6 hours. Pipe B can empty the full tank in 9 hours. If both are opened together on an
+    empty tank, how long will it take to fill?
+  options: [15 hours, 18 hours, 12 hours, 3.6 hours]
+  answer: 1
+  explanation: In one hour A fills 1/6 and B empties 1/9. Net filling per hour = 1/6 - 1/9 = 3/18 - 2/18 = 1/18. So the tank
+    fills in 18 hours.
+- id: apt-019
+  section: QUANT
+  topic: Time Speed Distance
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Convert 72 km/h into metres per second.
+  options: [25 m/s, 36 m/s, 20 m/s, 18 m/s]
+  answer: 2
+  explanation: To convert km/h to m/s, multiply by 5/18 (because 1 km = 1000 m and 1 hour = 3600 s). 72 x 5/18 = 4 x 5 = 20
+    m/s.
+- id: apt-020
+  section: QUANT
+  topic: Time Speed Distance
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: A train 150 m long runs at 54 km/h. How long does it take to cross a pole?
+  options: [15 seconds, 8 seconds, 12 seconds, 10 seconds]
+  answer: 3
+  explanation: Speed = 54 x 5/18 = 15 m/s. To cross a pole, the train covers only its own length, 150 m. Time = 150 / 15 =
+    10 seconds.
+- id: apt-021
+  section: QUANT
+  topic: Time Speed Distance
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: A train 200 m long running at 72 km/h crosses a platform 300 m long. How much time does it take?
+  options: [25 seconds, 20 seconds, 15 seconds, 30 seconds]
+  answer: 0
+  explanation: Speed = 72 x 5/18 = 20 m/s. To cross a platform, the train covers its length + platform length = 200 + 300
+    = 500 m. Time = 500 / 20 = 25 seconds.
+- id: apt-022
+  section: QUANT
+  topic: Time Speed Distance
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: A man goes from home to office at 60 km/h and returns by the same road at 40 km/h. What is his average speed for
+    the whole trip?
+  options: [45 km/h, 48 km/h, 50 km/h, 52 km/h]
+  answer: 1
+  explanation: For the same distance both ways, average speed = 2xy / (x + y) = 2 x 60 x 40 / (60 + 40) = 4800 / 100 = 48
+    km/h. It is not the simple average 50, because he spends more time at the slower speed.
+- id: apt-023
+  section: QUANT
+  topic: Time Speed Distance
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: A boat goes 15 km/h downstream and 9 km/h upstream. What is the speed of the stream?
+  options: [4 km/h, 2 km/h, 3 km/h, 6 km/h]
+  answer: 2
+  explanation: Downstream = boat + stream, upstream = boat - stream. Speed of stream = (downstream - upstream) / 2 = (15 -
+    9) / 2 = 3 km/h. (Boat speed = (15 + 9) / 2 = 12 km/h.)
+- id: apt-024
+  section: QUANT
+  topic: Simple Interest
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: What is the simple interest on Rs. 5,000 at 8% per year for 3 years?
+  options: ['Rs. 1,000', 'Rs. 1,500', 'Rs. 1,250', 'Rs. 1,200']
+  answer: 3
+  explanation: Simple interest = P x R x T / 100 = 5000 x 8 x 3 / 100 = 120000 / 100 = 1,200.
+- id: apt-025
+  section: QUANT
+  topic: Compound Interest
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: What is the compound interest on Rs. 10,000 at 10% per year for 2 years, compounded yearly?
+  options: ['Rs. 2,100', 'Rs. 2,000', 'Rs. 2,010', 'Rs. 2,200']
+  answer: 0
+  explanation: Amount = P(1 + R/100)^T = 10000 x 1.1 x 1.1 = 12,100. CI = amount - principal = 12,100 - 10,000 = 2,100. Year
+    1 interest is 1,000; year 2 interest is 10% of 11,000 = 1,100.
+- id: apt-026
+  section: QUANT
+  topic: Compound Interest
+  difficulty: HARD
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: What is the difference between compound interest and simple interest on Rs. 8,000 at 5% per year for 2 years?
+  options: [Rs. 10, Rs. 20, Rs. 40, Rs. 80]
+  answer: 1
+  explanation: 'For 2 years, CI - SI = P x (R/100)^2 = 8000 x (5/100)^2 = 8000 x 1/400 = 20. Check: SI = 800. CI = 8000 x
+    1.05^2 - 8000 = 8820 - 8000 = 820. Difference = 20.'
+- id: apt-027
+  section: QUANT
+  topic: Simple Interest
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: A sum of money doubles itself in 8 years at simple interest. What is the rate of interest per year?
+  options: [10%, 15%, 12.5%, 12%]
+  answer: 2
+  explanation: If the sum doubles, interest = principal. Take P = 100, so SI = 100 in 8 years. R = SI x 100 / (P x T) = 100
+    x 100 / (100 x 8) = 12.5%.
+- id: apt-028
+  section: QUANT
+  topic: Number System
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: What is the unit digit of 7^23?
+  options: ['7', '9', '1', '3']
+  answer: 3
+  explanation: 'Unit digits of powers of 7 repeat in a cycle of 4: 7, 9, 3, 1. Divide 23 by 4: remainder 3. The 3rd value
+    in the cycle is 3. So the unit digit is 3.'
+- id: apt-029
+  section: QUANT
+  topic: Number System
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: The product of two numbers is 2,400 and their HCF is 20. What is their LCM?
+  options: ['120', '240', '100', '480']
+  answer: 0
+  explanation: 'For two numbers, HCF x LCM = product of the numbers. So LCM = 2400 / 20 = 120. Example pair: 40 and 60 (HCF
+    20, LCM 120, product 2400).'
+- id: apt-030
+  section: QUANT
+  topic: Number System
+  difficulty: HARD
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: How many zeros are there at the end of 50! (50 factorial)?
+  options: ['15', '12', '11', '10']
+  answer: 1
+  explanation: Each trailing zero needs a 10 = 2 x 5. There are more 2s than 5s, so count the 5s. 50 / 5 = 10, and 50 / 25
+    = 2 (numbers like 25 and 50 give an extra 5). Total = 10 + 2 = 12.
+- id: apt-031
+  section: QUANT
+  topic: Permutations and Combinations
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: In how many different ways can the letters of the word APPLE be arranged?
+  options: ['120', '24', '60', '30']
+  answer: 2
+  explanation: APPLE has 5 letters, and P appears 2 times. Arrangements = 5! / 2! = 120 / 2 = 60. We divide by 2! because
+    swapping the two Ps gives the same word.
+- id: apt-032
+  section: QUANT
+  topic: Permutations and Combinations
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: In how many ways can a team of 3 be chosen from 7 people?
+  options: ['21', '210', '42', '35']
+  answer: 3
+  explanation: Order does not matter in a team, so use combinations. 7C3 = 7! / (3! x 4!) = (7 x 6 x 5) / (3 x 2 x 1) = 210
+    / 6 = 35.
+- id: apt-033
+  section: QUANT
+  topic: Probability
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Two fair dice are thrown. What is the probability that the sum is 7?
+  options: [1/6, 7/36, 1/12, 5/36]
+  answer: 0
+  explanation: 'Total outcomes = 6 x 6 = 36. Pairs with sum 7: (1,6), (2,5), (3,4), (4,3), (5,2), (6,1) = 6 pairs. Probability
+    = 6/36 = 1/6.'
+- id: apt-034
+  section: QUANT
+  topic: Probability
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: One card is drawn from a pack of 52 cards. What is the probability that it is a king or a heart?
+  options: [1/13, 4/13, 1/4, 17/52]
+  answer: 1
+  explanation: Hearts = 13. Kings = 4. But the king of hearts is counted twice, so subtract 1. Favourable = 13 + 4 - 1 = 16.
+    Probability = 16/52 = 4/13.
+- id: apt-035
+  section: QUANT
+  topic: Probability
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: A bag has 4 red and 6 blue balls. Two balls are drawn at random without replacement. What is the probability that
+    both are red?
+  options: [6/25, 1/5, 2/15, 4/25]
+  answer: 2
+  explanation: 'Ways to pick 2 red from 4 = 4C2 = 6. Ways to pick any 2 from 10 = 10C2 = 45. Probability = 6/45 = 2/15. Another
+    way: 4/10 x 3/9 = 12/90 = 2/15.'
+- id: apt-036
+  section: LOGICAL
+  topic: Number Series
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Find the next number: 2, 6, 12, 20, 30, ?'
+  options: ['36', '44', '40', '42']
+  answer: 3
+  explanation: 'The differences are 4, 6, 8, 10, so the next difference is 12. 30 + 12 = 42. Also each term is n x (n+1):
+    1x2, 2x3, 3x4, 4x5, 5x6, 6x7 = 42.'
+- id: apt-037
+  section: LOGICAL
+  topic: Number Series
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: 'Find the next number: 3, 5, 9, 17, 33, ?'
+  options: ['65', '66', '49', '57']
+  answer: 0
+  explanation: Each term = previous x 2 - 1. 3x2-1 = 5, 5x2-1 = 9, 9x2-1 = 17, 17x2-1 = 33, 33x2-1 = 65. (The differences
+    2, 4, 8, 16, 32 also double.)
+- id: apt-038
+  section: LOGICAL
+  topic: Letter Series
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Find the next letter: A, C, F, J, O, ?'
+  options: [V, U, T, S]
+  answer: 1
+  explanation: 'Use letter positions: A=1, C=3, F=6, J=10, O=15. The gaps are +2, +3, +4, +5, so next is +6. 15 + 6 = 21 =
+    U.'
+- id: apt-039
+  section: LOGICAL
+  topic: Number Series
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: 'Find the next number: 1, 8, 27, 64, ?'
+  options: ['100', '121', '125', '216']
+  answer: 2
+  explanation: 'These are cubes: 1^3, 2^3, 3^3, 4^3. Next is 5^3 = 125.'
+- id: apt-040
+  section: LOGICAL
+  topic: Coding-Decoding
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: If CAT is coded as DBU, how is DOG coded?
+  options: [CNF, DPH, EPI, EPH]
+  answer: 3
+  explanation: 'Each letter moves one step forward: C->D, A->B, T->U. So D->E, O->P, G->H. DOG = EPH.'
+- id: apt-041
+  section: LOGICAL
+  topic: Coding-Decoding
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: In a code, MANGO is written as OCPIQ. How is APPLE written in that code?
+  options: [CRRNG, BQQMF, CRRMG, CQRNG]
+  answer: 0
+  explanation: 'Each letter moves two steps forward: M->O, A->C, N->P, G->I, O->Q. So A->C, P->R, P->R, L->N, E->G. APPLE
+    = CRRNG.'
+- id: apt-042
+  section: LOGICAL
+  topic: Coding-Decoding
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: If RED = 27 (by adding letter positions), what is BLUE?
+  options: ['38', '40', '42', '44']
+  answer: 1
+  explanation: 'Letter positions: R=18, E=5, D=4, total 27. For BLUE: B=2, L=12, U=21, E=5. Total = 2 + 12 + 21 + 5 = 40.'
+- id: apt-043
+  section: LOGICAL
+  topic: Blood Relations
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Pointing to a boy, Riya says, "He is the son of my grandfather's only son." How is the boy related to Riya?
+  options: [Uncle, Nephew, Brother, Cousin]
+  answer: 2
+  explanation: Riya's grandfather's only son is Riya's father. The son of Riya's father is Riya's brother.
+- id: apt-044
+  section: LOGICAL
+  topic: Blood Relations
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: A is B's sister. C is B's mother. D is C's father. How is A related to D?
+  options: [Daughter, Grandmother, Niece, Granddaughter]
+  answer: 3
+  explanation: A is B's sister, so C is also A's mother. D is C's father, so D is A's grandfather. A is female (sister). So
+    A is D's granddaughter.
+- id: apt-045
+  section: LOGICAL
+  topic: Blood Relations
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: Arun says, "Kiran's mother is the only daughter of my father." Arun is a man. How is Arun related to Kiran?
+  options: [Maternal uncle, Brother, Father, Grandfather]
+  answer: 0
+  explanation: The only daughter of Arun's father is Arun's sister. So Kiran's mother is Arun's sister. The brother of one's
+    mother is the maternal uncle.
+- id: apt-046
+  section: LOGICAL
+  topic: Direction Sense
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Sam walks 5 km north, turns right and walks 3 km, then turns right again and walks 5 km. How far and in which
+    direction is he from the start?
+  options: [8 km East, 3 km East, 5 km North, 3 km West]
+  answer: 1
+  explanation: Start facing north, walk 5 km. Turning right from north means facing east; walk 3 km. Turning right from east
+    means facing south; walk 5 km back down. He is now 3 km east of the start.
+- id: apt-047
+  section: LOGICAL
+  topic: Direction Sense
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: A person walks 6 km east and then 8 km north. What is the shortest distance from the starting point?
+  options: [12 km, 14 km, 10 km, 7 km]
+  answer: 2
+  explanation: The path makes a right-angled triangle. Shortest distance = square root of (6^2 + 8^2) = square root of (36
+    + 64) = square root of 100 = 10 km.
+- id: apt-048
+  section: LOGICAL
+  topic: Direction Sense
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: Meena is facing north. She turns 90 degrees clockwise and then 180 degrees anticlockwise. Which direction is she
+    facing now?
+  options: [North, South, East, West]
+  answer: 3
+  explanation: From north, 90 degrees clockwise is east. From east, 180 degrees anticlockwise (half turn) is west. So she
+    faces west.
+- id: apt-049
+  section: LOGICAL
+  topic: Seating Arrangement
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Five friends A, B, C, D and E sit in a row facing north. C is in the middle. A is to the immediate left of C.
+    B is at the right end. E is next to B. Who is at the left end?
+  options: [D, A, C, E]
+  answer: 0
+  explanation: 'Number the seats 1 to 5 from left. C is in the middle: seat 3. A is immediately left of C: seat 2. B is at
+    the right end: seat 5. E is next to B: seat 4. Only seat 1 is left, so D is at the left end. Order: D A C E B.'
+- id: apt-050
+  section: LOGICAL
+  topic: Seating Arrangement
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: P, Q, R and S sit around a round table facing the centre. P is opposite R. Q is to the immediate left of P. Who
+    is to the immediate right of P?
+  options: [Q, R, S, Cannot be determined]
+  answer: 2
+  explanation: With 4 people at a round table, each person has two neighbours and one person opposite. R is opposite P, so
+    P's neighbours are Q and S. Q is on P's left, so S must be on P's right.
+- id: apt-051
+  section: LOGICAL
+  topic: Ranking and Order
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: In a row of 40 students, Ravi is 12th from the left end. What is his position from the right end?
+  options: [27th, 29th, 30th, 28th]
+  answer: 1
+  explanation: Position from right = total - position from left + 1 = 40 - 12 + 1 = 29. We add 1 because Ravi is counted in
+    both directions.
+- id: apt-052
+  section: LOGICAL
+  topic: Syllogism
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Statements: All roses are flowers. All flowers are plants. Conclusions: I. All roses are plants. II. Some plants
+    are roses.'
+  options: [Only conclusion I follows, Only conclusion II follows, Both I and II follow, Neither I nor II follows]
+  answer: 2
+  explanation: 'Draw circles: roses inside flowers, flowers inside plants. So all roses are inside plants: conclusion I follows.
+    Since all roses are plants, at least some plants are roses: conclusion II also follows.'
+- id: apt-053
+  section: LOGICAL
+  topic: Syllogism
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: 'Statements: Some pens are books. No book is a bag. Conclusions: I. Some pens are not bags. II. Some bags are
+    pens.'
+  options: [Only conclusion I follows, Only conclusion II follows, Both I and II follow, Neither I nor II follows]
+  answer: 0
+  explanation: 'The pens that are books can never be bags (no book is a bag). So some pens are surely not bags: I follows.
+    But we know nothing about other pens and bags, so we cannot say some bags are pens: II does not follow.'
+- id: apt-054
+  section: LOGICAL
+  topic: Syllogism
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: 'Statements: All doctors are graduates. Some graduates are singers. Conclusions: I. Some doctors are singers.
+    II. Some singers are graduates.'
+  options: [Only conclusion I follows, Only conclusion II follows, Both I and II follow, Neither I nor II follows]
+  answer: 1
+  explanation: The singers may be graduates who are not doctors, so I is not certain. 'Some graduates are singers' can be
+    reversed to 'some singers are graduates', so II follows.
+- id: apt-055
+  section: LOGICAL
+  topic: Data Sufficiency
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: 'What is the value of x? Statement I: 2x + 3 = 11. Statement II: x^2 = 16.'
+  options: [Statement I alone is sufficient, Statement II alone is sufficient, Both statements together are needed, Either
+      statement alone is sufficient]
+  answer: 0
+  explanation: 'From I: 2x = 8, so x = 4. One clear answer, so I is sufficient. From II: x can be 4 or -4, two answers, so
+    II is not sufficient. Answer: I alone.'
+- id: apt-056
+  section: LOGICAL
+  topic: Data Sufficiency
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Is A the tallest among A, B and C? Statement I: A is taller than B. Statement II: C is shorter than B.'
+  options: [Statement I alone is sufficient, Statement II alone is sufficient, Both statements together are needed, Either
+      statement alone is sufficient]
+  answer: 2
+  explanation: 'I alone: A > B, but we know nothing about C. II alone: B > C, but we know nothing about A. Together: A > B
+    > C, so A is the tallest. Both statements are needed.'
+- id: apt-057
+  section: LOGICAL
+  topic: Odd One Out
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Find the odd one out: 3, 5, 7, 9, 11'
+  options: ['11', '3', '9', '5']
+  answer: 2
+  explanation: 3, 5, 7 and 11 are prime numbers (divisible only by 1 and themselves). 9 = 3 x 3 is not prime. So 9 is the
+    odd one.
+- id: apt-058
+  section: LOGICAL
+  topic: Clocks
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: What is the angle between the hour hand and the minute hand at 3:30?
+  options: [90 degrees, 60 degrees, 105 degrees, 75 degrees]
+  answer: 3
+  explanation: 'Formula: angle = |30H - 5.5M|. Here H = 3, M = 30. 30 x 3 = 90. 5.5 x 30 = 165. |90 - 165| = 75 degrees. The
+    hour hand has moved halfway between 3 and 4, which is why it is not 90.'
+- id: apt-059
+  section: LOGICAL
+  topic: Calendars
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: If today is Monday, what day will it be after 61 days?
+  options: [Saturday, Thursday, Friday, Sunday]
+  answer: 0
+  explanation: 'Days repeat every 7. 61 / 7 = 8 weeks with remainder 5. Count 5 days ahead from Monday: Tuesday, Wednesday,
+    Thursday, Friday, Saturday.'
+- id: apt-060
+  section: LOGICAL
+  topic: Puzzles
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: In a group of cows and hens, the number of legs is 14 more than twice the number of heads. How many cows are there?
+  options: ['14', '7', '6', '5']
+  answer: 1
+  explanation: Let cows = c and hens = h. Legs = 4c + 2h. Heads = c + h. So 4c + 2h = 2(c + h) + 14. That gives 4c + 2h =
+    2c + 2h + 14, so 2c = 14, c = 7. The number of hens does not matter.
+- id: apt-061
+  section: VERBAL
+  topic: Reading Comprehension
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Read the passage: "Ravi worked in an office during the day and studied coding for two hours every night. After
+    a year, he had built two small projects and cleared his first developer interview." What does the passage mainly show?'
+  options: [Coding can be learned in one week, Interviews are easy to clear, Regular practice can help you change careers,
+    Office work is not useful]
+  answer: 2
+  explanation: The passage says Ravi studied every night for a year and then cleared an interview. The main message is that
+    steady, regular effort helped him move into development. The other options are not stated.
+- id: apt-062
+  section: VERBAL
+  topic: Reading Comprehension
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Read the passage: "Cloud computing lets companies rent servers over the internet instead of buying their own.
+    This saves money and helps them grow quickly. However, companies must still plan carefully for data security." Which of
+    these is NOT given as a benefit of cloud computing?'
+  options: [It saves money, Companies can rent servers instead of buying them, It helps companies grow quickly, It guarantees
+      complete data security]
+  answer: 3
+  explanation: The passage lists saving money, growing quickly and renting servers. It says companies must still plan for
+    security, so security is a concern, not a guaranteed benefit.
+- id: apt-063
+  section: VERBAL
+  topic: Reading Comprehension
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: 'Read the passage: "Regular exercise improves heart health, reduces stress and helps people sleep better. Experts
+    say that even a 20-minute walk every day can make a real difference." What is the best title for this passage?'
+  options: ['Small Daily Exercise, Big Benefits', Experts Disagree on Exercise, Walking Is Boring, How to Sleep for 20 Minutes]
+  answer: 0
+  explanation: The passage lists several benefits of exercise and says even a short daily walk helps. 'Small Daily Exercise,
+    Big Benefits' covers both ideas. The others are wrong or not mentioned.
+- id: apt-064
+  section: VERBAL
+  topic: Sentence Correction
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Choose the correct sentence.
+  options: [He not know the answer., He doesn't know the answer., He doesn't knows the answer., He don't know the answer.]
+  answer: 1
+  explanation: 'With he, she or it we use ''does not'' (doesn''t). After doesn''t, the verb stays in base form: ''know'',
+    not ''knows''. So ''He doesn''t know the answer.'' is correct.'
+- id: apt-065
+  section: VERBAL
+  topic: Sentence Correction
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: Choose the grammatically correct sentence.
+  options: [Each of the students have submitted the assignment., Each of the students were submitted the assignment., Each
+      of the students has submitted the assignment., Each of the student has submitted the assignment.]
+  answer: 2
+  explanation: '''Each'' is singular, so it takes the singular verb ''has''. After ''each of the'', the noun is plural: ''students''.
+    So ''Each of the students has submitted the assignment.'' is correct.'
+- id: apt-066
+  section: VERBAL
+  topic: Sentence Correction
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Choose the correct sentence.
+  options: [I work here since 2020., I was working here since 2020., I am working here since 2020., I have been working here
+      since 2020.]
+  answer: 3
+  explanation: 'When an action started in the past and is still going on, with ''since'' or ''for'', we use the present perfect
+    continuous: ''have been working''. ''I am working here since 2020'' is a common mistake.'
+- id: apt-067
+  section: VERBAL
+  topic: Error Spotting
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO]
+  question: 'Find the part of the sentence that has an error: (A) Neither the manager / (B) nor the team members / (C) was
+    present / (D) at the meeting.'
+  options: [A, B, C, D]
+  answer: 2
+  explanation: With 'neither ... nor', the verb agrees with the subject closest to it. The closest subject is 'team members',
+    which is plural. So it should be 'were present', not 'was present'. The error is in part C.
+- id: apt-068
+  section: VERBAL
+  topic: Fill in the Blank
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Fill in the blank: She is very good ___ mathematics.'
+  options: [at, in, 'on', with]
+  answer: 0
+  explanation: 'The correct phrase is ''good at'' something, meaning skilled in it. Example: ''He is good at coding.'' So
+    ''She is very good at mathematics.'''
+- id: apt-069
+  section: VERBAL
+  topic: Fill in the Blank
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: 'Fill in the blank: If I ___ you, I would accept the offer.'
+  options: [am, were, was, will be]
+  answer: 1
+  explanation: 'This is an imaginary situation (I am not you). In such ''if'' sentences we use ''were'' for all subjects:
+    ''If I were you''. It pairs with ''would'' in the second part.'
+- id: apt-070
+  section: VERBAL
+  topic: Fill in the Blank
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Fill in the blank: The meeting was ___ to next Monday because the manager was ill.'
+  options: [promoted, prepared, postponed, preferred]
+  answer: 2
+  explanation: '''Postponed'' means moved to a later time. The meeting moved to next Monday, so ''postponed'' fits. The other
+    words do not make sense here.'
+- id: apt-071
+  section: VERBAL
+  topic: Synonyms
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Choose the word closest in meaning to DILIGENT.
+  options: [Clever, Careless, Lazy, Hardworking]
+  answer: 3
+  explanation: Diligent means showing care and effort in your work. 'Hardworking' is the closest meaning. 'Lazy' and 'careless'
+    are opposites, and 'clever' means smart, which is different.
+- id: apt-072
+  section: VERBAL
+  topic: Antonyms
+  difficulty: EASY
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: Choose the word opposite in meaning to SCARCE.
+  options: [Abundant, Limited, Small, Rare]
+  answer: 0
+  explanation: Scarce means not enough, hard to find. The opposite is 'abundant', which means available in large amounts.
+    'Rare' and 'limited' are similar to scarce, not opposite.
+- id: apt-073
+  section: VERBAL
+  topic: Synonyms
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: Choose the word closest in meaning to CANDID.
+  options: [Shy, Frank, Angry, Secretive]
+  answer: 1
+  explanation: 'Candid means honest and direct in speech. ''Frank'' has the same meaning. Example: ''Thank you for your candid
+    feedback.'''
+- id: apt-074
+  section: VERBAL
+  topic: Para Jumbles
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+  question: 'Arrange the sentences in the correct order. P: After drinking tea, he opened his laptop. Q: Rahul woke up at
+    6 a.m. R: He solved three coding problems before breakfast. S: He brushed his teeth and made tea.'
+  options: [SQPR, QPSR, QSPR, QSRP]
+  answer: 2
+  explanation: 'Start with the first event: Q (he woke up). Then S (brushed teeth and made tea). Then P (after tea, opened
+    the laptop). Then R (solved problems). Order: Q S P R.'
+- id: apt-075
+  section: VERBAL
+  topic: Para Jumbles
+  difficulty: MEDIUM
+  companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+  question: 'Arrange the sentences in the correct order. P: Finally, the bug was fixed and all tests passed. Q: The developer
+    first read the error log carefully. R: The application crashed after the new release. S: He found a null value in the
+    input and added a check.'
+  options: [QSRP, RSQP, QRSP, RQSP]
+  answer: 3
+  explanation: 'The problem comes first: R (the app crashed). Then the investigation: Q (read the error log). Then the cause
+    and fix: S (found null, added check). ''Finally'' signals the end: P. Order: R Q S P.'

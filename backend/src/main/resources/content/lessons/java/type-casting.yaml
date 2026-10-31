@@ -1,0 +1,320 @@
+slug: type-casting
+world: JAVA_CORE
+section: A
+order: 4
+title: "Type casting"
+version: 1
+estimatedMinutes: 25
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Frequent in predict-the-output practice; casting rules also decide whether averages and big products come out right in SP coding problems."
+otherCompanies: "Widening vs narrowing and byte overflow outputs are standard MCQ material at TCS, Wipro, Cognizant, Accenture and Capgemini."
+why: |
+  **Type casting** means converting a value from one data type to another, for example from `int` to `double`, or from `double` to `int`.
+
+  You need this every day in coding:
+  - Average of marks: `sum / count` with two ints gives a **whole number**, not `72.5`. A cast fixes it.
+  - Character tricks: `(char) ('a' + 1)` gives `'b'`; `ch - '0'` turns the digit character `'7'` into the number `7`.
+  - Big numbers: `(long) a * b` avoids overflow.
+
+  And in MCQs, questions like *"What is `(byte) 130`?"* or *"Does `byte b = 10; b = b + 1;` compile?"* are very common. Once you know the two rules (widening is automatic, narrowing needs you), they become easy marks.
+analogy: |
+  Think of **pouring water between glasses**.
+
+  - Pouring from a **small glass into a big jug** (int into long) is always safe. Nothing spills, so Java does it for you automatically. This is **widening**.
+  - Pouring from a **big jug into a small glass** (double into int, int into byte) may spill. Java will not do it on its own; you must say "I know, pour anyway" by writing a cast like `(int)`. Whatever does not fit is lost. This is **narrowing**.
+  - Pouring tea into a glass meant for milk (boolean into int) is not allowed at all. Some types simply do not convert.
+visual:
+  diagram: |
+    WIDENING (automatic, safe)  ---------------------------->
+    byte -> short -> int -> long -> float -> double
+                     ^
+             char ---+
+
+    <---------------------------- NARROWING (needs a cast)
+    double d = 9.99;   int i = (int) d;     // 9 (decimal cut off)
+    int big = 130;     byte b = (byte) big; // -126
+
+    How 130 becomes -126 as a byte (only the last 8 bits kept):
+    130 = ...0000 0000 1000 0010
+                       \_______/
+                       1000 0010 = -126 (top bit 1 => negative)
+
+    boolean  <-- X -->  any number type  (never convertible)
+  caption: "Small to big happens automatically. Big to small needs an explicit cast and can lose data. boolean never converts."
+  visualizer: null
+explanation: |
+  ### Two kinds of casting
+  | | Widening (implicit) | Narrowing (explicit) |
+  |---|---|---|
+  | Direction | small type to bigger type | big type to smaller type |
+  | Who does it | Java, automatically | You, with `(type)` |
+  | Data loss? | No (except tiny precision loss for long to float/double) | Possibly yes |
+  | Example | `long l = 5;` | `int i = (int) 5.9;` |
+
+  **Implicit** means automatic, done by the compiler. **Explicit** means you write it yourself.
+
+  ### Widening order
+  `byte -> short -> int -> long -> float -> double`, and `char -> int`.
+  ```java
+  int marks = 90;
+  double d = marks;     // 90.0, automatic
+  char c = 'A';
+  int code = c;         // 65, automatic
+  ```
+  Note: `long` (8 bytes) can widen to `float` (4 bytes) because float covers a bigger *range*, but very large longs may lose some precision.
+
+  ### Narrowing: what gets lost
+  ```java
+  double price = 99.99;
+  int rupees = (int) price;    // 99  -> decimal part is CUT, not rounded
+  int neg = (int) -7.8;        // -7  -> cut toward zero
+  long r = Math.round(99.5);   // 100 -> use Math.round to round
+  ```
+  When an integer type is narrowed (like `int` to `byte`), Java keeps only the **lowest bits** that fit. A `byte` holds -128 to 127, so values "wrap around":
+  - `(byte) 127` is 127
+  - `(byte) 128` is -128
+  - `(byte) 130` is -126
+  - `(byte) 256` is 0
+
+  Shortcut: add or subtract 256 until the number is in -128..127.
+
+  ### Type promotion in expressions
+  This rule causes many output questions. In any arithmetic expression:
+  1. `byte`, `short` and `char` are first **promoted** (upgraded) to `int`.
+  2. If any operand is `long`, the result is `long`; if any is `float`, the result is `float`; if any is `double`, the result is `double`.
+
+  So this fails to compile:
+  ```java
+  byte b = 10;
+  b = b + 1;        // ERROR: b + 1 is an int, cannot go into byte without a cast
+  b = (byte) (b + 1); // OK
+  b += 1;           // OK: compound assignment casts automatically
+  b++;              // OK
+  ```
+  But `byte b = 10;` itself compiles because `10` is a **compile-time constant** that fits in a byte. The compiler allows that special case.
+
+  ### Integer division and the average trap
+  ```java
+  int sum = 145, count = 2;
+  double avg1 = sum / count;           // 72.0  (int division first!)
+  double avg2 = (double) sum / count;  // 72.5
+  double avg3 = (double) (sum / count);// 72.0  (cast too late)
+  ```
+  The cast must happen **before** the division.
+
+  ### char and int tricks
+  ```java
+  char d = '7';
+  int digit = d - '0';           // 7
+  char next = (char) ('a' + 1);  // 'b'
+  char upper = (char) ('g' - 32);// 'G'  (ASCII: 'a' = 97, 'A' = 65)
+  ```
+
+  ### Strings are not cast
+  You cannot write `(int) "123"`. Strings are objects, not numbers. Use methods:
+  - `Integer.parseInt("123")` gives `123`
+  - `Double.parseDouble("4.5")` gives `4.5`
+  - `String.valueOf(42)` or `"" + 42` gives `"42"`
+
+  `Integer.parseInt("12a")` throws a `NumberFormatException` at runtime.
+
+  ### Quick summary of what is not allowed
+  - `boolean` to or from any number type: never, even with a cast.
+  - `String` to number with a cast: use `parseInt` instead.
+tinyCode:
+  code: |
+    public class Casting {
+        public static void main(String[] args) {
+            int i = 100;
+            double d = i;                 // widening
+            System.out.println(d);
+            double price = 99.99;
+            System.out.println((int) price);       // narrowing, cut
+            System.out.println(Math.round(price)); // rounding
+            System.out.println((byte) 130);
+            int sum = 145, count = 2;
+            System.out.println(sum / count);
+            System.out.println((double) sum / count);
+            char ch = '7';
+            System.out.println(ch - '0');
+            System.out.println((char) ('a' + 2));
+            System.out.println(Integer.parseInt("25") + 5);
+        }
+    }
+  walkthrough: |
+    - `double d = i;` is widening, done automatically. It prints `100.0`.
+    - `(int) price` cuts the decimals: `99`. It does not round.
+    - `Math.round(price)` rounds properly: `100`.
+    - `(byte) 130` keeps only 8 bits, which means 130 - 256 = `-126`.
+    - `sum / count` is int division: `72`.
+    - `(double) sum / count` converts `sum` first, so the division is decimal: `72.5`.
+    - `ch - '0'` is `55 - 48`, giving the number `7`.
+    - `'a' + 2` is `99`, and casting to char gives `c`.
+    - `Integer.parseInt("25")` turns text into the number 25, and adding 5 gives `30`.
+
+    Output:
+    ```
+    100.0
+    99
+    100
+    -126
+    72
+    72.5
+    7
+    c
+    30
+    ```
+tryIt:
+  instructions: "Type this program and run it. Then move the (double) cast to around (total / subjects) and see the average change. That shows why the cast position matters."
+  code: |
+    public class Average {
+        public static void main(String[] args) {
+            int[] marks = {78, 91, 66};
+            int total = 0;
+            for (int m : marks) {
+                total += m;
+            }
+            int subjects = marks.length;
+            double avg = (double) total / subjects;
+            System.out.println("Total: " + total);
+            System.out.println("Average: " + avg);
+            System.out.println("Rounded: " + Math.round(avg));
+            System.out.println("Cut: " + (int) avg);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            byte b = 10;
+            b += 120;
+            System.out.println(b);
+            int x = (int) 3.99 + (int) -3.99;
+            System.out.println(x);
+            System.out.println((char) 66 + "" + (int) 'C');
+            System.out.println(7 / 2 * 2.0);
+        }
+    }
+  expectedOutput: |
+    -126
+    0
+    B67
+    6.0
+  explanation: |
+    - `b += 120` makes 130, and the compound assignment casts back to byte silently: 130 - 256 = `-126`.
+    - `(int) 3.99` is 3 and `(int) -3.99` is -3 (cut toward zero), so the sum is `0`.
+    - `(char) 66` is `'B'`; adding `""` makes it text; `(int) 'C'` is 67. Result: `B67`.
+    - `7 / 2` is int division first, giving 3. Then `3 * 2.0` is a double: `6.0`.
+commonMistakes:
+  - "Expecting (int) 9.99 to round to 10. Casting cuts the decimal; use Math.round to round."
+  - "Writing (double) (sum / count). The division already happened as int; cast one operand before dividing."
+  - "Writing `b = b + 1;` with a byte b. b + 1 is an int, so it needs a cast (or use b += 1)."
+  - "Trying (int) \"123\" to convert a String. Use Integer.parseInt."
+  - "Trying to cast boolean to int (like in C). Java does not allow it."
+interviewBox:
+  why: "Why interviewers ask this: casting questions check if you know how Java handles memory sizes and data loss, and they appear constantly in output-prediction rounds."
+  questions:
+    - q: "What is the difference between widening and narrowing casting?"
+      a: "Widening converts a smaller type to a bigger one, like int to long. It is safe, so Java does it automatically. Narrowing converts a bigger type to a smaller one, like double to int. Data can be lost, so we must write the cast ourselves, like (int) 9.7, which gives 9."
+    - q: "Why does byte b = 10; b = b + 1; not compile but b += 1 does?"
+      a: "In an expression, byte is promoted to int, so b + 1 is an int and cannot be stored in a byte without a cast. Compound assignment like += includes a hidden cast back to byte, so it compiles."
+    - q: "What is (byte) 200?"
+      a: "A byte only holds -128 to 127, so Java keeps the lowest 8 bits. 200 minus 256 is -56, so the answer is -56."
+    - q: "How do you convert a String to an int?"
+      a: "Using Integer.parseInt. For example, Integer.parseInt(\"42\") gives 42. If the text is not a valid number it throws NumberFormatException. We cannot use a cast, because String is an object."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      double d = 9.99;
+      int i = (int) d;
+      System.out.println(i);
+    options: ["10", "9", "9.99", "Compile error"]
+    answer: 1
+    explanation: "Casting a double to int cuts off the decimal part; it does not round. So 9.99 becomes 9. 10 is the tempting answer, but you need Math.round for that."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Which line fails to compile?"
+    code: |
+      byte a = 10;          // line 1
+      byte b = 20;          // line 2
+      byte c = a + b;       // line 3
+      a += 5;               // line 4
+    options: ["Line 1", "Line 2", "Line 3", "Line 4"]
+    answer: 2
+    explanation: "a + b promotes both bytes to int, so the result is an int and cannot be stored in byte c without a cast. Lines 1 and 2 are fine because 10 and 20 are constants that fit. Line 4 is fine because += casts automatically."
+  - id: q3
+    type: MCQ
+    prompt: "Which conversion happens automatically without a cast?"
+    code: null
+    options: ["double to int", "long to int", "int to double", "int to char"]
+    answer: 2
+    explanation: "int to double is widening (small to big), so it is automatic. The other three are narrowing and need an explicit cast, because they could lose data."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In Java you can write int x = (int) true; to get 1."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. boolean cannot be converted to or from any number type in Java, even with a cast. That trick works in C, not in Java."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int sum = 7, n = 2;
+      System.out.println((double) (sum / n));
+      System.out.println((double) sum / n);
+    options: ["3.5\n3.5", "3.0\n3.5", "3\n3.5", "3.0\n3.0"]
+    answer: 1
+    explanation: "In the first line sum / n is int division (3) and only then is it turned into 3.0. In the second line sum becomes 7.0 before dividing, so the result is 3.5. The cast must come before the division."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the blank to turn the digit character into its number value (so '8' becomes 8)."
+    code: |
+      char ch = '8';
+      int digit = ch - ____;
+    acceptedAnswers: ["'0'", "48"]
+    explanation: "Digit characters are stored in order: '0' is 48, '1' is 49 ... '8' is 56. Subtracting '0' gives 56 - 48 = 8."
+  - id: q7
+    type: MATCH
+    prompt: "Match each expression to its value"
+    pairs:
+      - left: "(byte) 128"
+        right: "-128"
+      - left: "(int) -2.7"
+        right: "-2"
+      - left: "Math.round(2.5)"
+        right: "3"
+      - left: "(char) 97"
+        right: "a"
+    explanation: "128 wraps to -128 in a byte. Casting -2.7 cuts toward zero, giving -2 (not -3). Math.round(2.5) rounds half up to 3. 97 is the code for 'a'."
+explainBack:
+  prompt: "Explain widening vs narrowing casting to a friend, using an example of calculating an average."
+  rubric:
+    - "I said widening is small to big and automatic"
+    - "I said narrowing is big to small, needs (type), and can lose data"
+    - "I showed that int / int gives a whole number and where to put the cast"
+    - "I mentioned that byte, short and char become int in expressions"
+    - "I used a simple analogy like glasses of water"
+  modelAnswer: |
+    Casting means changing a value's type. Widening is going from a small type to a bigger one, like int to double. It is like pouring a small glass into a big jug, nothing spills, so Java does it automatically. Narrowing is the opposite, like double to int. Something can be lost, so I must write the cast myself, and the decimals are cut off, not rounded. For an average, if the sum and count are both ints, sum divided by count gives a whole number. So I write (double) sum / count, casting before the division, to get the correct decimal answer. Also, byte, short and char become int inside expressions.
+flashcards:
+  - front: "Widening order"
+    back: "byte -> short -> int -> long -> float -> double (char -> int). Automatic."
+  - front: "(int) 9.99 and (int) -9.99"
+    back: "9 and -9. Casting cuts toward zero; use Math.round to round."
+  - front: "(byte) 130"
+    back: "-126 (130 - 256). Only the lowest 8 bits are kept."
+  - front: "Why does byte c = a + b; fail for bytes a, b?"
+    back: "byte, short, char are promoted to int in expressions, so a + b is int. Cast or use +=."
+  - front: "String to int?"
+    back: "Integer.parseInt(\"123\"). Invalid text throws NumberFormatException."
+keyTakeaways:
+  - "Widening (small to big) is automatic; narrowing (big to small) needs an explicit cast."
+  - "Casting a decimal to int cuts the fraction toward zero; it never rounds."
+  - "Narrowing integers keeps only the low bits, so values wrap around."
+  - "byte, short and char become int in arithmetic; compound assignment casts back automatically."
+  - "Cast before dividing to get a decimal average."
+  - "boolean never converts; Strings use parseInt / valueOf, not casts."

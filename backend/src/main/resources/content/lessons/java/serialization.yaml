@@ -1,0 +1,342 @@
+slug: serialization
+world: JAVA_CORE
+section: I
+order: 2
+title: "Serialization"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common theory question in technical rounds: Serializable, transient and serialVersionUID are classic one-line checks."
+otherCompanies: "A common basic question across service companies and product companies; often combined with transient vs static."
+why: |
+  Objects live in memory (RAM). When the program stops, they disappear. **Serialization** turns an object into a sequence of **bytes** so you can save it to a file, send it over a network, or put it in a cache. **Deserialization** turns those bytes back into an object.
+
+  Interviewers love it because it has short, tricky questions:
+  - What is a **marker interface**?
+  - What does **transient** do?
+  - Why do we need **serialVersionUID**?
+  - Are **static** fields saved?
+
+  The same idea (object to bytes or text and back) is used every day in Spring Boot, where objects become **JSON** for REST APIs.
+analogy: |
+  Think of **shifting house** from Chennai to Bengaluru.
+
+  - Your fully set-up **cot** is the object. You cannot send it as it is in the truck.
+  - You **dismantle and pack** it into a flat box with a label: that is **serialization**.
+  - In the new house you **unpack and assemble** it: that is **deserialization**.
+  - Some things you deliberately **do not pack**, like the milk in the fridge, because it won't survive the trip: those are **transient** fields.
+  - The **label on the box** ("cot model v1") is the `serialVersionUID`. If the new house expects "cot model v2", the movers say "this does not match" and refuse: `InvalidClassException`.
+visual:
+  diagram: |
+    OBJECT in memory                     BYTES (file / network)
+    +----------------------+
+    | Student              |   writeObject()    +--------------------+
+    |  name   = "Asha"     | -----------------> | AC ED 00 05 73 72  |
+    |  marks  = 91         |   serialization    | ...class + fields  |
+    |  transient otp="43"  |                    | (otp NOT written)  |
+    +----------------------+                    +--------------------+
+                                                         |
+    OBJECT again                       readObject()      |
+    +----------------------+  <--------------------------+
+    | Student              |    deserialization
+    |  name   = "Asha"     |    (constructor NOT called)
+    |  marks  = 91         |
+    |  otp    = null       |  <- transient gets default value
+    +----------------------+
+  caption: "Serialization packs an object's fields into bytes; deserialization rebuilds it. Transient fields are skipped and come back as default values."
+  visualizer: null
+explanation: |
+  ### Key words
+  - **Serialization**: converting an object's state (its field values) into bytes.
+  - **Deserialization**: rebuilding the object from those bytes.
+  - **Marker interface**: an interface with **no methods**. It only "marks" a class with a permission. `Serializable` is one.
+
+  ### How to make a class serializable
+  ```java
+  class Student implements Serializable {
+      private static final long serialVersionUID = 1L;
+      String name;
+      int marks;
+  }
+  ```
+  `implements Serializable` is the permission slip. Without it, `writeObject` throws `NotSerializableException` (a runtime exception, not a compile error).
+
+  ### Writing and reading
+  ```java
+  try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream("s.ser"))) {
+      out.writeObject(student);                  // serialize
+  }
+  try (ObjectInputStream in = new ObjectInputStream(new FileInputStream("s.ser"))) {
+      Student s = (Student) in.readObject();     // deserialize (needs a cast)
+  }
+  ```
+  `readObject()` returns `Object`, so you cast. It can throw `ClassNotFoundException` if the class is not available.
+
+  ### transient: "do not pack this"
+  Mark a field `transient` to skip it. Use it for passwords, OTPs, cached values, or fields whose type is not serializable. After deserialization a transient field gets its **default value**: `null` for objects, `0` for numbers, `false` for boolean.
+
+  ### static fields are not saved either
+  Serialization saves the **object's** state. A `static` field belongs to the **class**, not the object, so it is not written. After reading, you see whatever value the class currently has in that JVM.
+
+  | Field type | Saved? | After reading |
+  |---|---|---|
+  | normal instance field | Yes | original value |
+  | `transient` field | No | default (null / 0 / false) |
+  | `static` field | No | current class value |
+
+  ### serialVersionUID: the version label
+  It is a `long` number that identifies the **version** of the class. When reading, Java compares the number in the bytes with the number in the current class. If they differ, you get `InvalidClassException`.
+  - If you don't declare it, Java **calculates one** from the class details. Adding even one field changes it, and old saved files stop loading.
+  - So always declare it yourself: `private static final long serialVersionUID = 1L;`
+
+  ### Rules that surprise people
+  1. **All fields must be serializable** too (or transient). A `Student` with an `Address` field needs `Address implements Serializable`.
+  2. **The constructor is not called** during deserialization. Java creates the object and fills the fields directly. (Exception: if a *parent* class is not serializable, that parent's no-argument constructor runs.)
+  3. If a parent class is `Serializable`, all child classes are too.
+  4. `String`, wrapper classes (`Integer`...), `ArrayList` and `HashMap` are already serializable.
+
+  ### Externalizable (for completeness)
+  `Externalizable` extends `Serializable` and makes you write `writeExternal` and `readExternal` yourself, giving full control. It also needs a public no-argument constructor. It is rarely used today.
+
+  ### In real projects
+  Java's built-in serialization has **security risks** (deserializing untrusted bytes can run harmful code). Modern apps usually serialize to **JSON** (with Jackson in Spring Boot). But the interview concepts (transient, versioning, what gets saved) are the same.
+tinyCode:
+  code: |
+    import java.io.*;
+
+    public class SaveStudent {
+        static class Student implements Serializable {
+            private static final long serialVersionUID = 1L;
+            String name;
+            int marks;
+            transient String otp;   // not saved
+
+            Student(String name, int marks, String otp) {
+                this.name = name;
+                this.marks = marks;
+                this.otp = otp;
+            }
+        }
+
+        public static void main(String[] args) throws Exception {
+            Student s = new Student("Asha", 91, "4321");
+
+            try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream("student.ser"))) {
+                out.writeObject(s);
+            }
+            System.out.println("Saved " + s.name);
+
+            try (ObjectInputStream in = new ObjectInputStream(new FileInputStream("student.ser"))) {
+                Student back = (Student) in.readObject();
+                System.out.println(back.name + " " + back.marks + " otp=" + back.otp);
+            }
+        }
+    }
+  walkthrough: |
+    - `implements Serializable` gives permission to convert `Student` objects to bytes.
+    - `serialVersionUID = 1L` is the version label for this class.
+    - `transient String otp` tells Java to skip this field.
+    - `ObjectOutputStream` wraps a `FileOutputStream`; `writeObject(s)` packs the object into `student.ser`.
+    - `ObjectInputStream` + `readObject()` unpacks it. We cast the result to `Student`.
+    - `otp` comes back as `null` because it was never saved.
+
+    Output:
+    ```
+    Saved Asha
+    Asha 91 otp=null
+    ```
+tryIt:
+  instructions: "Type this. It serializes a list into memory (a byte array) instead of a file. Then add `transient` before `int score` and run again: what changes?"
+  code: |
+    import java.io.*;
+
+    public class Pack {
+        static class Player implements Serializable {
+            private static final long serialVersionUID = 1L;
+            String name = "Ravi";
+            int score = 50;
+        }
+
+        public static void main(String[] args) throws Exception {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            try (ObjectOutputStream out = new ObjectOutputStream(bytes)) {
+                out.writeObject(new Player());
+            }
+            System.out.println("Bytes written: " + (bytes.size() > 0));
+
+            ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray()));
+            Player p = (Player) in.readObject();
+            System.out.println(p.name + " " + p.score);
+        }
+    }
+predict:
+  code: |
+    import java.io.*;
+
+    public class Ser {
+        static class User implements Serializable {
+            private static final long serialVersionUID = 1L;
+            String name;
+            transient String password;
+            int age;
+            User(String n, String p, int a) { name = n; password = p; age = a; }
+        }
+
+        public static void main(String[] args) throws Exception {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            try (ObjectOutputStream out = new ObjectOutputStream(bytes)) {
+                out.writeObject(new User("Asha", "secret", 22));
+            }
+            try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
+                User u = (User) in.readObject();
+                System.out.println(u.name + " " + u.password + " " + u.age);
+            }
+        }
+    }
+  expectedOutput: |
+    Asha null 22
+  explanation: |
+    `name` and `age` are normal fields, so they are saved and restored. `password` is `transient`, so it is skipped and comes back with the default value for a String, which is `null`.
+commonMistakes:
+  - "Forgetting that every field's type must also be Serializable; otherwise you get NotSerializableException at runtime."
+  - "Not declaring serialVersionUID, then adding a field and getting InvalidClassException when reading old data."
+  - "Thinking static fields are serialized. They belong to the class, not the object, so they are not saved."
+  - "Expecting the constructor to run during deserialization. It does not (for a serializable class)."
+  - "Saying transient fields become \"empty\". They get default values: null, 0 or false."
+interviewBox:
+  why: "Why interviewers ask this: it tests object state, marker interfaces and versioning in a few quick questions, and it connects to how data moves between systems."
+  questions:
+    - q: "What is serialization in Java?"
+      a: "Serialization converts an object's state into a stream of bytes, so I can save it to a file or send it over a network. Deserialization is the reverse: it rebuilds the object from those bytes. A class must implement the Serializable interface to allow this."
+    - q: "What is the use of the transient keyword?"
+      a: "A transient field is skipped during serialization. I use it for sensitive or temporary data like passwords. After deserialization, the field gets its default value, like null or zero."
+    - q: "Why should we declare serialVersionUID?"
+      a: "It is a version number for the class. When reading, Java checks that the number in the saved bytes matches the class. If I don't declare it, Java generates one from the class structure, so a small change like adding a field breaks old data with InvalidClassException. Declaring it myself keeps control."
+    - q: "Why is Serializable called a marker interface?"
+      a: "Because it has no methods. It only marks the class to tell the JVM that its objects are allowed to be serialized."
+    - q: "Are static variables serialized?"
+      a: "No. Static variables belong to the class, not to any object, and serialization saves only the object's state."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "A class does NOT implement Serializable and you call writeObject on its object. What happens?"
+    code: null
+    options: ["Compile-time error", "NotSerializableException at runtime", "It is saved without any fields", "It is saved normally"]
+    answer: 1
+    explanation: "writeObject accepts any Object, so the code compiles. At runtime Java checks for Serializable and throws NotSerializableException. Many people guess compile error, but the check happens while running."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "A static field's value is written into the serialized bytes."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Serialization saves the object's state. Static fields belong to the class, so they are not written."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this program print?"
+    code: |
+      import java.io.*;
+
+      public class Ctor {
+          static class Box implements Serializable {
+              int v;
+              Box() { System.out.println("ctor"); v = 5; }
+          }
+
+          public static void main(String[] args) throws Exception {
+              ByteArrayOutputStream b = new ByteArrayOutputStream();
+              try (ObjectOutputStream o = new ObjectOutputStream(b)) { o.writeObject(new Box()); }
+              ObjectInputStream i = new ObjectInputStream(new ByteArrayInputStream(b.toByteArray()));
+              Box copy = (Box) i.readObject();
+              System.out.println("copy " + copy.v);
+          }
+      }
+    options: ["ctor\nctor\ncopy 5", "ctor\ncopy 5", "ctor\ncopy 0", "copy 5"]
+    answer: 1
+    explanation: "\"ctor\" prints once, when new Box() runs. During deserialization the constructor of a serializable class is NOT called; the field v is restored directly from the bytes as 5. The tempting answer with two \"ctor\" lines assumes readObject calls the constructor."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "Order implements Serializable, but saving it throws an exception. What is the bug?"
+    code: |
+      import java.io.*;
+
+      public class Shop {
+          static class Address { String city = "Pune"; }
+
+          static class Order implements Serializable {
+              private static final long serialVersionUID = 1L;
+              int id = 7;
+              Address address = new Address();
+          }
+
+          public static void main(String[] args) throws Exception {
+              ObjectOutputStream out = new ObjectOutputStream(new ByteArrayOutputStream());
+              out.writeObject(new Order());
+              System.out.println("saved");
+          }
+      }
+    options:
+      - "serialVersionUID must be an int"
+      - "Address is not Serializable, so writing Order throws NotSerializableException"
+      - "ByteArrayOutputStream cannot be used with ObjectOutputStream"
+      - "int fields cannot be serialized"
+    answer: 1
+    explanation: "Every field that is saved must itself be serializable. Address does not implement Serializable, so Java throws NotSerializableException: Shop$Address. Fix: make Address implement Serializable or mark the field transient. serialVersionUID is correctly a long, and ByteArrayOutputStream works fine."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill the keyword so that the password is NOT serialized."
+    code: |
+      class Account implements Serializable {
+          String user;
+          ____ String password;
+      }
+    acceptedAnswers: ["transient"]
+    explanation: "transient tells serialization to skip the field. After reading, password will be null."
+  - id: q6
+    type: MATCH
+    prompt: "Match each term to its meaning"
+    pairs:
+      - left: "Serializable"
+        right: "Marker interface that allows saving objects as bytes"
+      - left: "transient"
+        right: "Field is skipped and gets a default value later"
+      - left: "serialVersionUID"
+        right: "Version number checked when reading"
+      - left: "InvalidClassException"
+        right: "Thrown when the saved and current class versions differ"
+    explanation: "Serializable gives permission, transient skips a field, serialVersionUID labels the version, and a version mismatch throws InvalidClassException."
+  - id: q7
+    type: MCQ
+    prompt: "You saved objects, then added a new field to the class. You never declared serialVersionUID. What most likely happens when you read the old file?"
+    code: null
+    options: ["The new field is null and everything works", "InvalidClassException because the generated version number changed", "Compile error", "The old file is automatically converted"]
+    answer: 1
+    explanation: "Without a declared serialVersionUID, Java computes one from the class structure. Adding a field changes it, so reading old bytes fails with InvalidClassException. If you had declared a fixed serialVersionUID, the old data would load and the new field would get its default value."
+explainBack:
+  prompt: "Explain serialization, transient and serialVersionUID to a friend using the house-shifting example."
+  rubric:
+    - "I said serialization turns an object into bytes and deserialization rebuilds it"
+    - "I said the class must implement Serializable (a marker interface)"
+    - "I explained transient fields are skipped and come back as default values"
+    - "I explained serialVersionUID as a version label that must match"
+    - "I mentioned static fields are not saved"
+  modelAnswer: |
+    Serialization is like packing furniture before shifting house. Java takes an object in memory and packs its field values into bytes, so I can save it to a file or send it over a network. Deserialization unpacks the bytes and rebuilds the object, without calling the constructor. The class must implement Serializable, which is a marker interface with no methods; it's just permission. If I mark a field transient, like a password, it's not packed and comes back as null or zero. Static fields aren't saved either, because they belong to the class. serialVersionUID is the label on the box: if the label doesn't match the current class, Java throws InvalidClassException.
+flashcards:
+  - front: "Serialization vs deserialization"
+    back: "Object -> bytes (writeObject) vs bytes -> object (readObject)."
+  - front: "What is a marker interface? Example?"
+    back: "An interface with no methods that just tags a class. Serializable (also Cloneable)."
+  - front: "transient field after deserialization?"
+    back: "Default value: null, 0 or false."
+  - front: "Why declare serialVersionUID?"
+    back: "To control the class version; otherwise a generated value changes with the class and old data throws InvalidClassException."
+  - front: "Is the constructor called on deserialization?"
+    back: "No, not for the serializable class itself (only the no-arg constructor of the first non-serializable parent)."
+keyTakeaways:
+  - "Serialization = object to bytes; deserialization = bytes back to object."
+  - "Serializable is a marker interface; all saved fields must be serializable too."
+  - "transient and static fields are not saved."
+  - "Always declare private static final long serialVersionUID."
+  - "In real apps JSON is common, but the same ideas apply."

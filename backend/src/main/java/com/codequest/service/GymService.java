@@ -31,16 +31,19 @@ public class GymService {
     private final ProblemSolvedRepository problems;
     private final PatternRepository patterns;
     private final ProblemRevisitRepository revisits;
+    private final com.codequest.repository.ProblemBankRepository bank;
     private final XpService xp;
     private final QuestService quests;
     private final StreakService streaks;
     private final TimeService time;
 
     public GymService(ProblemSolvedRepository problems, PatternRepository patterns, ProblemRevisitRepository revisits,
+                      com.codequest.repository.ProblemBankRepository bank,
                       XpService xp, QuestService quests, StreakService streaks, TimeService time) {
         this.problems = problems;
         this.patterns = patterns;
         this.revisits = revisits;
+        this.bank = bank;
         this.xp = xp;
         this.quests = quests;
         this.streaks = streaks;
@@ -239,5 +242,8 @@ public class GymService {
         p.setCode(req.code());
         p.setSolvedOn(solvedOn);
         p.setPatterns(new HashSet<>(found));
+        if (req.bankSlug() != null && !req.bankSlug().isBlank()) {
+            p.setBankProblemId(bank.findBySlug(req.bankSlug()).map(b -> b.getId()).orElse(null));
+        }
     }
 }

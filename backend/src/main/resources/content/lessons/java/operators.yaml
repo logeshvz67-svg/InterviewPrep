@@ -1,0 +1,364 @@
+slug: operators
+world: JAVA_CORE
+section: A
+order: 5
+title: "Operators"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Frequent in predict-the-output practice; % and integer division are used in almost every number-based SP coding problem (digits, cycles, modulo answers)."
+otherCompanies: "i++ vs ++i, precedence and short-circuit questions are common MCQs at TCS, Wipro, Cognizant, Accenture and Capgemini. Bitwise tricks appear in product-company rounds."
+why: |
+  **Operators** are the symbols that do work on values: `+`, `-`, `%`, `==`, `&&`, `++` and more.
+
+  They look simple, but they hide most of the "tricky output" questions:
+  - `i++` vs `++i` inside a bigger expression,
+  - `7 / 2` giving `3` instead of `3.5`,
+  - `-7 % 3` giving `-1` (not `2`),
+  - `&&` skipping the right side completely,
+  - `byte b += 1` compiling while `b = b + 1` does not.
+
+  In coding problems, `%` and `/` are your main tools: extract digits (`n % 10`, `n / 10`), check even/odd, wrap around in a circle, and print answers "modulo 10^9+7". Master this lesson and a whole category of questions becomes free marks.
+analogy: |
+  Think of **paying at a canteen counter with a token system**.
+
+  - `i++` (post-increment) is like the cashier **calling your current token number first, then** moving the counter to the next number. You get the old value.
+  - `++i` (pre-increment) is like the cashier **moving the counter first, then** calling the number. You get the new value.
+  - `&&` is like a security guard checking **"Do you have an ID?"** first. If no, he does not even bother checking your bag. The second check is skipped (short-circuit).
+  - `%` is like **sharing 17 samosas among 5 friends**: each gets 3 (that is `17 / 5`) and 2 are left over (that is `17 % 5`).
+visual:
+  diagram: |
+    POST vs PRE increment            int i = 5;
+    +-----------------+--------------+-------------+
+    | statement       | value used   | i after     |
+    +-----------------+--------------+-------------+
+    | int a = i++;    | 5 (old)      | 6           |
+    | int b = ++i;    | 7 (new)      | 7           |
+    +-----------------+--------------+-------------+
+
+    PRECEDENCE (high at top)
+      1. ()  [] .                    grouping, access
+      2. x++ x--                     postfix
+      3. ++x --x  +x -x  !  ~        unary, (cast)
+      4. *  /  %                     multiplicative
+      5. +  -                        additive
+      6. <<  >>  >>>                 shifts
+      7. <  >  <=  >=  instanceof    relational
+      8. ==  !=                      equality
+      9. &   then  ^   then  |       bitwise
+     10. &&                          logical AND
+     11. ||                          logical OR
+     12. ? :                         ternary
+     13. =  +=  -=  *=  ...          assignment (right to left)
+  caption: "Post-increment hands out the old value, pre-increment the new one. When in doubt about order, add brackets."
+  visualizer: null
+explanation: |
+  ### 1. Arithmetic: + - * / %
+  - `/` with two **integers** does **integer division**: the decimal part is thrown away. `7 / 2` is `3`, `-7 / 2` is `-3` (cut toward zero).
+  - If either side is a `double`, you get a decimal: `7 / 2.0` is `3.5`.
+  - `%` (modulus) gives the **remainder**. `17 % 5` is `2`.
+  - The sign of `%` follows the **left** number: `-7 % 3` is `-1`, and `7 % -3` is `1`.
+  - Integer division by zero (`5 / 0`) throws `ArithmeticException`. But `5.0 / 0` gives `Infinity` and `0.0 / 0` gives `NaN` (Not a Number), no exception.
+
+  Everyday uses of `%` and `/`:
+  ```java
+  int last = n % 10;        // last digit of n
+  n = n / 10;               // remove last digit
+  boolean even = n % 2 == 0;
+  int next = (i + 1) % size; // wrap around in a circle
+  ```
+  For negative numbers, `n % 2 == 1` fails for odd numbers like -3 (it gives -1). Use `n % 2 != 0` to check odd.
+
+  ### 2. Increment and decrement: ++ and --
+  - `i++` (**post**-increment): use the old value in the expression, then add 1.
+  - `++i` (**pre**-increment): add 1 first, then use the new value.
+  - As a statement alone (`i++;` or `++i;`), both do the same thing.
+  ```java
+  int i = 5;
+  int a = i++;   // a = 5, i = 6
+  int b = ++i;   // i = 7, b = 7
+  ```
+  Famous trap: `i = i++;` leaves `i` **unchanged**. The old value is saved, `i` is increased, then the saved old value is assigned back.
+
+  ### 3. Relational and equality: < > <= >= == !=
+  These give a `boolean`. For objects like `String`, `==` compares **references** (are they the same object?), not content. Use `.equals()` for content (Section B covers this deeply).
+
+  ### 4. Logical: && || !
+  - `&&` (AND): true only if both are true.
+  - `||` (OR): true if at least one is true.
+  - `!` (NOT): flips true and false.
+
+  **Short-circuit:** `&&` stops if the left side is `false` (the answer is already false). `||` stops if the left side is `true`. The right side is **not evaluated at all**. This is useful for safety checks:
+  ```java
+  if (i < arr.length && arr[i] > 0) { ... }   // no index error
+  if (s != null && s.length() > 0) { ... }     // no NullPointerException
+  ```
+  The single `&` and `|` on booleans evaluate **both** sides always.
+
+  ### 5. Bitwise basics: & | ^ ~ << >> >>>
+  These work on the individual bits (0s and 1s) of integers.
+  | Operator | Meaning | Example (5 = 0101, 3 = 0011) |
+  |---|---|---|
+  | `&` | 1 if both bits are 1 | `5 & 3` = 1 (0001) |
+  | `\|` | 1 if either bit is 1 | `5 \| 3` = 7 (0111) |
+  | `^` | XOR: 1 if bits differ | `5 ^ 3` = 6 (0110) |
+  | `~` | flips all bits | `~5` = -6 (always `-(n+1)`) |
+  | `<<` | shift left = multiply by 2 per step | `5 << 1` = 10 |
+  | `>>` | shift right = divide by 2 (keeps sign) | `-8 >> 1` = -4 |
+  | `>>>` | shift right, fills with 0 (unsigned) | `-1 >>> 28` = 15 |
+
+  Handy tricks: `(n & 1) == 0` means even; `x ^ x` is `0`, and `x ^ 0` is `x` (used to find the single non-repeated number in an array).
+
+  ### 6. Assignment and compound assignment
+  `+=`, `-=`, `*=`, `/=`, `%=` combine an operation with assignment. They contain a **hidden cast** to the left side's type:
+  ```java
+  byte b = 10;
+  b = b + 5;   // compile error: b + 5 is int
+  b += 5;      // OK: means b = (byte)(b + 5)
+  int x = 10;
+  x += 2.7;    // OK! x = (int)(10 + 2.7) = 12
+  ```
+
+  ### 7. Ternary: condition ? a : b
+  A short if/else that **gives a value**:
+  ```java
+  int max = (a > b) ? a : b;
+  String grade = marks >= 40 ? "Pass" : "Fail";
+  ```
+
+  ### 8. Precedence and associativity
+  **Precedence** decides which operator runs first (like BODMAS). `*`, `/`, `%` come before `+` and `-`. `&&` comes before `||`. **Associativity** decides the order for equal precedence: most operators go left to right; assignment goes right to left (`a = b = 5` sets b first, then a).
+  ```java
+  int r = 2 + 3 * 4;          // 14, not 20
+  boolean t = true || false && false; // true: && runs first
+  ```
+  Java also evaluates operands **left to right**, which matters with `++`:
+  ```java
+  int i = 2;
+  int r2 = i++ + ++i;   // 2 + 4 = 6, i ends at 4
+  ```
+  In real code, use brackets. In exams, trace slowly, one operand at a time.
+tinyCode:
+  code: |
+    public class Ops {
+        public static void main(String[] args) {
+            System.out.println(17 / 5 + " " + 17 % 5);
+            System.out.println(-7 / 2 + " " + -7 % 3);
+            System.out.println(7 / 2.0);
+            int i = 5;
+            int a = i++;
+            int b = ++i;
+            System.out.println(a + " " + b + " " + i);
+            int[] arr = {4, 9};
+            int k = 5;
+            if (k < arr.length && arr[k] > 0) {
+                System.out.println("never");
+            }
+            System.out.println("safe");
+            System.out.println((5 & 3) + " " + (5 | 3) + " " + (5 ^ 3) + " " + (5 << 1));
+            byte by = 120;
+            by += 10;
+            System.out.println(by);
+            System.out.println(10 > 3 ? "big" : "small");
+        }
+    }
+  walkthrough: |
+    - `17 / 5` is 3 (integer division) and `17 % 5` is 2: `3 2`.
+    - `-7 / 2` cuts toward zero: -3. `-7 % 3` takes the sign of -7: -1.
+    - `7 / 2.0` has a double, so the result is `3.5`.
+    - `a = i++` gives a the old 5, then i becomes 6. `b = ++i` makes i 7 first, so b is 7. Prints `5 7 7`.
+    - `k < arr.length` is false (5 < 2 is false), so `&&` skips `arr[k]`. No crash, and `safe` prints.
+    - Bitwise: `5 & 3` = 1, `5 | 3` = 7, `5 ^ 3` = 6, `5 << 1` = 10.
+    - `by += 10` makes 130 and secretly casts to byte: -126.
+    - The ternary picks `"big"` because 10 > 3.
+
+    Output:
+    ```
+    3 2
+    -3 -1
+    3.5
+    5 7 7
+    safe
+    1 7 6 10
+    -126
+    big
+    ```
+tryIt:
+  instructions: "Type this digit-sum program. It uses % to take the last digit and / to remove it, the most common pattern in number problems. Try other numbers like 9045."
+  code: |
+    public class DigitSum {
+        public static void main(String[] args) {
+            int n = 4721;
+            int sum = 0;
+            int count = 0;
+            while (n > 0) {
+                int last = n % 10;
+                sum += last;
+                count++;
+                n /= 10;
+            }
+            System.out.println("Sum of digits: " + sum);
+            System.out.println("Number of digits: " + count);
+            System.out.println(sum % 2 == 0 ? "Even sum" : "Odd sum");
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int i = 3;
+            int r = i++ * 2 + ++i;
+            System.out.println(r + " " + i);
+            int x = 10;
+            x = x++;
+            System.out.println(x);
+            int c = 0;
+            boolean ok = (c > 0) && (++c > 0);
+            System.out.println(ok + " " + c);
+            System.out.println(1 + 2 * 3 % 4);
+        }
+    }
+  expectedOutput: |
+    11 5
+    10
+    false 0
+    3
+  explanation: |
+    - `i++ * 2`: uses 3 (i becomes 4), gives 6. Then `++i` makes i 5 and uses 5. Total 6 + 5 = `11`, and i is `5`.
+    - `x = x++`: old value 10 is saved, x becomes 11, then the saved 10 is assigned back. x stays `10`.
+    - `c > 0` is false, so `&&` never runs `++c`. ok is `false` and c stays `0`.
+    - `*` and `%` have the same precedence and go left to right: `2 * 3` = 6, `6 % 4` = 2, then `1 + 2` = `3`.
+commonMistakes:
+  - "Expecting 7 / 2 to be 3.5. With two ints it is 3; make one side a double."
+  - "Thinking -7 % 3 is 2. In Java the remainder takes the sign of the left number: -1."
+  - "Believing x = x++ increases x. It leaves x unchanged."
+  - "Forgetting that && and || may skip the right side, so a ++ or method call there might never run."
+  - "Using & instead of && for safety checks; & evaluates both sides and can crash."
+  - "Checking odd numbers with n % 2 == 1, which fails for negative numbers. Use n % 2 != 0."
+interviewBox:
+  why: "Why interviewers ask this: operator questions test careful step-by-step thinking. Tracing i++ and short-circuit correctly shows you can dry-run code under pressure."
+  questions:
+    - q: "What is the difference between i++ and ++i?"
+      a: "Both add 1 to i. i++ is post-increment: the expression uses the old value, then i is increased. ++i is pre-increment: i is increased first, and the expression uses the new value. When written alone as a statement, they behave the same."
+    - q: "What is short-circuit evaluation?"
+      a: "With && Java stops if the left side is false, and with || it stops if the left side is true, because the answer is already known. The right side is not evaluated. We use it for safe checks, like checking for null before calling a method."
+    - q: "Why does byte b = 10; b += 5; compile but b = b + 5 does not?"
+      a: "b + 5 is promoted to int, and an int cannot be stored in a byte without a cast. Compound assignment operators include an automatic cast back to the left side's type, so b += 5 compiles."
+    - q: "What is the difference between >> and >>>?"
+      a: "Both shift bits to the right. >> keeps the sign, so negative numbers stay negative. >>> fills the left side with zeros, so a negative number becomes a large positive one. >>> is called the unsigned right shift."
+    - q: "How do you check if a number is even using bitwise operators?"
+      a: "Check the last bit with n & 1. If n & 1 is 0, the number is even; if it is 1, the number is odd. This also works for negative numbers."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int a = 5;
+      int b = a++ + a;
+      System.out.println(a + " " + b);
+    options: ["6 11", "6 10", "5 10", "6 12"]
+    answer: 0
+    explanation: "a++ uses the old value 5 and then a becomes 6. The second a is read after that, so it is 6. b = 5 + 6 = 11 and a is 6. 6 10 is tempting if you think the increment happens at the end of the statement, but it happens immediately."
+  - id: q2
+    type: MCQ
+    prompt: "What is the value of -17 % 5 in Java?"
+    code: null
+    options: ["3", "-2", "2", "-3"]
+    answer: 1
+    explanation: "-17 / 5 is -3 (cut toward zero), and -17 - (-3 * 5) = -2. The result takes the sign of the left number. 3 is the mathematical 'always positive' modulo, which Java's % does not give."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This crashes with ArrayIndexOutOfBoundsException. What is the fix?"
+    code: |
+      int[] arr = {3, 8, 1};
+      int i = 3;
+      if (arr[i] > 0 && i < arr.length) {
+          System.out.println("positive");
+      }
+    options:
+      - "Use & instead of &&"
+      - "Swap the conditions: check i < arr.length first, then arr[i] > 0"
+      - "Change > to >="
+      - "Declare i as long"
+    answer: 1
+    explanation: "&& evaluates left to right and only skips the right side. Here arr[3] is read first and crashes. Putting the bounds check first lets && stop before touching arr[i]. Using & would make it worse because & always evaluates both sides."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "int x = 10; x += 3.9; compiles and x becomes 13."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Compound assignment has a hidden cast: x = (int)(10 + 3.9) = (int) 13.9 = 13. Writing x = x + 3.9 instead would be a compile error."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      System.out.println(10 - 2 * 3 + 8 / 4 % 3);
+    options: ["6", "2", "4", "8"]
+    answer: 0
+    explanation: "* / % run first, left to right: 2 * 3 = 6; 8 / 4 = 2; 2 % 3 = 2. Then 10 - 6 + 2 = 6. Answer 2 comes from forgetting that 8 / 4 % 3 is still 2, and 8 comes from doing 10 - 2 first."
+  - id: q6
+    type: MATCH
+    prompt: "Match each expression to its result"
+    pairs:
+      - left: "6 & 3"
+        right: "2"
+      - left: "6 | 3"
+        right: "7"
+      - left: "6 ^ 3"
+        right: "5"
+      - left: "6 >> 1"
+        right: "3"
+      - left: "~6"
+        right: "-7"
+    explanation: "6 is 110 and 3 is 011. AND keeps common 1s (010 = 2), OR keeps any 1 (111 = 7), XOR keeps differing bits (101 = 5). 6 >> 1 halves to 3. ~n is always -(n + 1), so ~6 = -7."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the operator that gives the last digit of n."
+    code: |
+      int n = 9073;
+      int lastDigit = n ____ 10;
+    acceptedAnswers: ["%"]
+    explanation: "n % 10 is the remainder after dividing by 10, which is the last digit (3). n / 10 would instead remove the last digit (907)."
+  - id: q8
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int x = 0;
+      if (x == 0 || ++x > 0) {
+          System.out.println(x);
+      }
+    options: ["1", "0", "Nothing", "Compile error"]
+    answer: 1
+    explanation: "x == 0 is true, so || already knows the answer is true and skips ++x. x stays 0, and 0 is printed. 1 is tempting if you forget about short-circuit."
+explainBack:
+  prompt: "Explain to a friend the difference between i++ and ++i, and what short-circuit means, using a real-life example."
+  rubric:
+    - "I said post-increment uses the old value and pre-increment uses the new value"
+    - "I said they behave the same as a standalone statement"
+    - "I explained that && and || can skip the right side"
+    - "I gave a practical use, like checking index or null first"
+    - "I mentioned integer division or % as a common trap"
+  modelAnswer: |
+    Both i++ and ++i add one to i. The difference is which value the expression uses. With i++, it uses the old value, then increases, like a token counter that calls your number first and then moves on. With ++i, it increases first and then uses the new value. Alone on a line, they do the same thing. Short-circuit means && stops when the left side is false and || stops when the left side is true, because the answer is already decided. So I write the safe check first, like i less than the array length, before reading arr[i]. Also, with two ints, divide gives a whole number and % gives the remainder.
+flashcards:
+  - front: "int i = 5; int a = i++; int b = ++i;"
+    back: "a = 5, b = 7, i = 7."
+  - front: "7 / 2, 7 / 2.0, -7 % 3"
+    back: "3, 3.5, -1 (sign of % follows the left number)."
+  - front: "What does x = x++ do?"
+    back: "Nothing visible: x keeps its old value."
+  - front: "Short-circuit"
+    back: "&& skips the right side if left is false; || skips it if left is true."
+  - front: "Why does byte b += 5 compile?"
+    back: "Compound assignment has a hidden cast: b = (byte)(b + 5)."
+  - front: "Even check with bits"
+    back: "(n & 1) == 0 means even."
+keyTakeaways:
+  - "int / int throws away the decimal; % gives the remainder with the sign of the left number."
+  - "i++ uses the old value; ++i uses the new value; x = x++ changes nothing."
+  - "&& and || short-circuit, so put safety checks on the left."
+  - "Compound assignment (+=, -=, ...) includes an automatic cast."
+  - "* / % before + -; && before ||; use brackets when unsure."
+  - "Bitwise basics: & | ^ ~ << >> >>>; n & 1 checks odd/even."

@@ -1,0 +1,391 @@
+slug: init-order
+world: JAVA_CORE
+section: C
+order: 6
+title: "Instance blocks and initialization order"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, TCS]
+infosysRelevance: "Popular tricky output question; tracing static blocks, instance blocks and constructors across parent and child is good practice for SP and DSE output MCQs."
+otherCompanies: "A favourite predict-the-output topic for TCS and product-company technical rounds."
+why: |
+  Imagine an output question with a parent class and a child class, each with a **static block**, an **instance block** and a **constructor**, all printing something. Which line comes first?
+
+  This is one of the most popular "tricky output" questions in Java. It looks scary, but it follows **one fixed set of rules**. Once you learn the order, you can trace any version of it calmly, line by line.
+
+  It also teaches you what really happens inside `new`, which helps with constructors, inheritance and debugging "why is this field still 0?" bugs.
+analogy: |
+  Think of a **new branch of a bank chain opening**, and then **customers opening accounts**.
+
+  **Once per branch type (static, class level):**
+  1. The **head office** rules are set up first (parent static block).
+  2. Then the **branch's own** rules are set up (child static block).
+  This happens **once**, the first time anyone needs that branch.
+
+  **For every new customer account (instance level):**
+  3. The **head office part** of the account is prepared first: its standard forms are filled (parent instance block), then the head office signs off (parent constructor).
+  4. Then the **branch part**: branch forms (child instance block), then the branch manager signs off (child constructor).
+
+  Second customer? Steps 3 and 4 again. Steps 1 and 2 never repeat.
+visual:
+  diagram: |
+    class Parent { static{P-S}  {P-I}  Parent(){P-C} }
+    class Child extends Parent { static{C-S}  {C-I}  Child(){C-C} }
+
+    new Child();   // first time Child is used
+    new Child();   // second time
+
+    STEP                         1st new      2nd new
+    ---------------------------  -----------  -----------
+    1. Parent static block       P-S          (skipped)
+    2. Child static block        C-S          (skipped)
+    3. Parent instance block     P-I          P-I
+    4. Parent constructor body   P-C          P-C
+    5. Child instance block      C-I          C-I
+    6. Child constructor body    C-C          C-C
+
+    Statics: parent -> child, ONCE per class.
+    Per object: (parent block + ctor) -> (child block + ctor).
+  caption: "Static blocks run once per class, parent before child. Every new object then runs parent instance block + constructor, then child instance block + constructor."
+  visualizer: null
+explanation: |
+  ### The pieces
+  | Piece | Looks like | Runs |
+  |---|---|---|
+  | **Static variable initializer** | `static int a = 5;` | Once, when the class is initialised |
+  | **Static block** | `static { ... }` | Once, when the class is initialised |
+  | **Instance variable initializer** | `int b = 10;` | Every time an object is created |
+  | **Instance block** (instance initializer) | `{ ... }` (no name, no `static`) | Every time an object is created, **before** the constructor body |
+  | **Constructor** | `Child() { ... }` | Every time an object is created |
+
+  An **instance block** is just a block of code inside the class, outside any method, without the word `static`. It's used for set-up code shared by all constructors.
+
+  ### When does a class get initialised?
+  **Class initialisation** (running static initializers and static blocks) happens **once**, the first time the class is actively used: creating an object, calling a static method, or using a (non-constant) static field. For the class that holds `main`, it happens **before `main` runs**.
+
+  Before a class is initialised, its **parent class is initialised first**. So parent static blocks always run before child static blocks.
+
+  ### What really happens in `new Child()`
+  This is the secret that makes everything clear. The compiler **copies the instance initializers and instance blocks into every constructor, right after the `super(...)` call**. So a constructor really looks like this:
+  ```java
+  Child() {
+      super();             // 1. go build the Parent part first (fully)
+      // 2. Child's instance field initializers + instance blocks, top to bottom
+      // 3. the rest of the Child constructor body you wrote
+  }
+  ```
+  And `super()` does the same thing inside `Parent`. That's why the order is:
+  **Parent instance blocks → Parent constructor body → Child instance blocks → Child constructor body.**
+
+  One detail: if a constructor starts with `this(...)`, the instance blocks are **not** copied into it (they run in the constructor that calls `super`), so they still run **once** per object.
+
+  ### The complete order (memorise this)
+  **Once per class (first use), top to bottom in the source:**
+  1. Parent static initializers and static blocks
+  2. Child static initializers and static blocks
+
+  **Every `new Child(...)`:**
+  3. Parent instance initializers and instance blocks
+  4. Parent constructor body
+  5. Child instance initializers and instance blocks
+  6. Child constructor body
+
+  Within the same level, **textual order wins**: two static blocks run top to bottom; an instance field initializer written above an instance block runs before it.
+
+  ### A worked trace
+  ```java
+  class Parent {
+      static { System.out.println("1 Parent static"); }
+      { System.out.println("3 Parent instance"); }
+      Parent() { System.out.println("4 Parent constructor"); }
+  }
+  class Child extends Parent {
+      static { System.out.println("2 Child static"); }
+      { System.out.println("5 Child instance"); }
+      Child() { System.out.println("6 Child constructor"); }
+  }
+  ```
+  `new Child();` prints 1, 2, 3, 4, 5, 6 in order. A second `new Child();` prints only 3, 4, 5, 6.
+
+  ### If `main` is inside the child class
+  Then the JVM must initialise the child class **before** running `main`. Since the parent is initialised first, **both static blocks print before the first line of `main`**. This is a favourite trick.
+
+  ### The polymorphism trap (advanced but popular)
+  If the parent constructor calls a method that the child **overrides**, the **child's** version runs, but at that moment the child's fields have **not been initialised yet** (step 5 hasn't happened). So they still hold default values like `0` or `null`. (See quiz question 6.)
+
+  ### How to solve these questions
+  1. Find where execution starts (`main`) and which class holds it. Print its statics (and its parents') first.
+  2. When you meet the first use of a class, print its statics (parent first) if not done yet.
+  3. For each `new`, walk the constructor chain up to the top, then come down: blocks + constructor body at each level.
+  4. Never print a static block twice.
+tinyCode:
+  code: |
+    public class InitOrder {
+        static class Parent {
+            static { System.out.println("1. Parent static block"); }
+            { System.out.println("3. Parent instance block"); }
+            Parent() { System.out.println("4. Parent constructor"); }
+        }
+
+        static class Child extends Parent {
+            static { System.out.println("2. Child static block"); }
+            { System.out.println("5. Child instance block"); }
+            Child() { System.out.println("6. Child constructor"); }
+        }
+
+        public static void main(String[] args) {
+            System.out.println("main starts");
+            new Child();
+            System.out.println("--- second object ---");
+            new Child();
+        }
+    }
+  walkthrough: |
+    - `main starts` prints first: `InitOrder` itself has no static block, and `Parent`/`Child` are not used yet.
+    - `new Child()` is the first use of `Child`. Before `Child` is initialised, its parent `Parent` is: `1.` then `2.`.
+    - Now the object is built. `Child()` calls `super()` first, and `Parent()` runs its instance block (`3.`) and then its body (`4.`).
+    - Back in `Child()`: its instance block (`5.`), then its body (`6.`).
+    - The second `new Child()` skips the static blocks (already done) and prints `3.` to `6.` again.
+
+    Output:
+    ```
+    main starts
+    1. Parent static block
+    2. Child static block
+    3. Parent instance block
+    4. Parent constructor
+    5. Child instance block
+    6. Child constructor
+    --- second object ---
+    3. Parent instance block
+    4. Parent constructor
+    5. Child instance block
+    6. Child constructor
+    ```
+tryIt:
+  instructions: "Type this program. BEFORE running it, write the full output on paper using the six-step rule (notice main is inside the child class and there are two constructors). Then run it and compare line by line."
+  code: |
+    class Vehicle {
+        static { System.out.println("Vehicle static"); }
+        { System.out.println("Vehicle instance"); }
+        Vehicle() { System.out.println("Vehicle()"); }
+    }
+
+    public class Car extends Vehicle {
+        static { System.out.println("Car static"); }
+        { System.out.println("Car instance"); }
+
+        Car() {
+            this("Swift");
+            System.out.println("Car()");
+        }
+
+        Car(String model) {
+            System.out.println("Car(" + model + ")");
+        }
+
+        public static void main(String[] args) {
+            System.out.println("main");
+            new Car();
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        static class A {
+            static { System.out.println("A static"); }
+            int x = print("A field");
+            { System.out.println("A block"); }
+            A() { System.out.println("A()"); }
+
+            static int print(String msg) {
+                System.out.println(msg);
+                return 1;
+            }
+        }
+
+        static class B extends A {
+            static { System.out.println("B static 1"); }
+            { System.out.println("B block"); }
+            B() {
+                super();
+                System.out.println("B()");
+            }
+            static { System.out.println("B static 2"); }
+        }
+
+        public static void main(String[] args) {
+            new B();
+            new B();
+        }
+    }
+  expectedOutput: |
+    A static
+    B static 1
+    B static 2
+    A field
+    A block
+    A()
+    B block
+    B()
+    A field
+    A block
+    A()
+    B block
+    B()
+  explanation: |
+    - **Statics, once:** the first use of `B` initialises its parent `A` first (`A static`), then `B`'s two static blocks **top to bottom** (`B static 1`, `B static 2`). Notice `B static 2` is written *after* the constructor, but it is still a static block, so it runs here with the other statics.
+    - **First object:** `B()` calls `super()`. Inside `A`, the field initializer `int x = print("A field")` is written **above** the instance block, so textual order says it runs first: `A field`, then `A block`, then the `A()` body.
+    - Back in `B`: its instance block (`B block`), then the rest of its constructor (`B()`).
+    - **Second object:** statics are skipped; the same five instance lines repeat.
+commonMistakes:
+  - "Running a static block more than once. Static blocks run only once per class, however many objects you create."
+  - "Printing the child's static block before the parent's. Parents are always initialised first."
+  - "Putting the child instance block before the parent constructor. The whole parent part (block + constructor) finishes first."
+  - "Forgetting that if main is in the child class, both static blocks run before main's first line."
+  - "Ignoring textual order: field initializers and instance blocks at the same level run top to bottom."
+  - "Running instance blocks twice when a constructor uses this(...). They run once per object."
+interviewBox:
+  why: "Why interviewers ask this: it tests whether you can trace code precisely across classes and understand what new does internally, not just memorise rules."
+  questions:
+    - q: "What is the order of execution of static blocks, instance blocks and constructors in inheritance?"
+      a: "First, once per class, the parent's static blocks, then the child's static blocks. Then for every object: the parent's instance blocks, the parent's constructor, the child's instance blocks, and finally the child's constructor."
+    - q: "What is an instance block and when does it run?"
+      a: "It's a block of code in the class without a name or the static keyword. It runs every time an object is created, after the parent constructor finishes and before the rest of this class's constructor body. The compiler actually copies it into each constructor right after the super() call."
+    - q: "How many times does a static block run?"
+      a: "Only once, when the class is initialised, which is the first time it's actively used, like creating an object or calling a static method. Creating more objects doesn't run it again."
+    - q: "If main is in a child class, what prints first?"
+      a: "The parent's static block, then the child's static block, and only then the first line of main, because the JVM must initialise the child class, and therefore its parent, before calling main."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (Main is a separate class.)"
+    code: |
+      class P {
+          static { System.out.print("PS "); }
+          { System.out.print("PI "); }
+          P() { System.out.print("PC "); }
+      }
+      class C extends P {
+          static { System.out.print("CS "); }
+          { System.out.print("CI "); }
+          C() { System.out.print("CC "); }
+      }
+      public class Main {
+          public static void main(String[] args) {
+              new C();
+              System.out.println();
+          }
+      }
+    options: ["PS PI PC CS CI CC", "PS CS PI PC CI CC", "CS PS CI CC PI PC", "PS CS CI PI PC CC"]
+    answer: 1
+    explanation: "Statics first (parent then child): PS CS. Then the object: parent block and constructor (PI PC), then child block and constructor (CI CC). The first option is tempting, but all static blocks run before any instance work starts."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "If you create three objects of a class, its static block runs three times."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A static block runs once, when the class is initialised. Instance blocks and constructors are what run once per object."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "main is inside the child class. What does this print?"
+    code: |
+      class Base {
+          static { System.out.println("Base static"); }
+      }
+      public class Main extends Base {
+          static { System.out.println("Main static"); }
+          public static void main(String[] args) {
+              System.out.println("main");
+          }
+      }
+    options: ["main", "Main static\nmain", "Base static\nMain static\nmain", "main\nBase static\nMain static"]
+    answer: 2
+    explanation: "The JVM initialises Main before calling main, and a parent is always initialised before its child. So Base static, Main static, then main. Even with no object created, both static blocks run."
+  - id: q4
+    type: MCQ
+    prompt: "Where does the compiler place instance blocks and instance field initializers?"
+    options:
+      - "At the start of main"
+      - "Inside each constructor, right after the super(...) call"
+      - "Inside the static block"
+      - "At the end of each constructor"
+    answer: 1
+    explanation: "They are copied into every constructor that calls super (explicitly or implicitly), right after that call. That's why they run after the parent is built and before your constructor body. They are not placed at the end, which is a common guess."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      class Demo {
+          { System.out.print("I "); }
+          Demo() { this(5); System.out.print("D0 "); }
+          Demo(int n) { System.out.print("D" + n + " "); }
+      }
+      public class Main {
+          public static void main(String[] args) {
+              new Demo();
+              System.out.println();
+          }
+      }
+    options: ["I D5 D0", "I D5 I D0", "D5 I D0", "D0 I D5"]
+    answer: 0
+    explanation: "Demo() starts with this(5), so the instance block is NOT copied into Demo(); it lives in Demo(int), which calls super(). So: I, then D5, then back in Demo(): D0. The block runs once per object, never twice."
+  - id: q6
+    type: PREDICT_OUTPUT
+    prompt: "Tricky: the parent constructor calls an overridden method. What does this print?"
+    code: |
+      class Parent {
+          Parent() { show(); }
+          void show() { System.out.println("Parent show"); }
+      }
+      class Child extends Parent {
+          int value = 10;
+          void show() { System.out.println("Child show " + value); }
+      }
+      public class Main {
+          public static void main(String[] args) {
+              new Child().show();
+          }
+      }
+    options: ["Parent show\nChild show 10", "Child show 10\nChild show 10", "Child show 0\nChild show 10", "Parent show\nChild show 0"]
+    answer: 2
+    explanation: "Overriding means Child's show() runs even from Parent's constructor. But at that moment Child's field initializer (value = 10) hasn't run yet; it runs after super() returns. So value is still 0: \"Child show 0\". The later call happens after full construction: \"Child show 10\"."
+  - id: q7
+    type: MATCH
+    prompt: "Match each piece to how often it runs"
+    pairs:
+      - left: "Static block"
+        right: "Once per class, on first use"
+      - left: "Instance block"
+        right: "Once per object, before the constructor body"
+      - left: "Constructor body"
+        right: "Once per object, after the instance blocks"
+    explanation: "Static = class level, once. Instance blocks and constructors = object level, every new."
+explainBack:
+  prompt: "Explain to a friend the order in which static blocks, instance blocks and constructors run when you create two Child objects (Child extends Parent). Use the bank branch idea."
+  rubric:
+    - "I said statics run once per class, parent before child"
+    - "I said for each object: parent instance block, parent constructor, then child instance block, child constructor"
+    - "I said the second object skips the static blocks"
+    - "I mentioned the 'main in child class' or the 'this(...)' detail"
+  modelAnswer: |
+    Think of a bank chain. The first time a branch is needed, the head office rules are set up, then the branch rules. Those are the static blocks: parent first, then child, and only once. Then for every new account, the head office part is prepared first, its instance block and then its constructor, and only after that the branch part, the child's instance block and then the child's constructor. That's because every constructor first calls super, and the instance blocks are placed right after that call. So for two Child objects I get parent static, child static, then parent block, parent constructor, child block, child constructor, twice. And if main is inside the child class, both static blocks print before main even starts.
+flashcards:
+  - front: "Full initialization order with inheritance"
+    back: "Once: Parent static -> Child static. Each new: Parent instance block -> Parent ctor -> Child instance block -> Child ctor."
+  - front: "Where do instance blocks go after compilation?"
+    back: "Copied into each constructor right after super(...) (not into constructors that start with this(...))."
+  - front: "When is a class initialised (static blocks run)?"
+    back: "Once, on first active use: new, static method call, non-constant static field use. main's class: before main."
+  - front: "Two static blocks in one class"
+    back: "Run top to bottom in source order, once."
+  - front: "Parent constructor calls an overridden method"
+    back: "Child's version runs, but child fields still have default values (0/null) because they aren't initialised yet."
+keyTakeaways:
+  - "Static initialisation happens once per class, parent before child, before main for main's class."
+  - "Each new: parent instance blocks + constructor, then child instance blocks + constructor."
+  - "Instance blocks are copied into constructors right after super(...)."
+  - "Same level: textual order (top to bottom) decides."
+  - "Calling an overridden method from a parent constructor sees uninitialised child fields."

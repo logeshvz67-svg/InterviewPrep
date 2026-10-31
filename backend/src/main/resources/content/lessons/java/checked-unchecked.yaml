@@ -1,0 +1,326 @@
+slug: checked-unchecked
+world: JAVA_CORE
+section: D
+order: 2
+title: "Checked vs unchecked"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A top comparison question for SP and DSE technical rounds; also needed to read compile errors in coding rounds."
+otherCompanies: "One of the most common Java exception questions at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  **"What is the difference between checked and unchecked exceptions?"** is one of the most common Java interview questions. It looks like a definition question, but a good answer shows you understand *design*: why Java forces some handling and not other handling.
+
+  It also matters while coding. If you call `Thread.sleep(100)` or open a file and forget to handle the exception, your program **won't even compile**. Knowing the rule tells you instantly how to fix the red error.
+
+  In this lesson you will learn:
+  - the exact rule to decide checked vs unchecked,
+  - the two ways to satisfy the compiler ("handle or declare"),
+  - when each kind is the right choice.
+analogy: |
+  Think of **travelling by flight**.
+
+  - **Checked exception** = the airline's rule: "You **must** carry a valid ID." Security checks it **before** you board. If you don't have a plan for it, you are stopped at the gate. In Java, the **compiler** is security, and it stops your code before it runs.
+  - **Unchecked exception** = **you trip on the stairs** because you were looking at your phone. Nobody checks for that at the gate. It is your own carelessness, and the fix is to be careful (fix the bug), not to fill a form.
+visual:
+  diagram: |2
+     Is it a subclass of RuntimeException or Error?
+                     |
+          +----------+-----------+
+         YES                     NO
+          |                       |
+      UNCHECKED                CHECKED
+      compiler is quiet        compiler says:
+      e.g. NullPointer-        "handle it or declare it"
+      Exception, Arithmetic-       |
+      Exception                 +--+-------------------+
+                                |                      |
+                          try { ... }            void read()
+                          catch (IOException e)    throws IOException
+                          (HANDLE)                 (DECLARE)
+  caption: "One question decides it: does the class extend RuntimeException or Error? If not, it is checked, and the compiler makes you either catch it or declare it with throws."
+  visualizer: null
+explanation: |
+  ### The rule in one line
+  - **Unchecked** = `RuntimeException` and its subclasses, plus `Error` and its subclasses.
+  - **Checked** = every other subclass of `Exception` (and `Throwable` itself).
+
+  "Checked" means **checked by the compiler** at compile time. It does *not* mean "happens at compile time". **All exceptions happen at run time.** The difference is only whether the compiler forces you to prepare for them.
+
+  ### Checked exceptions: "handle or declare"
+  If a method can throw a checked exception, the compiler demands one of two things:
+
+  **1. Handle it** with try/catch:
+  ```java
+  try {
+      Thread.sleep(100);              // can throw InterruptedException
+  } catch (InterruptedException e) {
+      System.out.println("Woken early");
+  }
+  ```
+  **2. Declare it** with `throws` in the method signature, which passes the duty to the caller:
+  ```java
+  static void pause() throws InterruptedException {
+      Thread.sleep(100);
+  }
+  ```
+  If you do neither, you get a compile error like: `unreported exception InterruptedException; must be caught or declared to be thrown`.
+
+  Common checked exceptions: `IOException`, `FileNotFoundException`, `SQLException`, `InterruptedException`, `ClassNotFoundException`, `CloneNotSupportedException`.
+
+  ### Unchecked exceptions: no compiler pressure
+  For unchecked exceptions the compiler says nothing. You *may* catch them, but usually you should **prevent** them:
+  | Unchecked exception | Prevent it by |
+  |---|---|
+  | `NullPointerException` | Checking `if (x != null)` before using `x` |
+  | `ArrayIndexOutOfBoundsException` | Keeping the index between `0` and `length - 1` |
+  | `ArithmeticException` | Checking the divisor is not zero |
+  | `NumberFormatException` | Validating the text before `Integer.parseInt` |
+  | `ClassCastException` | Using `instanceof` before casting |
+
+  ### Why does Java have both?
+  - **Checked** exceptions are for problems **outside your control** that a good program should plan for: the file is missing, the network is down, the database refused. The caller can often do something useful (retry, ask for another file name).
+  - **Unchecked** exceptions are for **programming mistakes**. Forcing a `try/catch` around every array access would make code unreadable, and catching a bug does not fix it.
+
+  ### Side-by-side comparison
+  | | Checked | Unchecked |
+  |---|---|---|
+  | Parent | `Exception` (not RuntimeException) | `RuntimeException` or `Error` |
+  | Compiler forces handling? | Yes: catch or `throws` | No |
+  | Usually caused by | Outside world (files, network, DB) | Bugs in our code |
+  | Typical fix | Handle and recover | Fix the code |
+  | Examples | IOException, SQLException | NullPointerException, ArithmeticException |
+
+  ### Two compiler traps
+  1. **Catching a checked exception that the try block can never throw** is a compile error: `exception IOException is never thrown in body of corresponding try statement`. Java only allows this for unchecked exceptions and for `Exception`/`Throwable`.
+  2. **Overriding:** an overriding method cannot declare a **new or broader checked exception** than the parent method. It may declare fewer, narrower, or any unchecked ones.
+
+  ### Modern practice
+  Many modern libraries (Spring, for example) prefer unchecked exceptions and wrap checked ones: `throw new RuntimeException("Could not read config", e);`. Be ready to say: checked exceptions make errors visible, but they can clutter code; teams choose based on whether the caller can actually recover.
+tinyCode:
+  code: |
+    public class HandleOrDeclare {
+        // Option 2: DECLARE. The caller must deal with it.
+        static void slowHello() throws InterruptedException {
+            Thread.sleep(50);
+            System.out.println("Hello after a nap");
+        }
+
+        public static void main(String[] args) {
+            // Option 1: HANDLE. We catch the checked exception here.
+            try {
+                slowHello();
+            } catch (InterruptedException e) {
+                System.out.println("Interrupted!");
+            }
+
+            // Unchecked: the compiler does not force a try/catch
+            String text = "42";
+            int n = Integer.parseInt(text);
+            System.out.println(n + 1);
+        }
+    }
+  walkthrough: |
+    - `Thread.sleep(50)` can throw `InterruptedException`, which is **checked**.
+    - `slowHello` does not catch it; it **declares** it with `throws InterruptedException`. Now every caller must handle or declare it.
+    - In `main`, we **handle** it with `try/catch`. If we deleted the try/catch, the program would not compile.
+    - `Integer.parseInt` can throw `NumberFormatException`, which is **unchecked**, so no try/catch is required. Since "42" is valid, it returns 42 and we print 43.
+
+    Output:
+    ```
+    Hello after a nap
+    43
+    ```
+tryIt:
+  instructions: "Type this program and run it. Then delete the 'throws Exception' part from readAge and compile again: notice the compiler error. Put it back, and see that the unchecked case needs no declaration."
+  code: |
+    public class AgeCheck {
+        static int readAge(String text) throws Exception {
+            if (text.isEmpty()) {
+                throw new Exception("Age is empty");      // checked
+            }
+            int age = Integer.parseInt(text);            // may throw unchecked
+            return age;
+        }
+        public static void main(String[] args) {
+            String[] inputs = {"21", "", "abc"};
+            for (String in : inputs) {
+                try {
+                    System.out.println("Age: " + readAge(in));
+                } catch (NumberFormatException e) {
+                    System.out.println("Not a number: " + in);
+                } catch (Exception e) {
+                    System.out.println("Problem: " + e.getMessage());
+                }
+            }
+        }
+    }
+predict:
+  code: |
+    public class Flow {
+        static int divide(int a, int b) {
+            return a / b;
+        }
+        public static void main(String[] args) {
+            try {
+                System.out.println("Start");
+                System.out.println(divide(10, 2));
+                System.out.println(divide(5, 0));
+                System.out.println("After");
+            } catch (ArithmeticException e) {
+                System.out.println("Caught " + e.getMessage());
+            }
+            System.out.println("End");
+        }
+    }
+  expectedOutput: |
+    Start
+    5
+    Caught / by zero
+    End
+  explanation: |
+    `divide` has no `throws` clause because `ArithmeticException` is unchecked. `divide(10, 2)` prints 5. `divide(5, 0)` throws, so the rest of the try ("After") is skipped. The exception travels up from `divide` to `main`, the catch prints the message, and normal flow continues with "End".
+commonMistakes:
+  - "Saying checked exceptions happen at compile time. All exceptions happen at run time; 'checked' only means the compiler checks that you handle or declare them."
+  - "Calling Thread.sleep or file methods without try/catch or throws, then being confused by the 'unreported exception' compile error."
+  - "Catching IOException around code that cannot throw it. For checked exceptions this is a compile error."
+  - "Wrapping every line in try/catch to 'handle' NullPointerException. Fix the null instead."
+  - "Writing an empty catch block just to make the compiler quiet. The error is hidden, not handled."
+interviewBox:
+  why: "Why interviewers ask this: it checks if you know what the compiler enforces and if you can design error handling, not just recite class names."
+  questions:
+    - q: "What is the difference between checked and unchecked exceptions?"
+      a: "Checked exceptions are checked by the compiler: if a method can throw one, we must catch it or declare it with throws. Examples are IOException and SQLException. Unchecked exceptions are RuntimeException and Error and their subclasses; the compiler doesn't force handling. Examples are NullPointerException and ArithmeticException. Both actually happen at run time."
+    - q: "When would you create a checked versus an unchecked custom exception?"
+      a: "Checked if the caller can reasonably recover, like InsufficientBalanceException where the app can show a message and let the user try a smaller amount. Unchecked if it means the code was used wrongly, like passing a negative quantity, where the right fix is to correct the code."
+    - q: "Can an overriding method throw a broader checked exception?"
+      a: "No. It can throw the same checked exception, a narrower one, none at all, or any unchecked exception. Throwing a new or broader checked exception is a compile error, because callers using the parent type wouldn't be ready for it."
+    - q: "Is it a good idea to catch NullPointerException?"
+      a: "Usually not. It is a bug signal. It's better to check for null or use Objects.requireNonNull or Optional so the problem doesn't happen."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which of these is a CHECKED exception?"
+    code: null
+    options: ["NullPointerException", "IOException", "ArithmeticException", "ClassCastException"]
+    answer: 1
+    explanation: "IOException extends Exception directly, not RuntimeException, so it's checked. The other three all extend RuntimeException, so they are unchecked even though they sound serious."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "Checked exceptions are thrown at compile time, unchecked exceptions at run time."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Every exception is thrown while the program runs. 'Checked' means the compiler checks you have handled or declared it before the program can compile."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Why does this code not compile?"
+    code: |
+      public class Main {
+          static void waitABit() {
+              Thread.sleep(100);
+          }
+          public static void main(String[] args) {
+              waitABit();
+              System.out.println("done");
+          }
+      }
+    options:
+      - "Thread.sleep needs a long, not an int"
+      - "InterruptedException is checked and is neither caught nor declared in waitABit"
+      - "waitABit must be public"
+      - "main must catch NullPointerException"
+    answer: 1
+    explanation: "Thread.sleep throws InterruptedException, a checked exception. waitABit must either catch it or declare 'throws InterruptedException'. The int 100 is fine (it widens to long), and public is not required."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This code fails to compile. Why?"
+    code: |
+      import java.io.IOException;
+
+      public class Main {
+          public static void main(String[] args) {
+              try {
+                  System.out.println("hi");
+              } catch (IOException e) {
+                  System.out.println("io problem");
+              }
+          }
+      }
+    options:
+      - "IOException must be caught before Exception"
+      - "A checked exception that the try block can never throw cannot be caught"
+      - "println can throw IOException, so you must declare it"
+      - "There is nothing wrong; it prints hi"
+    answer: 1
+    explanation: "The compiler knows nothing in the try can throw IOException, and catching an impossible checked exception is an error ('never thrown in body of corresponding try statement'). System.out.println does not throw IOException. Catching an unchecked exception here would have been allowed."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              try {
+                  String s = null;
+                  System.out.println("A");
+                  System.out.println(s.length());
+                  System.out.println("B");
+              } catch (NullPointerException e) {
+                  System.out.println("C");
+              }
+              System.out.println("D");
+          }
+      }
+    options: ["A B C D (each on its own line)", "A\nC\nD", "A\nD", "C\nD"]
+    answer: 1
+    explanation: "A prints first. s.length() throws NullPointerException, so B is skipped and control jumps to the catch, printing C. After the try/catch, D prints. It isn't 'A D' because the catch does run."
+  - id: q6
+    type: MATCH
+    prompt: "Match each exception with its category"
+    pairs:
+      - left: "SQLException"
+        right: "Checked: database problem"
+      - left: "NumberFormatException"
+        right: "Unchecked: bad text given to parseInt"
+      - left: "InterruptedException"
+        right: "Checked: a sleeping thread was interrupted"
+      - left: "ClassCastException"
+        right: "Unchecked: wrong type cast"
+    explanation: "SQLException and InterruptedException extend Exception directly, so they're checked. NumberFormatException and ClassCastException extend RuntimeException, so they're unchecked."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword so the method passes the checked exception to its caller."
+    code: |
+      static void load() ____ java.io.IOException {
+          throw new java.io.IOException("disk error");
+      }
+    acceptedAnswers: ["throws"]
+    explanation: "'throws' in the signature declares the exception. 'throw' (without s) is the statement that actually raises an exception object."
+explainBack:
+  prompt: "Explain checked vs unchecked exceptions to a friend, with one example of each and why Java treats them differently."
+  rubric:
+    - "I said checked means the compiler forces handle-or-declare"
+    - "I said unchecked = RuntimeException and Error families"
+    - "I said all exceptions actually happen at run time"
+    - "I gave an example of each (e.g. IOException, NullPointerException)"
+    - "I explained why: outside problems vs programming bugs"
+  modelAnswer: |
+    Both kinds of exceptions happen while the program runs. The difference is what the compiler does. For checked exceptions, like IOException when reading a file, the compiler forces me to either catch it with try-catch or declare it with throws; otherwise the code won't compile. That's because these problems come from the outside world and a good program should plan for them. Unchecked exceptions are RuntimeException and Error and their children, like NullPointerException or divide by zero. The compiler doesn't force anything, because they usually mean a bug, and the right fix is to correct the code, not to wrap it in try-catch.
+flashcards:
+  - front: "Rule for unchecked exceptions"
+    back: "Subclasses of RuntimeException or Error. Everything else under Exception is checked."
+  - front: "Handle or declare: what are the two options?"
+    back: "Handle with try/catch, or declare with 'throws' in the method signature."
+  - front: "Do checked exceptions happen at compile time?"
+    back: "No. All exceptions happen at run time; the compiler only checks that checked ones are handled or declared."
+  - front: "Four checked exceptions"
+    back: "IOException, SQLException, InterruptedException, ClassNotFoundException."
+  - front: "Catching IOException when the try can't throw it?"
+    back: "Compile error: 'exception IOException is never thrown in body of corresponding try statement'."
+keyTakeaways:
+  - "Checked = compiler forces you to catch or declare; unchecked = no compiler pressure."
+  - "Unchecked means RuntimeException or Error (and subclasses)."
+  - "All exceptions occur at run time; 'checked' is about the compiler."
+  - "Use checked for recoverable outside problems, unchecked for programming bugs."
+  - "Prevent unchecked exceptions with checks instead of catching them."

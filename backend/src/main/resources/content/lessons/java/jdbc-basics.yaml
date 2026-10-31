@@ -1,0 +1,330 @@
+slug: jdbc-basics
+world: JAVA_CORE
+section: I
+order: 3
+title: "JDBC basics"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+infosysRelevance: "Connects Java to SQL and to Spring; JDBC steps, PreparedStatement and SQL injection are common questions for DSE-style technical rounds."
+otherCompanies: "A common basic question at TCS, Wipro, Cognizant, Accenture and Capgemini: steps to connect, Statement vs PreparedStatement, executeQuery vs executeUpdate."
+why: |
+  Almost every company project stores data in a **database** (MySQL, PostgreSQL, Oracle). **JDBC** (Java Database Connectivity) is the standard Java way to talk to a database.
+
+  Even if you later use Spring Boot and JPA, they use JDBC **underneath**. Interviewers ask about it because:
+  - "What are the steps to connect Java to a database?" is a classic.
+  - **Statement vs PreparedStatement** leads straight to **SQL injection**, a real security attack.
+  - It checks that you **close connections** (a leaked connection can bring a whole app down).
+analogy: |
+  Think of ordering at a **restaurant counter** using a fixed **order slip**.
+
+  - The **driver** is the waiter who speaks the kitchen's language (MySQL, Oracle...).
+  - The **Connection** is your table booking: an open line between you and the kitchen.
+  - A **Statement** is writing your order by hand on blank paper. If a naughty customer writes "1 dosa; also give me the cash box", the kitchen may read it all as an order. That is **SQL injection**.
+  - A **PreparedStatement** is a printed slip: "Item: ___  Quantity: ___". Whatever you write in the blanks is treated **only as an item name or a number**, never as a new instruction. Safe.
+  - The **ResultSet** is the tray of food that comes back, which you pick up row by row.
+  - **Closing** is paying the bill and leaving the table so others can sit.
+visual:
+  diagram: |
+    Your Java code
+        |  DriverManager.getConnection(url, user, pass)
+        v
+    +------------+      +----------------+      +--------------+
+    | Connection | ---> | JDBC Driver    | ---> |  Database    |
+    +------------+      | (mysql jar...) |      | (MySQL etc.) |
+        |               +----------------+      +--------------+
+        |  prepareStatement("... WHERE id = ?")
+        v
+    +-------------------+  setInt(1, 7)
+    | PreparedStatement |  executeQuery()  --> ResultSet
+    +-------------------+  executeUpdate() --> int (rows changed)
+        |
+        v
+    ResultSet (cursor starts BEFORE the first row)
+    +----+-------+
+    | id | name  |   rs.next() -> true, moves to row 1
+    +----+-------+   rs.getString("name")
+    |  7 | Asha  |   rs.next() -> false, no more rows
+    +----+-------+
+  caption: "Connection opens the line, PreparedStatement sends SQL with ? blanks, and ResultSet is read row by row with next()."
+  visualizer: null
+explanation: |
+  ### Key words
+  - **JDBC**: a set of interfaces in `java.sql` (Connection, Statement, ResultSet...) for talking to any database.
+  - **Driver**: a jar from the database company that implements those interfaces for their database. Your code uses the interfaces; the driver does the real work.
+  - **JDBC URL**: the database address, for example `jdbc:mysql://localhost:3306/shop`.
+
+  ### The 5 steps (memorise the order)
+  1. **Load the driver**. Old code did `Class.forName("com.mysql.cj.jdbc.Driver")`. Since JDBC 4 the driver loads automatically if its jar is on the classpath.
+  2. **Open a connection**: `Connection con = DriverManager.getConnection(url, user, pass);`
+  3. **Create a statement**: `PreparedStatement ps = con.prepareStatement(sql);`
+  4. **Execute and process** the result.
+  5. **Close** everything (ResultSet, statement, connection), best with try-with-resources.
+
+  ### Three ways to execute
+  | Method | Use for | Returns |
+  |---|---|---|
+  | `executeQuery()` | `SELECT` | `ResultSet` (the rows) |
+  | `executeUpdate()` | `INSERT`, `UPDATE`, `DELETE` | `int` = number of rows changed |
+  | `execute()` | anything | `boolean` (true if a ResultSet came back) |
+
+  ### Reading a ResultSet
+  A ResultSet has a **cursor** (a pointer to the current row) that starts **before** the first row. `rs.next()` moves to the next row and returns `false` when there are no more rows.
+  ```java
+  while (rs.next()) {
+      int id = rs.getInt("id");          // by column name
+      String name = rs.getString(2);     // or by column number, starting at 1
+  }
+  ```
+  Column numbers start at **1**, not 0.
+
+  ### SQL injection: why Statement is dangerous
+  **SQL injection** is an attack where a user types SQL code into an input box, and your program glues it into its own query.
+  ```java
+  // DANGEROUS
+  String sql = "SELECT * FROM users WHERE name = '" + input + "'";
+  ```
+  If the user types `x' OR '1'='1`, the query becomes:
+  ```
+  SELECT * FROM users WHERE name = 'x' OR '1'='1'
+  ```
+  `'1'='1'` is always true, so **every user row is returned**. With a login form, the attacker logs in without a password. Inputs like `5 OR 1=1` in a `DELETE` can wipe a whole table.
+
+  ### PreparedStatement: the fix
+  ```java
+  String sql = "SELECT * FROM users WHERE name = ?";
+  PreparedStatement ps = con.prepareStatement(sql);
+  ps.setString(1, input);   // parameter 1 = the first ?
+  ```
+  The `?` is a **placeholder**. The SQL shape is sent to the database first; values are sent **separately** and are treated only as data. So `x' OR '1'='1` is searched as a weird name, not run as code.
+
+  Extra benefits:
+  - The database can **reuse** the compiled query, so repeated runs are faster.
+  - No messy quote handling; `setInt`, `setDate`, etc. handle types.
+  - Placeholder numbers start at **1**.
+
+  ### try-with-resources for JDBC
+  Connection, Statement and ResultSet all implement `AutoCloseable`:
+  ```java
+  try (Connection con = DriverManager.getConnection(url, user, pass);
+       PreparedStatement ps = con.prepareStatement("SELECT name FROM users WHERE id = ?")) {
+      ps.setInt(1, 7);
+      try (ResultSet rs = ps.executeQuery()) {
+          if (rs.next()) System.out.println(rs.getString("name"));
+      }
+  } catch (SQLException e) {
+      e.printStackTrace();
+  }
+  ```
+  Resources close in **reverse order** of opening. `SQLException` is a **checked** exception.
+
+  ### Transactions in one minute
+  A **transaction** is a group of SQL steps that must all succeed or all fail (like a bank transfer: debit and credit together).
+  ```java
+  con.setAutoCommit(false);  // start grouping
+  // ... two executeUpdate calls ...
+  con.commit();              // save both
+  // on error: con.rollback(); // undo both
+  ```
+
+  ### Where this goes next
+  Opening a new connection is slow, so real apps use a **connection pool** (Spring Boot uses HikariCP) that keeps connections ready. Spring's `JdbcTemplate` and JPA/Hibernate are built on top of JDBC and use PreparedStatement for you.
+tinyCode:
+  code: |
+    // NEEDS-DB: this program needs a running MySQL database and the
+    // MySQL driver jar on the classpath. It compiles without them.
+    import java.sql.*;
+
+    public class FindUser {
+        public static void main(String[] args) {
+            String url = "jdbc:mysql://localhost:3306/shop";
+            String sql = "SELECT id, name FROM users WHERE city = ?";
+
+            try (Connection con = DriverManager.getConnection(url, "root", "password");
+                 PreparedStatement ps = con.prepareStatement(sql)) {
+
+                ps.setString(1, "Mysuru");             // fill the first ?
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {                 // move row by row
+                        int id = rs.getInt("id");
+                        String name = rs.getString("name");
+                        System.out.println(id + " " + name);
+                    }
+                }
+            } catch (SQLException e) {
+                System.out.println("DB error: " + e.getMessage());
+            }
+        }
+    }
+  walkthrough: |
+    - **Database needed**: to run this you need MySQL running with a `shop` database and a `users` table, plus the driver jar. Read it first; the logic is what interviews test.
+    - `import java.sql.*` brings in Connection, PreparedStatement, ResultSet and SQLException.
+    - The SQL has a `?` placeholder instead of gluing the city into the string.
+    - `DriverManager.getConnection(url, user, pass)` opens the connection. Both the connection and the statement are opened inside `try ( ... )`, so they close automatically.
+    - `ps.setString(1, "Mysuru")` fills placeholder number **1**.
+    - `executeQuery()` is used because this is a `SELECT`. It returns a `ResultSet`.
+    - `while (rs.next())` moves the cursor from "before the first row" to each row until there are no more.
+    - `getInt("id")` and `getString("name")` read columns of the current row.
+    - `SQLException` is checked, so we catch it.
+tryIt:
+  instructions: "No database needed. Type this to SEE SQL injection happen in the query text. Then think: with a PreparedStatement, the attack text would be just a value for the ?, never part of the SQL."
+  code: |
+    public class Injection {
+        static String unsafeQuery(String name) {
+            return "SELECT * FROM users WHERE name = '" + name + "'";
+        }
+
+        public static void main(String[] args) {
+            String normal = "Asha";
+            String attack = "x' OR '1'='1";
+
+            System.out.println(unsafeQuery(normal));
+            System.out.println(unsafeQuery(attack));
+
+            String safe = "SELECT * FROM users WHERE name = ?";
+            System.out.println(safe + "   <- value sent separately");
+        }
+    }
+predict:
+  code: |
+    public class Glue {
+        public static void main(String[] args) {
+            String user = "x' OR '1'='1";
+            String sql = "SELECT * FROM users WHERE name = '" + user + "'";
+            System.out.println(sql);
+        }
+    }
+  expectedOutput: |
+    SELECT * FROM users WHERE name = 'x' OR '1'='1'
+  explanation: |
+    String concatenation just glues the text in. The attacker's quote `'` closes the name early, and `OR '1'='1'` becomes real SQL. Since `'1'='1'` is always true, the database would return every user. This is exactly why we use PreparedStatement.
+commonMistakes:
+  - "Building SQL with + and user input (Statement). This opens the door to SQL injection; use PreparedStatement with ?."
+  - "Starting parameter or column numbers at 0. setString(1, ...) and getString(1) start at 1."
+  - "Reading rs.getString(...) without calling rs.next() first; the cursor starts before the first row."
+  - "Using executeQuery for INSERT/UPDATE/DELETE. Use executeUpdate, which returns the number of rows changed."
+  - "Not closing Connection/Statement/ResultSet. Leaked connections exhaust the database. Use try-with-resources."
+interviewBox:
+  why: "Why interviewers ask this: nearly every project uses a database, and SQL injection is one of the most common real security bugs. They want to know you write safe, leak-free database code."
+  questions:
+    - q: "What are the steps to connect to a database using JDBC?"
+      a: "First the driver is loaded; with JDBC 4 that happens automatically from the jar. Then I get a Connection from DriverManager with the URL, username and password. Then I create a PreparedStatement, set the parameters, and execute it: executeQuery for SELECT, executeUpdate for changes. I read the ResultSet with next, and finally I close everything, usually with try-with-resources."
+    - q: "What is the difference between Statement and PreparedStatement?"
+      a: "Statement sends a plain SQL string, so if we join user input into it, we risk SQL injection. PreparedStatement uses question-mark placeholders and sends values separately, so input is always treated as data. It is safer, handles types and quotes for us, and can be faster when the same query runs many times."
+    - q: "What is SQL injection? Give an example."
+      a: "It is an attack where user input changes the meaning of our SQL. For example, if a login query glues the name into quotes and someone types x' OR '1'='1, the condition becomes always true and they can log in without a password. The fix is PreparedStatement."
+    - q: "What is the difference between executeQuery and executeUpdate?"
+      a: "executeQuery is for SELECT and returns a ResultSet with the rows. executeUpdate is for INSERT, UPDATE and DELETE and returns an int, the number of rows affected."
+    - q: "How does Spring Boot relate to JDBC?"
+      a: "Spring's JdbcTemplate and JPA with Hibernate are built on top of JDBC. They manage connections through a pool like HikariCP and use prepared statements internally, so we write less code, but JDBC is still doing the work underneath."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which method should you call to run an UPDATE statement, and what does it return?"
+    code: null
+    options: ["executeQuery(), a ResultSet", "executeUpdate(), the number of rows changed", "execute(), always true", "executeUpdate(), a ResultSet"]
+    answer: 1
+    explanation: "executeUpdate is for INSERT/UPDATE/DELETE and returns an int with the number of affected rows. executeQuery is only for SELECT and returns a ResultSet; using it for an UPDATE throws an SQLException with most drivers."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "In ps.setString(1, \"Asha\"), the 1 means the first ? placeholder."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. JDBC placeholder indexes start at 1, not 0. Column indexes in a ResultSet also start at 1."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "No database involved: this only builds the SQL text. What is printed?"
+    code: |
+      String id = "5 OR 1=1";
+      String sql = "DELETE FROM orders WHERE id = " + id;
+      System.out.println(sql);
+    options: ["DELETE FROM orders WHERE id = 5", "DELETE FROM orders WHERE id = '5 OR 1=1'", "DELETE FROM orders WHERE id = 5 OR 1=1", "Compile error: cannot add String to SQL"]
+    answer: 2
+    explanation: "Concatenation copies the text exactly, with no quotes added. The printed SQL ends with OR 1=1, which is always true, so running it would delete EVERY order. The tempting option with quotes is what a PreparedStatement effectively does: it treats the whole input as one value."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This login check works for normal users. What is the serious bug?"
+    code: |
+      // NEEDS-DB to run; compiles without a database
+      import java.sql.*;
+
+      public class Login {
+          static boolean login(Connection con, String user, String pass) throws SQLException {
+              String sql = "SELECT 1 FROM users WHERE name = '" + user
+                         + "' AND pass = '" + pass + "'";
+              try (Statement st = con.createStatement();
+                   ResultSet rs = st.executeQuery(sql)) {
+                  return rs.next();
+              }
+          }
+
+          public static void main(String[] args) {
+              System.out.println("compiled");
+          }
+      }
+    options:
+      - "rs.next() should be rs.first()"
+      - "User input is glued into the SQL, so it is open to SQL injection; use PreparedStatement with ?"
+      - "Statement must be closed before ResultSet"
+      - "executeQuery cannot be used for SELECT"
+    answer: 1
+    explanation: "Typing x' OR '1'='1 as the password makes the WHERE clause true for every row, so anyone can log in. Fix: SELECT 1 FROM users WHERE name = ? AND pass = ? with ps.setString(1, user) and ps.setString(2, pass). The other options are wrong: rs.next() is the right way to check for a row, try-with-resources closes in the correct reverse order, and executeQuery is exactly for SELECT."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill the Connection method that creates a safe statement with placeholders."
+    code: |
+      PreparedStatement ps = con.____("SELECT * FROM emp WHERE dept = ?");
+      ps.setString(1, "HR");
+    acceptedAnswers: ["prepareStatement"]
+    explanation: "con.prepareStatement(sql) creates a PreparedStatement. Note the method is prepareStatement (no 'd'), while the type is PreparedStatement."
+  - id: q6
+    type: MATCH
+    prompt: "Match each JDBC piece to its job"
+    pairs:
+      - left: "DriverManager"
+        right: "Gives you a Connection from a JDBC URL"
+      - left: "PreparedStatement"
+        right: "Precompiled SQL with ? placeholders"
+      - left: "ResultSet"
+        right: "Rows returned by a SELECT, read with next()"
+      - left: "rollback()"
+        right: "Undoes all changes in the current transaction"
+    explanation: "DriverManager opens connections, PreparedStatement carries safe SQL, ResultSet holds rows, and rollback undoes a transaction."
+  - id: q7
+    type: MCQ
+    prompt: "Right after executeQuery(), where is the ResultSet cursor?"
+    code: null
+    options: ["On the first row", "Before the first row", "On the last row", "It has no cursor"]
+    answer: 1
+    explanation: "The cursor starts before the first row. You must call next() once to move onto row 1. Reading without next() throws an SQLException."
+explainBack:
+  prompt: "Explain to a friend how Java reads data from a database and why PreparedStatement is safer than Statement."
+  rubric:
+    - "I listed the steps: connection, statement, execute, read ResultSet, close"
+    - "I explained executeQuery vs executeUpdate"
+    - "I explained SQL injection with an example like ' OR '1'='1"
+    - "I explained that ? placeholders send values separately as data"
+    - "I mentioned try-with-resources for closing"
+  modelAnswer: |
+    JDBC is how Java talks to a database. I open a Connection using DriverManager with a URL, username and password. Then I create a PreparedStatement with question marks where the values go, fill them with setString or setInt, and run it: executeQuery for SELECT gives a ResultSet, which I read row by row with next; executeUpdate for changes gives the number of rows changed. I put everything in try-with-resources so it closes automatically. PreparedStatement is safer because with a normal Statement, if I glue user input into the SQL, someone can type something like quote OR one equals one and change my query. With placeholders, the input is always treated as data, never as SQL.
+flashcards:
+  - front: "JDBC steps"
+    back: "Load driver (auto in JDBC 4) -> getConnection -> prepareStatement -> execute -> read ResultSet -> close."
+  - front: "executeQuery vs executeUpdate"
+    back: "executeQuery: SELECT, returns ResultSet. executeUpdate: INSERT/UPDATE/DELETE, returns int rows affected."
+  - front: "What is SQL injection?"
+    back: "User input that changes the SQL itself, e.g. x' OR '1'='1 making a WHERE always true. Prevent with PreparedStatement."
+  - front: "First index for setString / getString?"
+    back: "1 (not 0)."
+  - front: "Where does the ResultSet cursor start?"
+    back: "Before the first row; call next() to move to row 1."
+keyTakeaways:
+  - "JDBC = interfaces in java.sql; the driver jar does the real work."
+  - "Never glue user input into SQL; use PreparedStatement with ? placeholders."
+  - "executeQuery for SELECT (ResultSet), executeUpdate for changes (row count)."
+  - "Indexes start at 1; the cursor starts before the first row."
+  - "Close Connection, Statement and ResultSet with try-with-resources."
+  - "Spring JdbcTemplate and JPA are built on JDBC."

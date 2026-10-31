@@ -1,0 +1,361 @@
+slug: try-with-resources
+world: JAVA_CORE
+section: D
+order: 5
+title: "try-with-resources"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Modern Java knowledge for SP and DSE; good to mention in technical rounds when talking about files, database connections and clean code."
+otherCompanies: "Common at product companies and in Java developer interviews at TCS, Wipro, Cognizant, Accenture and Capgemini, often with a closing-order or suppressed-exception follow-up."
+why: |
+  Many objects hold a **resource**: something outside Java's memory that must be given back, like an open file, a database connection or a network socket. If you forget to **close** it, you get a **resource leak**: the operating system runs out of file handles, or the database runs out of connections, and the app slowly dies.
+
+  Before Java 7, closing correctly needed a long, ugly `finally` block. **try-with-resources** (Java 7+) closes things **automatically** and correctly.
+
+  Interviewers ask:
+  - "What is try-with-resources and why is it better than finally?"
+  - "In what **order** are resources closed?"
+  - "What is a **suppressed exception**?"
+
+  These are easy marks once you see the rules once.
+analogy: |
+  Think of **borrowing books from a library with a smart bag**.
+
+  - You put books in the bag in the order you take them: Book A, then Book B.
+  - When you leave (the try block ends), the smart bag **returns all books automatically**, even if you slipped and fell on the way out (an exception).
+  - It returns them in **reverse order**, **B first, then A**, like unpacking a stack: the last one in is the first one out.
+  - If you fell (main problem) **and** the return counter was also broken (a second problem while closing), the librarian writes down the fall as the **main complaint** and attaches the broken counter as a **side note**. That side note is a **suppressed exception**.
+visual:
+  diagram: |
+    try (A a = new A();      // opened 1st
+         B b = new B()) {    // opened 2nd
+        work();              // may throw X
+    } catch (Exception e) {
+        handle(e);
+    } finally {
+        last();
+    }
+
+    Order of events:
+      open A -> open B -> work() -> close B -> close A -> catch -> finally
+                                    \____________________/
+                                      reverse order, BEFORE catch
+
+    If work() throws X and close() of B throws Y:
+      e  = X                    (main exception is kept)
+      e.getSuppressed() = [Y]   (close problem is attached, not lost)
+  caption: "Resources open top to bottom and close bottom to top, automatically, before catch and finally run. A close failure during an exception is attached as a suppressed exception."
+  visualizer: null
+explanation: |
+  ### The old way: finally (Java 6 style)
+  ```java
+  BufferedReader br = null;
+  try {
+      br = new BufferedReader(new FileReader("data.txt"));
+      System.out.println(br.readLine());
+  } catch (IOException e) {
+      System.out.println("Error: " + e.getMessage());
+  } finally {
+      if (br != null) {
+          try { br.close(); } catch (IOException e) { /* ignored */ }
+      }
+  }
+  ```
+  It works, but it is long, easy to get wrong (forget the null check, forget a nested try), and if both `readLine()` and `close()` fail, the exception from `close()` **replaces** the real error.
+
+  ### The new way: try-with-resources
+  ```java
+  try (BufferedReader br = new BufferedReader(new FileReader("data.txt"))) {
+      System.out.println(br.readLine());
+  } catch (IOException e) {
+      System.out.println("Error: " + e.getMessage());
+  }
+  ```
+  The **resource** is declared in round brackets after `try`. When the try block ends for **any** reason (normal end, `return`, or exception), Java calls `br.close()` for you.
+
+  ### What can go in the brackets? AutoCloseable
+  Only objects whose class implements **`AutoCloseable`** (an interface with one method: `void close() throws Exception`). `Closeable` (from `java.io`) is a child interface used by streams and readers. `Scanner`, `BufferedReader`, `FileInputStream`, JDBC `Connection`, `Statement` and `ResultSet` all qualify. Your own class can too:
+  ```java
+  class Tap implements AutoCloseable {
+      public void close() { System.out.println("Tap closed"); }
+  }
+  ```
+  A class that doesn't implement AutoCloseable gives a compile error in the try brackets.
+
+  ### Rule 1: closing order is REVERSE of opening order
+  Separate several resources with `;`. They are opened top to bottom and closed **bottom to top**. This is logical: a later resource often depends on an earlier one (a `Statement` is made from a `Connection`), so it must be closed first.
+
+  ### Rule 2: resources close BEFORE catch and finally run
+  By the time your `catch` block runs, the resources are already closed. So you can't use them inside catch or finally (they are also out of scope there).
+
+  ### Rule 3: suppressed exceptions
+  Suppose the try body throws exception **X**, and then `close()` throws exception **Y**. Which one do you get?
+  - try-with-resources **keeps X** (the real problem) as the main exception,
+  - and **attaches Y** to it as a **suppressed** exception.
+  - Read them with `e.getSuppressed()`, which returns an array (`Throwable[]`).
+
+  If the body finishes normally and only `close()` throws, then that close exception is the main exception (nothing to suppress it).
+
+  With the old finally style, Y would **replace** X and the real problem would be lost. This is the biggest technical advantage of try-with-resources.
+
+  ### Rule 4: the resource variable is final
+  The variable in the brackets is implicitly **final**; you can't reassign it inside the block. Since **Java 9**, you can also use an existing variable if it is **final or effectively final** (never reassigned):
+  ```java
+  Scanner sc = new Scanner(System.in);
+  try (sc) {
+      ...
+  }
+  ```
+
+  ### Also good to know
+  - try-with-resources may have **no catch and no finally** at all: `try (Tap t = new Tap()) { ... }` is valid.
+  - If a resource's constructor fails, only the resources already opened are closed.
+  - Resource initialised to `null`? Java simply skips closing it (no NullPointerException).
+
+  ### Summary table
+  | Question | Answer |
+  |---|---|
+  | Interface needed | `AutoCloseable` (or its child `Closeable`) |
+  | Closing order | Reverse of declaration order |
+  | When closed | When the try block ends, before catch and finally |
+  | Body throws X, close throws Y | X is thrown, Y is in `X.getSuppressed()` |
+  | Since | Java 7 (Java 9: effectively final variables allowed) |
+tinyCode:
+  code: |
+    public class Library {
+        static class Book implements AutoCloseable {
+            private final String name;
+            Book(String name) {
+                this.name = name;
+                System.out.println("Open " + name);
+            }
+            @Override
+            public void close() {
+                System.out.println("Close " + name);
+            }
+        }
+
+        public static void main(String[] args) {
+            try (Book a = new Book("A");
+                 Book b = new Book("B")) {
+                System.out.println("Reading");
+                throw new IllegalStateException("coffee spilled");
+            } catch (IllegalStateException e) {
+                System.out.println("Catch: " + e.getMessage());
+            } finally {
+                System.out.println("Finally");
+            }
+        }
+    }
+  walkthrough: |
+    - `Book` implements `AutoCloseable`, so it can be used in the try brackets. Its constructor prints "Open", its `close()` prints "Close".
+    - Resources open **in order**: A, then B.
+    - The body prints "Reading" and then throws.
+    - Before the catch runs, Java closes the resources in **reverse order**: B, then A.
+    - Then the catch runs, and finally runs last.
+
+    Output:
+    ```
+    Open A
+    Open B
+    Reading
+    Close B
+    Close A
+    Catch: coffee spilled
+    Finally
+    ```
+tryIt:
+  instructions: "Type this program. Both the body and close() throw an exception. Run it and see that the body's exception is the main one and the close() exception is attached as suppressed."
+  code: |
+    public class Suppressed {
+        static class Pipe implements AutoCloseable {
+            @Override
+            public void close() {
+                throw new IllegalStateException("close failed");
+            }
+        }
+        public static void main(String[] args) {
+            try (Pipe p = new Pipe()) {
+                throw new RuntimeException("work failed");
+            } catch (RuntimeException e) {
+                System.out.println("Main: " + e.getMessage());
+                for (Throwable s : e.getSuppressed()) {
+                    System.out.println("Suppressed: " + s.getMessage());
+                }
+            }
+        }
+    }
+predict:
+  code: |
+    public class Taps {
+        static class Tap implements AutoCloseable {
+            private final int id;
+            Tap(int id) { this.id = id; }
+            public void close() { System.out.println("close " + id); }
+        }
+        public static void main(String[] args) {
+            try (Tap t1 = new Tap(1); Tap t2 = new Tap(2); Tap t3 = new Tap(3)) {
+                System.out.println("body");
+            } finally {
+                System.out.println("finally");
+            }
+        }
+    }
+  expectedOutput: |
+    body
+    close 3
+    close 2
+    close 1
+    finally
+  explanation: |
+    No exception here. The body prints "body". When the try block ends, the three resources are closed in **reverse** order of declaration: 3, 2, 1. Only after all closes does the finally block run.
+commonMistakes:
+  - "Thinking resources close in the same order they were opened. They close in REVERSE order."
+  - "Trying to use the resource inside catch or finally. It is already closed and out of scope there."
+  - "Putting a class that doesn't implement AutoCloseable in the try brackets. Compile error."
+  - "Thinking the close() exception replaces the main exception. With try-with-resources the body's exception wins and the close one is suppressed."
+  - "Reassigning the resource variable inside the block. It's implicitly final."
+interviewBox:
+  why: "Why interviewers ask this: it shows you write leak-free code for files and database connections, and know modern Java beyond textbook try/finally."
+  questions:
+    - q: "What is try-with-resources?"
+      a: "It is a try statement, from Java 7, where we declare resources in brackets after try. Any object that implements AutoCloseable is closed automatically when the block ends, even if an exception happens. It replaces the long finally blocks we used to write for closing files and connections."
+    - q: "In what order are multiple resources closed?"
+      a: "In reverse order of declaration. If I open a Connection, then a Statement, then a ResultSet, they're closed ResultSet first, then Statement, then Connection. That makes sense because later resources depend on earlier ones."
+    - q: "What is a suppressed exception?"
+      a: "If the try body throws an exception and then close() also throws, try-with-resources keeps the body's exception as the main one and attaches the close exception to it as suppressed. We can read them with getSuppressed(). With a plain finally, the close exception would hide the real one."
+    - q: "Can we write try-with-resources without catch or finally?"
+      a: "Yes. try (Resource r = ...) { } alone is valid. If the resource or body throws a checked exception, the method must still declare it."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static class R implements AutoCloseable {
+              String n;
+              R(String n) { this.n = n; System.out.print("open" + n + " "); }
+              public void close() { System.out.print("close" + n + " "); }
+          }
+          public static void main(String[] args) {
+              try (R x = new R("X"); R y = new R("Y")) {
+                  System.out.print("body ");
+              }
+          }
+      }
+    options:
+      - "openX openY body closeX closeY "
+      - "openX openY body closeY closeX "
+      - "openY openX body closeY closeX "
+      - "body openX openY closeY closeX "
+    answer: 1
+    explanation: "Resources open in declaration order (X, then Y) before the body. They close in reverse order (Y, then X). Closing in the same order (the first option) is the common wrong guess."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static class R implements AutoCloseable {
+              public void close() throws Exception {
+                  throw new Exception("C");
+              }
+          }
+          public static void main(String[] args) {
+              try (R r = new R()) {
+                  throw new Exception("B");
+              } catch (Exception e) {
+                  System.out.println(e.getMessage() + " " + e.getSuppressed().length);
+              }
+          }
+      }
+    options: ["C 1", "B 1", "B 0", "C 0"]
+    answer: 1
+    explanation: "The body throws B first, then close() throws C. try-with-resources keeps B as the main exception and adds C to its suppressed list, so the message is B and there is 1 suppressed exception. 'C 1' would be the old finally behaviour, where the close exception hides the real one."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Why won't this compile?"
+    code: |
+      public class Main {
+          static class Box {
+              void close() { System.out.println("closed"); }
+          }
+          public static void main(String[] args) {
+              try (Box b = new Box()) {
+                  System.out.println("using box");
+              }
+          }
+      }
+    options:
+      - "Box.close() must be static"
+      - "Box doesn't implement AutoCloseable, so it can't be used in try-with-resources"
+      - "try-with-resources needs a catch block"
+      - "The variable b must be declared before try"
+    answer: 1
+    explanation: "Having a method named close() is not enough; the class must implement AutoCloseable (or Closeable). A catch block is optional, and declaring the variable inside the brackets is the normal style."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In try-with-resources, the resources are closed before the catch block runs."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Resources are closed as soon as the try block ends; then catch (if an exception matched) runs, then finally."
+  - id: q5
+    type: MCQ
+    prompt: "Which interface must a class implement to be used in try-with-resources?"
+    code: null
+    options: ["Serializable", "AutoCloseable", "Runnable", "Iterable"]
+    answer: 1
+    explanation: "AutoCloseable has the close() method that Java calls automatically. Closeable also works because it extends AutoCloseable. Serializable, Runnable and Iterable have nothing to do with closing."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that returns the exceptions thrown by close() while another exception was already in flight."
+    code: |
+      catch (Exception e) {
+          for (Throwable t : e.____()) {
+              System.out.println(t.getMessage());
+          }
+      }
+    acceptedAnswers: ["getSuppressed"]
+    explanation: "getSuppressed() returns a Throwable[] of exceptions attached to the main one. getCause() is different: it returns the exception that caused this one (chaining), not suppressed ones."
+  - id: q7
+    type: MATCH
+    prompt: "Match the term to its meaning"
+    pairs:
+      - left: "Resource leak"
+        right: "A file or connection that was never closed"
+      - left: "AutoCloseable"
+        right: "Interface with the close() method Java calls for you"
+      - left: "Suppressed exception"
+        right: "A close() failure attached to the main exception"
+      - left: "Reverse order"
+        right: "How multiple resources are closed"
+    explanation: "These four ideas cover the whole lesson: why we close, what can be closed, what happens on double failure, and the closing order."
+explainBack:
+  prompt: "Explain try-with-resources to a friend: why it exists, the closing order, and what a suppressed exception is."
+  rubric:
+    - "I said it auto-closes AutoCloseable resources to prevent leaks"
+    - "I said resources close in reverse order of opening"
+    - "I said they close before catch and finally"
+    - "I explained suppressed exceptions and getSuppressed()"
+    - "I used an analogy like the library bag"
+  modelAnswer: |
+    Files, database connections and sockets must be closed, or the app leaks resources. try-with-resources lets me declare them in brackets after try, and Java closes them automatically when the block ends, even if there's an exception. The class just has to implement AutoCloseable. If I open several, they're closed in reverse order, last opened first closed, and that happens before catch and finally run. If my code throws an exception and then close also throws, Java keeps my original exception as the main one and attaches the close problem as a suppressed exception, which I can read with getSuppressed. So the real error is never hidden.
+flashcards:
+  - front: "What does try-with-resources need from a class?"
+    back: "It must implement AutoCloseable (or Closeable)."
+  - front: "Closing order of multiple resources?"
+    back: "Reverse of declaration order (last opened, first closed)."
+  - front: "When are resources closed relative to catch/finally?"
+    back: "Before catch and finally run."
+  - front: "Body throws X, close() throws Y. What do you catch?"
+    back: "X. Y is attached as a suppressed exception: X.getSuppressed() contains Y."
+  - front: "Java 9 improvement to try-with-resources"
+    back: "You can use an existing final or effectively final variable: try (sc) { ... }."
+keyTakeaways:
+  - "try-with-resources auto-closes AutoCloseable objects, preventing leaks."
+  - "Resources open top to bottom and close bottom to top."
+  - "Closing happens before catch and finally run."
+  - "If both body and close() fail, the body's exception wins; the other is suppressed."
+  - "It replaces long, error-prone finally blocks for closing resources."

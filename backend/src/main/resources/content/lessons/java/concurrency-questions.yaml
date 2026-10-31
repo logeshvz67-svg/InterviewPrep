@@ -1,0 +1,381 @@
+slug: concurrency-questions
+world: JAVA_CORE
+section: G
+order: 7
+title: "Concurrency interview questions"
+version: 1
+estimatedMinutes: 40
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, TCS]
+infosysRelevance: "Interview practice for SP technical rounds: short, clear spoken answers to the most common multithreading questions, plus two classic coding tasks."
+otherCompanies: "Good revision for TCS technical interviews and product-company rounds, where producer-consumer and odd-even printing are common practice tasks."
+why: |
+  You've learned the pieces: threads, lifecycle, synchronization, deadlock, pools, atomics and locks. In an interview, though, nobody asks you to "explain chapter 3". They ask **short, sharp questions** and expect a **clear 30-second answer**, often followed by "can you code it?"
+
+  This lesson is your **practice room**:
+  - A simple **3-step formula** for answering any concept question in easy English.
+  - The **most common concurrency questions** with model answers you can say out loud.
+  - The topics we haven't covered yet: **daemon threads, interrupt, ConcurrentHashMap, BlockingQueue, ThreadLocal, the volatile singleton**.
+  - Two classic coding tasks: **producer-consumer** and **print odd/even with two threads**.
+
+  Don't memorise word for word. Understand the idea, then say it in your own words.
+analogy: |
+  Think of this lesson as **net practice before a cricket match**.
+
+  In the match (the interview) the bowler can bowl anything: a quick bouncer ("synchronized vs volatile?"), a slow spinner ("explain deadlock"), or a yorker ("write producer-consumer"). In the nets you face **each kind of ball again and again** until your response is automatic and calm.
+
+  The **3-step formula** is your batting stance: **Define → Example → Trade-off**. Stand right, and every ball becomes easier to play.
+visual:
+  diagram: |
+    ANSWER FORMULA (about 30 seconds)
+    +------------+    +-------------+    +------------------+
+    | 1. DEFINE  | -> | 2. EXAMPLE  | -> | 3. TRADE-OFF /   |
+    | one simple |    | tiny story  |    |    WHEN TO USE   |
+    | sentence   |    | or code     |    |                  |
+    +------------+    +-------------+    +------------------+
+
+    PRODUCER-CONSUMER WITH A BlockingQueue (capacity 2)
+    Producer --put()--> [ 1 | 2 ] --take()--> Consumer
+      full? put() waits          empty? take() waits
+      done? put(-1) "poison pill" -> consumer stops
+  caption: "Answer every concept question in three steps. The producer-consumer pattern uses a BlockingQueue that makes the producer wait when full and the consumer wait when empty."
+  visualizer: null
+explanation: |
+  ### The answer formula
+  1. **Define** it in one plain sentence.
+  2. Give a **tiny example** (a story or two lines of code).
+  3. Say a **trade-off or when to use it**.
+
+  Example: *"What is volatile?"* → "volatile makes sure every thread sees the latest value of a variable. For example, a `running` flag that one thread sets to false to stop another. But it doesn't make `count++` atomic, so for counters I use AtomicInteger."
+
+  ### Quick revision: core questions
+  | Question | 1-line answer |
+  |---|---|
+  | Process vs thread? | Process has its own memory; threads share the heap of their process and each has its own stack. |
+  | Thread states? | NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED. |
+  | start() vs run()? | start() creates a new thread; run() is a normal call in the current thread. |
+  | Runnable vs Callable? | Callable returns a value and can throw checked exceptions. |
+  | Race condition? | Result depends on timing, e.g. two threads doing `count++`. |
+  | synchronized vs volatile? | synchronized = one at a time + visibility; volatile = visibility only. |
+  | sleep() vs wait()? | sleep keeps the lock; wait releases it and needs synchronized. |
+  | Why wait() in a loop? | Spurious wakeups and other threads may make the condition false again. |
+  | Deadlock and its conditions? | Threads wait for each other forever; mutual exclusion, hold and wait, no preemption, circular wait. |
+  | Avoid deadlock? | Lock ordering; tryLock with timeout. |
+  | Thread pool? | Reusable threads with a task queue; always shut it down. |
+  | AtomicInteger? | Lock-free thread-safe counter using CAS. |
+
+  ### New topics interviewers like
+  **Daemon thread.** A background helper thread (like the garbage collector). The JVM **exits when only daemon threads are left**; it doesn't wait for them. Set with `t.setDaemon(true)` **before** `start()`. Normal threads are called **user threads**, and the JVM waits for them.
+
+  **Interrupting a thread.** You can't safely "kill" a thread (`stop()` is deprecated and unsafe). Instead, `t.interrupt()` politely asks it to stop:
+  - If the thread is sleeping or waiting, it gets an `InterruptedException` straight away.
+  - Otherwise, a flag is set; the thread should check `Thread.currentThread().isInterrupted()` and finish cleanly.
+
+  **HashMap vs Hashtable vs ConcurrentHashMap.**
+  | | HashMap | Hashtable | ConcurrentHashMap |
+  |---|---|---|---|
+  | Thread-safe? | No | Yes (every method synchronized, slow) | Yes (fine-grained locking + CAS, fast) |
+  | Null key/value? | 1 null key, null values | No | **No** |
+  | Use today? | Single thread | Legacy, avoid | Shared maps between threads |
+
+  `ConcurrentHashMap` also has atomic helpers like `merge`, `compute` and `putIfAbsent`, so `map.merge(word, 1, Integer::sum)` is a thread-safe counter.
+
+  **BlockingQueue.** A queue that is safe for many threads and **waits for you**: `put()` blocks when full, `take()` blocks when empty. It's the easiest way to build producer-consumer without writing `wait/notify` yourself. Implementations: `ArrayBlockingQueue` (fixed size), `LinkedBlockingQueue`.
+
+  **ThreadLocal.** Gives **each thread its own copy** of a variable, e.g. a `SimpleDateFormat` (which is not thread-safe) or the current user's ID in a web request. Remember to call `remove()` in thread pools, or old values leak into the next task.
+
+  **Thread-safe singleton (double-checked locking).**
+  ```java
+  class Config {
+      private static volatile Config instance;   // volatile is essential
+      static Config get() {
+          if (instance == null) {                 // 1st check, no lock (fast)
+              synchronized (Config.class) {
+                  if (instance == null) {         // 2nd check, with lock
+                      instance = new Config();
+                  }
+              }
+          }
+          return instance;
+      }
+  }
+  ```
+  Without `volatile`, another thread could see a **half-built object**, because the JVM may reorder "allocate memory, run constructor, assign reference". An even simpler option: an `enum` singleton or a static holder class.
+
+  **Concurrency vs parallelism.** Concurrency = handling many tasks by taking turns (even on one core). Parallelism = truly running at the same moment on multiple cores.
+
+  **Virtual threads (Java 21, bonus).** Very lightweight threads managed by the JVM, not the OS. You can have millions; great for tasks that mostly wait for I/O. `Executors.newVirtualThreadPerTaskExecutor()`.
+
+  ### Classic coding task 1: producer-consumer
+  One thread produces items, another consumes them, with a limited buffer. With a `BlockingQueue` it's short and safe (see the tiny code). Use a special value (a **poison pill**, like `-1`) to tell the consumer to stop.
+
+  ### Classic coding task 2: print 1 to 10 with two threads (odd/even)
+  Two threads share one counter and take turns with `wait()`/`notifyAll()`. Each thread waits **in a while loop** until it's its turn. See the "Try it" section.
+tinyCode:
+  code: |
+    import java.util.concurrent.*;
+
+    public class ProducerConsumer {
+        public static void main(String[] args) throws InterruptedException {
+            BlockingQueue<Integer> queue = new ArrayBlockingQueue<>(2);
+
+            Thread producer = new Thread(() -> {
+                try {
+                    for (int i = 1; i <= 5; i++) {
+                        queue.put(i);          // waits if the queue is full
+                    }
+                    queue.put(-1);             // "no more items" signal
+                } catch (InterruptedException e) { }
+            });
+
+            Thread consumer = new Thread(() -> {
+                try {
+                    while (true) {
+                        int item = queue.take(); // waits if the queue is empty
+                        if (item == -1) break;
+                        System.out.println("Consumed " + item);
+                    }
+                } catch (InterruptedException e) { }
+            });
+
+            producer.start();
+            consumer.start();
+            producer.join();
+            consumer.join();
+            System.out.println("Finished");
+        }
+    }
+  walkthrough: |
+    - `new ArrayBlockingQueue<>(2)` is a thread-safe queue that can hold only **2** items at a time.
+    - The **producer** puts 1 to 5. When the queue already has 2 items, `put()` **waits** until the consumer takes one. Then it puts `-1` as the **poison pill** (a "stop" signal).
+    - The **consumer** loops forever calling `take()`. If the queue is empty, `take()` **waits**. When it sees `-1`, it breaks out of the loop.
+    - We never wrote `synchronized`, `wait` or `notify`; the BlockingQueue does it all inside.
+    - Only the consumer prints, and a queue is **FIFO** (first in, first out), so items always print as 1, 2, 3, 4, 5. `join()` makes "Finished" last.
+
+    Output:
+    ```
+    Consumed 1
+    Consumed 2
+    Consumed 3
+    Consumed 4
+    Consumed 5
+    Finished
+    ```
+tryIt:
+  instructions: "Type this classic: two threads print 1 to 10 taking turns, odd and even. Notice the two while loops: the inner one is the 'wait in a loop' rule. Run it several times: the output is always in order, because each thread waits until it is its turn. Try changing max to 20."
+  code: |
+    public class OddEven {
+        private int n = 1;
+        private final int max = 10;
+
+        synchronized void print(boolean wantOdd) throws InterruptedException {
+            while (n <= max) {
+                while (n <= max && (n % 2 == 1) != wantOdd) {
+                    wait();
+                }
+                if (n <= max) {
+                    System.out.println(Thread.currentThread().getName() + ": " + n);
+                    n++;
+                    notifyAll();
+                }
+            }
+        }
+
+        public static void main(String[] args) throws InterruptedException {
+            OddEven p = new OddEven();
+            Thread odd = new Thread(() -> {
+                try { p.print(true); } catch (InterruptedException e) { }
+            }, "odd");
+            Thread even = new Thread(() -> {
+                try { p.print(false); } catch (InterruptedException e) { }
+            }, "even");
+            even.start();
+            odd.start();
+            odd.join();
+            even.join();
+        }
+    }
+predict:
+  code: |
+    public class Interrupt {
+        public static void main(String[] args) throws InterruptedException {
+            Thread t = new Thread(() -> {
+                try {
+                    Thread.sleep(5000);
+                    System.out.println("woke normally");
+                } catch (InterruptedException e) {
+                    System.out.println("interrupted!");
+                }
+            });
+            t.start();
+            t.interrupt();
+            t.join();
+            System.out.println("main done");
+        }
+    }
+  expectedOutput: |
+    interrupted!
+    main done
+  explanation: |
+    The output is fixed. `t.interrupt()` sets the thread's interrupt flag. If `t` is already sleeping, `sleep()` throws `InterruptedException` immediately. If `t` hasn't reached `sleep()` yet, `sleep()` sees the flag is already set and throws right away. Either way, "woke normally" is never printed, and `join()` makes "main done" come last. The program ends in milliseconds, not 5 seconds.
+commonMistakes:
+  - "Answering with only a definition. Add a tiny example and a trade-off; that's what sounds confident."
+  - "Saying ConcurrentHashMap locks the whole map like Hashtable. It uses fine-grained locking and CAS, so many threads work at once."
+  - "Forgetting volatile in double-checked locking; another thread may see a half-constructed object."
+  - "Calling setDaemon(true) after start(): it throws IllegalThreadStateException."
+  - "Swallowing InterruptedException silently in real code. Either stop the task or restore the flag with Thread.currentThread().interrupt()."
+  - "Using if instead of while around wait() in odd/even or producer-consumer code."
+interviewBox:
+  why: "Why interviewers ask this: a few quick concurrency questions reveal whether you can reason about shared data and explain it clearly, which matters for any backend role."
+  questions:
+    - q: "What is a daemon thread?"
+      a: "A daemon thread is a background service thread, like the garbage collector. The JVM does not wait for daemon threads; when all normal user threads finish, the JVM exits and daemon threads just stop. We mark a thread as daemon with setDaemon(true) before calling start."
+    - q: "How do you stop a thread safely?"
+      a: "We don't force-kill it, because stop is deprecated and unsafe. We call interrupt. If the thread is sleeping or waiting, it gets an InterruptedException; otherwise it should check isInterrupted in its loop and finish cleanly. A volatile boolean flag also works for simple loops."
+    - q: "HashMap vs Hashtable vs ConcurrentHashMap?"
+      a: "HashMap is not thread-safe and allows one null key. Hashtable is thread-safe but synchronizes every method, so it's slow and considered legacy. ConcurrentHashMap is thread-safe with fine-grained locking and CAS, so many threads can read and write at the same time. It does not allow null keys or values."
+    - q: "How would you implement producer-consumer?"
+      a: "The simplest way is a BlockingQueue, like ArrayBlockingQueue. The producer calls put, which waits if the queue is full, and the consumer calls take, which waits if it is empty. To stop, the producer puts a special poison-pill value. We can also do it manually with synchronized, wait in a while loop, and notifyAll."
+    - q: "What is ThreadLocal?"
+      a: "ThreadLocal gives each thread its own separate copy of a variable, so there's no sharing and no locking. It's used for things like a per-request user ID or a non-thread-safe formatter. In thread pools we must call remove after use so data doesn't leak to the next task."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Two threads each add 1000 votes using ConcurrentHashMap.merge, then main joins both. What is printed? (The output is fixed.)"
+    code: |
+      ConcurrentHashMap<String, Integer> votes = new ConcurrentHashMap<>();
+      Runnable voter = () -> {
+          for (int i = 0; i < 1000; i++) {
+              votes.merge("yes", 1, Integer::sum);
+          }
+      };
+      // start t1 and t2 with voter, then join both
+      System.out.println(votes);
+    options: ["{yes=2000}", "{yes=1000}", "Some value up to 2000; it can vary", "ConcurrentModificationException"]
+    answer: 0
+    explanation: "ConcurrentHashMap.merge is atomic for a key, so no update is lost: always 2000. 'It can vary' would be true for a plain HashMap or a get-then-put written as two separate calls, which is the trap."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "A daemon thread prints 'tick' in an endless loop with a short sleep. main starts it and immediately ends. What happens?"
+    code: |
+      Thread t = new Thread(() -> {
+          while (true) {
+              System.out.println("tick");
+              try { Thread.sleep(10); } catch (InterruptedException e) { }
+          }
+      });
+      t.setDaemon(true);
+      t.start();
+      System.out.println("main ends");
+    options:
+      - "Prints tick forever; the program never stops"
+      - "Prints 'main ends' and maybe a few 'tick' lines (the number and order can vary), then the JVM exits"
+      - "Always prints exactly one tick, then main ends"
+      - "IllegalThreadStateException"
+    answer: 1
+    explanation: "The JVM exits when only daemon threads remain, so the endless loop is cut off when main ends. How many ticks appear, and whether one appears before 'main ends', depends on timing, so it can vary. Without setDaemon(true) it would run forever. setDaemon before start() is legal; after start() it would throw."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This double-checked locking singleton is used by many threads. What is missing?"
+    code: |
+      class Config {
+          private static Config instance;
+          static Config get() {
+              if (instance == null) {
+                  synchronized (Config.class) {
+                      if (instance == null) {
+                          instance = new Config();
+                      }
+                  }
+              }
+              return instance;
+          }
+      }
+    options:
+      - "The method must be private"
+      - "instance must be declared volatile, or a thread may see a half-built object"
+      - "The second null check is useless and should be removed"
+      - "synchronized cannot lock on Config.class"
+    answer: 1
+    explanation: "Without volatile, the JVM may publish the reference before the constructor finishes, and the first (unlocked) check in another thread could return a half-initialized object. The second check is needed: two threads may both pass the first check and queue at the lock. Locking on Config.class is fine."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "ConcurrentHashMap allows a null key, just like HashMap."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. ConcurrentHashMap throws NullPointerException for null keys or values. In a concurrent map, get() returning null must clearly mean 'no mapping'; allowing nulls would make that ambiguous."
+  - id: q5
+    type: MCQ
+    prompt: "In a producer-consumer program using ArrayBlockingQueue, what happens when the consumer calls take() on an empty queue?"
+    code: null
+    options:
+      - "It returns null"
+      - "It throws an exception"
+      - "It waits until an item is available"
+      - "It busy-loops and uses 100% CPU"
+    answer: 2
+    explanation: "take() blocks (waits without using CPU) until the producer puts something. poll() is the method that returns null when empty, and remove() throws; that's the tempting confusion."
+  - id: q6
+    type: MATCH
+    prompt: "Match each concept to its description"
+    pairs:
+      - left: "Daemon thread"
+        right: "JVM doesn't wait for it before exiting"
+      - left: "interrupt()"
+        right: "Politely asks a thread to stop"
+      - left: "ThreadLocal"
+        right: "Each thread gets its own copy of a variable"
+      - left: "BlockingQueue"
+        right: "Waits on put when full and on take when empty"
+      - left: "ConcurrentHashMap"
+        right: "Thread-safe map without one big lock"
+    explanation: "These five appear often as quick follow-ups. Say each one with a tiny example and you sound well prepared."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the BlockingQueue method the producer uses, which waits if the queue is full."
+    code: |
+      BlockingQueue<String> q = new ArrayBlockingQueue<>(10);
+      q.____("order-1");
+    acceptedAnswers: ["put"]
+    explanation: "put() blocks when the queue is full. add() would throw an exception and offer() would return false instead of waiting."
+  - id: q8
+    type: MCQ
+    prompt: "Which is the safest way to stop a long-running worker thread?"
+    code: null
+    options:
+      - "Call thread.stop()"
+      - "Call thread.interrupt() and have the worker check isInterrupted() / handle InterruptedException"
+      - "Call System.gc() so the thread is collected"
+      - "Set the thread priority to 1"
+    answer: 1
+    explanation: "Interruption is cooperative: the thread finishes cleanly, releasing locks and resources. stop() is deprecated because it can leave objects half-updated. GC and priority don't stop threads."
+explainBack:
+  prompt: "Pick one concurrency question (for example 'synchronized vs volatile' or 'how to implement producer-consumer') and answer it out loud in about 30 seconds using Define, Example, Trade-off."
+  rubric:
+    - "I started with a one-sentence definition"
+    - "I gave a tiny example or story"
+    - "I mentioned a trade-off or when to use it"
+    - "I used simple words and finished in about 30 seconds"
+  modelAnswer: |
+    Producer-consumer is a pattern where one thread creates work and another thread processes it, with a buffer in the middle. For example, an order service adds orders to a queue and a worker ships them. In Java, the easiest way is a BlockingQueue: the producer calls put, which waits if the queue is full, and the consumer calls take, which waits if it's empty. To stop, I send a special poison-pill value. I could also write it with synchronized, wait in a while loop and notifyAll, but BlockingQueue is shorter and less error-prone.
+flashcards:
+  - front: "3-step answer formula"
+    back: "Define in one sentence, give a tiny example, then a trade-off or when to use it."
+  - front: "Daemon vs user thread"
+    back: "JVM waits for user threads; it exits when only daemon threads remain. setDaemon(true) before start()."
+  - front: "How to stop a thread safely?"
+    back: "interrupt() it; the thread handles InterruptedException or checks isInterrupted() and exits cleanly."
+  - front: "Why volatile in double-checked locking?"
+    back: "Prevents other threads from seeing a half-constructed object due to reordering."
+  - front: "Producer-consumer in one line"
+    back: "BlockingQueue: put() waits when full, take() waits when empty; poison pill to stop."
+  - front: "ConcurrentHashMap vs Hashtable"
+    back: "Both thread-safe; Hashtable locks every method (slow, legacy); CHM uses fine-grained locking + CAS. CHM forbids nulls."
+keyTakeaways:
+  - "Answer with Define, Example, Trade-off: short, clear and confident."
+  - "Daemon threads don't keep the JVM alive; stop threads with interrupt(), not stop()."
+  - "Use ConcurrentHashMap for shared maps and BlockingQueue for producer-consumer."
+  - "ThreadLocal gives each thread its own copy; remove() it in pools."
+  - "Double-checked locking needs volatile."
+  - "Practise producer-consumer and odd/even printing until you can write them without notes."

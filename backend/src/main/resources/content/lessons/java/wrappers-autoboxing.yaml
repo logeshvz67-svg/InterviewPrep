@@ -1,0 +1,354 @@
+slug: wrappers-autoboxing
+world: JAVA_CORE
+section: C
+order: 15
+title: "Wrapper classes and autoboxing"
+version: 1
+estimatedMinutes: 30
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "A popular tricky-output topic for SP and DSE practice: the Integer cache and == trap, and NullPointerException from unboxing."
+otherCompanies: "Integer == Integer output questions and wrapper basics are common at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  Collections like `ArrayList` and `HashMap` can't store `int` or `double`, only **objects**. So Java gives every primitive a **wrapper class** (`Integer`, `Double`, ...) and converts between them automatically.
+
+  That automatic conversion hides two famous traps that appear in output questions again and again:
+  - `Integer a = 127, b = 127;` gives `a == b` **true**, but with `128` it's **false**. Why?
+  - `Integer x = null; int y = x;` crashes with a **NullPointerException**. Where did the null come from?
+
+  You'll use wrappers in almost every coding round (`List<Integer>`, `Map<Character, Integer>`), so understanding them saves you from real bugs too.
+analogy: |
+  Think of a **gift box**.
+
+  - A **primitive** (`int 5`) is a bare chocolate.
+  - A **wrapper object** (`Integer 5`) is the same chocolate **packed in a box**. Some places (collections) only accept boxed gifts.
+  - **Autoboxing** is the shop automatically packing it for you. **Unboxing** is opening the box to take the chocolate out.
+  - If someone hands you an **empty box reference** (`null`) and you try to take the chocolate out, there's nothing there: **NullPointerException**.
+  - The **Integer cache** is the shop keeping **ready-made boxes for the popular small numbers -128 to 127**. Ask for 100 twice and you get **the same box** both times. Ask for 1000 twice and they pack **two different boxes**. `==` checks "same box?", not "same chocolate?".
+visual:
+  diagram: |2
+    Integer a = 127, b = 127;       Integer c = 128, d = 128;
+
+     Integer cache (-128..127)       heap (new object each time)
+     +-----+-----+-----+-----+
+     | ... | 126 | 127 |     |       c ---> [Integer 128]
+     +-----+-----+--^--+-----+       d ---> [Integer 128]
+                    |
+           a -------+                 c == d      -> false
+           b -------+                 c.equals(d) -> true
+
+     a == b      -> true  (same cached object)
+     a.equals(b) -> true
+
+    Integer n = null;
+    int x = n;     // compiler writes: n.intValue()  -> NPE!
+  caption: "Autoboxing uses Integer.valueOf, which returns shared cached objects for -128 to 127 and new objects outside that range. == compares objects, equals compares values."
+  visualizer: null
+explanation: |
+  ### Primitives and their wrapper classes
+  A **primitive** is a plain value (`int`, `double`...). A **wrapper class** is a class whose object holds one primitive value. All wrappers live in `java.lang`.
+
+  | Primitive | Wrapper |
+  |---|---|
+  | `byte` | `Byte` |
+  | `short` | `Short` |
+  | `int` | **`Integer`** |
+  | `long` | `Long` |
+  | `float` | `Float` |
+  | `double` | `Double` |
+  | `char` | **`Character`** |
+  | `boolean` | `Boolean` |
+
+  Watch the two odd names: `Integer` (not Int) and `Character` (not Char).
+
+  Why wrappers?
+  - **Collections and generics** only work with objects: `List<Integer>`, not `List<int>`.
+  - A wrapper can be **`null`** ("no value yet"), a primitive can't.
+  - Useful **utility methods**: `Integer.parseInt("42")`, `Integer.MAX_VALUE`, `Character.isDigit('7')`, `Integer.toBinaryString(5)`.
+
+  Wrapper objects are **immutable**: an `Integer` object's value never changes. `count++` on an `Integer` creates/fetches a different object.
+
+  ### Autoboxing and unboxing
+  - **Autoboxing**: primitive -> wrapper, done automatically. `Integer x = 5;` becomes `Integer x = Integer.valueOf(5);`
+  - **Unboxing**: wrapper -> primitive, done automatically. `int y = x;` becomes `int y = x.intValue();`
+
+  ```java
+  List<Integer> list = new ArrayList<>();
+  list.add(10);            // autoboxing
+  int first = list.get(0); // unboxing
+  ```
+  It happens in assignments, method calls, arithmetic (`x + 1` unboxes `x`), and comparisons like `<`, `>`.
+
+  ### Trap 1: the Integer cache and `==`
+  `Integer.valueOf(int)` keeps a **cache** of `Integer` objects for values **-128 to 127**. Autoboxing uses `valueOf`, so:
+  ```java
+  Integer a = 127, b = 127;
+  System.out.println(a == b);       // true  (same cached object)
+
+  Integer c = 128, d = 128;
+  System.out.println(c == d);       // false (two different objects)
+  System.out.println(c.equals(d));  // true  (same value)
+  ```
+  - `==` between two wrapper **objects** compares **references**, not values.
+  - Inside the cache range, both variables point to the same object, so it *looks* like `==` works. Outside it, it fails. That's why this bug often hides until real data arrives.
+  - Caches also exist for `Byte`, `Short`, `Long` (-128 to 127), `Character` (0 to 127) and `Boolean` (TRUE/FALSE). **`Float` and `Double` have no cache**.
+  - `new Integer(5)` always makes a new object (it's deprecated; use `valueOf`).
+  - The upper limit of the Integer cache can be raised with a JVM option, but the default is 127. Never rely on it.
+
+  **Rule: compare wrapper values with `equals()`, or unbox first (`a.intValue() == b.intValue()`).**
+
+  If **one side is a primitive**, `==` unboxes the wrapper and compares values:
+  ```java
+  Integer c = 128;
+  int p = 128;
+  System.out.println(c == p);   // true: c is unboxed to 128
+  ```
+
+  ### Trap 2: unboxing `null` gives NullPointerException
+  ```java
+  Integer marks = null;
+  int m = marks;        // compiles, but runs marks.intValue() -> NullPointerException
+  ```
+  Common real places this hides:
+  - `Map<String, Integer> map ...; int c = map.get("missing");` because `get` returns `null` for a missing key.
+  - `if (count > 0)` where `count` is a null `Integer`.
+  - A method returning `Integer` that returns `null`, assigned to an `int`.
+
+  Fix: check for null, or use `map.getOrDefault(key, 0)`.
+
+  ### Trap 3: `equals()` across types
+  ```java
+  Long big = 10L;
+  Integer small = 10;
+  System.out.println(big.equals(small));   // false: different classes
+  System.out.println(big.equals(10L));     // true
+  ```
+  Wrapper `equals()` is true only if the other object is the **same wrapper type** with the same value.
+
+  ### parseXxx vs valueOf
+  | Method | Returns | Example |
+  |---|---|---|
+  | `Integer.parseInt("42")` | primitive `int` | 42 |
+  | `Integer.valueOf("42")` | `Integer` object (uses cache) | 42 |
+  | `Integer.parseInt("4x")` | throws `NumberFormatException` | |
+
+  ### Performance note
+  Boxing creates objects. In a tight loop, `Long sum = 0L; sum += i;` boxes on every step and is much slower than `long sum = 0;`. Use primitives for heavy number crunching; use wrappers when you need collections or null.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Main {
+        public static void main(String[] args) {
+            Integer a = 127, b = 127;
+            Integer c = 128, d = 128;
+            System.out.println(a == b);
+            System.out.println(c == d);
+            System.out.println(c.equals(d));
+
+            List<Integer> marks = new ArrayList<>();
+            marks.add(90);
+            int first = marks.get(0);
+            System.out.println(first + 5);
+
+            Map<String, Integer> stock = new HashMap<>();
+            int rice = stock.getOrDefault("rice", 0);
+            System.out.println("rice = " + rice);
+            System.out.println(Integer.parseInt("42") + 1);
+        }
+    }
+  walkthrough: |
+    - `a` and `b` are both 127, inside the cache, so they point to the **same** object: `true`.
+    - `c` and `d` are 128, outside the cache, so two different objects: `==` is `false`, but `equals()` compares values: `true`.
+    - `marks.add(90)` **autoboxes** 90 into an Integer. `int first = marks.get(0)` **unboxes** it.
+    - `getOrDefault("rice", 0)` returns 0 instead of `null` for a missing key, so unboxing is safe. Plain `int rice = stock.get("rice");` would throw a NullPointerException.
+    - `Integer.parseInt("42")` turns text into an `int`.
+
+    Output:
+    ```
+    true
+    false
+    true
+    95
+    rice = 0
+    43
+    ```
+tryIt:
+  instructions: "Type this and run it. Read the NullPointerException message carefully: it even tells you intValue() was called. Then fix it using getOrDefault."
+  code: |
+    import java.util.*;
+
+    public class Main {
+        public static void main(String[] args) {
+            Map<String, Integer> votes = new HashMap<>();
+            votes.put("Asha", 3);
+
+            int asha = votes.get("Asha");
+            System.out.println("Asha: " + asha);
+
+            int ravi = votes.get("Ravi");
+            System.out.println("Ravi: " + ravi);
+        }
+    }
+predict:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Integer x = 100, y = 100;
+            Integer p = 1000, q = 1000;
+            int r = 1000;
+            Long big = 100L;
+
+            System.out.println(x == y);
+            System.out.println(p == q);
+            System.out.println(p == r);
+            System.out.println(p.equals(q));
+            System.out.println(big.equals(100));
+        }
+    }
+  expectedOutput: |
+    true
+    false
+    true
+    true
+    false
+  explanation: |
+    100 is in the cache, so `x == y` is true. 1000 is not, so `p == q` compares two different objects: false. `p == r` has a primitive on one side, so `p` is unboxed and values are compared: true. `p.equals(q)` compares values: true. `big.equals(100)` boxes 100 into an **Integer**, and a Long is never equal to an Integer: false.
+commonMistakes:
+  - "Comparing two Integer objects with ==. It works by luck for -128 to 127 and fails above; use equals()."
+  - "Unboxing a possibly-null wrapper (int c = map.get(key)). It throws NullPointerException; use getOrDefault or a null check."
+  - "Expecting Long.equals(Integer) to be true for the same number. Different wrapper types are never equal."
+  - "Using Long or Integer for a loop counter or sum in heavy loops, creating millions of objects."
+  - "Writing Int or Char instead of Integer and Character."
+  - "Confusing parseInt (returns int) with valueOf (returns Integer)."
+interviewBox:
+  why: "Why interviewers ask this: the Integer cache output question checks whether you understand references vs values, and unboxing NPEs are a very common real bug."
+  questions:
+    - q: "What are wrapper classes and why do we need them?"
+      a: "Wrapper classes like Integer, Double and Character wrap a primitive value inside an object. We need them because collections and generics work only with objects, because a wrapper can be null, and because they offer utility methods like Integer.parseInt."
+    - q: "What is autoboxing and unboxing?"
+      a: "Autoboxing is the automatic conversion from a primitive to its wrapper, like int to Integer, using Integer.valueOf. Unboxing is the reverse, using methods like intValue(). The compiler inserts these calls for us."
+    - q: "Why does Integer a = 127, b = 127; a == b print true, but with 128 it prints false?"
+      a: "Autoboxing uses Integer.valueOf, which caches Integer objects from -128 to 127. So for 127 both variables point to the same cached object and == is true. For 128 two separate objects are created, and == compares references, so it's false. We should use equals() to compare values."
+    - q: "When can autoboxing cause a NullPointerException?"
+      a: "When a wrapper that is null gets unboxed. For example, int count = map.get(\"x\") when the key is missing: get returns null, and Java calls null.intValue(), which throws NullPointerException."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Integer a = 127, b = 127;
+              Integer c = 129, d = 129;
+              System.out.println((a == b) + " " + (c == d));
+          }
+      }
+    options: ["true true", "true false", "false false", "false true"]
+    answer: 1
+    explanation: "127 is inside the Integer cache (-128 to 127), so a and b share one object: true. 129 is outside, so c and d are separate objects and == compares references: false. 'true true' is the trap if you think == compares values for wrappers."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This compiles. What happens at run time?"
+    code: |
+      import java.util.*;
+      public class Main {
+          public static void main(String[] args) {
+              Map<Character, Integer> freq = new HashMap<>();
+              freq.put('a', 2);
+              int countB = freq.get('b');
+              System.out.println(countB);
+          }
+      }
+    options:
+      - "Prints 0"
+      - "Prints null"
+      - "Throws NullPointerException while unboxing null"
+      - "Throws ClassCastException"
+    answer: 2
+    explanation: "get('b') returns null because 'b' is not a key. Assigning it to an int forces unboxing (null.intValue()), which throws NullPointerException. An int can never hold null, so 'Prints null' is impossible; 'Prints 0' would need getOrDefault('b', 0)."
+  - id: q3
+    type: MCQ
+    prompt: "Which is the correct way to compare the VALUES of two Integer objects x and y?"
+    options: ["x == y", "x.equals(y)", "x = y", "x.compareTo(y) == 1"]
+    answer: 1
+    explanation: "equals() compares values for any range. x == y compares references and only seems to work for -128 to 127. x = y is assignment, and compareTo returns 0 (not 1) for equal values."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Double values are cached like Integer values from -128 to 127."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Float and Double have no valueOf cache, so two boxed doubles are always different objects. Integer, Long, Short and Byte cache -128 to 127, Character caches 0 to 127."
+  - id: q5
+    type: MATCH
+    prompt: "Match each primitive to its wrapper class"
+    pairs:
+      - left: "int"
+        right: "Integer"
+      - left: "char"
+        right: "Character"
+      - left: "boolean"
+        right: "Boolean"
+      - left: "long"
+        right: "Long"
+    explanation: "Most wrappers are just the capitalised primitive name. The two exceptions to remember are int -> Integer and char -> Character."
+  - id: q6
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Integer big = 500;
+              int prim = 500;
+              Long l = 500L;
+              System.out.println(big == prim);
+              System.out.println(l.equals(500L));
+              System.out.println(l.equals(big));
+          }
+      }
+    options: ["true\ntrue\nfalse", "false\ntrue\nfalse", "true\ntrue\ntrue", "false\nfalse\nfalse"]
+    answer: 0
+    explanation: "big == prim has a primitive on one side, so big is unboxed and values are compared: true. l.equals(500L) boxes to a Long with the same value: true. l.equals(big) compares a Long with an Integer, different classes: false."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that converts the text \"256\" into a primitive int."
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              int n = Integer.____("256");
+              System.out.println(n + 4);
+          }
+      }
+    acceptedAnswers: ["parseInt"]
+    explanation: "Integer.parseInt returns a primitive int, so n + 4 is 260. Integer.valueOf would also compile (it returns an Integer which is unboxed), but parseInt is the direct way to get an int."
+explainBack:
+  prompt: "Explain wrapper classes, autoboxing, the Integer cache trap and the unboxing NullPointerException to a friend."
+  rubric:
+    - "I said wrappers wrap primitives as objects, needed for collections and null"
+    - "I explained autoboxing (valueOf) and unboxing (intValue) are automatic"
+    - "I explained the -128 to 127 cache and why == fails for 128"
+    - "I said to use equals() for comparing wrapper values"
+    - "I explained that unboxing null throws NullPointerException and how to avoid it"
+  modelAnswer: |
+    Each primitive has a wrapper class, like int and Integer, so numbers can live in collections and can be null. Java converts automatically: boxing uses Integer.valueOf and unboxing uses intValue. The trap is that valueOf keeps ready-made objects for -128 to 127. So two Integers of 127 are the same object and == says true, but two Integers of 128 are different objects and == says false. That's because == compares references, so I always use equals for wrapper values. The second trap: if an Integer is null, like a missing key from map.get, assigning it to an int calls intValue on null and throws a NullPointerException. I use getOrDefault or a null check.
+flashcards:
+  - front: "Integer cache range"
+    back: "-128 to 127 (Integer, Long, Short, Byte). Character 0-127. No cache for Float/Double."
+  - front: "Integer c = 128, d = 128; c == d ?"
+    back: "false: two different objects. c.equals(d) is true."
+  - front: "Integer w = 128; int p = 128; w == p ?"
+    back: "true: one side is primitive, so w is unboxed and values are compared."
+  - front: "int c = map.get(\"missing\");"
+    back: "NullPointerException: get returns null, and unboxing calls null.intValue()."
+  - front: "Autoboxing / unboxing use which methods?"
+    back: "Boxing: Integer.valueOf(x). Unboxing: x.intValue()."
+  - front: "Long.valueOf(5).equals(5)?"
+    back: "false: 5 is boxed as Integer, and Long.equals only matches Long."
+keyTakeaways:
+  - "Every primitive has a wrapper class; note Integer and Character."
+  - "Autoboxing = Integer.valueOf; unboxing = intValue(); the compiler adds them."
+  - "Integer.valueOf caches -128 to 127, so == between wrappers is unreliable: use equals()."
+  - "== with one primitive side unboxes and compares values."
+  - "Unboxing null throws NullPointerException: watch out for map.get on missing keys."
+  - "Wrapper equals() is false across types (Long vs Integer)."

@@ -1,0 +1,366 @@
+slug: sliding-window
+world: DSA
+section: DSA
+order: 3
+title: "Sliding window"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: SLIDING_WINDOW
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE coding rounds: subarray and substring problems (max sum of k, longest substring without repeats) are a very common pattern."
+otherCompanies: "Frequently used in TCS coding questions and a favourite in product-company interviews (longest substring, minimum window, max consecutive ones)."
+why: |
+  Whenever a question says **"subarray"** or **"substring"** (a continuous part of an array or string) and asks for the **max, min, longest or shortest** one, the brute force checks every start and every end: O(n^2) or worse.
+
+  The **sliding window** pattern keeps a "window" (a continuous range `[left..right]`) and **slides** it across the input. Instead of recomputing everything for each new window, it **adds** the element entering on the right and **removes** the element leaving on the left. Result: **O(n)**.
+
+  It is one of the highest-value patterns for coding rounds: maximum sum of k elements, longest substring without repeating characters, smallest subarray with sum at least S, max consecutive ones, and more.
+analogy: |
+  Think of looking at a **long train** through a **window of a moving bus** that shows exactly 3 coaches at a time.
+
+  When the bus moves forward by one coach, you don't recount all 3 coaches. **One new coach appears** on the right and **one old coach disappears** on the left. You just update your count: plus the new, minus the old.
+
+  For a **variable window**, imagine the window is **stretchy**: you widen it on the right to take in more coaches, and when something breaks the rule (say, two coaches of the same colour), you shrink it from the left until the rule is OK again.
+visual:
+  diagram: |
+    FIXED window, k = 3, find max sum
+    arr:  [ 2,  1,  5,  1,  3,  2 ]
+           [-------]                  2+1+5        = 8
+               [-------]              8 - 2 + 1    = 7
+                   [-------]          7 - 1 + 3    = 9  <- max
+                       [-------]      9 - 5 + 2    = 6
+
+    VARIABLE window: longest substring without repeating chars
+    s:     a  b  c  a  b  c  b  b
+           L     R                  "abc"   len 3
+              L     R               'a' repeats -> move L past it
+                 L     R            'b' repeats -> move L past it
+    ...best length = 3
+  caption: "Fixed window: add the new element, subtract the one leaving. Variable window: grow on the right, shrink from the left when the rule breaks."
+  visualizer: sliding-window
+explanation: |
+  ### Key words
+  - **Subarray / substring**: a **continuous** part. In `[2, 1, 5]`, `[1, 5]` is a subarray but `[2, 5]` is not.
+  - **Window**: the current subarray, from index `left` to index `right`.
+
+  ### Type 1: fixed-size window
+  The window size **k** is given. Build the first window, then slide one step at a time.
+
+  **Maximum sum of any k consecutive elements**
+  ```java
+  int windowSum = 0;
+  for (int i = 0; i < k; i++) windowSum += arr[i];   // first window
+  int best = windowSum;
+  for (int i = k; i < arr.length; i++) {
+      windowSum += arr[i] - arr[i - k];   // add new, remove old
+      best = Math.max(best, windowSum);
+  }
+  ```
+  - Brute force sums k elements for each of n windows: **O(n * k)**.
+  - Sliding: each step is one add and one subtract: **O(n)**.
+  - `arr[i - k]` is the element that just **left** the window.
+
+  ### Type 2: variable-size window
+  The size is not given; you want the **longest** or **shortest** window that satisfies a rule.
+
+  **Template**
+  ```java
+  int left = 0;
+  for (int right = 0; right < n; right++) {
+      // 1. add arr[right] to the window state
+      while (window is invalid) {
+          // 2. remove arr[left] from the state
+          left++;
+      }
+      // 3. window [left..right] is valid: update the answer
+  }
+  ```
+  For "shortest window that satisfies X", you update the answer **inside** the while loop (while it is still valid) and then shrink.
+
+  **Longest substring without repeating characters**
+  ```java
+  Map<Character, Integer> lastSeen = new HashMap<>();
+  int left = 0, best = 0;
+  for (int right = 0; right < s.length(); right++) {
+      char c = s.charAt(right);
+      if (lastSeen.containsKey(c)) {
+          left = Math.max(left, lastSeen.get(c) + 1);  // jump past the old copy
+      }
+      lastSeen.put(c, right);
+      best = Math.max(best, right - left + 1);
+  }
+  ```
+  - The window length is `right - left + 1`.
+  - `Math.max(left, ...)` matters: the old copy of `c` may already be **outside** the window (to the left of `left`). Without `max`, `left` could jump **backwards**. Try `"abba"`: the answer must be 2.
+
+  **Smallest subarray with sum >= S** (all numbers positive)
+  ```java
+  int left = 0, sum = 0, best = Integer.MAX_VALUE;
+  for (int right = 0; right < n; right++) {
+      sum += arr[right];
+      while (sum >= S) {
+          best = Math.min(best, right - left + 1);
+          sum -= arr[left++];
+      }
+  }
+  ```
+
+  ### Why is the variable window O(n)?
+  It looks like a loop inside a loop, but `left` only moves **forward** and never more than n times in total. Each element is **added once** (by `right`) and **removed at most once** (by `left`): at most 2n steps = **O(n)**.
+
+  ### When does sliding window NOT work?
+  The shrink step assumes that making the window smaller makes it "more valid" (for example, smaller sum). With **negative numbers**, removing an element can *increase* the sum, so the logic breaks. For "subarray sum equals k" with negatives, use **prefix sums + HashMap** (next lesson).
+
+  ### How to recognise it
+  | Clue | Window type |
+  |---|---|
+  | "subarray/substring of size k" | fixed |
+  | "longest/shortest subarray/substring such that..." | variable |
+  | "at most K distinct / at most K zeros / no repeats" | variable |
+  | all values positive + sum condition | variable |
+
+  ### Complexity
+  | Problem | Brute force | Sliding window |
+  |---|---|---|
+  | Max sum of k | O(n * k) | O(n) time, O(1) space |
+  | Longest unique substring | O(n^2) or O(n^3) | O(n) time, O(alphabet) space |
+tinyCode:
+  code: |
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class SlidingWindow {
+        // fixed window
+        static int maxSumOfK(int[] arr, int k) {
+            int windowSum = 0;
+            for (int i = 0; i < k; i++) windowSum += arr[i];
+            int best = windowSum;
+            for (int i = k; i < arr.length; i++) {
+                windowSum += arr[i] - arr[i - k];
+                best = Math.max(best, windowSum);
+            }
+            return best;
+        }
+
+        // variable window
+        static int longestUnique(String s) {
+            Map<Character, Integer> lastSeen = new HashMap<>();
+            int left = 0, best = 0;
+            for (int right = 0; right < s.length(); right++) {
+                char c = s.charAt(right);
+                if (lastSeen.containsKey(c)) {
+                    left = Math.max(left, lastSeen.get(c) + 1);
+                }
+                lastSeen.put(c, right);
+                best = Math.max(best, right - left + 1);
+            }
+            return best;
+        }
+
+        public static void main(String[] args) {
+            System.out.println(maxSumOfK(new int[]{2, 1, 5, 1, 3, 2}, 3));
+            System.out.println(longestUnique("abcabcbb"));
+            System.out.println(longestUnique("pwwkew"));
+            System.out.println(longestUnique("abba"));
+        }
+    }
+  walkthrough: |
+    **maxSumOfK** (fixed):
+    - First window `2 + 1 + 5 = 8`.
+    - Slide: `+1 -2 = 7`, `+3 -1 = 9`, `+2 -5 = 6`. The best is **9**.
+
+    **longestUnique** (variable):
+    - `lastSeen` remembers the last index where each character appeared.
+    - If `c` was seen inside the current window, `left` jumps to just after that old position, so the window has no repeats again.
+    - `right - left + 1` is the current window length.
+    - `"abcabcbb"` gives 3 ("abc"), `"pwwkew"` gives 3 ("wke"), `"abba"` gives 2 ("ab" or "ba"). The `Math.max` protects `"abba"`: when the last `a` comes, its old index 0 is already outside the window.
+
+    Output:
+    ```
+    9
+    3
+    3
+    2
+    ```
+tryIt:
+  instructions: "Type this fixed-window program: the maximum number of vowels in any substring of length k. Run it, then try k = 2 and k = 5."
+  code: |
+    public class MaxVowels {
+        static boolean isVowel(char c) {
+            return "aeiou".indexOf(c) >= 0;
+        }
+
+        public static void main(String[] args) {
+            String s = "abciiidef";
+            int k = 3;
+            int count = 0;
+            for (int i = 0; i < k; i++) {
+                if (isVowel(s.charAt(i))) count++;
+            }
+            int best = count;
+            for (int i = k; i < s.length(); i++) {
+                if (isVowel(s.charAt(i))) count++;       // entering
+                if (isVowel(s.charAt(i - k))) count--;   // leaving
+                best = Math.max(best, count);
+            }
+            System.out.println("Max vowels in a window of " + k + " = " + best);
+        }
+    }
+predict:
+  code: |
+    public class WindowTrace {
+        public static void main(String[] args) {
+            int[] arr = {2, 1, 5, 1, 3, 2};
+            int k = 3, sum = 0;
+            for (int i = 0; i < k; i++) sum += arr[i];
+            System.out.print(sum);
+            for (int i = k; i < arr.length; i++) {
+                sum += arr[i] - arr[i - k];
+                System.out.print(" " + sum);
+            }
+            System.out.println();
+        }
+    }
+  expectedOutput: |
+    8 7 9 6
+  explanation: |
+    First window [2, 1, 5] = 8. Then each slide adds the new element and subtracts the one leaving: 8 + 1 - 2 = 7, 7 + 3 - 1 = 9, 9 + 2 - 5 = 6. Four windows for n = 6 and k = 3 (n - k + 1 = 4).
+commonMistakes:
+  - "Recomputing the whole window sum on every step (O(n*k)) instead of add-new, subtract-old."
+  - "Off-by-one in window length: it is right - left + 1, not right - left."
+  - "In longest-unique-substring, writing left = lastSeen.get(c) + 1 without Math.max, so left jumps backwards (fails on \"abba\")."
+  - "Using a variable window for sums when the array has negative numbers; shrinking no longer guarantees a smaller sum. Use prefix sums + HashMap."
+  - "Using sliding window for subsequence problems. Windows are only for continuous subarrays/substrings."
+interviewBox:
+  why: "Why interviewers ask this: sliding window shows you can turn nested loops over subarrays into one pass, a key optimisation skill."
+  questions:
+    - q: "What is the sliding window technique?"
+      a: "It's a way to process continuous subarrays or substrings efficiently. I keep a window between two indexes, left and right. When it slides, I add the element entering and remove the element leaving, instead of recomputing the whole window. That turns O(n times k) or O(n squared) into O(n)."
+    - q: "How do you find the longest substring without repeating characters?"
+      a: "I use a variable window with a HashMap storing the last index of each character. I move right one step at a time. If the character was already seen inside the window, I move left to one past its last position, using max so left never goes backwards. After each step, the window length right minus left plus one is a candidate for the answer. It's O(n)."
+    - q: "There is a while loop inside a for loop. Why is the variable window still O(n)?"
+      a: "Because left only moves forward and never more than n times in total. Each element is added once when right reaches it and removed at most once when left passes it, so the total work is at most 2n steps, which is O(n)."
+    - q: "When can't you use sliding window?"
+      a: "When the elements aren't continuous, like subsequences, or when shrinking the window doesn't move the condition in one direction, for example sum problems with negative numbers. For subarray sum equals k with negatives, I use prefix sums with a HashMap instead."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What is the time complexity of the sliding-window solution for 'maximum sum of k consecutive elements' on n elements?"
+    code: null
+    options: ["O(n * k)", "O(n)", "O(k)", "O(n^2)"]
+    answer: 1
+    explanation: "Building the first window costs k, and each of the remaining n - k slides costs O(1): O(k + n - k) = O(n). O(n * k) is the brute force that re-adds k elements for every window."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Variable window: longest substring without repeating characters. What does this print for \"dvdf\"?"
+    code: |
+      String s = "dvdf";
+      Map<Character, Integer> last = new HashMap<>();
+      int left = 0, best = 0;
+      for (int right = 0; right < s.length(); right++) {
+          char c = s.charAt(right);
+          if (last.containsKey(c)) left = Math.max(left, last.get(c) + 1);
+          last.put(c, right);
+          best = Math.max(best, right - left + 1);
+      }
+      System.out.println(best);
+    options: ["2", "3", "4", "1"]
+    answer: 1
+    explanation: "right=0 'd': window \"d\" (1). right=1 'v': \"dv\" (2). right=2 'd' repeats at 0, so left = 1: \"vd\" (2). right=3 'f': \"vdf\" (3). Answer 3. A common wrong idea is to restart the window completely at a repeat, which would give 2."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This longest-unique-substring code returns 3 for \"abba\", but the right answer is 2. What is the bug?"
+    code: |
+      String s = "abba";
+      Map<Character, Integer> last = new HashMap<>();
+      int left = 0, best = 0;
+      for (int right = 0; right < s.length(); right++) {
+          char c = s.charAt(right);
+          if (last.containsKey(c)) left = last.get(c) + 1;
+          last.put(c, right);
+          best = Math.max(best, right - left + 1);
+      }
+      System.out.println(best);
+    options:
+      - "The window length should be right - left"
+      - "left can move backwards: when the last 'a' arrives, left is set to 1 even though it was already 2; use Math.max(left, last.get(c) + 1)"
+      - "HashMap cannot store char keys"
+      - "best should start at 1"
+    answer: 1
+    explanation: "At right=2 ('b'), left becomes 2. At right=3 ('a'), the old 'a' is at index 0, outside the window, but the code sets left = 1, moving it backwards. The window \"bba\" (length 3) contains a repeat. Math.max keeps left at 2 and the answer becomes 2. right - left + 1 is the correct length formula, and chars autobox to Character keys."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "The shrinking variable-window technique for 'smallest subarray with sum >= S' works correctly even when the array contains negative numbers."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The technique assumes removing an element from the left makes the sum smaller. A negative number breaks that: removing it makes the sum bigger. With negatives, use prefix sums (and a structure like a HashMap or deque, depending on the problem)."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fixed window of size k: fill the index of the element that is leaving the window."
+    code: |
+      for (int i = k; i < arr.length; i++) {
+          windowSum += arr[i] - arr[____];
+          best = Math.max(best, windowSum);
+      }
+    acceptedAnswers: ["i-k", "i - k"]
+    explanation: "When arr[i] enters, the window is [i-k+1 .. i], so the element that just left is at index i - k."
+  - id: q6
+    type: MATCH
+    prompt: "Match each problem to the right window type"
+    pairs:
+      - left: "Maximum average of any 4 consecutive days"
+        right: "Fixed-size window"
+      - left: "Longest substring with at most 2 distinct characters"
+        right: "Variable window, longest valid"
+      - left: "Shortest subarray (positive numbers) with sum >= 50"
+        right: "Variable window, shrink while valid"
+      - left: "Count subarrays with sum exactly k, negatives allowed"
+        right: "Not a window problem: prefix sum + HashMap"
+    explanation: "A given size means fixed; longest/shortest with a rule means variable; negatives with an exact sum break the window idea."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "Smallest subarray with sum >= 7. What does this print?"
+    code: |
+      int[] arr = {2, 3, 1, 2, 4, 3};
+      int S = 7, left = 0, sum = 0, best = Integer.MAX_VALUE;
+      for (int right = 0; right < arr.length; right++) {
+          sum += arr[right];
+          while (sum >= S) {
+              best = Math.min(best, right - left + 1);
+              sum -= arr[left++];
+          }
+      }
+      System.out.println(best);
+    options: ["1", "2", "3", "4"]
+    answer: 1
+    explanation: "Windows reaching 7: [2,3,1,2] (4), [3,1,2,4] -> shrink to [1,2,4] (3) -> [2,4] is 6, stop; then [2,4,3] (3) -> shrink to [4,3] (2). The smallest is [4, 3] with length 2. 3 is the tempting answer if you stop shrinking too early."
+explainBack:
+  prompt: "Explain the sliding window technique to a friend using the bus-window example, covering fixed and variable windows."
+  rubric:
+    - "I explained adding the entering element and removing the leaving one"
+    - "I explained fixed windows (size k) with an example"
+    - "I explained variable windows: grow right, shrink left when invalid"
+    - "I explained why it's O(n) even with a nested while loop"
+    - "I mentioned it only works for continuous subarrays and breaks with negatives for sums"
+  modelAnswer: |
+    Sliding window is for continuous subarrays or substrings. Imagine watching a train through a bus window showing three coaches: when you move forward, one coach enters and one leaves, so you just update your count instead of recounting. That's the fixed window: for max sum of k elements, I add arr[i] and subtract arr[i minus k], which is O(n). The variable window stretches: I move right to grow it, and when a rule breaks, like a repeated character, I move left to shrink it until it's valid again. It's still O(n) because each element enters once and leaves once. It doesn't work for subsequences, or for sum problems with negative numbers.
+flashcards:
+  - front: "Fixed window update"
+    back: "sum += arr[i] - arr[i - k]; then update best."
+  - front: "Window length formula"
+    back: "right - left + 1"
+  - front: "Variable window template"
+    back: "for right: add arr[right]; while invalid: remove arr[left], left++; update answer."
+  - front: "Why is the variable window O(n)?"
+    back: "Each element is added once and removed at most once: at most 2n steps."
+  - front: "Longest unique substring: the key line"
+    back: "left = Math.max(left, lastSeen.get(c) + 1) so left never moves backwards."
+  - front: "When does sliding window fail?"
+    back: "Non-continuous (subsequence) problems, and sum conditions with negative numbers."
+keyTakeaways:
+  - "Sliding window = continuous subarray/substring + add new, remove old."
+  - "Fixed size k: one pass with sum += arr[i] - arr[i - k]."
+  - "Variable size: grow with right, shrink with left while the window is invalid."
+  - "O(n) because each element enters and leaves at most once."
+  - "Negatives break sum-based windows; use prefix sums + HashMap instead."

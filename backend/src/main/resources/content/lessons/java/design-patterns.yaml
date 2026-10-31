@@ -1,0 +1,387 @@
+slug: design-patterns
+world: JAVA_CORE
+section: I
+order: 5
+title: "Design basics: Singleton, Factory, Builder, Observer"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common design question: writing a thread-safe Singleton and explaining Factory/Builder/Observer with examples is good prep for SP and DSE technical rounds."
+otherCompanies: "\"Write a Singleton class\" is a common practice question almost everywhere; product companies go deeper into thread safety and when to use each pattern."
+why: |
+  A **design pattern** is a proven, reusable solution to a problem that keeps coming up in software design. It is not ready-made code; it is a **shape** of code that experienced developers recognise.
+
+  Why learn them now?
+  - **"Write a Singleton"** is one of the most common coding questions in interviews, and the follow-up is always "is it thread-safe?".
+  - Spring Boot is full of these patterns: beans are **singletons** by default, `ApplicationContext` is a **factory**, `ResponseEntity.ok().body(...)` and Lombok's `@Builder` are **builders**, and application events are **observers**.
+  - Naming a pattern in an interview ("I would use a Factory here") makes you sound like a developer who has seen real code.
+analogy: |
+  Four patterns, four everyday pictures:
+
+  - **Singleton = the college principal.** There is exactly **one** principal. Everyone who needs the principal goes to the same office; nobody "creates" a new principal.
+  - **Factory = the dosa counter.** You say "masala" or "rava", and the counter gives you the right dosa. You don't go into the kitchen and decide how each one is made.
+  - **Builder = ordering a custom pizza.** Size, crust, cheese, toppings: you add only what you want, step by step, and then say "make it". No need for a constructor with ten confusing arguments.
+  - **Observer = YouTube subscribe + bell icon.** When the channel uploads a video, **all subscribers** get notified automatically. The channel doesn't need to know who each subscriber is, only that they want updates.
+visual:
+  diagram: |
+    SINGLETON                     FACTORY
+    getInstance() --+             create("masala") --> MasalaDosa
+    getInstance() --+--> [one]    create("rava")   --> RavaDosa
+    getInstance() --+   object        (caller only knows Dosa)
+
+    BUILDER
+    new Pizza.Builder()
+        .size("L") .cheese(true) .topping("paneer")
+        .build()  -------------------> Pizza{L, cheese, paneer}
+
+    OBSERVER
+                    +--> Subscriber A.update("New video")
+    Channel.upload -+--> Subscriber B.update("New video")
+                    +--> Subscriber C.update("New video")
+  caption: "Singleton: one shared object. Factory: ask by name, get the right object. Builder: set options step by step. Observer: one event, many listeners notified."
+  visualizer: null
+explanation: |
+  ### 1. Singleton: only one object
+  **Goal**: a class must have **exactly one** instance, with one global access point. Used for configuration, logging, connection pools, caches.
+
+  Three rules:
+  1. **private constructor** so nobody else can call `new`.
+  2. a **private static** field holding the one object.
+  3. a **public static** method (`getInstance()`) that returns it.
+
+  **Eager** (created when the class loads; simple and thread-safe):
+  ```java
+  class Config {
+      private static final Config INSTANCE = new Config();
+      private Config() {}
+      public static Config getInstance() { return INSTANCE; }
+  }
+  ```
+
+  **Lazy** (created on first use) is **not thread-safe** in its simple form: two threads can both see `null` at the same moment and create two objects.
+
+  **Thread-safe lazy: double-checked locking**
+  ```java
+  class Config {
+      private static volatile Config instance;   // volatile is required
+      private Config() {}
+      public static Config getInstance() {
+          if (instance == null) {                 // 1st check, no lock (fast)
+              synchronized (Config.class) {
+                  if (instance == null) {         // 2nd check, inside lock
+                      instance = new Config();
+                  }
+              }
+          }
+          return instance;
+      }
+  }
+  ```
+  - **synchronized**: only one thread at a time can enter that block.
+  - **volatile**: makes sure other threads never see a half-built object.
+
+  **Bill Pugh / holder idiom** (lazy and thread-safe without locks): put the instance in a `private static class Holder`. Java loads `Holder` only when `getInstance()` first touches it, and class loading is thread-safe.
+
+  **Enum singleton** (simplest and safest):
+  ```java
+  enum AppConfig {
+      INSTANCE;
+      void show() { System.out.println("config"); }
+  }
+  // use: AppConfig.INSTANCE.show();
+  ```
+  The JVM guarantees one instance, and it is safe even against **reflection** and **serialization** attacks, which can break the other versions.
+
+  ### 2. Factory: ask, don't build
+  **Goal**: create objects without the caller knowing the exact class. The caller asks a factory method; the factory decides which class to create.
+  ```java
+  interface Payment { void pay(int amt); }
+  class UpiPayment implements Payment { public void pay(int a) { System.out.println("UPI " + a); } }
+  class CardPayment implements Payment { public void pay(int a) { System.out.println("Card " + a); } }
+
+  class PaymentFactory {
+      static Payment create(String type) {
+          return switch (type) {
+              case "UPI" -> new UpiPayment();
+              case "CARD" -> new CardPayment();
+              default -> throw new IllegalArgumentException("Unknown: " + type);
+          };
+      }
+  }
+  ```
+  **Benefit**: adding a new payment type changes one place, and the rest of the code depends only on the `Payment` interface. Real examples: `Calendar.getInstance()`, `List.of(...)`.
+
+  ### 3. Builder: many optional fields
+  **Problem**: a class with many fields, most of them optional, leads to huge constructors like `new Pizza("L", true, false, "paneer", null, 2)`. Which `true` is which? This is called the **telescoping constructor** problem.
+
+  **Solution**: a nested `Builder` class with one method per field, each returning `this` so calls can be **chained**, and a final `build()`.
+  - Readable: `.size("L").cheese(true)` explains itself.
+  - The final object can be **immutable** (all fields `final`, no setters).
+  - Real examples: `StringBuilder`, `HttpRequest.newBuilder()`, Lombok `@Builder`.
+
+  ### 4. Observer: notify everyone who cares
+  **Goal**: when one object (the **subject**) changes, all interested objects (**observers** or **listeners**) are told automatically.
+  - The subject keeps a `List<Observer>`.
+  - `subscribe(o)` adds to the list; on an event, the subject loops and calls `o.update(...)`.
+  - Subject and observers are **loosely coupled**: the subject only knows the interface.
+  Real examples: button click listeners, Spring `@EventListener`, Kafka-style messaging.
+
+  ### Quick comparison
+  | Pattern | Type | Problem it solves |
+  |---|---|---|
+  | Singleton | Creational | Exactly one shared object |
+  | Factory | Creational | Hide which concrete class gets created |
+  | Builder | Creational | Build complex objects with many optional parts |
+  | Observer | Behavioural | Notify many objects when one changes |
+
+  **Creational** patterns are about creating objects; **behavioural** patterns are about how objects talk to each other.
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class Patterns {
+        // SINGLETON (enum: simplest thread-safe version)
+        enum Logger {
+            INSTANCE;
+            void log(String msg) { System.out.println("[LOG] " + msg); }
+        }
+
+        // FACTORY
+        interface Shape { double area(); }
+        record Circle(double r) implements Shape { public double area() { return 3.0 * r * r; } }
+        record Square(double s) implements Shape { public double area() { return s * s; } }
+        static Shape createShape(String type, double size) {
+            return switch (type) {
+                case "circle" -> new Circle(size);
+                case "square" -> new Square(size);
+                default -> throw new IllegalArgumentException(type);
+            };
+        }
+
+        // OBSERVER
+        interface Subscriber { void update(String video); }
+        static class Channel {
+            private final List<Subscriber> subs = new ArrayList<>();
+            void subscribe(Subscriber s) { subs.add(s); }
+            void upload(String video) {
+                for (Subscriber s : subs) s.update(video);
+            }
+        }
+
+        public static void main(String[] args) {
+            Logger.INSTANCE.log("App started");
+            System.out.println(Logger.INSTANCE == Logger.INSTANCE);
+
+            Shape sh = createShape("square", 4);
+            System.out.println("Area = " + sh.area());
+
+            Channel ch = new Channel();
+            ch.subscribe(v -> System.out.println("Asha watches " + v));
+            ch.subscribe(v -> System.out.println("Ravi watches " + v));
+            ch.upload("Java Patterns");
+        }
+    }
+  walkthrough: |
+    - **Singleton**: `enum Logger { INSTANCE; }` has exactly one object, `Logger.INSTANCE`. Comparing it with itself using `==` is `true`: there is only one.
+    - **Factory**: `createShape("square", 4)` hides the `new`. The caller only sees the `Shape` interface. (A `record` is a short way to write a small immutable class.)
+    - **Observer**: `Channel` keeps a list of `Subscriber`s. We subscribe two lambdas (short functions that implement the one-method interface). `upload` loops through the list and calls `update` on each, in the order they subscribed.
+
+    Output:
+    ```
+    [LOG] App started
+    true
+    Area = 16.0
+    Asha watches Java Patterns
+    Ravi watches Java Patterns
+    ```
+tryIt:
+  instructions: "Type this Builder. Then add a new optional field `extraCheese` with its own builder method, and use it in main."
+  code: |
+    public class PizzaShop {
+        static class Pizza {
+            private final String size;
+            private final String topping;
+            private Pizza(Builder b) { size = b.size; topping = b.topping; }
+            public String toString() { return size + " pizza with " + topping; }
+
+            static class Builder {
+                private String size = "M";
+                private String topping = "plain cheese";
+                Builder size(String s) { size = s; return this; }
+                Builder topping(String t) { topping = t; return this; }
+                Pizza build() { return new Pizza(this); }
+            }
+        }
+
+        public static void main(String[] args) {
+            Pizza p1 = new Pizza.Builder().size("L").topping("paneer").build();
+            Pizza p2 = new Pizza.Builder().build();
+            System.out.println(p1);
+            System.out.println(p2);
+        }
+    }
+predict:
+  code: |
+    public class Single {
+        static class Counter {
+            private static Counter instance;
+            static int created = 0;
+            private Counter() { created++; }
+            static Counter get() {
+                if (instance == null) instance = new Counter();
+                return instance;
+            }
+        }
+
+        public static void main(String[] args) {
+            Counter a = Counter.get();
+            Counter b = Counter.get();
+            Counter c = Counter.get();
+            System.out.println(a == c);
+            System.out.println(Counter.created);
+        }
+    }
+  expectedOutput: |
+    true
+    1
+  explanation: |
+    The first `get()` sees `instance == null` and creates the object (`created` becomes 1). Later calls find it already set and return the same object. So `a`, `b` and `c` are the same reference (`==` is `true`), and the constructor ran only once. (This simple lazy version is fine in one thread, but not thread-safe.)
+commonMistakes:
+  - "Leaving the Singleton constructor public, so anyone can call new and make a second object."
+  - "Using simple lazy initialisation in multi-threaded code; two threads can create two instances."
+  - "Writing double-checked locking without volatile; another thread may see a half-constructed object."
+  - "Using Builder for a class with two fields. Patterns add code; use them when they solve a real problem."
+  - "In Observer, forgetting to unsubscribe objects that are no longer needed; the list keeps them alive (a memory leak)."
+interviewBox:
+  why: "Why interviewers ask this: patterns show you can design, not just write loops. A Singleton question also tests static, constructors and thread safety in one go."
+  questions:
+    - q: "How do you create a Singleton class? Is it thread-safe?"
+      a: "I make the constructor private, keep a private static instance, and give a public static getInstance method. The eager version creates it at class loading, which is thread-safe. A lazy version needs double-checked locking with a volatile field, or the holder class idiom. The simplest safe way is an enum with one constant, which is also safe against reflection and serialization."
+    - q: "Why is volatile needed in double-checked locking?"
+      a: "Creating an object is several steps, and without volatile the JVM can reorder them, so another thread might see a non-null reference to an object that isn't fully built yet. volatile prevents that reordering and makes the write visible to all threads."
+    - q: "What is the Factory pattern? Give an example."
+      a: "Factory hides object creation. The caller asks for an object by a type or name and gets back an interface, without knowing the concrete class. For example, a PaymentFactory returns a UpiPayment or CardPayment as a Payment. Adding a new type changes only the factory."
+    - q: "When would you use the Builder pattern?"
+      a: "When a class has many fields, especially optional ones. Instead of a long constructor with confusing arguments, I chain readable methods like size and topping and call build. It also lets me make the final object immutable. Lombok's @Builder and HttpRequest.newBuilder are examples."
+    - q: "Explain the Observer pattern with a real example."
+      a: "One subject keeps a list of observers and notifies all of them when something happens. Like a YouTube channel and its subscribers: when a video is uploaded, every subscriber gets a notification. In Java, event listeners and Spring application events work this way."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which Singleton version is safe against both multi-threading and reflection attacks with the least code?"
+    code: null
+    options: ["Lazy with a simple null check", "Eager static final field", "Enum with one constant", "Double-checked locking without volatile"]
+    answer: 2
+    explanation: "An enum singleton is thread-safe and the JVM blocks creating enum objects through reflection. The eager version is thread-safe but reflection can still call the private constructor after setAccessible(true). The simple lazy version and DCL without volatile are not thread-safe."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "In double-checked locking, the instance field should be declared volatile."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. volatile stops the JVM from reordering the steps of object creation, so no thread can see a half-built object. Without it the pattern is broken."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this Observer program print?"
+    code: |
+      import java.util.*;
+      import java.util.function.Consumer;
+
+      public class Notify {
+          public static void main(String[] args) {
+              List<Consumer<String>> subs = new ArrayList<>();
+              subs.add(m -> System.out.print("A:" + m + " "));
+              subs.add(m -> System.out.print("B:" + m.length() + " "));
+              subs.add(m -> System.out.print("C:" + m.toUpperCase() + " "));
+              for (Consumer<String> s : subs) s.accept("hi");
+              System.out.println();
+          }
+      }
+    options: ["A:hi B:hi C:hi ", "A:hi B:2 C:HI ", "C:HI B:2 A:hi ", "A:hi B:2 C:hi "]
+    answer: 1
+    explanation: "Each subscriber gets the same message \"hi\" and reacts in its own way, in the order they were added (ArrayList keeps insertion order): A prints hi, B prints the length 2, C prints HI. That is the heart of Observer: one event, many different reactions."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This is supposed to be a Singleton, but it prints false. What is the bug?"
+    code: |
+      public class Conf {
+          static class AppConfig {
+              private static final AppConfig INSTANCE = new AppConfig();
+              public AppConfig() {}
+              public static AppConfig getInstance() { return INSTANCE; }
+          }
+
+          public static void main(String[] args) {
+              AppConfig a = AppConfig.getInstance();
+              AppConfig b = new AppConfig();
+              System.out.println(a == b);
+          }
+      }
+    options:
+      - "INSTANCE should not be final"
+      - "The constructor is public, so other code can create more objects; it must be private"
+      - "getInstance must be synchronized"
+      - "== should be equals()"
+    answer: 1
+    explanation: "A Singleton's constructor must be private. Here main calls new AppConfig(), creating a second object, so a == b is false. Note: in this example main is inside the same outer class, where even a private constructor is reachable; in real code AppConfig is its own top-level class, so private blocks everyone else. final is correct, synchronization is not needed for the eager version, and equals() would hide the real problem."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "In a Builder, each setter-like method returns this object so calls can be chained. Fill the blank."
+    code: |
+      Builder topping(String t) {
+          this.topping = t;
+          return ____;
+      }
+    acceptedAnswers: ["this", "this;"]
+    explanation: "Returning this lets you write .size(\"L\").topping(\"paneer\").build() in one chain."
+  - id: q6
+    type: MATCH
+    prompt: "Match the pattern to the everyday situation"
+    pairs:
+      - left: "Singleton"
+        right: "One college principal everyone goes to"
+      - left: "Factory"
+        right: "Dosa counter: say the name, get the right dosa"
+      - left: "Builder"
+        right: "Custom pizza: choose options step by step"
+      - left: "Observer"
+        right: "YouTube subscribers notified of a new video"
+    explanation: "Singleton = one shared instance; Factory = creation hidden behind a name; Builder = step-by-step construction; Observer = automatic notification of many listeners."
+  - id: q7
+    type: MCQ
+    prompt: "A Report class has 9 fields and 6 of them are optional. Which pattern fits best?"
+    code: null
+    options: ["Singleton", "Builder", "Observer", "None, use a 9-argument constructor"]
+    answer: 1
+    explanation: "Builder solves many-optional-fields: readable chained calls and an immutable result. A 9-argument constructor is hard to read and easy to call with arguments in the wrong order. Singleton and Observer solve different problems."
+explainBack:
+  prompt: "Explain the four patterns (Singleton, Factory, Builder, Observer) to a friend, one sentence and one example each, and say how to make a Singleton thread-safe."
+  rubric:
+    - "I explained Singleton with private constructor + static getInstance"
+    - "I gave a thread-safe option: enum, eager, holder, or double-checked locking with volatile"
+    - "I explained Factory as hiding which class gets created"
+    - "I explained Builder for many optional fields with chained calls"
+    - "I explained Observer as one subject notifying many listeners"
+  modelAnswer: |
+    A Singleton makes sure only one object of a class exists, like one college principal. I make the constructor private and give a static getInstance method. To be thread-safe I can create it eagerly, use an enum, or use double-checked locking with a volatile field. A Factory hides creation: like a dosa counter, I ask for "masala" and get the right object without knowing the class. A Builder helps when an object has many optional parts, like a custom pizza: I chain size, topping and then build. An Observer lets one object notify many others, like YouTube telling all subscribers about a new video. Spring uses all of these internally.
+flashcards:
+  - front: "3 rules of a Singleton"
+    back: "Private constructor, private static instance, public static getInstance()."
+  - front: "Safest Singleton in Java?"
+    back: "An enum with a single constant (thread-safe, reflection- and serialization-safe)."
+  - front: "Why volatile in double-checked locking?"
+    back: "Prevents reordering so no thread sees a half-built object."
+  - front: "Factory pattern in one line"
+    back: "A method that creates and returns the right implementation of an interface based on input, hiding the concrete class."
+  - front: "Builder pattern in one line"
+    back: "Chained methods set optional fields, then build() returns the (usually immutable) object."
+  - front: "Observer pattern in one line"
+    back: "Subject keeps a list of listeners and calls update() on all of them when something happens."
+keyTakeaways:
+  - "Design patterns are proven shapes of code for repeated problems."
+  - "Singleton: private constructor + static instance; enum or holder idiom is the clean thread-safe way."
+  - "Factory hides which class is created; callers depend on an interface."
+  - "Builder replaces long constructors with readable chained calls."
+  - "Observer notifies many listeners when one subject changes."
+  - "Spring uses all four: singleton beans, bean factory, builders, event listeners."

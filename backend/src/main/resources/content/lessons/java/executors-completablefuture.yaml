@@ -1,0 +1,348 @@
+slug: executors-completablefuture
+world: JAVA_CORE
+section: G
+order: 5
+title: "Thread pools, ExecutorService, CompletableFuture"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT]
+infosysRelevance: "Depth topic for SP: knowing why thread pools exist and how CompletableFuture chains work shows real-world Java skill."
+otherCompanies: "Frequently discussed in product-company and backend (Spring Boot) interviews; a strong bonus topic for service-company technical rounds."
+why: |
+  Creating a `new Thread()` for every small job is like hiring a new employee for every single parcel and firing them after delivery. It's slow, and if 10,000 requests arrive, you'd create 10,000 threads and the machine would choke.
+
+  Real applications (web servers, Spring Boot apps, Android apps) use **thread pools**: a fixed team of threads that **reuse** themselves for many tasks. In Java, you use them through **`ExecutorService`**.
+
+  On top of that, **`CompletableFuture`** lets you write **async pipelines**: "fetch the price, then add tax, then show it, and if anything fails, show an error", without blocking.
+
+  Interview favourites: **"What is a thread pool and why use it?"**, **"submit() vs execute()?"**, **"shutdown() vs shutdownNow()?"** and **"Future vs CompletableFuture?"**
+analogy: |
+  Think of a **Swiggy/Zomato kitchen** with a few fixed cooks.
+
+  - **Thread pool**: the restaurant keeps **3 cooks** on staff. It doesn't hire a new cook for every order.
+  - **Task queue**: orders pile up on the **order rail**. A free cook picks the next order.
+  - **`submit()`** puts an order on the rail and gives you a **token** (`Future`).
+  - **`shutdown()`**: "No new orders, but finish the ones on the rail, then go home."
+  - **`shutdownNow()`**: "Stop everything right now and leave."
+  - **CompletableFuture** is the **order-tracking pipeline** in the app: *placed → cooking → packed → out for delivery → delivered*, each step starting automatically when the previous finishes, with a "sorry, order failed" message if something goes wrong.
+visual:
+  diagram: |
+    THREAD POOL (newFixedThreadPool(3))
+
+    submit(task) --> +---------------------------+
+                     | QUEUE: [T4] [T5] [T6] ... |  waiting tasks
+                     +---------------------------+
+                         |       |       |
+                         v       v       v
+                     [thread-1][thread-2][thread-3]  reused workers
+                       runs T1   runs T2   runs T3
+                     finished? -> take next task from the queue
+
+    COMPLETABLEFUTURE PIPELINE
+    supplyAsync(fetch) -> thenApply(+tax) -> thenAccept(print)
+         |                                        |
+         +-- if any step throws --> exceptionally(handle)
+  caption: "A pool keeps a few threads alive and feeds them tasks from a queue. CompletableFuture chains steps that run one after another when each result is ready."
+  visualizer: null
+explanation: |
+  ### Why thread pools?
+  Creating and destroying a thread costs time and memory (each thread needs its own stack, often about 1 MB). Problems with "one new thread per task":
+  - **Slow**: creating threads again and again.
+  - **Unlimited**: a traffic spike could create thousands of threads and crash the app with `OutOfMemoryError`.
+
+  A **thread pool** creates a few threads once and **reuses** them. Extra tasks wait in a **queue**.
+
+  ### ExecutorService basics
+  `ExecutorService` is the interface for "something that runs tasks for you". The helper class `Executors` creates common pools:
+
+  | Factory method | What you get | Use for |
+  |---|---|---|
+  | `newFixedThreadPool(n)` | Exactly n threads, unbounded queue | Steady, known workload |
+  | `newCachedThreadPool()` | Creates threads as needed, reuses idle ones | Many short tasks |
+  | `newSingleThreadExecutor()` | One thread; tasks run one by one in order | Tasks that must not overlap |
+  | `newScheduledThreadPool(n)` | Runs tasks after a delay or repeatedly | Timers, periodic jobs |
+  | `newVirtualThreadPerTaskExecutor()` (Java 21) | A cheap **virtual thread** per task | Lots of waiting tasks (I/O) |
+
+  > In production code, teams often create a `ThreadPoolExecutor` directly with a **bounded** queue so tasks can't pile up forever. Knowing this shows maturity.
+
+  ### Submitting work
+  ```java
+  ExecutorService pool = Executors.newFixedThreadPool(3);
+  pool.execute(() -> System.out.println("fire and forget")); // Runnable only, returns void
+  Future<Integer> f = pool.submit(() -> 6 * 7);               // Runnable or Callable, returns Future
+  int answer = f.get();                                       // waits for the result
+  ```
+  | | `execute()` | `submit()` |
+  |---|---|---|
+  | Defined in | `Executor` | `ExecutorService` |
+  | Accepts | `Runnable` | `Runnable` or `Callable` |
+  | Returns | `void` | `Future` |
+  | Exception in task | Printed by the thread's handler | **Stored in the Future**; you see it only when you call `get()` (wrapped in `ExecutionException`) |
+
+  **Future** methods: `get()` (wait for result), `get(timeout, unit)`, `isDone()`, `cancel(true)`.
+
+  ### Shutting down (very important)
+  Pool threads are normal (non-daemon) threads, so **the JVM won't exit while they are alive**. Always shut the pool down:
+  - `shutdown()`: no new tasks accepted; already-submitted tasks **finish**.
+  - `shutdownNow()`: tries to **stop** running tasks (by interrupting them) and returns the list of tasks that never started.
+  - `awaitTermination(time, unit)`: wait until the pool has finished after a shutdown.
+
+  ### Limits of Future
+  `Future.get()` **blocks**: your thread sits and waits. You can't easily say "when this finishes, do that", combine two results, or handle errors in a chain. That's what `CompletableFuture` (Java 8+) solves.
+
+  ### CompletableFuture: async pipelines
+  ```java
+  CompletableFuture
+      .supplyAsync(() -> fetchPrice())        // runs in a background pool
+      .thenApply(price -> price * 118 / 100)  // transform the result
+      .thenAccept(total -> System.out.println(total)) // use it, return nothing
+      .exceptionally(ex -> { System.out.println("failed"); return null; });
+  ```
+  | Method | What it does | Like |
+  |---|---|---|
+  | `supplyAsync(supplier)` | Start async work that **returns** a value | Callable |
+  | `runAsync(runnable)` | Start async work with **no** result | Runnable |
+  | `thenApply(fn)` | Transform the result into a new value | `map` |
+  | `thenAccept(consumer)` | Use the result, return nothing | `forEach` |
+  | `thenCompose(fn)` | Next step is itself async (returns a CompletableFuture) | `flatMap` |
+  | `thenCombine(other, fn)` | Combine **two** independent futures | Join two results |
+  | `allOf(f1, f2, ...)` | Completes when **all** are done | Wait for all |
+  | `exceptionally(fn)` | Give a fallback value if an earlier step failed | `catch` |
+  | `join()` / `get()` | Wait for the final result | `join()` throws unchecked exceptions; `get()` throws checked ones |
+
+  By default, `supplyAsync` uses the shared **ForkJoinPool.commonPool()**. You can pass your own executor as a second argument.
+
+  ### Future vs CompletableFuture
+  | | Future | CompletableFuture |
+  |---|---|---|
+  | Get result | Blocking `get()` only | `join()`/`get()` **or** callbacks like `thenApply` |
+  | Chain steps | No | Yes |
+  | Combine results | No | `thenCombine`, `allOf`, `anyOf` |
+  | Error handling | Catch `ExecutionException` from `get()` | `exceptionally`, `handle` |
+  | Complete it manually | No | Yes, `complete(value)` |
+tinyCode:
+  code: |
+    import java.util.*;
+    import java.util.concurrent.*;
+
+    public class PoolDemo {
+        public static void main(String[] args) throws Exception {
+            ExecutorService pool = Executors.newFixedThreadPool(3);
+            List<Future<Integer>> futures = new ArrayList<>();
+
+            for (int n = 1; n <= 5; n++) {
+                final int num = n;
+                futures.add(pool.submit(() -> num * num));
+            }
+
+            int sum = 0;
+            for (int i = 0; i < futures.size(); i++) {
+                int sq = futures.get(i).get();
+                System.out.println("Square of " + (i + 1) + " = " + sq);
+                sum += sq;
+            }
+            System.out.println("Sum = " + sum);
+            pool.shutdown();
+        }
+    }
+  walkthrough: |
+    - `newFixedThreadPool(3)` creates a pool with **3 reusable threads**.
+    - The loop submits 5 `Callable` tasks (`() -> num * num` returns a value, so it's a Callable). Only 3 run at once; the other 2 wait in the queue.
+    - `final int num = n;` is needed because a lambda can only use local variables that never change (**effectively final**). `n` changes each loop; `num` doesn't.
+    - Each `submit` returns a `Future<Integer>`, which we keep in a list **in submission order**.
+    - The second loop calls `get()` on each Future in order. `get()` waits if that task isn't finished. Because main prints, the output order is fixed even though the tasks ran in parallel.
+    - `pool.shutdown()` lets the program exit.
+
+    Output:
+    ```
+    Square of 1 = 1
+    Square of 2 = 4
+    Square of 3 = 9
+    Square of 4 = 16
+    Square of 5 = 25
+    Sum = 55
+    ```
+tryIt:
+  instructions: "Type this order-tracking pipeline. Each thenApply step runs automatically when the previous one is done. join() makes main wait for the whole chain, so the output is the same every time. Then try adding one more thenApply step that adds the word delivered."
+  code: |
+    import java.util.concurrent.CompletableFuture;
+
+    public class Pipeline {
+        public static void main(String[] args) {
+            CompletableFuture<Void> order = CompletableFuture
+                .supplyAsync(() -> "order-42")
+                .thenApply(id -> id.toUpperCase())
+                .thenApply(id -> id + " packed")
+                .thenApply(id -> id + ", shipped")
+                .thenAccept(status -> System.out.println("Status: " + status));
+
+            order.join();
+            System.out.println("Main is done");
+        }
+    }
+predict:
+  code: |
+    import java.util.concurrent.CompletableFuture;
+
+    public class Combine {
+        public static void main(String[] args) {
+            CompletableFuture<Integer> price = CompletableFuture.supplyAsync(() -> 100);
+            CompletableFuture<Integer> tax = CompletableFuture.supplyAsync(() -> 18);
+            int total = price.thenCombine(tax, (p, t) -> p + t).join();
+            System.out.println("Total: " + total);
+
+            String result = CompletableFuture
+                .supplyAsync(() -> 10 / 0)
+                .thenApply(x -> "ok " + x)
+                .exceptionally(ex -> "failed")
+                .join();
+            System.out.println(result);
+        }
+    }
+  expectedOutput: |
+    Total: 118
+    failed
+  explanation: |
+    `price` and `tax` run in the background; `thenCombine` waits for **both** and adds them: 118. `join()` waits for that, so main prints in a fixed order. In the second chain, `10 / 0` throws `ArithmeticException`, so `thenApply` is **skipped** (there's no value to transform) and `exceptionally` supplies the fallback `"failed"`. No exception reaches main.
+commonMistakes:
+  - "Forgetting shutdown(): pool threads are non-daemon, so the program never ends."
+  - "Calling future.get() right after each submit() inside the loop, which makes the tasks run one by one and wastes the pool."
+  - "Using submit() and never calling get(): any exception in the task is silently stored in the Future and you never see it."
+  - "Using newFixedThreadPool/newCachedThreadPool blindly in production: the queue or the number of threads can grow without limit."
+  - "Confusing thenApply (returns a new value) with thenAccept (consumes, returns nothing) and thenCompose (for steps that are already async)."
+interviewBox:
+  why: "Why interviewers ask this: almost all real Java backends run work on thread pools and async pipelines; this checks whether you can write concurrent code beyond 'new Thread()'."
+  questions:
+    - q: "What is a thread pool and why do we use it?"
+      a: "A thread pool is a group of threads that are created once and reused for many tasks. New tasks wait in a queue until a thread is free. It saves the cost of creating threads again and again, and it limits how many threads run, so a traffic spike can't crash the application."
+    - q: "What is the difference between submit() and execute()?"
+      a: "execute takes only a Runnable and returns nothing. submit takes a Runnable or a Callable and returns a Future. With submit, an exception inside the task is captured in the Future and appears when we call get, wrapped in an ExecutionException."
+    - q: "shutdown() vs shutdownNow()?"
+      a: "shutdown stops accepting new tasks but lets the already submitted tasks finish. shutdownNow tries to stop running tasks by interrupting them and returns the tasks that were still waiting in the queue."
+    - q: "What is CompletableFuture and how is it better than Future?"
+      a: "CompletableFuture is a Future that we can chain and combine. With a normal Future we can only block on get. With CompletableFuture we can say thenApply, thenAccept, combine two results with thenCombine, wait for many with allOf, and handle errors with exceptionally, all without blocking our thread."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "A pool of 2 threads runs 4 tasks. Each prints its task id and thread name. What can you say about the output?"
+    code: |
+      ExecutorService pool = Executors.newFixedThreadPool(2);
+      for (int i = 1; i <= 4; i++) {
+          final int id = i;
+          pool.submit(() -> System.out.println(
+              "Task " + id + " on " + Thread.currentThread().getName()));
+      }
+      pool.shutdown();
+    options:
+      - "Always Task 1..4 in order, on thread-1, thread-2, thread-3, thread-4"
+      - "Four lines; the order can vary, and only pool-1-thread-1 and pool-1-thread-2 appear"
+      - "Only 2 lines, because the pool has 2 threads"
+      - "Nothing, because shutdown() cancels the tasks"
+    answer: 1
+    explanation: "The pool has exactly 2 threads, which are reused, so only two thread names appear. Which thread picks which task, and the print order, depend on scheduling, so they can vary. shutdown() lets submitted tasks finish; it only refuses NEW tasks."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (join() waits for the chain, so the output is fixed.)"
+    code: |
+      int r = CompletableFuture.supplyAsync(() -> 5)
+          .thenApply(x -> x * 2)
+          .thenApply(x -> x + 1)
+          .join();
+      System.out.println(r);
+    options: ["5", "10", "11", "12"]
+    answer: 2
+    explanation: "5 is doubled to 10, then 1 is added: 11. Each thenApply receives the previous result. 12 would be (5 + 1) * 2, which is the wrong order."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This program prints 'report ready' but never ends. Why?"
+    code: |
+      public static void main(String[] args) throws Exception {
+          ExecutorService pool = Executors.newFixedThreadPool(2);
+          Future<String> f = pool.submit(() -> "report ready");
+          System.out.println(f.get());
+      }
+    options:
+      - "f.get() blocks forever"
+      - "The pool is never shut down, and its non-daemon threads keep the JVM alive"
+      - "submit() can't take a lambda that returns a String"
+      - "main must call System.exit at the end of every program"
+    answer: 1
+    explanation: "The result was already printed, so get() returned. The fixed pool's worker threads stay alive waiting for more tasks, and the JVM only exits when all non-daemon threads end. Add pool.shutdown(). System.exit would also stop it, but it's a hack, not the fix."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "If a task submitted with submit() throws an exception, you will not see it unless you call get() on its Future."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. submit() stores the exception inside the Future. get() then throws an ExecutionException whose cause is the original exception. If you never call get(), the error is silently lost; a common real-world bug."
+  - id: q5
+    type: MCQ
+    prompt: "What does shutdown() do?"
+    code: null
+    options:
+      - "Kills all running tasks immediately"
+      - "Stops accepting new tasks but lets already-submitted tasks finish"
+      - "Waits until all tasks finish, blocking the caller"
+      - "Restarts all threads in the pool"
+    answer: 1
+    explanation: "shutdown() is graceful and returns immediately. Killing tasks is shutdownNow() (via interrupts). Waiting is awaitTermination()."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the CompletableFuture method that transforms the result into a new value."
+    code: |
+      CompletableFuture<Integer> len = CompletableFuture
+          .supplyAsync(() -> "Infosys")
+          .____(s -> s.length());
+    acceptedAnswers: ["thenApply"]
+    explanation: "thenApply takes the previous result (the String) and returns a new value (its length). thenAccept would consume it and return nothing, so the type would be CompletableFuture<Void>."
+  - id: q7
+    type: MATCH
+    prompt: "Match each Executors factory to what it creates"
+    pairs:
+      - left: "newFixedThreadPool(4)"
+        right: "Exactly 4 reusable threads"
+      - left: "newSingleThreadExecutor()"
+        right: "One thread, tasks run one by one in order"
+      - left: "newCachedThreadPool()"
+        right: "Creates threads as needed, reuses idle ones"
+      - left: "newScheduledThreadPool(2)"
+        right: "Runs tasks after a delay or repeatedly"
+    explanation: "Pick a fixed pool for steady load, a single thread for strict ordering, cached for many short bursts, and scheduled for timers."
+  - id: q8
+    type: MCQ
+    prompt: "You need to call two slow services in parallel and add their results. Which is the cleanest choice?"
+    code: null
+    options:
+      - "Two Futures and call get() on both, then add"
+      - "CompletableFuture.supplyAsync for each, then thenCombine"
+      - "One thread that calls both services one after another"
+      - "Thread.sleep until both are probably done"
+    answer: 1
+    explanation: "thenCombine waits for both independent futures and combines them without blocking your thread. Two Futures with get() also work but block; calling them one after another loses the parallelism; sleeping is guesswork."
+explainBack:
+  prompt: "Explain to a friend what a thread pool is, why it's better than new Thread() for every job, and what CompletableFuture adds."
+  rubric:
+    - "I said a pool reuses a fixed number of threads and queues extra tasks"
+    - "I said it saves thread-creation cost and limits the number of threads"
+    - "I mentioned submit() returns a Future and the pool must be shut down"
+    - "I said CompletableFuture chains steps (thenApply, thenCombine) and handles errors (exceptionally)"
+  modelAnswer: |
+    A thread pool is like a restaurant with a fixed team of cooks. Instead of hiring a new cook for each order, the same cooks keep picking the next order from a queue. That's faster because creating threads is costly, and safer because a sudden rush can't create thousands of threads. In Java, I create an ExecutorService, submit tasks, and get a Future back to read the result. I must call shutdown at the end, or the program won't exit. CompletableFuture goes further: I can build a pipeline like fetch price, then add tax, then print, combine two results, and handle failures with exceptionally, without blocking.
+flashcards:
+  - front: "Why use a thread pool?"
+    back: "Reuse threads (no repeated creation cost) and limit how many run at once; extra tasks wait in a queue."
+  - front: "submit() vs execute()"
+    back: "execute(Runnable): returns void. submit(Runnable/Callable): returns a Future; exceptions surface via get()."
+  - front: "shutdown() vs shutdownNow()"
+    back: "shutdown: no new tasks, finish existing. shutdownNow: interrupt running tasks, return queued ones."
+  - front: "thenApply vs thenAccept vs thenCompose"
+    back: "thenApply: map to a new value. thenAccept: consume, no result. thenCompose: chain another async step (flatMap)."
+  - front: "How to handle an error in a CompletableFuture chain?"
+    back: "exceptionally(ex -> fallback) or handle((value, ex) -> ...)."
+keyTakeaways:
+  - "Thread pools reuse a few threads and queue extra tasks; create them with Executors or ThreadPoolExecutor."
+  - "submit() returns a Future; get() waits for the result and rethrows task errors as ExecutionException."
+  - "Always shut down a pool, or the JVM keeps running."
+  - "CompletableFuture builds non-blocking pipelines: supplyAsync, thenApply, thenAccept, thenCombine, allOf."
+  - "exceptionally gives a fallback when any earlier step fails."

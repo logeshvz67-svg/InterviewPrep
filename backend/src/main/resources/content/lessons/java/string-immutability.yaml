@@ -1,0 +1,284 @@
+slug: string-immutability
+world: JAVA_CORE
+section: B
+order: 1
+title: "String immutability"
+version: 1
+estimatedMinutes: 25
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Classic technical-round theory question for both SP and DSE; also the root cause of many predict-the-output traps."
+otherCompanies: "A very common basic Java question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  **"Why is String immutable in Java?"** is one of the most common Java theory questions. Interviewers love it because a good answer touches memory, security, threads and hashing all at once.
+
+  It also matters when you write code:
+  - It explains why `s.toUpperCase();` on its own line seems to "do nothing".
+  - It explains why adding strings inside a loop is slow (next lessons: the String pool and `StringBuilder`).
+  - It is the base for "how do I make my own immutable class?" (Section C).
+
+  Once you see the picture of a variable *pointing* to a String object, these questions become easy.
+analogy: |
+  Think of a **printed train ticket**.
+
+  - Once it is printed, nobody can change the name or seat on it. That is an **immutable** object.
+  - If you want a different seat, the counter prints a **new ticket**. The old ticket still exists exactly as it was.
+  - Your **pocket** is like a variable. You can throw the old ticket away and put the new ticket in your pocket. The pocket changed what it holds; the ticket itself never changed.
+
+  In Java, `String` objects are printed tickets, and `String` variables are pockets.
+visual:
+  diagram: |
+    String s = "cat";
+    s.toUpperCase();          // result thrown away!
+
+      s ------> [ "cat" ]       [ "CAT" ]  <- new object, nobody
+                                            points to it
+    s = s.toUpperCase();      // now keep the result
+
+      s --+     [ "cat" ]     <- old object unchanged
+          |                      (garbage if unused)
+          +---> [ "CAT" ]     <- new object
+  caption: "String methods never change the existing object. They return a NEW String. Only re-assigning the variable makes it point to the new one."
+  visualizer: null
+explanation: |
+  ### What does "immutable" mean?
+  **Immutable** means "cannot be changed after it is created". Once a `String` object holds `"cat"`, it holds `"cat"` forever.
+
+  A **reference variable** (like `s` in `String s = "cat";`) does not hold the text itself. It holds the *address* of the String object, like an arrow pointing to it. The variable can point to a different object later. The object itself never changes.
+
+  ### Methods return a new String
+  Every method that looks like it changes a String really builds and returns a **new** String:
+
+  ```java
+  String s = "cat";
+  s.toUpperCase();        // creates "CAT" but nobody keeps it
+  System.out.println(s);  // cat
+  s = s.toUpperCase();    // keep the new object
+  System.out.println(s);  // CAT
+  ```
+
+  The same is true for `concat`, `replace`, `trim`, `substring`, `toLowerCase` and `+`.
+
+  ### `+` also makes new objects
+  ```java
+  String a = "Hi";
+  a = a + " there";   // a NEW String "Hi there" is created; "Hi" is untouched
+  ```
+  Doing this in a loop 10,000 times creates thousands of throw-away objects. That is why we use `StringBuilder` for loops (lesson B3).
+
+  ### How Java makes String immutable
+  Look inside the `String` class (simplified):
+  ```java
+  public final class String {          // final: no one can extend it
+      private final byte[] value;      // private + final: hidden, never re-pointed
+      // no method ever writes into value[]
+  }
+  ```
+  - The class is **`final`**, so nobody can write a child class that breaks the rule.
+  - The data array is **`private`**, so outside code cannot touch it.
+  - The array field is **`final`** and no method modifies it, so the content stays fixed.
+
+  ### Why did Java's designers do this? (the interview answer)
+  | Reason | Plain explanation |
+  |---|---|
+  | **String pool** | Many variables can safely share one `"hello"` object, because nobody can change it. Saves memory. |
+  | **Security** | File names, URLs, database passwords and class names are Strings. If they could change after a security check, an attacker could swap them. |
+  | **Thread safety** | A **thread** is a separate path of execution in a program. Immutable objects can be shared by many threads without locks, because nobody writes to them. |
+  | **Hashing / caching** | A String caches its `hashCode`. It is a perfect `HashMap` key, because its hash never changes after it is put in the map. |
+
+  ### Immutable object vs final variable
+  These are different things, and interviewers check if you mix them up:
+  - `final String s = "a";` means the **variable** cannot point to another object.
+  - String being immutable means the **object** cannot change.
+
+  ```java
+  String s = "a";
+  s = "b";            // allowed: the variable moved; "a" did not change
+
+  final String t = "a";
+  // t = "b";         // compile error: t is final
+  ```
+
+  ### Is there a downside?
+  Yes: every "change" creates a new object, so heavy text building in loops is slow and creates garbage. The fix is the mutable `StringBuilder`. Also, passwords are often kept in a `char[]` instead of a `String`, because an array can be wiped with zeros after use, while a String stays in memory until the garbage collector removes it.
+tinyCode:
+  code: |
+    public class Immutable {
+        public static void main(String[] args) {
+            String city = "chennai";
+            city.toUpperCase();
+            System.out.println(city);
+
+            String upper = city.toUpperCase();
+            System.out.println(upper);
+            System.out.println(city);
+
+            city = city + " central";
+            System.out.println(city);
+        }
+    }
+  walkthrough: |
+    - `String city = "chennai";` creates a String object `"chennai"` and makes `city` point to it.
+    - `city.toUpperCase();` builds a **new** String `"CHENNAI"`, but we don't store it, so it is lost. `city` still points to `"chennai"`, so the first print is `chennai`.
+    - `String upper = city.toUpperCase();` builds `"CHENNAI"` again and this time `upper` keeps it. Printing `upper` gives `CHENNAI`.
+    - Printing `city` again still gives `chennai`: the original object never changed.
+    - `city = city + " central";` makes a brand new String `"chennai central"` and moves the `city` arrow to it. The old `"chennai"` object is still unchanged.
+
+    Output:
+    ```
+    chennai
+    CHENNAI
+    chennai
+    chennai central
+    ```
+tryIt:
+  instructions: "Type this program (no pasting). Before running, write down what you think each line prints. Then run it and compare. Notice which lines keep the result and which throw it away."
+  code: |
+    public class TicketDemo {
+        public static void main(String[] args) {
+            String ticket = "  seat 12  ";
+            ticket.trim();
+            System.out.println("[" + ticket + "]");
+
+            ticket = ticket.trim();
+            System.out.println("[" + ticket + "]");
+
+            String changed = ticket.replace("12", "14");
+            System.out.println(ticket);
+            System.out.println(changed);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            String a = "java";
+            String b = a;
+            a = a.concat(" rocks");
+            System.out.println(a);
+            System.out.println(b);
+        }
+    }
+  expectedOutput: |
+    java rocks
+    java
+  explanation: |
+    `b = a` copies the **arrow**, so both point to the same `"java"` object. `a.concat(" rocks")` creates a **new** object `"java rocks"` and `a` is moved to it. `b` still points to the old `"java"`, which never changed. If Strings were mutable, `b` would also show "java rocks", but they are not.
+commonMistakes:
+  - "Calling s.toUpperCase(), s.trim() or s.replace(...) without assigning the result, and expecting s to change."
+  - "Saying \"String is immutable, so a String variable cannot be changed\". The variable can be re-assigned; the object cannot be changed."
+  - "Mixing up final and immutable: final locks the variable, immutability locks the object."
+  - "Building long strings with + inside a loop. Each step creates a new object; use StringBuilder."
+  - "Giving only one reason in an interview. Mention pool, security, thread safety and hashCode caching."
+interviewBox:
+  why: "Why interviewers ask this: it tests whether you understand references vs objects, and whether you can connect one design choice to memory, security and threads."
+  questions:
+    - q: "Why is String immutable in Java?"
+      a: "Four main reasons. First, the String pool: many variables can safely share one String object. Second, security: things like file paths and URLs can't be changed after they are checked. Third, thread safety: many threads can read the same String without locks. Fourth, hashing: the hashCode is cached and never changes, so String is a safe HashMap key."
+    - q: "How is String made immutable internally?"
+      a: "The String class is final so nobody can subclass it, the character data is stored in a private final array, and no method changes that array. Methods like toUpperCase return a new String instead."
+    - q: "If String is immutable, how does s = s + \"x\" work?"
+      a: "It creates a new String object with the joined text and moves the variable s to point at it. The old String object is not changed; if nothing else points to it, the garbage collector removes it later."
+    - q: "Why do people store passwords in char[] instead of String?"
+      a: "A char array can be overwritten with zeros right after use. A String can't be changed, so the password stays in memory until garbage collection, and might even sit in the String pool. So char[] is a little safer."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String s = "hello";
+      s.toUpperCase();
+      s.concat(" world");
+      System.out.println(s);
+    options: ["HELLO WORLD", "hello world", "HELLO", "hello"]
+    answer: 3
+    explanation: "Both method calls create new Strings but the results are never stored, so s still points to the original \"hello\". The tempting answer \"HELLO WORLD\" assumes the methods change s in place, which Strings never do."
+  - id: q2
+    type: TRUE_FALSE
+    prompt: "Because String is immutable, a String variable can never be made to point to a different String."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A normal (non-final) String variable can be re-assigned any time: s = \"new\". Immutability is about the OBJECT's content, not the variable. Only a final variable cannot be re-pointed."
+  - id: q3
+    type: MCQ
+    prompt: "Which is NOT a reason for making String immutable?"
+    options:
+      - "It lets many variables share one object in the String pool"
+      - "It makes String safe to share between threads"
+      - "It makes string concatenation in loops faster"
+      - "It lets String cache its hashCode for use as a HashMap key"
+    answer: 2
+    explanation: "Immutability actually makes repeated concatenation SLOWER, because every + creates a new object; that's why StringBuilder exists. The other three are real benefits of immutability."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "The programmer wants to print \"Ravi\" (with no spaces). The code prints \"  Ravi  \" instead. What is the bug?"
+    code: |
+      String name = "  Ravi  ";
+      name.trim();
+      System.out.println(name);
+    options:
+      - "trim() only removes spaces at the end, not the start"
+      - "The result of trim() is never stored; it should be name = name.trim();"
+      - "trim() cannot be called on a String literal"
+      - "println adds the spaces back"
+    answer: 1
+    explanation: "trim() returns a NEW trimmed String and leaves the original alone. Without name = name.trim(), the new String is thrown away. trim() removes spaces from both ends, so the first option is wrong."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String x = "A";
+      String y = x;
+      x = x + "B";
+      System.out.println(x + " " + y);
+    options: ["AB AB", "AB A", "A A", "A AB"]
+    answer: 1
+    explanation: "y = x copies the reference to \"A\". x + \"B\" creates a new object \"AB\" and x moves to it; y still points to \"A\". \"AB AB\" would only happen if the original object were changed, which can't happen with String."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill the keyword on the String class declaration that stops anyone from creating a subclass of String."
+    code: |
+      public ____ class String { ... }
+    acceptedAnswers: ["final"]
+    explanation: "A final class cannot be extended. If String could be subclassed, a child class could add methods that change its data and break immutability."
+  - id: q7
+    type: MATCH
+    prompt: "Match each benefit of immutability to the reason it works"
+    pairs:
+      - left: "String pool"
+        right: "Sharing one object is safe because nobody can change it"
+      - left: "Thread safety"
+        right: "No thread can write, so no locks are needed"
+      - left: "HashMap key"
+        right: "The hashCode never changes after the key is stored"
+      - left: "Security"
+        right: "A file path can't be swapped after it is checked"
+    explanation: "Each benefit comes from the same fact: the object's content can never change after creation."
+explainBack:
+  prompt: "Explain to a friend what 'String is immutable' means and why Java made it that way. Use the train ticket idea or your own example."
+  rubric:
+    - "I said a String object can't change; methods return a new String"
+    - "I separated the variable (can be re-pointed) from the object (can't change)"
+    - "I gave at least two reasons: pool, security, threads, hashCode"
+    - "I mentioned the downside (loops) and StringBuilder"
+    - "I used simple words and an example"
+  modelAnswer: |
+    In Java, once a String object is created, its text can never change. It's like a printed train ticket. If I call toUpperCase, Java doesn't edit my ticket, it prints a new one, and I have to keep it by writing s = s.toUpperCase(). The variable is just my pocket; it can hold a different ticket, but the ticket itself never changes. Java did this so many variables can share the same String in the pool, so Strings are safe across threads, so passwords and file paths can't be changed after checking, and so the hashCode can be cached for HashMap keys. The cost is that joining strings in a loop is slow, so we use StringBuilder there.
+flashcards:
+  - front: "What does immutable mean for String?"
+    back: "The String object's content can never change after creation. Every 'changing' method returns a new String."
+  - front: "4 reasons String is immutable"
+    back: "String pool sharing, security, thread safety, cached hashCode (safe HashMap key)."
+  - front: "How is String made immutable internally?"
+    back: "final class, private final data array, and no method modifies that array."
+  - front: "final variable vs immutable object"
+    back: "final = the variable can't point elsewhere. Immutable = the object's content can't change."
+  - front: "Why store passwords in char[]?"
+    back: "You can wipe a char[] with zeros after use; a String stays in memory until garbage collection."
+keyTakeaways:
+  - "A String object never changes; methods like toUpperCase, trim and replace return a NEW String."
+  - "Always store the result: s = s.trim(); otherwise the change is lost."
+  - "The variable can be re-pointed; the object can't be changed. final is about the variable."
+  - "Reasons: String pool, security, thread safety, cached hashCode."
+  - "Downside: + in loops creates many objects; use StringBuilder."

@@ -1,0 +1,352 @@
+slug: loops
+world: JAVA_CORE
+section: A
+order: 8
+title: "Loops: for, while, do-while"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Basic logic used in every problem; dry-running loops and counting their iterations is the base for time-complexity reasoning in SP-level DSA."
+otherCompanies: "Pattern printing, number problems (digits, primes, factorials) and loop-output MCQs are standard practice for TCS, Wipro, Cognizant, Accenture and Capgemini."
+why: |
+  A **loop** repeats a block of code. Without loops you would need to write the same line a thousand times. With loops, one block can process a whole array, print a pattern, or check every number up to n.
+
+  Why this lesson matters:
+  - Almost every coding question uses at least one loop: sums, searching, counting, patterns, digit problems, prime checks.
+  - Off-by-one errors (`<` vs `<=`, starting at 0 vs 1) are the most common reason for wrong answers.
+  - **Dry-running** a loop (tracing it by hand, step by step) is the skill output questions test, and it is also how you count operations for **time complexity** later.
+analogy: |
+  Think of **climbing stairs at a railway station**.
+
+  - A **for loop** is like knowing there are exactly 20 steps: start at step 1, go up one at a time, stop after step 20. You know the count in advance.
+  - A **while loop** is like walking **until** you see your platform. You do not know how many steps it will take; you keep checking the condition.
+  - A **do-while loop** is like a vending machine: you **press the button at least once**, and only then check "do I want another?"
+  - An **infinite loop** is like the escalator that never ends because you forgot to actually move (forgot `i++`).
+visual:
+  diagram: |
+    for (int i = 1; i <= 3; i++) { sum += i; }
+
+       init         check        body          update
+     +-------+    +--------+   +---------+   +-------+
+     | i = 1 |--->| i <= 3 |-->| sum += i|-->|  i++  |--+
+     +-------+    +--------+   +---------+   +-------+  |
+                    ^   | false                         |
+                    |   +----> exit loop                |
+                    +-----------------------------------+
+
+    DRY RUN TABLE
+    +------+--------+----------+---------+
+    | i    | i <= 3 | sum      | after   |
+    +------+--------+----------+---------+
+    | 1    | true   | 0+1 = 1  | i = 2   |
+    | 2    | true   | 1+2 = 3  | i = 3   |
+    | 3    | true   | 3+3 = 6  | i = 4   |
+    | 4    | false  | (exit)   |         |
+    +------+--------+----------+---------+
+  caption: "A for loop runs init once, then repeats: check, body, update. A dry-run table tracks every variable on every pass."
+  visualizer: null
+explanation: |
+  ### 1. The for loop
+  ```java
+  for (initialization; condition; update) {
+      // body
+  }
+  ```
+  Order of execution:
+  1. **Initialization** runs once (`int i = 0`).
+  2. **Condition** is checked. If false, the loop ends.
+  3. **Body** runs.
+  4. **Update** runs (`i++`), then back to step 2.
+
+  Use `for` when you know how many times to repeat, such as going through an array: `for (int i = 0; i < arr.length; i++)`.
+
+  Useful details:
+  - The variable `i` declared in the for header exists **only inside the loop**.
+  - All three parts are optional: `for (;;)` is an infinite loop.
+  - You can use commas: `for (int i = 0, j = n - 1; i < j; i++, j--)` (two pointers from both ends).
+
+  ### 2. The while loop
+  ```java
+  while (condition) {
+      // body
+  }
+  ```
+  The condition is checked **before** each pass. If it is false at the start, the body runs **zero** times. Use `while` when you do not know the number of repetitions in advance, such as processing digits until the number becomes 0:
+  ```java
+  while (n > 0) {
+      int digit = n % 10;
+      n /= 10;
+  }
+  ```
+
+  ### 3. The do-while loop
+  ```java
+  do {
+      // body
+  } while (condition);   // note the semicolon
+  ```
+  The body runs **first**, and the condition is checked **after**. So it always runs **at least once**. Good for menus ("show the menu, then ask if the user wants to continue").
+
+  ### 4. The enhanced for (for-each) loop
+  ```java
+  for (int x : arr) {
+      sum += x;
+  }
+  ```
+  Reads each element in order. It is clean, but:
+  - you do **not** get the index,
+  - changing `x` does **not** change the array (x is a copy of the value),
+  - you cannot go backwards or skip elements.
+
+  ### Comparison
+  | | for | while | do-while |
+  |---|---|---|---|
+  | Condition checked | before each pass | before each pass | after each pass |
+  | Minimum runs | 0 | 0 | 1 |
+  | Best when | count is known | count unknown | must run at least once |
+
+  ### Counting iterations (the start of time complexity)
+  - `for (int i = 0; i < n; i++)` runs **n** times.
+  - `for (int i = 1; i <= n; i++)` also runs **n** times.
+  - `for (int i = 0; i <= n; i++)` runs **n + 1** times.
+  - `for (int i = 1; i < n; i *= 2)` runs about **log2(n)** times, because i doubles.
+  - Two nested loops, each up to n, run **n x n** times.
+
+  ### Nested loops and patterns
+  A loop inside a loop: the **inner** loop finishes completely for **each** pass of the outer loop. This is how patterns are printed:
+  ```java
+  for (int row = 1; row <= 3; row++) {
+      for (int col = 1; col <= row; col++) {
+          System.out.print("*");
+      }
+      System.out.println();
+  }
+  ```
+  Output: `*`, `**`, `***` on three lines. Tip: the outer loop controls **rows**, the inner loop controls **what is printed in each row**.
+
+  ### Infinite loops and off-by-one errors
+  - Forgetting the update (`i++`) or updating the wrong variable gives an **infinite loop** (the program never ends; in a test you get Time Limit Exceeded).
+  - `for (int i = 0; i <= arr.length; i++)` reads `arr[arr.length]`, which throws `ArrayIndexOutOfBoundsException`. Arrays go from 0 to length - 1.
+  - A semicolon after the header, `for (int i = 0; i < 5; i++);`, gives the loop an empty body. The block after it runs only once.
+
+  ### How to dry run
+  Make a table with one column per variable. For each pass, write the condition result and the new values. It feels slow, but it is the most reliable way to answer output questions and to find bugs.
+tinyCode:
+  code: |
+    public class Loops {
+        public static void main(String[] args) {
+            int sum = 0;
+            for (int i = 1; i <= 5; i++) {
+                sum += i;
+            }
+            System.out.println("Sum 1..5 = " + sum);
+
+            int n = 4096, digits = 0;
+            while (n > 0) {
+                digits++;
+                n /= 10;
+            }
+            System.out.println("Digits = " + digits);
+
+            int k = 10;
+            do {
+                System.out.println("do-while ran with k = " + k);
+            } while (k < 5);
+
+            for (int row = 1; row <= 3; row++) {
+                for (int col = 1; col <= row; col++) {
+                    System.out.print(col);
+                }
+                System.out.println();
+            }
+        }
+    }
+  walkthrough: |
+    - The `for` loop adds 1, 2, 3, 4, 5: sum is `15`.
+    - The `while` loop removes one digit each pass: 4096, 409, 40, 4, then 0 stops it. It ran 4 times, so `Digits = 4`.
+    - The `do-while` prints once even though `10 < 5` is false, because the check comes after the body.
+    - The nested loop: for row 1 the inner loop prints `1`; row 2 prints `12`; row 3 prints `123`. `println()` ends each row.
+
+    Output:
+    ```
+    Sum 1..5 = 15
+    Digits = 4
+    do-while ran with k = 10
+    1
+    12
+    123
+    ```
+tryIt:
+  instructions: "Type this prime checker. It loops only up to the square root of n, a common speed trick. Change n to 1, 2, 49 and 97 and predict the answer before running."
+  code: |
+    public class PrimeCheck {
+        public static void main(String[] args) {
+            int n = 97;
+            boolean prime = n >= 2;
+            int checks = 0;
+            for (int d = 2; d * d <= n; d++) {
+                checks++;
+                if (n % d == 0) {
+                    prime = false;
+                    break;
+                }
+            }
+            System.out.println(n + (prime ? " is prime" : " is not prime"));
+            System.out.println("Divisors checked: " + checks);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int i = 0;
+            while (i < 10) {
+                i += 3;
+            }
+            System.out.println(i);
+            int count = 0;
+            for (int a = 1; a <= 16; a *= 2) {
+                count++;
+            }
+            System.out.println(count);
+            int j;
+            for (j = 0; j < 3; j++);
+            System.out.println(j);
+        }
+    }
+  expectedOutput: |
+    12
+    5
+    3
+  explanation: |
+    - `i` goes 0, 3, 6, 9, then 12. At 12 the check `12 < 10` fails, so it prints `12` (the loop overshoots 10).
+    - `a` takes 1, 2, 4, 8, 16: five values, so `count` is `5`. Then a becomes 32 and the loop stops.
+    - `for (j = 0; j < 3; j++);` has an empty body because of the semicolon. It just runs j up to 3, and since `j` was declared outside, we can print it: `3`.
+commonMistakes:
+  - "Off-by-one: using <= arr.length instead of < arr.length, causing ArrayIndexOutOfBoundsException."
+  - "Forgetting to update the loop variable in a while loop, creating an infinite loop."
+  - "A semicolon after for(...) or while(...), which makes the loop body empty."
+  - "Forgetting the semicolon after while(condition) in a do-while."
+  - "Expecting a for-each loop to modify the array by assigning to the loop variable."
+  - "Resetting an inner-loop counter in the wrong place in nested loops."
+interviewBox:
+  why: "Why interviewers ask this: loops are where logic lives. Asking you to dry-run a loop or explain while vs do-while checks careful thinking and is the base for complexity questions."
+  questions:
+    - q: "What is the difference between while and do-while?"
+      a: "A while loop checks the condition first, so its body may run zero times. A do-while runs the body first and checks the condition afterwards, so it always runs at least once. Do-while is useful for menus."
+    - q: "When would you use a for loop instead of a while loop?"
+      a: "I use a for loop when I know how many times to repeat, like going through an array by index. I use a while loop when the count is unknown and depends on a condition, like removing digits until the number becomes zero."
+    - q: "Can you modify an array using a for-each loop?"
+      a: "Not by assigning to the loop variable, because it is a copy of each element value. To change elements, I use a normal for loop with an index, like arr[i] = arr[i] * 2."
+    - q: "How many times does for (int i = 1; i < n; i = i * 2) run?"
+      a: "About log base 2 of n times, because i doubles every pass: 1, 2, 4, 8 and so on until it reaches n. So its time complexity is O(log n)."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int x = 5;
+      do {
+          System.out.print(x + " ");
+          x++;
+      } while (x < 5);
+    options: ["Nothing", "5 ", "5 6 7 8 9 ", "Infinite loop"]
+    answer: 1
+    explanation: "do-while runs the body once before checking. It prints 5 and makes x 6; then 6 < 5 is false, so it stops. 'Nothing' would be the answer for a plain while loop."
+  - id: q2
+    type: MCQ
+    prompt: "How many times does this loop body run? for (int i = 0; i <= 10; i += 2)"
+    code: null
+    options: ["5", "6", "10", "11"]
+    answer: 1
+    explanation: "i takes 0, 2, 4, 6, 8, 10: six values, because <= includes 10. Answer 5 is the tempting off-by-one mistake that forgets either 0 or 10."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This program never stops. Why?"
+    code: |
+      int i = 1;
+      int sum = 0;
+      while (i <= 5) {
+          sum += i;
+      }
+      System.out.println(sum);
+    options:
+      - "sum must start at 1"
+      - "i is never increased, so i <= 5 is always true"
+      - "while cannot use <="
+      - "println must be inside the loop"
+    answer: 1
+    explanation: "Nothing inside the loop changes i, so the condition stays true forever: an infinite loop. Adding i++ inside the body fixes it. Starting sum at 1 would only make the answer wrong, not stop the loop."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "In a for-each loop, for (int x : arr) { x = 0; } sets every element of arr to 0."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. x is a copy of each element's value, so changing x does not touch the array. Use for (int i = 0; i < arr.length; i++) arr[i] = 0; instead."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int count = 0;
+      for (int i = 0; i < 3; i++) {
+          for (int j = i; j < 3; j++) {
+              count++;
+          }
+      }
+      System.out.println(count);
+    options: ["9", "6", "3", "4"]
+    answer: 1
+    explanation: "The inner loop starts at i, so it runs 3 times (i=0), 2 times (i=1) and 1 time (i=2): 3 + 2 + 1 = 6. 9 would be right only if j always started at 0."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the condition so the loop prints every index of arr exactly once."
+    code: |
+      int[] arr = {7, 3, 9, 1};
+      for (int i = 0; ____; i++) {
+          System.out.println(arr[i]);
+      }
+    acceptedAnswers: ["i < arr.length", "i<arr.length", "i <= arr.length - 1", "i<=arr.length-1"]
+    explanation: "Valid indexes are 0 to length - 1, so the loop must stop before length. i <= arr.length would try arr[4] and crash."
+  - id: q7
+    type: MATCH
+    prompt: "Match each loop to its behaviour"
+    pairs:
+      - left: "for"
+        right: "Best when the number of repetitions is known"
+      - left: "while"
+        right: "Checks first; may run zero times"
+      - left: "do-while"
+        right: "Runs at least once; checks at the end"
+      - left: "for-each"
+        right: "Visits each element without an index"
+    explanation: "All loops repeat code; they differ in when the condition is checked and how convenient they are for counting or visiting elements."
+explainBack:
+  prompt: "Explain to a friend the three kinds of loops in Java and how you would dry-run one."
+  rubric:
+    - "I explained the order: init, condition, body, update in a for loop"
+    - "I said while checks first and do-while runs at least once"
+    - "I mentioned for-each and that it gives no index"
+    - "I described making a table of variables to dry-run"
+    - "I mentioned an off-by-one or infinite loop mistake"
+  modelAnswer: |
+    A loop repeats code. A for loop is best when I know the count: it sets up a variable once, checks the condition, runs the body, updates the variable, and repeats. A while loop checks a condition before each pass, so it might not run at all, which is good when I do not know the count, like removing digits from a number. A do-while runs the body first and checks later, so it always runs once. For-each visits every element of an array, but without an index. To dry-run, I make a table with one column per variable and fill a row for each pass. I watch out for less-than versus less-than-or-equal and for forgetting to update the variable.
+flashcards:
+  - front: "for loop execution order"
+    back: "init (once) -> condition -> body -> update -> condition -> ..."
+  - front: "while vs do-while"
+    back: "while checks first (0+ runs). do-while checks last (1+ runs)."
+  - front: "for (int i = 0; i <= n; i++) runs how many times?"
+    back: "n + 1 times."
+  - front: "Loop where i doubles each time"
+    back: "Runs about log2(n) times: O(log n)."
+  - front: "Can for-each change array elements?"
+    back: "No, the loop variable is a copy. Use an index loop."
+keyTakeaways:
+  - "for: known count; while: unknown count; do-while: at least once."
+  - "for runs init once, then condition, body, update in a cycle."
+  - "Watch off-by-one errors: indexes go from 0 to length - 1."
+  - "A semicolon after a loop header makes the body empty."
+  - "For-each is clean but gives no index and cannot modify elements by assignment."
+  - "Dry-run with a table of variables; counting iterations is the start of time complexity."

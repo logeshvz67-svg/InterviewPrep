@@ -1,0 +1,1661 @@
+questions:
+  # ---------------------------------------------------------------- SQL (20)
+  - id: core-001
+    category: SQL
+    topic: "Types of joins"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "What are the different types of joins in SQL?"
+    answer: |
+      A join combines rows from two tables using a related column.
+      INNER JOIN returns only the rows that match in both tables.
+      LEFT JOIN returns all rows from the left table, and NULL for missing matches on the right.
+      RIGHT JOIN is the opposite: all rows from the right table.
+      FULL OUTER JOIN returns all rows from both sides (MySQL does not support it directly; we use LEFT JOIN UNION RIGHT JOIN).
+      CROSS JOIN gives every combination of rows. A SELF JOIN joins a table with itself.
+
+        SELECT e.name, d.dept_name
+        FROM employee e
+        INNER JOIN department d ON e.dept_id = d.id;
+    keyPoints: ["Join combines rows using a related column", "INNER = only matching rows", "LEFT/RIGHT keep all rows of one side with NULLs", "FULL OUTER, CROSS and SELF join exist"]
+
+  - id: core-002
+    category: SQL
+    topic: "INNER JOIN vs LEFT JOIN"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS]
+    question: "What is the difference between INNER JOIN and LEFT JOIN? Give an example."
+    answer: |
+      INNER JOIN keeps only rows that have a match in both tables.
+      LEFT JOIN keeps every row from the left table. If there is no match on the right, the right columns become NULL.
+      Example: list all employees, even those without a department.
+
+        SELECT e.name, d.dept_name
+        FROM employee e
+        LEFT JOIN department d ON e.dept_id = d.id;
+
+      With INNER JOIN, an employee whose dept_id is NULL would disappear from the result. With LEFT JOIN, that employee shows up with dept_name as NULL.
+    keyPoints: ["INNER keeps only matches", "LEFT keeps all left rows", "Unmatched right columns become NULL", "Gave a query example"]
+
+  - id: core-003
+    category: SQL
+    topic: "Find rows with no match"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "How do you find customers who have never placed an order?"
+    answer: |
+      I use a LEFT JOIN and keep the rows where the right side is NULL.
+
+        SELECT c.id, c.name
+        FROM customer c
+        LEFT JOIN orders o ON o.customer_id = c.id
+        WHERE o.id IS NULL;
+
+      Another way is NOT EXISTS:
+
+        SELECT c.id, c.name
+        FROM customer c
+        WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
+
+      I avoid NOT IN when the subquery column can have NULLs, because NOT IN with a NULL returns no rows.
+    keyPoints: ["LEFT JOIN with WHERE right.id IS NULL", "NOT EXISTS alternative", "NOT IN is risky with NULLs"]
+
+  - id: core-004
+    category: SQL
+    topic: "GROUP BY and HAVING"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO]
+    question: "What is the difference between WHERE and HAVING?"
+    answer: |
+      WHERE filters single rows before grouping. HAVING filters groups after GROUP BY.
+      So aggregate functions like COUNT or SUM can be used in HAVING, but not in WHERE.
+      Example: departments with more than 5 employees earning above 30000.
+
+        SELECT dept_id, COUNT(*) AS total
+        FROM employee
+        WHERE salary > 30000
+        GROUP BY dept_id
+        HAVING COUNT(*) > 5;
+
+      Order of running: FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY.
+    keyPoints: ["WHERE filters rows before grouping", "HAVING filters groups after GROUP BY", "Aggregates allowed in HAVING, not WHERE", "Example query"]
+
+  - id: core-005
+    category: SQL
+    topic: "Aggregate functions"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, ACCENTURE]
+    question: "Write a query to find the total and average salary in each department."
+    answer: |
+      I group rows by department and use aggregate functions.
+
+        SELECT dept_id,
+               SUM(salary) AS total_salary,
+               AVG(salary) AS avg_salary,
+               COUNT(*)    AS emp_count
+        FROM employee
+        GROUP BY dept_id
+        ORDER BY total_salary DESC;
+
+      Aggregate functions take many rows and return one value: COUNT, SUM, AVG, MIN, MAX.
+      Every column in SELECT that is not inside an aggregate must be in GROUP BY.
+      Note: COUNT(*) counts all rows, but COUNT(column) skips NULLs.
+    keyPoints: ["GROUP BY dept_id", "SUM and AVG aggregates", "Non-aggregated columns must be in GROUP BY", "COUNT(*) vs COUNT(col) NULL behaviour"]
+
+  - id: core-006
+    category: SQL
+    topic: "Second highest salary"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "Write a query to find the second highest salary."
+    answer: |
+      Simple way with a subquery:
+
+        SELECT MAX(salary) AS second_highest
+        FROM employee
+        WHERE salary < (SELECT MAX(salary) FROM employee);
+
+      Another way with LIMIT and OFFSET (works in MySQL and PostgreSQL):
+
+        SELECT DISTINCT salary
+        FROM employee
+        ORDER BY salary DESC
+        LIMIT 1 OFFSET 1;
+
+      I use DISTINCT so that two people with the same top salary do not break the answer.
+      The first query returns NULL if there is no second salary, which is often what we want.
+    keyPoints: ["MAX with subquery salary < MAX", "ORDER BY DESC LIMIT 1 OFFSET 1", "DISTINCT handles duplicate salaries"]
+
+  - id: core-007
+    category: SQL
+    topic: "Nth highest salary"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT]
+    question: "How do you find the Nth highest salary? For example, the 3rd highest."
+    answer: |
+      The cleanest way is DENSE_RANK, because it gives equal salaries the same rank with no gaps.
+
+        SELECT salary
+        FROM (
+          SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rnk
+          FROM employee
+        ) t
+        WHERE rnk = 3
+        LIMIT 1;
+
+      Without window functions:
+
+        SELECT DISTINCT salary
+        FROM employee
+        ORDER BY salary DESC
+        LIMIT 1 OFFSET 2;   -- OFFSET is N-1
+
+      A correlated subquery also works: the Nth highest is the salary where exactly N-1 distinct salaries are greater than it.
+    keyPoints: ["DENSE_RANK() OVER (ORDER BY salary DESC)", "Filter rnk = N in outer query", "LIMIT 1 OFFSET N-1 with DISTINCT", "Handles duplicate salaries"]
+
+  - id: core-008
+    category: SQL
+    topic: "Find duplicate rows"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT]
+    question: "How do you find duplicate emails in a table?"
+    answer: |
+      I group by the column and keep groups where the count is more than one.
+
+        SELECT email, COUNT(*) AS times
+        FROM users
+        GROUP BY email
+        HAVING COUNT(*) > 1;
+
+      If I want to see the full rows of the duplicates:
+
+        SELECT *
+        FROM users
+        WHERE email IN (
+          SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1
+        );
+    keyPoints: ["GROUP BY the duplicate column", "HAVING COUNT(*) > 1", "Subquery to fetch full rows"]
+
+  - id: core-009
+    category: SQL
+    topic: "Delete duplicate rows"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "How do you delete duplicate rows but keep one copy?"
+    answer: |
+      I keep the row with the smallest id for each email and delete the rest.
+      In MySQL, a self join works:
+
+        DELETE u1
+        FROM users u1
+        JOIN users u2
+          ON u1.email = u2.email AND u1.id > u2.id;
+
+      In PostgreSQL, I can use ROW_NUMBER:
+
+        DELETE FROM users
+        WHERE id IN (
+          SELECT id FROM (
+            SELECT id, ROW_NUMBER() OVER (PARTITION BY email ORDER BY id) AS rn
+            FROM users
+          ) t
+          WHERE rn > 1
+        );
+
+      Before deleting, I first run it as a SELECT to check which rows will go. Then I add a UNIQUE constraint so it does not happen again.
+    keyPoints: ["Keep one row per group (e.g. smallest id)", "Self join with u1.id > u2.id", "ROW_NUMBER() PARTITION BY and delete rn > 1", "Test with SELECT first / add UNIQUE"]
+
+  - id: core-010
+    category: SQL
+    topic: "Subqueries"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, INFOSYS_DSE]
+    question: "What is a subquery? What is a correlated subquery?"
+    answer: |
+      A subquery is a query inside another query. It runs first and gives its result to the outer query.
+
+        SELECT name FROM employee
+        WHERE salary > (SELECT AVG(salary) FROM employee);
+
+      A correlated subquery uses a column from the outer query, so it runs once for each outer row.
+      Example: employees who earn more than the average of their own department.
+
+        SELECT e.name, e.salary
+        FROM employee e
+        WHERE e.salary > (
+          SELECT AVG(x.salary) FROM employee x WHERE x.dept_id = e.dept_id
+        );
+
+      Correlated subqueries can be slow on big tables; a JOIN or window function is often faster.
+    keyPoints: ["Subquery = query inside a query", "Normal subquery runs once", "Correlated subquery refers to outer row and runs per row", "Can be slower than JOIN"]
+
+  - id: core-011
+    category: SQL
+    topic: "Window functions"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "What is a window function? How is it different from GROUP BY?"
+    answer: |
+      A window function calculates a value over a group of rows, but it does not collapse the rows.
+      GROUP BY gives one row per group. A window function keeps every row and adds a new column.
+
+        SELECT name, dept_id, salary,
+               AVG(salary) OVER (PARTITION BY dept_id) AS dept_avg
+        FROM employee;
+
+      Here each employee row stays, and we also see the department average next to it.
+      PARTITION BY is like grouping, and ORDER BY inside OVER decides the order for ranking or running totals.
+      Common ones: ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, SUM OVER.
+    keyPoints: ["Calculates over a set of rows without collapsing them", "OVER (PARTITION BY ... ORDER BY ...)", "GROUP BY returns one row per group", "Examples: ROW_NUMBER, RANK, LAG, LEAD"]
+
+  - id: core-012
+    category: SQL
+    topic: "ROW_NUMBER vs RANK vs DENSE_RANK"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "What is the difference between ROW_NUMBER, RANK and DENSE_RANK?"
+    answer: |
+      All three give a number to rows in an order. They differ only when there are ties.
+      Salaries 100, 90, 90, 80:
+      ROW_NUMBER gives 1, 2, 3, 4. Always unique, ties get different numbers.
+      RANK gives 1, 2, 2, 4. Ties share a rank, then a gap.
+      DENSE_RANK gives 1, 2, 2, 3. Ties share a rank, no gap.
+
+        SELECT name, salary,
+               ROW_NUMBER() OVER (ORDER BY salary DESC) AS rn,
+               RANK()       OVER (ORDER BY salary DESC) AS rnk,
+               DENSE_RANK() OVER (ORDER BY salary DESC) AS drnk
+        FROM employee;
+
+      For "Nth highest salary" I use DENSE_RANK.
+    keyPoints: ["ROW_NUMBER always unique", "RANK leaves gaps after ties", "DENSE_RANK has no gaps", "Example with tied values"]
+
+  - id: core-013
+    category: SQL
+    topic: "Top N per group"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "Write a query to find the top 2 highest paid employees in each department."
+    answer: |
+      I rank employees inside each department and keep ranks 1 and 2.
+
+        SELECT dept_id, name, salary
+        FROM (
+          SELECT dept_id, name, salary,
+                 DENSE_RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rnk
+          FROM employee
+        ) t
+        WHERE rnk <= 2
+        ORDER BY dept_id, salary DESC;
+
+      PARTITION BY dept_id restarts the ranking for each department.
+      I must filter in an outer query, because a window function cannot be used directly in WHERE.
+      If I want exactly two rows even with ties, I use ROW_NUMBER instead.
+    keyPoints: ["PARTITION BY dept_id", "ORDER BY salary DESC inside OVER", "Filter rank in outer query", "ROW_NUMBER vs DENSE_RANK choice for ties"]
+
+  - id: core-014
+    category: SQL
+    topic: "Indexes"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT, TCS]
+    question: "What is an index? What are its pros and cons?"
+    answer: |
+      An index is like the index at the back of a book. It helps the database find rows fast without reading the full table.
+      Most databases use a B-tree index, so a lookup is about O(log n) instead of a full scan.
+
+        CREATE INDEX idx_emp_email ON employee(email);
+
+      Pros: faster SELECT with WHERE, JOIN and ORDER BY on that column.
+      Cons: it uses extra disk space, and INSERT, UPDATE and DELETE become a little slower because the index must also be updated.
+      So I add indexes on columns that are searched often, not on every column.
+      A clustered index decides the physical order of rows; in MySQL InnoDB the primary key is the clustered index.
+    keyPoints: ["Speeds up search like a book index", "Usually a B-tree", "Costs extra space and slower writes", "Index frequently searched columns", "Clustered vs non-clustered"]
+
+  - id: core-015
+    category: SQL
+    topic: "Normalization 1NF 2NF 3NF"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "What is normalization? Explain 1NF, 2NF and 3NF."
+    answer: |
+      Normalization means organizing tables to remove duplicate data and avoid update problems.
+      1NF: every column holds a single (atomic) value. No lists like "Java, SQL" in one cell.
+      2NF: it is in 1NF, and every non-key column depends on the whole primary key, not just part of a composite key.
+      3NF: it is in 2NF, and no non-key column depends on another non-key column. That is, no transitive dependency.
+      Example: if student table has dept_id and dept_name, dept_name depends on dept_id, not on student_id. So we move dept_name to a separate department table.
+    keyPoints: ["Goal: reduce redundancy and anomalies", "1NF atomic values", "2NF no partial dependency on composite key", "3NF no transitive dependency", "Gave an example"]
+
+  - id: core-016
+    category: SQL
+    topic: "BCNF and denormalization"
+    difficulty: HARD
+    companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+    question: "What is BCNF? When would you denormalize?"
+    answer: |
+      BCNF is a stricter version of 3NF. The rule is: for every dependency X -> Y, X must be a super key. Super key means a set of columns that can uniquely identify a row.
+      3NF allows a small exception when Y is part of a candidate key; BCNF does not.
+      Example: a table (student, course, teacher) where each teacher teaches only one course. teacher -> course, but teacher is not a key. So it is in 3NF but not BCNF. We split it into (teacher, course) and (student, teacher).
+      Denormalization means adding some duplicate data on purpose to make reads faster, for example in reports or dashboards where joins are too costly.
+    keyPoints: ["For every X -> Y, X must be a super key", "Stricter than 3NF", "Example of 3NF but not BCNF", "Denormalize for read performance"]
+
+  - id: core-017
+    category: SQL
+    topic: "DELETE vs TRUNCATE vs DROP"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is the difference between DELETE, TRUNCATE and DROP?"
+    answer: |
+      DELETE is a DML command. It removes rows one by one, can use a WHERE clause, and can be rolled back inside a transaction.
+
+        DELETE FROM employee WHERE dept_id = 5;
+
+      TRUNCATE is a DDL command. It removes all rows quickly, has no WHERE, and resets auto-increment. In MySQL it cannot be rolled back (PostgreSQL can roll it back inside a transaction).
+
+        TRUNCATE TABLE employee;
+
+      DROP removes the whole table: data, structure, indexes and constraints.
+
+        DROP TABLE employee;
+
+      Simple memory: DELETE removes some rows, TRUNCATE empties the table, DROP removes the table itself.
+    keyPoints: ["DELETE is DML, supports WHERE, can roll back", "TRUNCATE is DDL, removes all rows fast, resets identity", "DROP removes table structure too", "Rollback behaviour differs by database"]
+
+  - id: core-018
+    category: SQL
+    topic: "ACID properties"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "What are ACID properties?"
+    answer: |
+      ACID are four properties that make a transaction safe.
+      Atomicity: all or nothing. If one step fails, everything is rolled back.
+      Consistency: the data moves from one valid state to another, and all rules like constraints are kept.
+      Isolation: transactions running at the same time do not disturb each other.
+      Durability: once committed, the data stays saved even after a crash.
+      Example: a bank transfer. Debit from A and credit to B must both happen, or neither happens.
+
+        START TRANSACTION;
+        UPDATE account SET balance = balance - 500 WHERE id = 1;
+        UPDATE account SET balance = balance + 500 WHERE id = 2;
+        COMMIT;
+    keyPoints: ["Atomicity all or nothing", "Consistency valid state", "Isolation concurrent transactions don't interfere", "Durability survives crash", "Bank transfer example"]
+
+  - id: core-019
+    category: SQL
+    topic: "UNION vs UNION ALL"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, ACCENTURE]
+    question: "What is the difference between UNION and UNION ALL?"
+    answer: |
+      Both combine the results of two SELECT queries into one list.
+      UNION removes duplicate rows, so it does extra work to sort or compare.
+      UNION ALL keeps all rows including duplicates, so it is faster.
+      Both queries must have the same number of columns with compatible types.
+
+        SELECT city FROM customer
+        UNION
+        SELECT city FROM supplier;
+
+      I use UNION ALL when I know there are no duplicates or I want to keep them.
+    keyPoints: ["Both combine results of SELECTs", "UNION removes duplicates", "UNION ALL keeps duplicates and is faster", "Same number and types of columns"]
+
+  - id: core-020
+    category: SQL
+    topic: "Primary key vs unique key, constraints"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is the difference between a primary key and a unique key? Write a CREATE TABLE with constraints."
+    answer: |
+      A primary key uniquely identifies each row. It cannot be NULL, and a table has only one primary key.
+      A unique key also stops duplicates, but a table can have many unique keys, and they can hold NULL values.
+
+        CREATE TABLE employee (
+          id       INT PRIMARY KEY AUTO_INCREMENT,
+          email    VARCHAR(100) UNIQUE,
+          name     VARCHAR(50) NOT NULL,
+          salary   DECIMAL(10,2) CHECK (salary > 0),
+          dept_id  INT,
+          FOREIGN KEY (dept_id) REFERENCES department(id)
+        );
+
+      Other constraints: NOT NULL, CHECK, DEFAULT and FOREIGN KEY. A foreign key links to the primary key of another table.
+    keyPoints: ["Primary key: unique, not null, one per table", "Unique key: many allowed, NULLs allowed", "Other constraints: NOT NULL, CHECK, DEFAULT, FOREIGN KEY", "CREATE TABLE example"]
+
+  # ---------------------------------------------------------------- DBMS (10)
+  - id: core-021
+    category: DBMS
+    topic: "What is a transaction"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, INFOSYS_DSE]
+    question: "What is a transaction? What do COMMIT and ROLLBACK do?"
+    answer: |
+      A transaction is a group of SQL steps that must be treated as one unit of work.
+      COMMIT saves all the changes of the transaction permanently.
+      ROLLBACK cancels all the changes made since the transaction started.
+      SAVEPOINT lets me mark a point and roll back only up to that point.
+      Example: placing an order. I insert the order, reduce the stock and take the payment. If payment fails, I roll back, so stock is not reduced wrongly.
+    keyPoints: ["Group of operations as one unit", "COMMIT makes changes permanent", "ROLLBACK undoes changes", "SAVEPOINT for partial rollback", "Real example"]
+
+  - id: core-022
+    category: DBMS
+    topic: "Isolation levels"
+    difficulty: HARD
+    companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+    question: "What are the transaction isolation levels?"
+    answer: |
+      Isolation level decides how much one transaction can see of another running transaction. There are four standard levels, from weakest to strongest:
+      READ UNCOMMITTED: can read data that is not yet committed. Dirty reads are possible.
+      READ COMMITTED: reads only committed data. Default in PostgreSQL and Oracle.
+      REPEATABLE READ: if I read the same row twice, I get the same value. Default in MySQL InnoDB.
+      SERIALIZABLE: transactions behave as if they ran one after another. Safest but slowest.
+      Higher isolation means fewer problems but less concurrency.
+    keyPoints: ["Four levels named in order", "READ COMMITTED default in PostgreSQL", "REPEATABLE READ default in MySQL InnoDB", "Trade-off: safety vs performance"]
+
+  - id: core-023
+    category: DBMS
+    topic: "Dirty read, non-repeatable read, phantom read"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "Explain dirty read, non-repeatable read and phantom read."
+    answer: |
+      These are problems that can happen when transactions run at the same time.
+      Dirty read: T1 reads a value that T2 changed but has not committed. If T2 rolls back, T1 used wrong data.
+      Non-repeatable read: T1 reads a row, T2 updates and commits it, T1 reads again and gets a different value.
+      Phantom read: T1 runs a query with a condition, T2 inserts a new matching row, and T1's second run shows an extra "phantom" row.
+      READ COMMITTED stops dirty reads. REPEATABLE READ also stops non-repeatable reads. SERIALIZABLE stops all three.
+    keyPoints: ["Dirty read = reading uncommitted data", "Non-repeatable = same row changes between reads", "Phantom = new rows appear in a range query", "Which isolation level prevents which"]
+
+  - id: core-024
+    category: DBMS
+    topic: "Types of keys"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "Explain super key, candidate key, primary key, alternate key and foreign key."
+    answer: |
+      Super key: any set of columns that can uniquely identify a row, even with extra columns.
+      Candidate key: a minimal super key. No column can be removed. A table can have many.
+      Primary key: the one candidate key we choose as the main identifier. Not null and unique.
+      Alternate key: the candidate keys that were not chosen as primary key.
+      Foreign key: a column that refers to the primary key of another table, to link them.
+      Example: in student, both roll_no and email are candidate keys. We choose roll_no as primary key, so email is an alternate key.
+    keyPoints: ["Super key uniquely identifies a row", "Candidate key is a minimal super key", "Primary key chosen from candidates", "Alternate key = remaining candidates", "Foreign key links tables"]
+
+  - id: core-025
+    category: DBMS
+    topic: "ER model basics"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, INFOSYS_DSE]
+    question: "What is an ER diagram? Explain entity, attribute and relationship."
+    answer: |
+      An ER diagram (Entity-Relationship diagram) is a drawing of the database design before we create tables.
+      Entity: a real-world thing we store data about, like Student or Course. Drawn as a rectangle.
+      Attribute: a property of an entity, like name or age. Drawn as an oval. The key attribute is underlined.
+      Relationship: how entities are connected, like Student "enrolls in" Course. Drawn as a diamond.
+      A weak entity cannot be identified by its own attributes alone; it depends on another entity, like Dependent depending on Employee.
+    keyPoints: ["ER diagram = visual database design", "Entity (rectangle)", "Attribute (oval), key attribute underlined", "Relationship (diamond)", "Weak entity"]
+
+  - id: core-026
+    category: DBMS
+    topic: "Cardinality in relationships"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_DSE, TCS, COGNIZANT]
+    question: "What are one-to-one, one-to-many and many-to-many relationships? How do you build them in tables?"
+    answer: |
+      One-to-one: one person has one passport. I put a unique foreign key in one of the tables.
+      One-to-many: one department has many employees. I put dept_id as a foreign key in the employee table, the "many" side.
+      Many-to-many: a student takes many courses and a course has many students. I create a third join table, like student_course(student_id, course_id), with both foreign keys and a composite primary key.
+      In JPA these map to @OneToOne, @OneToMany/@ManyToOne and @ManyToMany.
+    keyPoints: ["1:1 unique foreign key", "1:N foreign key on many side", "M:N needs a join table", "Examples for each"]
+
+  - id: core-027
+    category: DBMS
+    topic: "DBMS vs RDBMS, SQL vs NoSQL"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is the difference between DBMS and RDBMS? And SQL vs NoSQL?"
+    answer: |
+      A DBMS is software to store and manage data. An RDBMS is a DBMS that stores data in tables with rows and columns, and links tables using keys. MySQL, PostgreSQL and Oracle are RDBMS.
+      RDBMS supports relationships, constraints, normalization and ACID transactions.
+      SQL databases have a fixed schema and are good for structured data with relations, like banking.
+      NoSQL databases like MongoDB or Redis have a flexible schema. They store documents, key-values or graphs, and scale out easily. They are good for big, fast-changing data.
+    keyPoints: ["RDBMS stores data in related tables", "RDBMS supports keys, constraints, ACID", "SQL fixed schema, NoSQL flexible schema", "Examples of each"]
+
+  - id: core-028
+    category: DBMS
+    topic: "Views"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT]
+    question: "What is a view in SQL? Why use it?"
+    answer: |
+      A view is a saved SELECT query that behaves like a virtual table. It does not store data itself (except a materialized view).
+
+        CREATE VIEW high_earners AS
+        SELECT name, salary FROM employee WHERE salary > 50000;
+
+        SELECT * FROM high_earners;
+
+      Why use it: to hide complex joins behind a simple name, and for security, so a user sees only some columns, not salary or password.
+      A materialized view stores the result physically and must be refreshed; it is supported in PostgreSQL and Oracle.
+    keyPoints: ["Virtual table from a stored query", "Does not store data", "Simplifies complex queries", "Security by hiding columns", "Materialized view stores data"]
+
+  - id: core-029
+    category: DBMS
+    topic: "Stored procedure vs function, triggers"
+    difficulty: MEDIUM
+    companies: [ALL, TCS, COGNIZANT, CAPGEMINI, INFOSYS_DSE]
+    question: "What is a stored procedure? How is it different from a function? What is a trigger?"
+    answer: |
+      A stored procedure is a set of SQL statements saved in the database with a name. We call it using CALL. It can do inserts, updates and transaction control, and it may or may not return values.
+      A function must return a value and is usually used inside a SELECT, like SELECT get_tax(salary). Functions usually should not change data.
+      A trigger is code that runs automatically when an event happens on a table, like BEFORE INSERT or AFTER UPDATE. For example, writing an audit log row whenever a salary changes.
+    keyPoints: ["Procedure: named SQL block, called with CALL", "Function must return a value, used in SELECT", "Trigger runs automatically on INSERT/UPDATE/DELETE", "Example use"]
+
+  - id: core-030
+    category: DBMS
+    topic: "Locking and concurrency"
+    difficulty: MEDIUM
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is optimistic and pessimistic locking?"
+    answer: |
+      Both protect data when two users change the same row at the same time.
+      Pessimistic locking locks the row first, so others must wait. In SQL: SELECT ... FOR UPDATE. It is safe, but it can slow things down and cause waiting.
+      Optimistic locking does not lock. It keeps a version number in the row. When updating, it checks that the version is still the same. If someone else changed it, the update fails and we retry.
+
+        UPDATE product SET stock = 9, version = 4
+        WHERE id = 1 AND version = 3;
+
+      In JPA, I add a field with @Version to get optimistic locking.
+    keyPoints: ["Pessimistic locks before use (SELECT FOR UPDATE)", "Optimistic uses version check at update time", "Optimistic suits low conflict, pessimistic high conflict", "JPA @Version"]
+
+  # ---------------------------------------------------------------- OS (12)
+  - id: core-031
+    category: OS
+    topic: "Process vs thread"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "What is the difference between a process and a thread?"
+    answer: |
+      A process is a program in running state. It has its own memory space: code, data, heap and stack.
+      A thread is a smaller unit of work inside a process. Threads of the same process share the code, data and heap, but each thread has its own stack and program counter.
+      Creating a thread is cheaper and switching between threads is faster than between processes.
+      If one process crashes, other processes are safe. But a bug in one thread can crash the whole process.
+      Example: a browser tab can be a process, and inside it separate threads handle rendering and network.
+    keyPoints: ["Process = running program with own memory", "Thread = unit inside a process", "Threads share heap/code, own stack", "Threads are lighter and faster to switch", "Isolation difference"]
+
+  - id: core-032
+    category: OS
+    topic: "Process states and context switch"
+    difficulty: MEDIUM
+    companies: [ALL, TCS, INFOSYS_DSE, WIPRO]
+    question: "What are the states of a process? What is a context switch?"
+    answer: |
+      A process moves through these states: New, Ready, Running, Waiting (or Blocked), and Terminated.
+      New means being created. Ready means waiting for the CPU. Running means using the CPU. Waiting means waiting for I/O or an event. Terminated means finished.
+      A context switch is when the CPU stops one process and starts another. The OS saves the state of the old process, like registers and program counter, in its PCB (Process Control Block), and loads the state of the new one.
+      Context switching is pure overhead, so too many switches waste CPU time.
+    keyPoints: ["Five states named", "Meaning of ready vs waiting", "Context switch saves and loads state", "PCB stores process state", "Switching is overhead"]
+
+  - id: core-033
+    category: OS
+    topic: "CPU scheduling algorithms"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO]
+    question: "Explain common CPU scheduling algorithms."
+    answer: |
+      FCFS (First Come First Serve): runs processes in arrival order. Simple, but a long job can make short jobs wait (convoy effect).
+      SJF (Shortest Job First): runs the shortest job next. Gives the lowest average waiting time, but long jobs may starve, and we must know burst time.
+      SRTF: the preemptive version of SJF.
+      Priority scheduling: highest priority first. Low priority may starve; aging (slowly raising priority) fixes it.
+      Round Robin: each process gets a fixed time slice (quantum) in turn. Fair and good for time-sharing systems.
+      Preemptive means the OS can stop a running process; non-preemptive means it runs until it finishes or blocks.
+    keyPoints: ["FCFS and convoy effect", "SJF lowest average waiting time, starvation", "Priority scheduling and aging", "Round Robin with time quantum", "Preemptive vs non-preemptive"]
+
+  - id: core-034
+    category: OS
+    topic: "Deadlock and its conditions"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "What is a deadlock? What are the four necessary conditions?"
+    answer: |
+      A deadlock is when two or more processes wait for each other forever, and none can continue.
+      Example: P1 holds resource A and waits for B. P2 holds B and waits for A.
+      All four conditions must be true at the same time:
+      1. Mutual exclusion: a resource can be used by only one process at a time.
+      2. Hold and wait: a process holds one resource and waits for another.
+      3. No preemption: a resource cannot be taken away by force.
+      4. Circular wait: a circle of processes, each waiting for the next.
+      If we break any one condition, deadlock cannot happen.
+    keyPoints: ["Definition: processes wait for each other forever", "Mutual exclusion", "Hold and wait", "No preemption", "Circular wait"]
+
+  - id: core-035
+    category: OS
+    topic: "Deadlock handling"
+    difficulty: HARD
+    companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+    question: "How can deadlocks be prevented, avoided or handled?"
+    answer: |
+      Prevention: design the system so one of the four conditions never holds. For example, always take locks in a fixed order to stop circular wait, or ask for all resources at once to stop hold and wait.
+      Avoidance: the OS checks every request and grants it only if the system stays in a safe state. Banker's algorithm does this.
+      Detection and recovery: allow deadlocks, detect them using a wait-for graph, then recover by killing a process or taking back resources.
+      Ignore: many OSes, like Windows and Linux, mostly ignore it because it is rare (ostrich approach).
+      In Java code, I avoid deadlock by locking in the same order and using tryLock with a timeout.
+    keyPoints: ["Prevention breaks a condition (lock ordering)", "Avoidance with Banker's algorithm / safe state", "Detection with wait-for graph and recovery", "Ostrich approach", "Practical Java tip"]
+
+  - id: core-036
+    category: OS
+    topic: "Paging"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS]
+    question: "What is paging?"
+    answer: |
+      Paging is a memory management method. The process's logical memory is cut into fixed-size blocks called pages, and physical RAM is cut into blocks of the same size called frames.
+      Any page can go into any free frame, so the process does not need one continuous block of memory. This removes external fragmentation.
+      The OS keeps a page table for each process that maps page number to frame number.
+      To make lookups fast, the CPU uses a small cache called the TLB (Translation Lookaside Buffer).
+      Paging can still cause small internal fragmentation in the last page.
+    keyPoints: ["Logical memory split into pages, RAM into frames", "Same fixed size", "Page table maps page to frame", "Removes external fragmentation", "TLB speeds lookup"]
+
+  - id: core-037
+    category: OS
+    topic: "Virtual memory and page faults"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO]
+    question: "What is virtual memory? What is a page fault?"
+    answer: |
+      Virtual memory lets a program use more memory than the actual RAM. Only the pages currently needed are kept in RAM; the rest stay on disk.
+      This is done with demand paging: a page is loaded only when it is used.
+      A page fault happens when the program needs a page that is not in RAM. The OS pauses the process, loads the page from disk into a frame, updates the page table, and resumes.
+      If RAM is full, a page replacement algorithm like LRU or FIFO picks a page to remove.
+      Too many page faults make the system slow; this is called thrashing.
+    keyPoints: ["Program can use more than physical RAM", "Demand paging", "Page fault = page not in RAM, load from disk", "Page replacement (LRU, FIFO)", "Thrashing"]
+
+  - id: core-038
+    category: OS
+    topic: "Page replacement algorithms"
+    difficulty: HARD
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    question: "Explain FIFO, LRU and Optimal page replacement."
+    answer: |
+      When RAM is full and a new page is needed, the OS must remove one page.
+      FIFO removes the page that came in first. It is simple but can suffer from Belady's anomaly, where more frames give more page faults.
+      LRU (Least Recently Used) removes the page that was not used for the longest time. It works well in practice because recent pages are likely to be used again.
+      Optimal removes the page that will not be used for the longest time in the future. It gives the fewest faults but is impossible to build exactly, because we cannot know the future. It is used as a benchmark.
+    keyPoints: ["FIFO removes oldest page", "Belady's anomaly with FIFO", "LRU removes least recently used", "Optimal uses future knowledge, benchmark only"]
+
+  - id: core-039
+    category: OS
+    topic: "Semaphore vs mutex"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT]
+    question: "What is the difference between a mutex and a semaphore?"
+    answer: |
+      Both are tools to control access to shared resources.
+      A mutex is a lock. Only one thread can hold it at a time, and the same thread that locks it must unlock it. It is used for mutual exclusion, like protecting a shared counter.
+      A semaphore is a counter with two operations: wait (P), which decreases it, and signal (V), which increases it. If the value is zero, wait blocks.
+      A counting semaphore with value 3 lets 3 threads in at once, like 3 parking slots. A binary semaphore has values 0 and 1, but unlike a mutex, any thread can signal it.
+      In Java: synchronized or ReentrantLock act like a mutex; java.util.concurrent.Semaphore is a semaphore.
+    keyPoints: ["Mutex: one owner, owner unlocks", "Semaphore: counter with wait/signal", "Counting semaphore allows N threads", "Binary semaphore vs mutex ownership", "Java examples"]
+
+  - id: core-040
+    category: OS
+    topic: "Critical section and race condition"
+    difficulty: EASY
+    companies: [ALL, TCS, INFOSYS_DSE, WIPRO, COGNIZANT]
+    question: "What is a race condition and a critical section?"
+    answer: |
+      A race condition happens when two threads change shared data at the same time, and the final result depends on who runs first.
+      Example: two threads do count++ at the same time. count++ is really read, add, write. Both may read 5 and both write 6, so one increment is lost.
+      The critical section is the part of code that touches shared data. Only one thread should run it at a time.
+      A good solution must give mutual exclusion, progress and bounded waiting.
+      We protect it with locks, mutexes, semaphores, or in Java with synchronized or AtomicInteger.
+    keyPoints: ["Race condition: result depends on timing", "count++ example", "Critical section = code using shared data", "Mutual exclusion, progress, bounded waiting", "Protect with locks/synchronized/atomic"]
+
+  - id: core-041
+    category: OS
+    topic: "Fragmentation and segmentation"
+    difficulty: MEDIUM
+    companies: [ALL, TCS, INFOSYS_DSE]
+    question: "What is internal and external fragmentation? How does segmentation differ from paging?"
+    answer: |
+      Internal fragmentation: memory given to a process is a little bigger than needed, and the extra space inside the block is wasted. Common with paging.
+      External fragmentation: there is enough total free memory, but it is broken into small pieces that are not continuous, so a big request cannot fit. Common with segmentation.
+      Paging uses fixed-size blocks that the user does not see.
+      Segmentation splits a program into variable-size logical parts like code, stack and data, which match how a programmer thinks.
+      Compaction, moving blocks together, can fix external fragmentation.
+    keyPoints: ["Internal = wasted space inside a block", "External = free memory scattered", "Paging fixed size, segmentation variable size", "Segmentation is a logical view", "Compaction"]
+
+  - id: core-042
+    category: OS
+    topic: "Kernel, system call, and multitasking"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is a kernel? What is a system call?"
+    answer: |
+      The kernel is the core part of the operating system. It manages the CPU, memory, devices and files, and it runs in a protected mode called kernel mode.
+      Normal programs run in user mode and cannot touch hardware directly.
+      A system call is how a user program asks the kernel for a service, like reading a file, creating a process or sending data on the network. Examples in Linux: read, write, fork, exec.
+      Types of kernels: monolithic, like Linux, where most services are in the kernel; and microkernel, where only the basic services are in the kernel.
+    keyPoints: ["Kernel = core of the OS, manages hardware", "User mode vs kernel mode", "System call = request to the kernel", "Examples: read, write, fork", "Monolithic vs microkernel"]
+
+  # ---------------------------------------------------------------- CN (10)
+  - id: core-043
+    category: CN
+    topic: "OSI model"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "Explain the 7 layers of the OSI model."
+    answer: |
+      The OSI model splits network communication into 7 layers, from bottom to top:
+      1. Physical: sends raw bits over cables or radio.
+      2. Data Link: sends frames between neighbour devices using MAC addresses. Switches work here.
+      3. Network: routes packets across networks using IP addresses. Routers work here.
+      4. Transport: end-to-end delivery between programs using ports. TCP and UDP.
+      5. Session: opens, manages and closes sessions.
+      6. Presentation: data format, encryption and compression.
+      7. Application: services for the user, like HTTP, FTP, SMTP and DNS.
+      A memory trick: "Please Do Not Throw Sausage Pizza Away".
+    keyPoints: ["Seven layers in correct order", "Role of each layer", "Devices/protocols per layer (switch, router, TCP, HTTP)", "Memory trick optional"]
+
+  - id: core-044
+    category: CN
+    topic: "TCP/IP model"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, INFOSYS_DSE]
+    question: "What is the TCP/IP model and how does it compare to OSI?"
+    answer: |
+      TCP/IP is the practical model the internet actually uses. It has 4 layers:
+      1. Network Access (Link): like OSI Physical + Data Link. Ethernet, Wi-Fi.
+      2. Internet: like OSI Network. IP, ICMP.
+      3. Transport: same as OSI Transport. TCP, UDP.
+      4. Application: combines OSI Session, Presentation and Application. HTTP, DNS, SMTP.
+      OSI is a reference model used for teaching and troubleshooting. TCP/IP is the real implementation.
+    keyPoints: ["Four layers named", "Mapping to OSI layers", "Protocols at each layer", "OSI is conceptual, TCP/IP is practical"]
+
+  - id: core-045
+    category: CN
+    topic: "TCP vs UDP"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is the difference between TCP and UDP?"
+    answer: |
+      TCP is connection-oriented. It first makes a connection with a 3-way handshake: SYN, SYN-ACK, ACK.
+      It is reliable: it numbers the data, resends lost packets, keeps order, and controls the speed (flow and congestion control).
+      UDP is connectionless. It just sends packets, called datagrams. No guarantee of delivery or order, but it is faster with less overhead.
+      TCP is used for web pages, email and file transfer, where every byte matters.
+      UDP is used for video calls, live streaming, online games and DNS lookups, where speed matters more than a lost packet.
+    keyPoints: ["TCP connection-oriented, 3-way handshake", "TCP reliable and ordered", "UDP connectionless, faster, no guarantee", "Use cases for each"]
+
+  - id: core-046
+    category: CN
+    topic: "HTTP vs HTTPS"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE]
+    question: "What is the difference between HTTP and HTTPS?"
+    answer: |
+      HTTP is the protocol browsers use to talk to web servers. Data goes as plain text, so anyone in the middle can read or change it. It uses port 80 by default.
+      HTTPS is HTTP over TLS. TLS encrypts the data, checks the server identity using a certificate, and makes sure data is not changed on the way. It uses port 443.
+      During the TLS handshake, the server sends its certificate, the browser verifies it with a trusted Certificate Authority, and both sides agree on a session key. Then symmetric encryption is used for speed.
+      Today every login or payment page must use HTTPS.
+    keyPoints: ["HTTP plain text, port 80", "HTTPS = HTTP over TLS, port 443", "Encryption, authentication via certificate, integrity", "TLS handshake and session key"]
+
+  - id: core-047
+    category: CN
+    topic: "DNS"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "What is DNS and how does it work?"
+    answer: |
+      DNS (Domain Name System) is like the phone book of the internet. It converts a name like example.com into an IP address like 93.184.216.34.
+      Steps: the browser checks its cache, then the OS cache. If not found, it asks a DNS resolver, usually from the ISP.
+      The resolver asks a root server, which points to the .com TLD server. The TLD server points to the authoritative server for example.com, which returns the IP.
+      The answer is cached for a time called TTL, so the next lookup is fast.
+      DNS mostly uses UDP on port 53.
+    keyPoints: ["Converts domain names to IP addresses", "Caching at browser/OS/resolver", "Root -> TLD -> authoritative servers", "TTL", "UDP port 53"]
+
+  - id: core-048
+    category: CN
+    topic: "What happens when you type a URL"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT, TCS]
+    question: "What happens when you type a URL like https://www.google.com in the browser and press Enter?"
+    answer: |
+      1. The browser parses the URL: protocol https, host www.google.com.
+      2. DNS lookup: it finds the IP address using caches or DNS servers.
+      3. It opens a TCP connection to that IP on port 443 using the 3-way handshake.
+      4. TLS handshake: the server's certificate is checked and an encryption key is agreed.
+      5. The browser sends an HTTP GET request with headers and cookies.
+      6. The server (maybe behind a load balancer) processes it and sends a response with a status code like 200 and the HTML.
+      7. The browser parses the HTML, downloads CSS, JS and images, builds the page and renders it on screen.
+    keyPoints: ["URL parsing", "DNS resolution", "TCP 3-way handshake", "TLS handshake for HTTPS", "HTTP request/response and status code", "Browser renders HTML/CSS/JS"]
+
+  - id: core-049
+    category: CN
+    topic: "IP address, MAC address, subnet"
+    difficulty: MEDIUM
+    companies: [ALL, TCS, WIPRO, COGNIZANT, CAPGEMINI]
+    question: "What is the difference between an IP address and a MAC address?"
+    answer: |
+      A MAC address is the hardware address of a network card. It is 48 bits, written like 00:1A:2B:3C:4D:5E. It works inside the local network (Data Link layer).
+      An IP address is a logical address given by the network. It can change when you move to another network. It works across networks (Network layer).
+      IPv4 is 32 bits, like 192.168.1.10. IPv6 is 128 bits, made because IPv4 addresses are running out.
+      ARP is the protocol that finds the MAC address for a given IP inside a local network.
+      A subnet mask, like 255.255.255.0 or /24, tells which part of the IP is the network part.
+    keyPoints: ["MAC is hardware, 48-bit, local network", "IP is logical, can change, routes across networks", "IPv4 32-bit vs IPv6 128-bit", "ARP maps IP to MAC", "Subnet mask"]
+
+  - id: core-050
+    category: CN
+    topic: "HTTP methods"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_DSE, TCS, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What are the common HTTP methods? Which are idempotent?"
+    answer: |
+      GET reads data. POST creates new data. PUT replaces a whole resource. PATCH updates part of a resource. DELETE removes a resource.
+      Idempotent means calling it many times has the same effect as calling it once.
+      GET, PUT and DELETE are idempotent. Deleting user 5 twice still leaves user 5 deleted.
+      POST is not idempotent; calling it twice may create two orders.
+      GET is also "safe", meaning it should not change data on the server.
+    keyPoints: ["GET, POST, PUT, PATCH, DELETE and their use", "Idempotent definition", "GET/PUT/DELETE idempotent, POST not", "Safe methods"]
+
+  - id: core-051
+    category: CN
+    topic: "Cookies, sessions and statelessness"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_DSE, PRODUCT, COGNIZANT]
+    question: "HTTP is stateless. How do websites remember a logged-in user?"
+    answer: |
+      Stateless means each HTTP request is independent; the server does not remember the previous request by itself.
+      To remember a user, we use:
+      Cookies: small data the server asks the browser to store and send back with every request.
+      Sessions: the server stores user data and gives the browser only a session id in a cookie.
+      Tokens like JWT: the server gives a signed token after login, and the client sends it in the Authorization header. The server can verify it without storing a session, which is good for REST APIs and scaling.
+    keyPoints: ["Stateless = each request independent", "Cookies stored in browser", "Server-side session with session id", "Token-based (JWT) authentication"]
+
+  - id: core-052
+    category: CN
+    topic: "Ports and common protocols"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is a port number? Name some well-known ports."
+    answer: |
+      An IP address finds the computer. A port number finds the program on that computer. Ports go from 0 to 65535.
+      Well-known ports:
+      HTTP 80, HTTPS 443, FTP 21, SSH 22, SMTP 25, DNS 53, MySQL 3306, PostgreSQL 5432.
+      Spring Boot apps run on 8080 by default.
+      A socket is the combination of IP address and port, like 192.168.1.5:8080.
+    keyPoints: ["Port identifies a program/service on a host", "Range 0-65535", "Common ports listed correctly", "Socket = IP + port"]
+
+  # ---------------------------------------------------------------- DSA theory (10)
+  - id: core-053
+    category: DSA
+    topic: "Array vs linked list"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "What is the difference between an array and a linked list?"
+    answer: |
+      An array stores elements in continuous memory. So accessing any index is O(1). But its size is fixed, and inserting or deleting in the middle is O(n) because elements must shift.
+      A linked list stores nodes anywhere in memory. Each node has data and a pointer to the next node. Size can grow easily, and inserting or deleting is O(1) if I already have the node. But reaching the i-th element is O(n), and each node uses extra memory for the pointer.
+      Arrays are also more cache-friendly.
+      In Java: ArrayList is backed by an array; LinkedList is a doubly linked list.
+    keyPoints: ["Array: contiguous memory, O(1) index access", "Array insert/delete in middle O(n)", "Linked list: nodes with pointers, O(n) access", "Linked list insert/delete O(1) at known node", "ArrayList vs LinkedList"]
+
+  - id: core-054
+    category: DSA
+    topic: "Stack and queue uses"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE]
+    question: "What is a stack and a queue? Give real uses."
+    answer: |
+      A stack is LIFO: Last In, First Out. Like a pile of plates. Operations are push, pop and peek, all O(1).
+      Uses: function call stack, undo in editors, browser back button, checking balanced brackets, DFS.
+      A queue is FIFO: First In, First Out. Like a ticket line. Operations are enqueue (offer) and dequeue (poll).
+      Uses: printer jobs, task scheduling, BFS, message queues.
+      In Java, I use ArrayDeque for both: push/pop for a stack, offer/poll for a queue.
+    keyPoints: ["Stack LIFO with push/pop", "Queue FIFO with enqueue/dequeue", "Real uses for each", "Java ArrayDeque"]
+
+  - id: core-055
+    category: DSA
+    topic: "Binary search tree"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, PRODUCT]
+    question: "What is a binary search tree? What is the time complexity of search?"
+    answer: |
+      A binary search tree (BST) is a binary tree where, for every node, all values in the left subtree are smaller and all values in the right subtree are bigger.
+      To search, I compare with the root and go left or right, so I skip half the tree each step.
+      Search, insert and delete take O(h), where h is the height. For a balanced tree, h is log n, so O(log n).
+      If we insert sorted data, the tree becomes like a linked list and the cost becomes O(n).
+      Self-balancing trees like AVL and Red-Black keep it O(log n). Java's TreeMap uses a Red-Black tree.
+      An inorder traversal of a BST gives sorted order.
+    keyPoints: ["Left smaller, right bigger", "O(log n) when balanced", "O(n) worst case when skewed", "AVL/Red-Black keep balance", "Inorder gives sorted output"]
+
+  - id: core-056
+    category: DSA
+    topic: "Hashing and collisions"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT, TCS]
+    question: "What is hashing? How are collisions handled?"
+    answer: |
+      Hashing converts a key into an array index using a hash function, so we can store and find values in O(1) on average.
+      A collision happens when two keys get the same index.
+      Chaining: each bucket keeps a list of entries. Java's HashMap does this, and since Java 8 a long chain (more than 8 entries, once the table has at least 64 buckets) turns into a balanced tree.
+      Open addressing: if the slot is taken, look for another slot, like linear probing (next slot) or quadratic probing.
+      When the table gets too full (load factor 0.75 in HashMap), it resizes and rehashes.
+      Worst case can become O(n) with a bad hash function.
+    keyPoints: ["Hash function maps key to index", "O(1) average lookup", "Collision definition", "Chaining vs open addressing", "Load factor and rehashing"]
+
+  - id: core-057
+    category: DSA
+    topic: "Sorting complexities"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT]
+    question: "Compare the time complexities of common sorting algorithms."
+    answer: |
+      Bubble, Selection and Insertion sort: O(n^2) average and worst. Insertion sort is O(n) on nearly sorted data, so it is good for small inputs.
+      Merge sort: O(n log n) in all cases, but needs O(n) extra space.
+      Quick sort: O(n log n) on average, O(n^2) in the worst case when the pivot is bad. It sorts in place and is fast in practice.
+      Heap sort: O(n log n) in all cases, in place, but not stable.
+      Counting sort: O(n + k) for small integer ranges.
+      Comparison-based sorting cannot be faster than O(n log n) in general.
+    keyPoints: ["O(n^2) simple sorts", "Merge sort O(n log n), O(n) space", "Quick sort average O(n log n), worst O(n^2)", "Heap sort O(n log n) in place", "Lower bound O(n log n) for comparison sorts"]
+
+  - id: core-058
+    category: DSA
+    topic: "Stable sorting"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "What is a stable sort? Which sorting algorithms are stable?"
+    answer: |
+      A sort is stable if equal elements keep their original order.
+      Example: sort students by marks. If Asha and Ravi both have 80 and Asha came first, a stable sort keeps Asha before Ravi.
+      This matters when we sort by one field after another.
+      Stable: Bubble sort, Insertion sort, Merge sort, Counting sort.
+      Not stable (in usual form): Selection sort, Quick sort, Heap sort.
+      In Java, Arrays.sort on objects and Collections.sort use TimSort, which is stable. Arrays.sort on primitives uses Dual-Pivot Quicksort, where stability does not matter.
+    keyPoints: ["Stable = equal elements keep relative order", "Example with equal keys", "Stable: bubble, insertion, merge", "Unstable: selection, quick, heap", "Java uses TimSort for objects"]
+
+  - id: core-059
+    category: DSA
+    topic: "BFS vs DFS"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT, TCS]
+    question: "What is the difference between BFS and DFS?"
+    answer: |
+      BFS (Breadth First Search) visits a node, then all its neighbours, then their neighbours, level by level. It uses a queue.
+      DFS (Depth First Search) goes as deep as possible along one path, then backtracks. It uses a stack or recursion.
+      Both take O(V + E) time for a graph with V vertices and E edges.
+      BFS finds the shortest path in an unweighted graph, and is used for level order traversal.
+      DFS is used for cycle detection, topological sort, finding connected components, and solving mazes or puzzles.
+      In both, I keep a visited set so I do not visit a node twice.
+    keyPoints: ["BFS level by level with a queue", "DFS deep first with stack/recursion", "Both O(V + E)", "BFS shortest path in unweighted graph", "DFS uses: cycles, topological sort", "Visited set"]
+
+  - id: core-060
+    category: DSA
+    topic: "Big-O notation"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE]
+    question: "What is time complexity and Big-O notation?"
+    answer: |
+      Time complexity tells how the running time grows when the input size n grows. Big-O gives the upper bound, usually the worst case, and ignores constants.
+      Common ones from fast to slow:
+      O(1) constant, like array index access.
+      O(log n), like binary search.
+      O(n), like a single loop.
+      O(n log n), like merge sort.
+      O(n^2), like two nested loops.
+      O(2^n), like plain recursive Fibonacci.
+      Space complexity is the same idea for extra memory.
+    keyPoints: ["Growth of time with input size", "Big-O = upper bound, constants ignored", "Common complexities with examples", "Space complexity"]
+
+  - id: core-061
+    category: DSA
+    topic: "Heap and priority queue"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, PRODUCT]
+    question: "What is a heap? Where is it used?"
+    answer: |
+      A heap is a complete binary tree stored in an array. In a min-heap, every parent is smaller than or equal to its children, so the smallest element is at the top. A max-heap is the opposite.
+      Getting the top is O(1). Insert and remove-top are O(log n). Building a heap from n items is O(n).
+      Uses: priority queues, finding the top K elements, Dijkstra's shortest path, merging K sorted lists, and heap sort.
+      In Java, PriorityQueue is a min-heap by default. For a max-heap I use new PriorityQueue<>(Comparator.reverseOrder()).
+    keyPoints: ["Complete binary tree in an array", "Min-heap vs max-heap property", "O(1) peek, O(log n) insert/remove", "Uses: priority queue, top K, Dijkstra", "Java PriorityQueue"]
+
+  - id: core-062
+    category: DSA
+    topic: "Recursion"
+    difficulty: EASY
+    companies: [ALL, TCS, WIPRO, COGNIZANT, INFOSYS_DSE]
+    question: "What is recursion? What is a base case?"
+    answer: |
+      Recursion is when a function calls itself to solve a smaller version of the same problem.
+      Every recursive function needs a base case, where it stops calling itself. Without it, we get infinite calls and a StackOverflowError in Java.
+
+        static int factorial(int n) {
+            if (n <= 1) return 1;          // base case
+            return n * factorial(n - 1);   // recursive call
+        }
+
+      Each call is stored on the call stack, so recursion uses O(depth) extra memory.
+      Any recursion can also be written with a loop. Recursion is natural for trees, divide and conquer, and backtracking.
+    keyPoints: ["Function calls itself on a smaller problem", "Base case stops recursion", "StackOverflowError without base case", "Uses call stack memory", "Code example"]
+
+  # ---------------------------------------------------------------- SPRING (18)
+  - id: core-063
+    category: SPRING
+    topic: "IoC and Dependency Injection"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is IoC and Dependency Injection in Spring?"
+    answer: |
+      IoC means Inversion of Control. Normally my class creates its own objects with new. With IoC, the Spring container creates and manages the objects, called beans, and I just use them.
+      Dependency Injection is how IoC is done: Spring gives (injects) the objects a class needs, instead of the class creating them.
+
+        @Service
+        public class OrderService {
+            private final PaymentService paymentService;
+            public OrderService(PaymentService paymentService) {
+                this.paymentService = paymentService;
+            }
+        }
+
+      Benefits: loose coupling, easy testing with mocks, and easy swapping of implementations.
+    keyPoints: ["IoC: container controls object creation", "DI: dependencies are given, not created", "Beans managed by ApplicationContext", "Loose coupling and easy testing"]
+
+  - id: core-064
+    category: SPRING
+    topic: "Types of dependency injection"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "What are the types of dependency injection? Which one is recommended?"
+    answer: |
+      There are three ways: constructor injection, setter injection, and field injection (@Autowired on a field).
+      Constructor injection is recommended because:
+      the dependency can be final, so it cannot change;
+      the object is never created half-ready;
+      it is easy to test, I just pass a mock in the constructor;
+      and it shows clearly when a class has too many dependencies.
+      If a class has only one constructor, Spring uses it automatically, so @Autowired is not even needed.
+      Setter injection is fine for optional dependencies. Field injection is short but harder to test, so I avoid it.
+    keyPoints: ["Constructor, setter, field injection", "Constructor injection recommended", "final fields, immutability, easy testing", "Single constructor needs no @Autowired"]
+
+  - id: core-065
+    category: SPRING
+    topic: "Bean scopes"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT]
+    question: "What are bean scopes in Spring?"
+    answer: |
+      Scope decides how many objects of a bean Spring creates.
+      singleton: the default. One object per Spring container, shared by everyone.
+      prototype: a new object every time the bean is requested.
+      For web apps there are also: request (one per HTTP request), session (one per user session), and application (one per ServletContext).
+
+        @Component
+        @Scope("prototype")
+        public class ReportBuilder { }
+
+      Since singletons are shared by many threads, they should not keep changing state in fields.
+    keyPoints: ["singleton default, one per container", "prototype new each time", "request, session, application for web", "Singletons should be stateless/thread-safe"]
+
+  - id: core-066
+    category: SPRING
+    topic: "@Component vs @Service vs @Repository vs @Controller"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is the difference between @Component, @Service, @Repository and @Controller?"
+    answer: |
+      All four mark a class as a Spring bean, so component scanning finds it and creates it.
+      @Component is the general one.
+      @Service is for business logic classes. Technically same as @Component, but it shows the purpose clearly.
+      @Repository is for data access classes. It also converts database exceptions into Spring's DataAccessException.
+      @Controller is for web controllers that return views. @RestController is @Controller plus @ResponseBody, used for REST APIs.
+      Using the right one makes the layers clear: controller, service, repository.
+    keyPoints: ["All are stereotypes detected by component scan", "@Service for business logic", "@Repository adds exception translation", "@Controller/@RestController for web layer", "Shows layered architecture"]
+
+  - id: core-067
+    category: SPRING
+    topic: "@RestController and request mapping"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT, ACCENTURE]
+    question: "What does @RestController do? Explain @PathVariable, @RequestParam and @RequestBody."
+    answer: |
+      @RestController marks a class whose methods return data, usually JSON, directly in the HTTP response.
+
+        @RestController
+        @RequestMapping("/api/users")
+        public class UserController {
+            private final UserService service;
+            public UserController(UserService service) { this.service = service; }
+
+            @GetMapping("/{id}")
+            public User get(@PathVariable Long id) { return service.findById(id); }
+
+            @GetMapping
+            public List<User> search(@RequestParam String city) { return service.findByCity(city); }
+
+            @PostMapping
+            public User create(@RequestBody User user) { return service.save(user); }
+        }
+
+      @PathVariable reads a value from the URL path, like /api/users/5.
+      @RequestParam reads a query parameter, like ?city=Pune.
+      @RequestBody converts the JSON body into a Java object using Jackson.
+    keyPoints: ["@RestController = @Controller + @ResponseBody", "@GetMapping/@PostMapping", "@PathVariable from path", "@RequestParam from query string", "@RequestBody JSON to object"]
+
+  - id: core-068
+    category: SPRING
+    topic: "Spring vs Spring Boot"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is the difference between Spring and Spring Boot?"
+    answer: |
+      Spring is the main framework. It gives IoC, DI, Spring MVC, data access and more, but in old setups we had to write a lot of configuration.
+      Spring Boot is built on top of Spring and makes it quick to start:
+      Auto-configuration sets up beans based on the jars in the classpath.
+      Starter dependencies, like spring-boot-starter-web, bring all needed libraries in one line.
+      An embedded server like Tomcat, so we run the app with java -jar.
+      Actuator gives health checks and metrics.
+      So Spring Boot means less setup, and we focus on business code.
+    keyPoints: ["Boot is built on Spring", "Auto-configuration", "Starters", "Embedded server, run as jar", "Actuator / less boilerplate"]
+
+  - id: core-069
+    category: SPRING
+    topic: "Spring Boot auto-configuration"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "How does Spring Boot auto-configuration work?"
+    answer: |
+      @SpringBootApplication combines three annotations: @SpringBootConfiguration, @ComponentScan and @EnableAutoConfiguration.
+      @EnableAutoConfiguration loads a list of auto-configuration classes. In Spring Boot 3 this list is in the file META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports.
+      Each class has conditions like @ConditionalOnClass, @ConditionalOnMissingBean and @ConditionalOnProperty.
+      Example: if the H2 or MySQL driver is on the classpath and I have not defined my own DataSource, Boot creates a DataSource for me.
+      If I define my own bean, Boot backs off and uses mine.
+      I can see what was applied by running with --debug, which prints the conditions report.
+    keyPoints: ["@SpringBootApplication includes @EnableAutoConfiguration", "Auto-config classes listed in AutoConfiguration.imports", "@Conditional annotations decide", "User beans override defaults", "--debug conditions report"]
+
+  - id: core-070
+    category: SPRING
+    topic: "Profiles and configuration"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_DSE, TCS, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What are Spring profiles? How do you keep different config for dev and prod?"
+    answer: |
+      A profile is a named set of configuration, like dev, test or prod.
+      I keep common settings in application.yml, and environment-specific ones in application-dev.yml and application-prod.yml.
+      I activate a profile with spring.profiles.active=prod, or an environment variable SPRING_PROFILES_ACTIVE=prod.
+      I can also make a bean load only in one profile:
+
+        @Bean
+        @Profile("dev")
+        public DataSeeder seeder() { return new DataSeeder(); }
+
+      Values are read with @Value("${app.name}") or, better, a @ConfigurationProperties class.
+      Passwords should come from environment variables, not be hard-coded.
+    keyPoints: ["Profile = named config set", "application-{profile}.yml files", "spring.profiles.active to activate", "@Profile on beans", "@Value / @ConfigurationProperties, secrets from env"]
+
+  - id: core-071
+    category: SPRING
+    topic: "JPA lazy vs eager loading"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "What is the difference between lazy and eager loading in JPA?"
+    answer: |
+      Eager loading fetches the related data immediately with the main entity.
+      Lazy loading fetches it only when I actually access it. Until then, Hibernate puts a proxy object.
+      Defaults: @ManyToOne and @OneToOne are EAGER. @OneToMany and @ManyToMany are LAZY.
+
+        @ManyToOne(fetch = FetchType.LAZY)
+        private Department department;
+
+      Lazy is usually better for performance, because we do not load data we do not need.
+      But if I access a lazy field after the session is closed, I get LazyInitializationException. I fix it by fetching what I need in the query, using JOIN FETCH or an entity graph.
+    keyPoints: ["Eager loads immediately, lazy on access", "Default fetch types per relation", "Lazy uses proxies, better performance", "LazyInitializationException and fix"]
+
+  - id: core-072
+    category: SPRING
+    topic: "N+1 query problem"
+    difficulty: HARD
+    companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+    question: "What is the N+1 select problem in JPA/Hibernate and how do you fix it?"
+    answer: |
+      It happens when I load a list of N parent entities with 1 query, and then Hibernate runs 1 more query for each parent to load its children. So 1 + N queries in total.
+      Example: load 100 departments, then call getEmployees() on each one, giving 101 queries.
+      Fixes:
+      Use JOIN FETCH in JPQL:
+
+        @Query("select d from Department d join fetch d.employees")
+        List<Department> findAllWithEmployees();
+
+      Or use @EntityGraph(attributePaths = "employees") on the repository method.
+      Or set a batch size (hibernate.default_batch_fetch_size) so children load in groups.
+      I find it by turning on SQL logging and counting the queries.
+    keyPoints: ["1 query for parents + N for children", "Concrete example", "JOIN FETCH fix", "@EntityGraph fix", "Batch fetching / detect with SQL logs"]
+
+  - id: core-073
+    category: SPRING
+    topic: "@Transactional"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT, COGNIZANT]
+    question: "How does @Transactional work? What are common mistakes?"
+    answer: |
+      @Transactional runs a method inside a database transaction. If the method finishes normally, it commits. If it throws an unchecked exception (RuntimeException), it rolls back.
+      Spring does this with a proxy that wraps my bean.
+      Common mistakes:
+      Calling a @Transactional method from another method in the same class. This skips the proxy, so no transaction starts.
+      Expecting rollback on checked exceptions. By default they do not roll back; use rollbackFor = Exception.class.
+      Putting it on private methods; with the default proxy setup it does not apply.
+      I usually put it on service methods, and use readOnly = true for read-only queries.
+    keyPoints: ["Commit on success, rollback on RuntimeException", "Works through a proxy", "Self-invocation does not start a transaction", "Checked exceptions need rollbackFor", "Use on public service methods"]
+
+  - id: core-074
+    category: SPRING
+    topic: "Transaction propagation"
+    difficulty: HARD
+    companies: [INFOSYS_SP, PRODUCT, ALL]
+    question: "What is transaction propagation? Explain REQUIRED and REQUIRES_NEW."
+    answer: |
+      Propagation decides what happens when a transactional method is called while another transaction is already running.
+      REQUIRED is the default. If a transaction exists, join it; if not, start a new one. So if the inner method fails, the whole outer transaction rolls back.
+      REQUIRES_NEW always starts a new, separate transaction and pauses the outer one. The inner one commits or rolls back on its own.
+      Example: I want to save an audit log even if the main order fails. I put the audit method in another bean with @Transactional(propagation = Propagation.REQUIRES_NEW).
+      Others are SUPPORTS, MANDATORY, NEVER, NOT_SUPPORTED and NESTED.
+    keyPoints: ["Propagation = behaviour when a transaction already exists", "REQUIRED joins or creates (default)", "REQUIRES_NEW suspends outer and creates new", "Audit log example", "Other types exist"]
+
+  - id: core-075
+    category: SPRING
+    topic: "Global exception handling"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT, ACCENTURE]
+    question: "How do you handle exceptions globally in a Spring Boot REST API?"
+    answer: |
+      I create a class with @RestControllerAdvice and add @ExceptionHandler methods. It catches exceptions from all controllers in one place and returns a clean JSON error.
+
+        @RestControllerAdvice
+        public class GlobalExceptionHandler {
+            @ExceptionHandler(ResourceNotFoundException.class)
+            public ResponseEntity<Map<String, String>> notFound(ResourceNotFoundException ex) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", ex.getMessage()));
+            }
+        }
+
+      This keeps controllers clean, gives the same error format everywhere, and sets the right status code.
+      Spring Boot 3 also supports ProblemDetail, a standard error format (RFC 7807).
+    keyPoints: ["@RestControllerAdvice class", "@ExceptionHandler per exception type", "Return ResponseEntity with status and body", "Consistent error format", "ProblemDetail in Boot 3"]
+
+  - id: core-076
+    category: SPRING
+    topic: "Bean validation"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_DSE, TCS, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "How do you validate request data in Spring Boot?"
+    answer: |
+      I add the spring-boot-starter-validation dependency, put constraint annotations on the DTO fields, and add @Valid on the @RequestBody.
+
+        public record UserRequest(
+            @NotBlank String name,
+            @Email String email,
+            @Min(18) int age) { }
+
+        @PostMapping("/users")
+        public UserResponse create(@Valid @RequestBody UserRequest req) {
+            return userService.create(req);
+        }
+
+      If validation fails, Spring throws MethodArgumentNotValidException and returns 400 Bad Request. I can catch it in @RestControllerAdvice to send a friendly list of field errors.
+      Common annotations: @NotNull, @NotBlank, @Size, @Email, @Min, @Max, @Pattern.
+      In Boot 3 these come from the jakarta.validation package.
+    keyPoints: ["spring-boot-starter-validation", "Annotations on DTO fields", "@Valid on @RequestBody", "MethodArgumentNotValidException -> 400", "jakarta.validation package"]
+
+  - id: core-077
+    category: SPRING
+    topic: "JWT basics"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+    question: "What is JWT and how is it used for authentication?"
+    answer: |
+      JWT (JSON Web Token) is a signed token with three parts separated by dots: header, payload and signature.
+      The payload has claims like user id, roles and expiry time. It is only Base64 encoded, not encrypted, so I never put passwords in it.
+      Flow: the user logs in with username and password. The server checks them and returns a JWT signed with a secret key. The client sends it in every request as "Authorization: Bearer <token>". A Spring Security filter verifies the signature and expiry, and then sets the logged-in user.
+      Since the server does not store sessions, it is stateless and scales well. Tokens should be short-lived, with refresh tokens for longer login.
+    keyPoints: ["Header.payload.signature", "Payload encoded not encrypted, no secrets", "Login -> token -> Bearer header", "Filter verifies signature and expiry", "Stateless, short expiry"]
+
+  - id: core-078
+    category: SPRING
+    topic: "REST status codes"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What HTTP status codes do you use in a REST API?"
+    answer: |
+      2xx success: 200 OK for a normal response, 201 Created after a POST creates something, 204 No Content after a delete.
+      4xx client errors: 400 Bad Request for invalid input, 401 Unauthorized when not logged in, 403 Forbidden when logged in but not allowed, 404 Not Found, 409 Conflict for duplicates.
+      5xx server errors: 500 Internal Server Error, 503 Service Unavailable.
+      In Spring:
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+
+      Choosing the correct code helps the client understand what happened without reading the message.
+    keyPoints: ["2xx: 200, 201, 204", "4xx: 400, 401, 403, 404, 409", "5xx: 500, 503", "401 vs 403 difference", "ResponseEntity to set status"]
+
+  - id: core-079
+    category: SPRING
+    topic: "Spring Data JPA repositories"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_DSE, TCS, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "What is Spring Data JPA? How do repository methods work?"
+    answer: |
+      Spring Data JPA removes most of the database boilerplate. I write an interface that extends JpaRepository, and Spring creates the implementation at runtime.
+
+        public interface UserRepository extends JpaRepository<User, Long> {
+            Optional<User> findByEmail(String email);
+            List<User> findByCityAndAgeGreaterThan(String city, int age);
+        }
+
+      I get save, findById, findAll, deleteById and paging for free.
+      Derived query methods like findByEmail are created from the method name.
+      For complex queries I use @Query with JPQL or native SQL.
+      JPA is the specification; Hibernate is the implementation used by default.
+    keyPoints: ["Extend JpaRepository<Entity, Id>", "CRUD methods for free", "Derived queries from method names", "@Query for custom queries", "JPA spec vs Hibernate"]
+
+  - id: core-080
+    category: SPRING
+    topic: "Layered architecture and DTOs"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, COGNIZANT, ACCENTURE]
+    question: "How do you structure a Spring Boot application? Why use DTOs?"
+    answer: |
+      I follow a layered structure:
+      Controller: handles HTTP, validation, and returns responses.
+      Service: business logic and transactions.
+      Repository: talks to the database.
+      Entity: maps to a table. DTO: the data sent in and out of the API.
+      I use DTOs instead of returning entities directly because:
+      I do not expose internal fields like passwords;
+      I avoid lazy loading and infinite JSON loops between related entities;
+      the API can stay stable even if the table changes.
+      Java records are a simple way to write DTOs.
+    keyPoints: ["Controller -> Service -> Repository layers", "Responsibility of each layer", "DTO hides internal fields", "Avoids lazy-loading/JSON cycle issues", "Decouples API from database"]
+
+  # ---------------------------------------------------------------- HR (12)
+  - id: core-081
+    category: HR
+    topic: "Tell me about yourself"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Tell me about yourself."
+    answer: |
+      Use Present - Past - Future, about one minute. Replace the brackets with your details.
+      "Good morning. My name is [Name]. I completed my [degree] in [branch] from [college] in [year].
+      Right now I work at [company] in a data entry role, where I handle large amounts of data accurately and on time.
+      While doing this job, I realised I enjoy solving problems more than repeating tasks. So for the last [months] I have been learning Java, OOP, data structures, SQL and Spring Boot every day.
+      I built [project], a REST API with Spring Boot and MySQL.
+      Now I want to start my career as a developer, and I am excited to grow with a company like yours."
+    keyPoints: ["Name and education in one line", "Current role framed honestly and positively", "Why and how you are switching (self-learning)", "One project mentioned", "Future goal linked to the company"]
+
+  - id: core-082
+    category: HR
+    topic: "Why Infosys"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Why do you want to join Infosys?"
+    answer: |
+      Talk about learning, scale and fit. Only say things you have checked yourself on the company website.
+      "I want to join Infosys for three reasons.
+      First, learning. Infosys is known for strong training for freshers, and as someone switching into development, structured learning matters a lot to me.
+      Second, the work. Infosys works with clients across many industries, so I can work on real projects and learn different technologies like Java, cloud and data.
+      Third, the values. I read about the company's focus on learning and its values, and it matches how I am building my own career: by learning every day.
+      I see Infosys as a place where I can grow from a beginner into a strong engineer."
+    keyPoints: ["Specific, researched reasons", "Learning and training opportunity", "Variety of projects and technologies", "Connect to your own growth story", "Avoid only salary or brand name"]
+
+  - id: core-083
+    category: HR
+    topic: "Why this company (generic)"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Why should you join our company and not another one?"
+    answer: |
+      The formula: what they do + what you want + what you bring.
+      "Before this interview, I read about your company's work in [domain or service from their website]. I liked that you [one specific fact you checked, like a training program or a technology you use].
+      I am looking for a place where I can learn fast and work on real software. Your projects in Java and cloud match exactly what I have been preparing for.
+      In return, I bring discipline from my current job, where I handle work accurately every day, and a habit of daily self-learning.
+      So I feel this is a good match for both of us."
+    keyPoints: ["Show you researched the company", "Match their work to your skills", "State what you bring", "Sound sincere, not copied"]
+
+  - id: core-084
+    category: HR
+    topic: "Strengths"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "What are your strengths?"
+    answer: |
+      Pick two or three strengths and prove each one with a small example.
+      "My first strength is consistency. While working full time, I studied Java and SQL for about two hours every day for [months], and I finished [number] coding problems.
+      My second strength is accuracy. In my current job I handle a lot of data, and I learned to check my work carefully. That habit helps me while debugging code too.
+      My third strength is that I learn on my own. When I did not understand Spring dependency injection, I built a small project until it was clear.
+      I think these will help me become a reliable developer."
+    keyPoints: ["Two or three strengths", "Proof or example for each", "Relevant to a developer job", "Honest, not exaggerated"]
+
+  - id: core-085
+    category: HR
+    topic: "Weaknesses"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "What is your weakness?"
+    answer: |
+      Give a real but not job-breaking weakness, and show what you are doing to improve it.
+      "One weakness is my spoken English. I understand technical concepts well, but sometimes I take time to explain them smoothly.
+      To improve, I practise explaining one concept out loud every day and record myself. I also join mock interviews. I can see progress already; I am more confident than three months ago.
+      Another small one: I sometimes spend too long trying to solve a problem alone. Now I give myself a time limit, and then I look for help or hints."
+    keyPoints: ["Real weakness, not a fake strength", "Not a core skill for the job", "Concrete steps to improve", "Show progress"]
+
+  - id: core-086
+    category: HR
+    topic: "Where do you see yourself in 5 years"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Where do you see yourself in five years?"
+    answer: |
+      Show growth inside the company, not a plan to leave.
+      "In the first one or two years, I want to become strong in Java and Spring Boot, learn how real projects are built, and become someone my team can trust to deliver on time.
+      In five years, I see myself as a senior developer in this company, who understands the domain of the client well, maybe handles a module on my own, and helps new freshers like I am today.
+      I also want to keep learning, for example cloud and system design, and earn some certifications on the way."
+    keyPoints: ["Short-term learning goals", "Long-term growth inside the company", "Shows commitment", "Realistic, not over-ambitious"]
+
+  - id: core-087
+    category: HR
+    topic: "Relocation and shifts"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Are you comfortable relocating to any location and working in shifts?"
+    answer: |
+      Be honest. If you are flexible, say so clearly and positively.
+      "Yes, I am comfortable relocating to any location where the company needs me. For a fresher, it is a chance to learn and become independent.
+      I am also comfortable with shifts if the project needs it. In my current job I have managed fixed timings and deadlines, so I can adjust my routine.
+      If I have any real limitation, I will tell HR openly before joining, so there are no surprises later."
+      If you truly have a limit, for example a family responsibility, say it politely and say what you can do.
+    keyPoints: ["Clear yes if true", "Positive reason (learning, independence)", "Mention ability to adjust", "Honesty about any real limitation"]
+
+  - id: core-088
+    category: HR
+    topic: "Service agreement or bond"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Are you comfortable signing a service agreement (bond)?"
+    answer: |
+      First, read the offer letter carefully; terms differ by company and by year, so never guess them in the interview.
+      Sample answer if you are fine with it:
+      "Yes, I understand that the company invests time and money in training freshers, so a service agreement is fair. I am looking for a long-term career, not a short stay, so it is not a problem for me.
+      I would just like to read the exact terms in the offer letter so I clearly understand them."
+      This shows commitment and maturity, and you are not promising anything you have not read.
+    keyPoints: ["Show you understand why companies have it", "Signal long-term commitment", "Ask to read the exact terms", "Do not guess the terms"]
+
+  - id: core-089
+    category: HR
+    topic: "Why should we hire you"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Why should we hire you?"
+    answer: |
+      Connect three things: your skills, your proof, and your attitude.
+      "You should hire me because I have the basics this role needs and I have proved I can learn on my own.
+      I know Java, OOP, collections, SQL and the basics of Spring Boot, and I built [project] to practise them end to end.
+      I learned all this while working a full-time job, which shows discipline and real interest, not just a degree.
+      From my current role I also bring accuracy and the habit of finishing work on time.
+      I may be new to development, but I learn fast, I take feedback well, and I will give my full effort to the team."
+    keyPoints: ["Relevant technical skills", "Proof: project or practice", "Self-learning while working shows discipline", "Transferable soft skills", "Confident but humble close"]
+
+  - id: core-090
+    category: HR
+    topic: "Explaining a non-technical job"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "You are working in a non-technical role. Why did you take that job, and why switch now?"
+    answer: |
+      Be honest, never be ashamed, and focus on what you learned and what you did next.
+      "After graduation I took a data entry job because I needed to support myself and my family, and it was the opportunity I had at that time.
+      The job taught me useful things: accuracy, working with deadlines, and handling large amounts of data in Excel and internal tools.
+      But I noticed I was more interested in how those tools worked than in using them. Some tasks were very repetitive, and I wanted to automate them. That is when I started learning Java and SQL seriously.
+      Now I have built projects and I am ready to work as a developer full time."
+    keyPoints: ["Honest reason without apology", "Positive lessons from the job", "Moment of realisation / motivation", "Concrete steps taken to switch", "Ready now"]
+
+  - id: core-091
+    category: HR
+    topic: "Explaining a career gap"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "There is a gap (or a non-IT period) in your profile. Can you explain it?"
+    answer: |
+      State the reason in one line, then spend most time on what you did to grow.
+      "Yes. After my degree, I was in a non-technical job because of [family or financial reason]. During that time I did not stop learning.
+      I studied Java, data structures, SQL and Spring Boot in the evenings and on weekends. I practised coding problems regularly and built [project], which I can show you.
+      So even though my job title was not technical, I used that time to build real skills. Now I am confident I can contribute as a developer."
+      Do not hide the gap or give a long story; short and honest works best.
+    keyPoints: ["One-line honest reason", "Show continuous learning during the gap", "Proof: projects or practice", "End with readiness"]
+
+  - id: core-092
+    category: HR
+    topic: "Questions for the interviewer"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Do you have any questions for us?"
+    answer: |
+      Always say yes and ask one or two thoughtful questions. Do not ask about salary or leave in a technical round.
+      Good examples:
+      "What technologies would a fresher in this role usually work with in the first year?"
+      "What does the training look like for new joiners?"
+      "What qualities do the most successful freshers in your team have?"
+      "Is there any area in my answers today where you think I should improve?"
+      The last one shows you want to learn, and the feedback is useful even if you do not get selected.
+    keyPoints: ["Always ask at least one question", "Ask about work, learning or team", "Avoid salary/leave in technical rounds", "Asking for feedback shows growth mindset"]
+
+  # ---------------------------------------------------------------- BEHAVIORAL (5)
+  - id: core-093
+    category: BEHAVIORAL
+    topic: "STAR: handling a difficult situation"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Tell me about a time you faced a difficult problem and how you solved it."
+    answer: |
+      Use STAR: Situation, Task, Action, Result.
+      Situation: "While building my Spring Boot project, my API suddenly became very slow when listing orders."
+      Task: "I had to find the cause and fix it before my demo to friends in two days."
+      Action: "I turned on SQL logging and saw more than 100 queries for one request. I read about the N+1 problem, then changed the repository method to use JOIN FETCH. I tested it again and checked the logs."
+      Result: "The request went from 101 queries to 1, and the response became much faster. I learned to always check the generated SQL."
+    keyPoints: ["Clear Situation and Task", "Specific actions you took", "Measurable result", "Lesson learned"]
+
+  - id: core-094
+    category: BEHAVIORAL
+    topic: "STAR: learning something quickly"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Tell me about a time you had to learn something new quickly."
+    answer: |
+      Situation: "At my data entry job, our team had to start using a new internal tool with almost no training."
+      Task: "I needed to learn it within a week and still finish my daily target."
+      Action: "I read the user guide during breaks, made a short checklist of the steps, and practised on sample records. When I got stuck, I asked a senior one clear question instead of many small ones. Then I shared my checklist with two teammates."
+      Result: "I was using the tool fully in four days, and my teammates said the checklist saved them time. The same approach helps me now when I learn Java topics."
+    keyPoints: ["STAR structure", "Specific learning method", "Helped others too", "Result and transfer to development"]
+
+  - id: core-095
+    category: BEHAVIORAL
+    topic: "STAR: teamwork and conflict"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Tell me about a time you disagreed with a team member. What did you do?"
+    answer: |
+      Situation: "In a college project, a teammate wanted to store all data in one big table, and I felt we should split it into separate tables."
+      Task: "We had to agree quickly because the deadline was near."
+      Action: "I did not argue in the group chat. I met him and listened to his reason: he thought joins were hard. I showed him a small example with two tables and a simple JOIN, and explained how one big table would repeat data. We agreed to try the split design for one module first."
+      Result: "It worked well, he was happy with it, and we used it for the full project. I learned to listen first and show, not just tell."
+    keyPoints: ["Respectful handling of disagreement", "Listened to the other view", "Used data or an example to decide", "Positive result and relationship kept"]
+
+  - id: core-096
+    category: BEHAVIORAL
+    topic: "STAR: handling a mistake"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Tell me about a mistake you made and what you learned."
+    answer: |
+      Situation: "In my current job, I once copied data into the wrong column for about 50 records."
+      Task: "I had to fix it before the report went to the client the next morning."
+      Action: "As soon as I noticed, I told my team lead honestly. Then I found all the wrong records using a filter, corrected them, and asked a teammate to double-check. After that, I started using a small checklist and a final sample check before submitting."
+      Result: "The report went on time with no errors, and I have not repeated that mistake. I learned that telling early is better than hiding, and that simple checks prevent big problems. I use the same idea with testing in code."
+    keyPoints: ["Own the mistake honestly", "Quick action to fix", "Process change to prevent repeat", "Lesson applied to development"]
+
+  - id: core-097
+    category: BEHAVIORAL
+    topic: "STAR: working under pressure"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+    question: "Describe a time when you worked under pressure or a tight deadline."
+    answer: |
+      Situation: "During month-end at work, our team got double the usual volume of records, and at the same time I was preparing for a coding test."
+      Task: "I had to meet my work target and keep my study plan."
+      Action: "I listed my tasks and finished the hardest work in the morning when I was fresh. I reduced breaks, and I moved my study to a short focused hour at night, only revising key topics. I told my lead early that I could take a few extra records but not all."
+      Result: "We finished the month-end on time, and I still cleared the test. I learned that planning and early communication reduce stress."
+    keyPoints: ["Clear pressure situation", "Prioritisation and planning", "Communicated early", "Positive result and lesson"]
+
+  # ---------------------------------------------------------------- PROJECT (3)
+  - id: core-098
+    category: PROJECT
+    topic: "Explain your project"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+    question: "Explain your project."
+    answer: |
+      Use a simple order: problem, solution, tech stack, flow, your part, result. Keep it to about 90 seconds.
+      "My project is a Task Manager REST API.
+      Problem: small teams need a simple way to create and track tasks.
+      Solution: users can register, log in, and create, update and filter their tasks.
+      Tech: Java 17, Spring Boot, Spring Data JPA, MySQL, and JWT for login.
+      Flow: the request comes to the controller, it is validated, the service applies the business rules, and the repository saves it to MySQL.
+      I built it fully myself, wrote unit tests with JUnit and Mockito, and handled errors with a global exception handler."
+    keyPoints: ["Problem the project solves", "Main features", "Tech stack", "Request flow through layers", "Your role and a result"]
+
+  - id: core-099
+    category: PROJECT
+    topic: "Your role in the project"
+    difficulty: EASY
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT]
+    question: "What exactly was your role in the project?"
+    answer: |
+      Be specific and use "I" for what you did. Never claim work you did not do; the interviewer will ask deep questions.
+      "In this project I was the only developer, so I did the full backend.
+      I designed the database tables: users and tasks, with a one-to-many relation.
+      I wrote the REST endpoints for creating, updating, deleting and searching tasks.
+      I added input validation with @Valid and a global exception handler so errors return clean JSON.
+      I added JWT-based login with Spring Security.
+      I also wrote unit tests for the service layer and tested the APIs with Postman."
+      In a team project, say clearly which modules were yours.
+    keyPoints: ["Use 'I' for your own work", "Specific modules or tasks", "Technical details you can defend", "Honest about team vs own work"]
+
+  - id: core-100
+    category: PROJECT
+    topic: "Challenges faced in the project"
+    difficulty: MEDIUM
+    companies: [ALL, INFOSYS_SP, INFOSYS_DSE, TCS, COGNIZANT, PRODUCT]
+    question: "What challenges did you face in your project and how did you solve them?"
+    answer: |
+      Pick one or two real technical challenges and explain cause, fix and learning.
+      "One challenge was a LazyInitializationException. When I returned task entities with their user directly from the controller, the lazy user field failed to load because the session was closed. I fixed it by returning DTOs and fetching only what I needed.
+      A second challenge was JWT login. At first every request returned 403. I found my filter was not added to the security filter chain in the right place. After reading the documentation and debugging step by step, I fixed the order.
+      These taught me to read error logs carefully and to test small pieces one at a time."
+    keyPoints: ["Real, specific technical challenge", "Root cause explained", "How you fixed it", "What you learned"]

@@ -1,0 +1,455 @@
+slug: exception-traps
+world: JAVA_CORE
+section: D
+order: 6
+title: "finally edge cases and traps"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+infosysRelevance: "Tricky output questions on finally are good practice for SP and DSE MCQ-style and technical rounds; tracing them builds the habit of reading code line by line."
+otherCompanies: "Product companies like these as depth questions; service companies use simpler versions as 'predict the output' MCQs."
+why: |
+  You already know "finally always runs". Interviewers know you know it, so they ask the **edge cases**:
+  - What if both `try` and `finally` have a `return`?
+  - If `finally` changes a variable after `return x`, does the returned value change?
+  - Does `finally` run after `System.exit(0)`?
+  - What happens to an exception when `finally` returns or throws?
+  - Which catch orders don't even compile?
+
+  These questions look scary, but each has **one clear rule**. Learn the five rules here and you can trace any of them calmly, step by step. They also teach real-world lessons: **never return from finally** and **never swallow exceptions**.
+analogy: |
+  Think of a **school exam hall**.
+
+  - The student writes an answer and walks to the desk to **submit** (that's `return` in try). The answer sheet is now **photocopied** and kept.
+  - Before leaving, the **invigilator always checks the hall ticket** (that's `finally`). It always happens.
+  - If the invigilator **scribbles on the student's rough notes** (changes a local variable), the photocopied answer doesn't change.
+  - But if the invigilator says **"Ignore that sheet, submit THIS one instead"** (return in finally), the original answer is thrown away.
+  - And if the **building's power goes off and everyone goes home** (`System.exit`), the hall-ticket check never happens at all.
+visual:
+  diagram: |2
+     int test() {
+       try {
+         return x;      (1) value of x is SAVED (copy for primitives,
+       }                    copy of the reference for objects)
+       finally {        (2) finally ALWAYS runs next
+         x = 99;            -> changes local x, NOT the saved value
+         sb.append("!");    -> changes the shared object (visible)
+         return 5;      (3) a return here REPLACES the saved value
+       }                    and also DISCARDS any pending exception
+     }
+
+     System.exit(0) in try/catch:  JVM stops -> finally NEVER runs
+
+     Exception in try, then exception in finally:
+       try  -> throws A ---+
+       finally -> throws B | A is LOST, caller only sees B
+  caption: "return saves its value first, then finally runs. A return or throw inside finally replaces whatever try or catch was doing. System.exit stops the JVM, so finally is skipped."
+  visualizer: null
+explanation: |
+  ### Trap 1: return in try, then finally still runs
+  `finally` runs **even after `return`**. The method only leaves after finally finishes.
+  ```java
+  static int b() {
+      int x = 10;
+      try {
+          return x;
+      } finally {
+          x = 20;
+          System.out.println("finally x=" + x);
+      }
+  }
+  // System.out.println(b());  prints:
+  // finally x=20
+  // 10
+  ```
+  **Rule:** when `return x;` runs, Java first **evaluates and saves** the value (10). Then finally runs. Changing the local variable `x` inside finally does **not** change the already-saved value. So `b()` returns 10.
+
+  **But objects are different.** For an object, the saved value is the **reference** (the address). If finally changes the object itself, the caller sees the change:
+  ```java
+  static StringBuilder c() {
+      StringBuilder sb = new StringBuilder("A");
+      try {
+          return sb;
+      } finally {
+          sb.append("B");        // same object is modified
+      }
+  }
+  // System.out.println(c());  prints: AB
+  ```
+
+  ### Trap 2: return in finally overrides everything
+  ```java
+  static int a() {
+      try {
+          return 1;
+      } finally {
+          return 2;
+      }
+  }
+  // System.out.println(a());  prints: 2
+  ```
+  **Rule:** a `return` in finally **replaces** the return value from try or catch. The compiler even warns: "finally clause cannot complete normally".
+
+  Worse, a return in finally **swallows exceptions**:
+  ```java
+  static int d() {
+      try {
+          throw new RuntimeException("lost");
+      } finally {
+          return 3;              // the exception disappears!
+      }
+  }
+  // System.out.println(d());  prints: 3   (no exception at all)
+  ```
+  The caller never learns something went wrong. **Never return from finally** in real code.
+
+  ### Trap 3: exception thrown in finally hides the original
+  ```java
+  static void e() {
+      try {
+          throw new RuntimeException("original");
+      } finally {
+          throw new IllegalStateException("from finally");
+      }
+  }
+  // try { e(); } catch (RuntimeException ex) {
+  //     System.out.println(ex.getMessage());   // prints: from finally
+  // }
+  ```
+  **Rule:** if finally throws, that new exception replaces the original one, which is **lost**. (try-with-resources fixes this for close() by using suppressed exceptions.)
+
+  ### Trap 4: System.exit skips finally
+  ```java
+  try {
+      System.out.println("in try");
+      System.exit(0);
+  } finally {
+      System.out.println("in finally");
+  }
+  // prints only: in try
+  ```
+  **Rule:** `System.exit()` **stops the JVM** immediately. The program is gone, so finally never runs. The same is true for `Runtime.getRuntime().halt()`, a JVM crash, killing the process, or a power cut. These are the only "finally doesn't run" answers.
+
+  ### Trap 5: catch order compile errors
+  - A **child after its parent** is a compile error: `exception X has already been caught`.
+  ```java
+  try { new java.io.FileReader("a.txt"); }
+  catch (java.io.IOException e) { }
+  catch (java.io.FileNotFoundException e) { }   // compile error
+  ```
+  - A **multi-catch with related types** is a compile error: `Alternatives in a multi-catch statement cannot be related by subclassing`.
+  - Catching a **checked** exception the try can never throw is a compile error: `exception IOException is never thrown in body of corresponding try statement`. Unchecked ones and `Exception` itself are always allowed.
+
+  ### Trap 6: swallowed exceptions
+  A **swallowed exception** is one that is caught and then **ignored**: an empty catch block.
+  ```java
+  try {
+      int n = Integer.parseInt("12a");
+  } catch (NumberFormatException e) {
+      // nothing here
+  }
+  ```
+  The program continues as if nothing happened, with wrong data, and nobody knows why later. At minimum **log it**; better, handle it or rethrow it with the cause. Swallowing also happens via Trap 2 (return in finally) and Trap 3 (throw in finally).
+
+  ### Bonus: break and continue
+  finally also runs when a `break` or `continue` leaves a try inside a loop.
+
+  ### Rules summary
+  | Situation | Result |
+  |---|---|
+  | return in try + finally | finally runs, then the saved value is returned |
+  | finally changes a primitive local | returned value unchanged |
+  | finally changes an object | caller sees the change |
+  | return in finally | overrides try/catch return and swallows exceptions |
+  | throw in finally | original exception is lost |
+  | System.exit() | finally does not run |
+  | Parent catch before child | compile error |
+tinyCode:
+  code: |
+    public class Traps {
+        static int saved() {
+            int x = 10;
+            try {
+                return x;
+            } finally {
+                x = 20;
+            }
+        }
+        @SuppressWarnings("finally")
+        static int overridden() {
+            try {
+                return 1;
+            } finally {
+                return 2;
+            }
+        }
+        @SuppressWarnings("finally")
+        static int swallowed() {
+            try {
+                throw new RuntimeException("boom");
+            } finally {
+                return 3;
+            }
+        }
+        public static void main(String[] args) {
+            System.out.println("saved: " + saved());
+            System.out.println("overridden: " + overridden());
+            System.out.println("swallowed: " + swallowed());
+        }
+    }
+  walkthrough: |
+    - `saved()`: `return x` saves 10, then finally sets the local `x` to 20. The saved 10 is returned.
+    - `overridden()`: try wants to return 1, but finally's `return 2` replaces it.
+    - `swallowed()`: try throws, but finally's `return 3` throws away the exception. The method returns 3 normally.
+    - `@SuppressWarnings("finally")` only hides the compiler's warning about returning from finally. That warning exists because this is bad practice.
+
+    Output:
+    ```
+    saved: 10
+    overridden: 2
+    swallowed: 3
+    ```
+tryIt:
+  instructions: "Type this program. Predict the output before running it. Then change System.exit(0) to a plain return and run again: now 'finally' prints."
+  code: |
+    public class ExitTest {
+        static void work(boolean stop) {
+            try {
+                System.out.println("try, stop=" + stop);
+                if (stop) {
+                    System.exit(0);
+                }
+            } finally {
+                System.out.println("finally, stop=" + stop);
+            }
+        }
+        public static void main(String[] args) {
+            work(false);
+            work(true);
+            System.out.println("end of main");
+        }
+    }
+predict:
+  code: |
+    public class Count {
+        static int count() {
+            int i = 0;
+            try {
+                i = 1;
+                throw new Exception("x");
+            } catch (Exception e) {
+                i = 2;
+                return i;
+            } finally {
+                i = 3;
+                System.out.println("finally i=" + i);
+            }
+        }
+        public static void main(String[] args) {
+            System.out.println(count());
+        }
+    }
+  expectedOutput: |
+    finally i=3
+    2
+  explanation: |
+    try sets `i = 1` and throws. The catch sets `i = 2` and runs `return i`, which **saves 2**. finally then sets `i = 3` and prints "finally i=3". Since finally has no return of its own, the saved value 2 is returned and printed.
+commonMistakes:
+  - "Thinking finally doesn't run after a return. It does; the method waits for finally to finish."
+  - "Thinking a change to a primitive variable in finally changes the returned value. The value was already saved."
+  - "Forgetting that changes to an object in finally ARE visible, because only the reference was saved."
+  - "Writing return in finally. It overrides other returns and silently swallows exceptions."
+  - "Leaving a catch block empty. The error is swallowed and the bug becomes invisible."
+  - "Saying finally runs after System.exit(). The JVM has stopped, so it doesn't."
+interviewBox:
+  why: "Why interviewers ask this: edge cases test whether you trace code precisely and whether you know the bad practices that hide bugs in real projects."
+  questions:
+    - q: "Is there any case where finally does not execute?"
+      a: "Yes. If System.exit() is called in try or catch, the JVM stops, so finally doesn't run. Also if the JVM crashes, the process is killed, Runtime.halt() is called, or the power goes off. In all normal cases, including return, break and exceptions, finally runs."
+    - q: "If try returns 1 and finally returns 2, what is returned?"
+      a: "2. The return in finally overrides the return in try. It's bad practice because it also swallows any exception thrown in try, and the compiler warns about it."
+    - q: "If try does 'return x' and finally changes x, what does the caller get?"
+      a: "For a primitive like int, the caller gets the old value, because it was saved when return ran. For an object, the saved value is the reference, so if finally modifies the object, for example appends to a StringBuilder, the caller sees the change."
+    - q: "What is a swallowed exception and why is it bad?"
+      a: "It's an exception that is caught and ignored, for example an empty catch block, or one lost because finally returned or threw. The program continues in a broken state and nobody knows why. We should at least log it, or rethrow it with the cause."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          @SuppressWarnings("finally")
+          static String test() {
+              try {
+                  return "try";
+              } finally {
+                  return "finally";
+              }
+          }
+          public static void main(String[] args) {
+              System.out.println(test());
+          }
+      }
+    options: ["try", "finally", "try finally", "Compile error"]
+    answer: 1
+    explanation: "finally always runs, and its return replaces the value saved from try. It isn't a compile error, only a warning ('finally clause cannot complete normally')."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static int calc() {
+              int n = 5;
+              try {
+                  return n * 2;
+              } finally {
+                  n = 100;
+                  System.out.print("F ");
+              }
+          }
+          public static void main(String[] args) {
+              System.out.println(calc());
+          }
+      }
+    options: ["F 100", "F 10", "10 F", "F 200"]
+    answer: 1
+    explanation: "return n * 2 saves 10. finally prints 'F ' and changes n, but the saved 10 doesn't change. Then main prints 10. 'F 100' is the trap: changing a primitive local in finally doesn't touch the saved return value."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              try {
+                  System.out.println("A");
+                  System.exit(0);
+                  System.out.println("B");
+              } catch (Exception e) {
+                  System.out.println("C");
+              } finally {
+                  System.out.println("D");
+              }
+          }
+      }
+    options: ["A\nD", "A", "A\nB\nD", "A\nC\nD"]
+    answer: 1
+    explanation: "System.exit(0) stops the JVM immediately. Nothing after it runs, not even finally. 'A D' is the common wrong answer from thinking finally always runs."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      import java.io.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              try {
+                  new FileReader("a.txt");
+              } catch (IOException e) {
+                  System.out.println("io");
+              } catch (FileNotFoundException e) {
+                  System.out.println("not found");
+              }
+          }
+      }
+    options:
+      - "FileReader is not in java.io"
+      - "FileNotFoundException is a child of IOException, so its catch is unreachable after the IOException catch"
+      - "You must close the FileReader"
+      - "main must declare throws IOException"
+    answer: 1
+    explanation: "The IOException catch already catches FileNotFoundException, so the second catch can never run and the compiler reports 'already been caught'. Swap the order to fix it. Not closing the reader is a leak, but not a compile error."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static void run() {
+              try {
+                  throw new RuntimeException("first");
+              } finally {
+                  throw new RuntimeException("second");
+              }
+          }
+          public static void main(String[] args) {
+              try {
+                  run();
+              } catch (RuntimeException e) {
+                  System.out.println(e.getMessage());
+              }
+          }
+      }
+    options: ["first", "second", "first second", "Nothing; the program crashes"]
+    answer: 1
+    explanation: "The exception thrown in finally replaces the one from try. 'first' is lost completely, which is why throwing from finally is dangerous. main catches 'second', so the program doesn't crash."
+  - id: q6
+    type: TRUE_FALSE
+    prompt: "An empty catch block is a safe way to handle an exception you don't care about."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. An empty catch block swallows the exception: the program continues with bad data and the cause is invisible. At least log it, or handle or rethrow it."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          static StringBuilder build() {
+              StringBuilder sb = new StringBuilder("Hi");
+              try {
+                  return sb;
+              } finally {
+                  sb.append(" there");
+                  sb = null;
+              }
+          }
+          public static void main(String[] args) {
+              System.out.println(build());
+          }
+      }
+    options: ["Hi", "Hi there", "null", "NullPointerException"]
+    answer: 1
+    explanation: "return sb saves the reference to the StringBuilder object. finally appends ' there' to that same object (visible to the caller), then sets the local variable to null, which doesn't affect the saved reference. So 'Hi there' prints."
+  - id: q8
+    type: MATCH
+    prompt: "Match the situation to the result"
+    pairs:
+      - left: "return 1 in try, return 2 in finally"
+        right: "Method returns 2"
+      - left: "System.exit(0) in try"
+        right: "finally does not run"
+      - left: "throw in try, throw in finally"
+        right: "Only the finally exception reaches the caller"
+      - left: "throw in try, return in finally"
+        right: "Exception is swallowed; method returns normally"
+    explanation: "finally has the last word: its return or throw replaces whatever try did. Only stopping the JVM prevents it from running."
+explainBack:
+  prompt: "Explain to a friend three finally traps: return in finally, changing a variable after return, and System.exit."
+  rubric:
+    - "I said return saves the value first, then finally runs"
+    - "I said a primitive changed in finally doesn't change the returned value, but an object change is visible"
+    - "I said return in finally overrides other returns and swallows exceptions"
+    - "I said System.exit stops the JVM so finally is skipped"
+    - "I said empty catch blocks swallow exceptions and should be avoided"
+  modelAnswer: |
+    finally runs even after a return. When Java hits return x, it first saves the value, then runs finally, then leaves. So if finally changes an int, the caller still gets the old value; but if it changes an object, like appending to a StringBuilder, the caller sees it because only the reference was saved. If finally has its own return, that value wins, and it even swallows any exception from try, so we should never do that. The one normal case where finally doesn't run is System.exit, because the whole JVM stops. And empty catch blocks are bad too: they hide errors.
+flashcards:
+  - front: "try returns 1, finally returns 2: result?"
+    back: "2. finally's return overrides (and swallows any exception). Bad practice."
+  - front: "return x; then finally sets x = 99 (int). Returned value?"
+    back: "The old value. It was saved before finally ran."
+  - front: "return sb; then finally does sb.append(\"!\"). Visible?"
+    back: "Yes. The saved value is the reference to the same object."
+  - front: "When does finally NOT run?"
+    back: "System.exit(), Runtime.halt(), JVM crash, process killed, power loss."
+  - front: "Exception in try, then another in finally?"
+    back: "The finally exception replaces the original; the original is lost."
+  - front: "What is a swallowed exception?"
+    back: "One caught and ignored (empty catch, or lost via return/throw in finally). It hides bugs."
+keyTakeaways:
+  - "return saves its value first; finally runs before the method actually leaves."
+  - "Changing a primitive in finally doesn't change the return value; changing an object does."
+  - "return or throw in finally overrides try/catch and can lose exceptions: never do it."
+  - "System.exit() stops the JVM, so finally is skipped."
+  - "Child catch after parent catch is a compile error."
+  - "Never leave a catch block empty."

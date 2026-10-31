@@ -1,0 +1,383 @@
+slug: arrays-1d-2d
+world: JAVA_CORE
+section: A
+order: 12
+title: "Arrays: 1D and 2D"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Heavily used in coding rounds: most SP and DSE problems take an array or matrix as input, and patterns like prefix sums, two pointers and matrix traversal all build on this lesson."
+otherCompanies: "Array and matrix problems (max/min, reverse, rotate, transpose, spiral) are the most common coding questions at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  An **array** stores many values of the same type under one name, in a fixed-size row of numbered boxes. Instead of `mark1, mark2, ... mark60`, you write `int[] marks = new int[60];`.
+
+  Why this matters so much:
+  - Most coding problems give you input as an array (1D) or a grid/matrix (2D).
+  - Common interview tasks: find max/min, reverse, count frequencies, rotate, transpose a matrix, print it in spiral order.
+  - MCQs ask about **default values**, `length` vs `length()`, `ArrayIndexOutOfBoundsException`, and what happens when you assign one array to another.
+
+  Arrays are also the base for everything in DSA: two pointers, sliding window, prefix sums, sorting and binary search all work on arrays.
+analogy: |
+  Think of a **row of lockers at a railway station**.
+
+  - The whole row has **one name** (the array), and each locker has a **number** starting from **0** (the index).
+  - All lockers are the **same size** (one data type), and the number of lockers is **fixed** when the row is built.
+  - To open locker 3, you go straight to it; you do not open lockers 0, 1 and 2 first. That is why reading `arr[3]` is instant: **O(1)**.
+  - A **2D array** is like a **cinema hall**: row number and seat number (`seat[row][col]`). In Java, each row is actually its own separate row of lockers, so rows can even have different lengths.
+visual:
+  diagram: |
+    int[] a = {10, 20, 30, 40, 50};
+
+    index:     0     1     2     3     4
+            +-----+-----+-----+-----+-----+
+    a ----> | 10  | 20  | 30  | 40  | 50  |   a.length = 5
+            +-----+-----+-----+-----+-----+
+            a[0] = first          a[a.length - 1] = last
+            a[5]  -> ArrayIndexOutOfBoundsException
+
+    int[][] m = new int[3][4];   (3 rows, 4 columns)
+
+    m ---> +---+       col: 0   1   2   3
+           | --+-----> row0 [ 0 | 0 | 0 | 0 ]
+           | --+-----> row1 [ 0 | 0 | 0 | 0 ]
+           | --+-----> row2 [ 0 | 0 | 0 | 0 ]
+           +---+
+    m.length = 3 (rows)     m[0].length = 4 (columns)
+  caption: "A 1D array is a fixed row of indexed boxes starting at 0. A 2D array is an array of rows, each row being its own 1D array."
+  visualizer: array
+explanation: |
+  ### Declaring and creating a 1D array
+  ```java
+  int[] marks;                    // declare: marks can refer to an int array
+  marks = new int[5];             // create: 5 boxes, all 0
+  int[] primes = {2, 3, 5, 7};    // declare + create + fill (array literal)
+  int[] copy = new int[]{1, 2, 3};
+  ```
+  - `int[] a` and `int a[]` both work; `int[] a` is the preferred style.
+  - The size is **fixed** once created. To "grow", you must create a new, bigger array (or use `ArrayList`, Section E).
+  - Size can come from a variable: `new int[n]`. A negative size throws `NegativeArraySizeException`. Size 0 is allowed.
+  - In Java, an array is an **object** stored on the **heap** (the memory area for objects). The variable holds a **reference** to it.
+
+  ### Default values
+  When created with `new`, every element gets a default:
+  | Type | Default |
+  |---|---|
+  | `int`, `long`, `short`, `byte` | `0` |
+  | `double`, `float` | `0.0` |
+  | `boolean` | `false` |
+  | `char` | `'\u0000'` (the null character, prints as an invisible character) |
+  | `String` and other objects | `null` |
+
+  ### Accessing elements
+  - Index starts at **0** and ends at **length - 1**.
+  - `arr.length` is a **field**, not a method: no brackets. (For a String it is `s.length()`, with brackets. A classic MCQ trap.)
+  - Using index `-1` or `length` throws **`ArrayIndexOutOfBoundsException`** at runtime.
+
+  ### Looping over an array
+  ```java
+  for (int i = 0; i < arr.length; i++) {   // when you need the index
+      arr[i] = arr[i] * 2;
+  }
+  for (int x : arr) {                       // when you only read values
+      System.out.print(x + " ");
+  }
+  System.out.println(java.util.Arrays.toString(arr)); // quick print
+  ```
+  Printing an array directly with `System.out.println(arr)` prints something like `[I@1b6d3586` (type code plus a hash), **not** the elements.
+
+  ### Common 1D patterns
+  ```java
+  // max element
+  int max = arr[0];
+  for (int i = 1; i < arr.length; i++) max = Math.max(max, arr[i]);
+
+  // reverse in place with two pointers
+  for (int i = 0, j = arr.length - 1; i < j; i++, j--) {
+      int t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+
+  // frequency count of values 0..9
+  int[] freq = new int[10];
+  for (int x : arr) freq[x]++;
+  ```
+
+  ### Arrays are references
+  ```java
+  int[] a = {1, 2, 3};
+  int[] b = a;      // b points to the SAME array, no copy is made
+  b[0] = 99;        // a[0] is also 99 now
+  ```
+  To make a real copy, use `a.clone()` or `Arrays.copyOf(a, a.length)`. Also, `a == b` compares references, not contents; use `Arrays.equals(a, b)` for contents.
+
+  When you pass an array to a method, the reference is copied, so the method can change the caller's elements.
+
+  ### 2D arrays (matrices)
+  A **2D array** is an **array of arrays**: each element of the outer array is a row (a 1D array).
+  ```java
+  int[][] m = new int[3][4];           // 3 rows, 4 columns, all 0
+  int[][] grid = {
+      {1, 2, 3},
+      {4, 5, 6}
+  };
+  grid[1][2]          // row 1, column 2 -> 6
+  grid.length         // number of rows -> 2
+  grid[0].length      // number of columns in row 0 -> 3
+  ```
+  Standard traversal:
+  ```java
+  for (int r = 0; r < grid.length; r++) {
+      for (int c = 0; c < grid[r].length; c++) {
+          System.out.print(grid[r][c] + " ");
+      }
+      System.out.println();
+  }
+  ```
+  `Arrays.deepToString(grid)` prints a 2D array quickly: `[[1, 2, 3], [4, 5, 6]]`.
+
+  ### Jagged arrays
+  Because rows are separate arrays, they can have **different lengths**:
+  ```java
+  int[][] tri = new int[3][];   // only the number of rows is fixed
+  tri[0] = new int[1];
+  tri[1] = new int[2];
+  tri[2] = new int[3];
+  ```
+  This is a **jagged** array. Always use `grid[r].length` for the column count, never assume all rows are equal. Note: `new int[][3]` (columns without rows) does not compile.
+
+  ### Common matrix tasks
+  - **Row sums / column sums:** loop rows outside for row sums; loop columns outside for column sums.
+  - **Transpose** (rows become columns): `t[c][r] = m[r][c]`.
+  - **Diagonals** of a square n x n matrix: main diagonal is `m[i][i]`; the other is `m[i][n - 1 - i]`.
+  - **Spiral, rotate by 90 degrees:** built on careful index control; practise them after this lesson.
+
+  ### Complexity
+  | Operation | Time |
+  |---|---|
+  | Read or write `arr[i]` | O(1) |
+  | Search for a value (unsorted) | O(n) |
+  | Insert or delete in the middle (shifting) | O(n) |
+  | Visit every cell of an r x c matrix | O(r x c) |
+tinyCode:
+  code: |
+    import java.util.Arrays;
+
+    public class ArraysDemo {
+        public static void main(String[] args) {
+            int[] a = {5, 2, 9, 1, 7};
+            int max = a[0], sum = 0;
+            for (int x : a) {
+                max = Math.max(max, x);
+                sum += x;
+            }
+            System.out.println("max=" + max + " sum=" + sum);
+
+            for (int i = 0, j = a.length - 1; i < j; i++, j--) {
+                int t = a[i];
+                a[i] = a[j];
+                a[j] = t;
+            }
+            System.out.println(Arrays.toString(a));
+
+            boolean[] flags = new boolean[2];
+            String[] names = new String[2];
+            System.out.println(flags[0] + " " + names[0]);
+
+            int[][] m = {{1, 2, 3}, {4, 5, 6}};
+            int[][] t = new int[3][2];
+            for (int r = 0; r < m.length; r++) {
+                for (int c = 0; c < m[r].length; c++) {
+                    t[c][r] = m[r][c];
+                }
+            }
+            System.out.println(Arrays.deepToString(t));
+        }
+    }
+  walkthrough: |
+    - The for-each loop finds the maximum (9) and the sum (5 + 2 + 9 + 1 + 7 = 24).
+    - Two pointers `i` (from the start) and `j` (from the end) swap elements until they meet, reversing the array in place: `[7, 1, 9, 2, 5]`.
+    - New `boolean` elements default to `false`; new `String` elements default to `null`.
+    - The transpose turns the 2 x 3 matrix into a 3 x 2 one: element at row r, column c moves to row c, column r.
+
+    Output:
+    ```
+    max=9 sum=24
+    [7, 1, 9, 2, 5]
+    false null
+    [[1, 4], [2, 5], [3, 6]]
+    ```
+tryIt:
+  instructions: "Type this program that prints a matrix with row sums and the main diagonal sum. Then change the matrix to 4 x 4 and check that your loops still work without changing any numbers in them."
+  code: |
+    public class Matrix {
+        public static void main(String[] args) {
+            int[][] m = {
+                {3, 1, 4},
+                {1, 5, 9},
+                {2, 6, 5}
+            };
+            int diag = 0;
+            for (int r = 0; r < m.length; r++) {
+                int rowSum = 0;
+                for (int c = 0; c < m[r].length; c++) {
+                    System.out.print(m[r][c] + "\t");
+                    rowSum += m[r][c];
+                }
+                System.out.println("| " + rowSum);
+                diag += m[r][r];
+            }
+            System.out.println("Diagonal sum: " + diag);
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        public static void main(String[] args) {
+            int[] a = {1, 2, 3};
+            int[] b = a;
+            b[0] = 10;
+            int[] c = a.clone();
+            c[1] = 20;
+            System.out.println(a[0] + " " + a[1] + " " + (a == b) + " " + (a == c));
+            int[][] j = new int[3][];
+            j[0] = new int[]{7};
+            j[1] = new int[4];
+            System.out.println(j.length + " " + j[1].length + " " + j[1][3]);
+            System.out.println(j[2] == null);
+        }
+    }
+  expectedOutput: |
+    10 2 true false
+    3 4 0
+    true
+  explanation: |
+    - `b = a` copies the **reference**, so `b[0] = 10` changes the same array: `a[0]` is 10. `a.clone()` makes a **new** array, so changing `c[1]` does not affect `a` (a[1] stays 2). `a == b` is true (same object); `a == c` is false (different objects).
+    - `j` has 3 rows. Row 1 was created with 4 elements, all defaulting to 0.
+    - Row 2 was never created, so `j[2]` is still `null`, the default for a reference.
+commonMistakes:
+  - "Looping with i <= arr.length, which reads one past the end and throws ArrayIndexOutOfBoundsException."
+  - "Writing arr.length() for arrays (it is the field arr.length) or s.length for Strings (it is the method s.length())."
+  - "Printing an array with System.out.println(arr) and getting [I@... instead of the values. Use Arrays.toString."
+  - "Thinking int[] b = a; makes a copy. Both names point to the same array; use clone() or Arrays.copyOf."
+  - "Assuming every row of a 2D array has the same length; use grid[r].length for jagged arrays."
+  - "Comparing arrays with == instead of Arrays.equals for content."
+interviewBox:
+  why: "Why interviewers ask this: arrays are the input of most coding problems. Default values, references and 2D indexing questions quickly show how solid your basics are."
+  questions:
+    - q: "What are the default values of array elements in Java?"
+      a: "When an array is created with new, number types get 0, double and float get 0.0, boolean gets false, char gets the null character, and object types like String get null."
+    - q: "What is the difference between arr.length and str.length()?"
+      a: "For an array, length is a final field, so we write arr.length without brackets. For a String, length is a method, so we write str.length() with brackets."
+    - q: "What is a jagged array?"
+      a: "A 2D array where the rows have different lengths. It is possible because a 2D array in Java is an array of separate 1D arrays. We create it by giving only the number of rows, like new int[3][], and then creating each row with its own size."
+    - q: "If I write int[] b = a; and change b, does a change?"
+      a: "Yes. Arrays are objects, so b = a copies only the reference. Both variables point to the same array. To get an independent copy, I use a.clone() or Arrays.copyOf."
+    - q: "What is the time complexity of accessing an element by index?"
+      a: "O(1), constant time. The elements are stored next to each other, so Java can calculate the position directly from the index without visiting other elements."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int[] a = new int[3];
+      a[1] = 5;
+      int[] b = a;
+      b[2] = 8;
+      System.out.println(a[0] + a[1] + a[2]);
+    options: ["13", "5", "058", "Compile error"]
+    answer: 0
+    explanation: "a starts as {0, 0, 0}. b points to the same array, so b[2] = 8 changes a too: {0, 5, 8}. The + is numeric addition (no String involved), so 0 + 5 + 8 = 13. 5 is the answer if you think b is a separate copy."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "This crashes at runtime. What is the problem?"
+    code: |
+      int[] arr = {4, 8, 15, 16};
+      int sum = 0;
+      for (int i = 0; i <= arr.length; i++) {
+          sum += arr[i];
+      }
+      System.out.println(sum);
+    options:
+      - "sum should be long"
+      - "i <= arr.length reads arr[4], which does not exist"
+      - "arr.length should be arr.length()"
+      - "Arrays cannot be summed in a for loop"
+    answer: 1
+    explanation: "Valid indexes are 0 to 3. When i becomes 4, arr[4] throws ArrayIndexOutOfBoundsException. Use i < arr.length. arr.length() would not even compile, because length is a field for arrays."
+  - id: q3
+    type: MCQ
+    prompt: "For int[][] g = new int[4][6]; what are g.length and g[0].length?"
+    code: null
+    options: ["4 and 6", "6 and 4", "24 and 6", "4 and 24"]
+    answer: 0
+    explanation: "g.length is the number of rows (4). g[0] is the first row, a 1D array of 6 columns, so g[0].length is 6. 24 is the total number of cells, which Java does not store anywhere."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "System.out.println(arr) prints the elements of an int array, like [1, 2, 3]."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. It prints the array object's type code and hash, like [I@1b6d3586. Use Arrays.toString(arr) for 1D and Arrays.deepToString(arr) for 2D arrays."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      int[][] m = {{1, 2}, {3, 4, 5}, {6}};
+      int total = 0;
+      for (int[] row : m) {
+          total += row.length;
+      }
+      System.out.println(m.length + " " + total + " " + m[1][2]);
+    options: ["3 6 5", "3 6 4", "3 3 5", "ArrayIndexOutOfBoundsException"]
+    answer: 0
+    explanation: "This is a jagged array with 3 rows of lengths 2, 3 and 1, so the total is 6. m[1] is {3, 4, 5}, so m[1][2] is 5. The exception is tempting if you assume every row has only 2 columns."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the expression for the last element of any non-empty array arr."
+    code: |
+      int last = arr[____];
+    acceptedAnswers: ["arr.length - 1", "arr.length-1"]
+    explanation: "Indexes start at 0, so the last valid index is length - 1. arr[arr.length] is one past the end and throws an exception."
+  - id: q7
+    type: MATCH
+    prompt: "Match each new array element type to its default value"
+    pairs:
+      - left: "new int[3]"
+        right: "0"
+      - left: "new double[3]"
+        right: "0.0"
+      - left: "new boolean[3]"
+        right: "false"
+      - left: "new String[3]"
+        right: "null"
+    explanation: "Array elements always get default values, even inside a method, unlike plain local variables. Numbers become zero, booleans false, and references null."
+explainBack:
+  prompt: "Explain to a friend what an array is, how indexing works, and how a 2D array is stored in Java."
+  rubric:
+    - "I said an array holds a fixed number of same-type values"
+    - "I said indexes go from 0 to length - 1 and mentioned the out-of-bounds error"
+    - "I mentioned default values"
+    - "I explained that a 2D array is an array of rows (and can be jagged)"
+    - "I said that assigning an array copies the reference, not the elements"
+  modelAnswer: |
+    An array is like a row of numbered lockers: one name, a fixed number of boxes, and all of the same type. The numbering starts at 0, so the last box is length minus 1, and going beyond that throws ArrayIndexOutOfBoundsException. When I create an array with new, every box gets a default value, like 0 for int, false for boolean and null for String. Reading any box by index is instant. A 2D array is an array of rows, where each row is its own 1D array, so rows can even have different lengths. One important thing: if I write b equals a, I do not copy the array; both names point to the same lockers.
+flashcards:
+  - front: "Valid index range of an array"
+    back: "0 to length - 1. Anything else throws ArrayIndexOutOfBoundsException."
+  - front: "arr.length vs s.length()"
+    back: "Arrays: field length (no brackets). Strings: method length()."
+  - front: "Default values in new arrays"
+    back: "0, 0.0, false, '\\u0000', null (for objects)."
+  - front: "int[] b = a; b[0] = 5; does a change?"
+    back: "Yes. Same array; use clone() or Arrays.copyOf for a copy."
+  - front: "Rows and columns of int[][] g"
+    back: "Rows: g.length. Columns of row r: g[r].length (rows can differ: jagged)."
+  - front: "Print arrays quickly"
+    back: "Arrays.toString(arr) for 1D, Arrays.deepToString(grid) for 2D."
+keyTakeaways:
+  - "Arrays have a fixed size, one type, and indexes from 0 to length - 1."
+  - "Elements get default values (0, false, null...) when the array is created."
+  - "arr.length is a field; access by index is O(1)."
+  - "Array variables hold references: assignment shares, clone() or copyOf copies."
+  - "A 2D array is an array of rows; rows can have different lengths (jagged)."
+  - "Use Arrays.toString / deepToString to print, Arrays.equals to compare contents."

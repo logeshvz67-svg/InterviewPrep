@@ -29,13 +29,14 @@ class XpServiceTest {
     @Mock ProfileRepository profiles;
     @Mock StreakService streaks;
     @Mock TimeService time;
+    @Mock AchievementService achievements;
 
     XpService xp;
     final LocalDate today = LocalDate.of(2026, 11, 5);
 
     @BeforeEach
     void setUp() {
-        xp = new XpService(events, profiles, streaks, time);
+        xp = new XpService(events, profiles, streaks, time, achievements);
         when(time.today(1L)).thenReturn(today);
     }
 

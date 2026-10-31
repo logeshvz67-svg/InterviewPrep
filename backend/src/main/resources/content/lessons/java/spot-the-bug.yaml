@@ -1,0 +1,356 @@
+slug: spot-the-bug
+world: JAVA_CORE
+section: J
+order: 3
+title: "Spot-the-bug challenges"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Interview practice: finding bugs by reading code, and testing edge cases, is a core skill for coding rounds and debugging-style questions."
+otherCompanies: "Debugging and \"what is wrong with this code\" questions are common in technical interviews at service and product companies."
+why: |
+  In coding rounds your code is checked against **hidden test cases**. A tiny bug (one `<=` instead of `<`, a forgotten `break`) can fail half of them. In interviews, "What is wrong with this code?" is a common practice question.
+
+  Finding bugs is a skill you can train. Most bugs belong to a small number of **families**: off-by-one, null, `==` on objects, integer overflow, missing `equals`/`hashCode`... Once you know the families, you know **where to look**.
+
+  This lesson gives you a debugging method, the bug families, and 8 verified bug challenges in the quiz.
+analogy: |
+  Think of a **doctor** checking a patient.
+
+  A good doctor doesn't guess randomly. They follow a routine: read the **report** (the error message), check the **usual suspects** for those symptoms (fever + cough: check the chest first), and run **small tests** (blood test) to confirm.
+
+  Debugging is the same:
+  - The **error message and line number** are the report.
+  - The **bug families** are the usual suspects.
+  - **Dry runs with tiny inputs and edge cases** (empty, one item, negative, very big) are the tests.
+visual:
+  diagram: |
+    THREE KINDS OF BUGS
+    +--------------+------------------------+--------------------------+
+    | Compile-time | javac refuses          | missing ;  wrong type    |
+    |              | (you see it first)     | uninitialised variable   |
+    +--------------+------------------------+--------------------------+
+    | Runtime      | crashes with exception | NullPointerException     |
+    |              | + stack trace          | ArrayIndexOutOfBounds    |
+    +--------------+------------------------+--------------------------+
+    | Logic        | runs fine, WRONG answer| <= vs <, int division,   |
+    |              | (hardest to find!)     | == on Strings, overflow  |
+    +--------------+------------------------+--------------------------+
+
+    Reading a stack trace (top line = where it broke):
+    Exception in thread "main" java.lang.NullPointerException
+        at Shop.total(Shop.java:12)      <-- look here first
+        at Shop.main(Shop.java:5)        <-- who called it
+  caption: "Bugs are compile-time, runtime or logic bugs. For runtime bugs, the first 'at' line of the stack trace points to the line that failed."
+  visualizer: null
+explanation: |
+  ### Three kinds of bugs
+  - **Compile-time errors**: `javac` refuses to compile. Easiest: the message tells you the line.
+  - **Runtime errors (exceptions)**: the program compiles but crashes while running, printing a **stack trace** (the list of method calls that led to the crash).
+  - **Logic bugs**: the program runs but gives the wrong answer. Hardest, because nothing complains. Hidden test cases catch these.
+
+  ### Reading a stack trace
+  1. The **first line** names the exception, for example `java.lang.ArrayIndexOutOfBoundsException: Index 5 out of bounds for length 5`. The message often tells you the exact problem.
+  2. The first **`at`** line is where it broke: class, method, file and **line number**.
+  3. Lines below show **who called** that method. Read downward until you reach *your* code.
+
+  ### The debugging routine
+  1. **Reproduce** with the smallest input that fails.
+  2. **Dry run**: trace the code by hand with a table of variable values.
+  3. Test **edge cases**: empty input, one element, all equal, negative numbers, zero, the largest values, `null`.
+  4. Add a temporary `System.out.println` to see values, or use the IDE debugger (breakpoints let you pause and look).
+  5. Fix **one thing**, then re-run all your test cases.
+
+  ### The bug families (where to look first)
+  | Family | Example | Fix |
+  |---|---|---|
+  | **Off-by-one** | `i <= arr.length` | `i < arr.length`; check loop start and end |
+  | **== on objects** | `if (s == "yes")` | `s.equals("yes")` |
+  | **Null** | `name.equals("admin")` when name is null | `"admin".equals(name)` or a null check |
+  | **Integer division** | `double avg = sum / n;` | `(double) sum / n` |
+  | **Overflow** | `int x = 50000 * 50000;` (negative!) | use `long`: `50000L * 50000` |
+  | **Wrong initial value** | `int max = 0;` with all-negative array | `int max = arr[0];` |
+  | **equals without hashCode** | duplicates in a HashSet | override **both** |
+  | **Shadowing** | `name = name;` in a constructor | `this.name = name;` |
+  | **Missing break** | old-style switch falls through | add `break` or use `->` |
+  | **Modify while iterating** | `list.remove` in for-each | `removeIf` or `Iterator.remove()` |
+  | **Uninitialised local** | `int count; count++;` | locals need a value: `int count = 0;` |
+
+  ### Two families explained
+  **Overflow**: an `int` holds values only up to about **2.1 billion** (`Integer.MAX_VALUE` = 2,147,483,647). Going past it silently wraps around to a negative number. No exception! In coding rounds, sums of big arrays and products often need `long`.
+
+  **equals and hashCode**: `HashSet` and `HashMap` first use `hashCode()` to pick a bucket, then `equals()` to compare. If you override only `equals`, two "equal" objects usually get different hash codes from `Object`, land in different buckets, and the set happily stores both. Rule: **override both, using the same fields**.
+
+  ### Habits that prevent bugs
+  - Write the loop bounds slowly and say them aloud: "from 0, while less than length".
+  - Put the constant first in comparisons: `"yes".equals(input)`.
+  - Use `long` whenever numbers can grow (sums, products, counts of pairs).
+  - Before submitting, run the edge cases yourself. Hidden test cases are mostly edge cases.
+tinyCode:
+  code: |
+    public class FindMax {
+        // BUGGY: starts max at 0
+        static int maxBuggy(int[] arr) {
+            int max = 0;
+            for (int x : arr) {
+                if (x > max) max = x;
+            }
+            return max;
+        }
+
+        // FIXED: start from the first element
+        static int maxFixed(int[] arr) {
+            int max = arr[0];
+            for (int x : arr) {
+                if (x > max) max = x;
+            }
+            return max;
+        }
+
+        public static void main(String[] args) {
+            int[] normal = {3, 9, 4};
+            int[] negatives = {-7, -2, -5};
+
+            System.out.println(maxBuggy(normal) + " " + maxFixed(normal));
+            System.out.println(maxBuggy(negatives) + " " + maxFixed(negatives));
+        }
+    }
+  walkthrough: |
+    - `maxBuggy` starts with `max = 0`. For `{3, 9, 4}` it works: 9. That's why the bug survives simple testing.
+    - For `{-7, -2, -5}`, no element is greater than 0, so `max` stays 0, a number that isn't even in the array. This is a **wrong initial value** logic bug.
+    - `maxFixed` starts from `arr[0]`, a real element, so it works for any non-empty array.
+    - Lesson: the bug only appears with an **edge case** (all negatives). Always test edge cases.
+
+    Output:
+    ```
+    9 9
+    0 -2
+    ```
+tryIt:
+  instructions: "Type and run this. It should count the vowels in \"banana\" (answer 3) but it prints something else. Find the bug and fix it. Hint: what does indexOf return for the first character?"
+  code: |
+    public class Vowels {
+        static int countVowels(String s) {
+            int count = 0;
+            for (char c : s.toCharArray()) {
+                if ("aeiou".indexOf(c) > 0) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        public static void main(String[] args) {
+            System.out.println(countVowels("banana"));
+            System.out.println(countVowels("education"));
+        }
+    }
+predict:
+  code: |
+    public class Reverse {
+        public static void main(String[] args) {
+            String s = "code";
+            String r = "";
+            for (int i = s.length() - 1; i > 0; i--) {
+                r += s.charAt(i);
+            }
+            System.out.println(r);
+        }
+    }
+  expectedOutput: |
+    edo
+  explanation: |
+    The loop runs for i = 3, 2, 1 and stops when i becomes 0, because the condition is `i > 0`. So 'e', 'd', 'o' are added, but index 0 ('c') is never reached. Output is "edo" instead of "edoc". It's an **off-by-one** bug: the condition should be `i >= 0`.
+commonMistakes:
+  - "Testing only the happy path (normal input). Bugs hide in edge cases: empty, one element, negatives, very large numbers, null."
+  - "Ignoring the exception message and line number. The first 'at' line of the stack trace usually points straight at the problem."
+  - "Changing many things at once while debugging. Change one thing, re-run, observe."
+  - "Using int for sums or products that can exceed about 2.1 billion. Use long."
+  - "Overriding equals() without hashCode(), which breaks HashSet and HashMap."
+interviewBox:
+  why: "Why interviewers ask this: reading someone else's code and finding the problem is daily work. It shows attention to detail and knowledge of Java's rules."
+  questions:
+    - q: "How do you debug a program that gives the wrong output?"
+      a: "First I reproduce it with the smallest input that fails. Then I dry run the code by hand, tracking variable values, or print values at key points, or use the debugger with breakpoints. I check common suspects like loop bounds, initial values, integer division and overflow. After fixing, I re-run all my test cases, including edge cases."
+    - q: "What is integer overflow? How do you avoid it?"
+      a: "An int can store values only up to about 2.1 billion. If a calculation goes beyond that, it silently wraps around to a negative number, without any exception. To avoid it I use long for big sums and products, and write 50000L times 50000 so the multiplication itself is done in long. Math.addExact can also throw an error on overflow."
+    - q: "Why must we override hashCode when we override equals?"
+      a: "Hash-based collections like HashSet first use hashCode to find a bucket and then equals to compare. If two objects are equal but have different hash codes, they go to different buckets, so the set stores duplicates and contains may return false. So equal objects must have equal hash codes, using the same fields."
+    - q: "How do you avoid NullPointerException when comparing strings?"
+      a: "I call equals on the constant, like \"admin\".equals(name), because the constant is never null. I can also check for null first, or use Objects.equals(a, b), which handles nulls safely."
+quiz:
+  - id: q1
+    type: SPOT_THE_BUG
+    prompt: "Bug 1. This prints \"different\" even though b holds \"java\". Why?"
+    code: |
+      String a = "ja";
+      String b = a + "va";
+      if (b == "java") {
+          System.out.println("same");
+      } else {
+          System.out.println("different");
+      }
+    options:
+      - "a + \"va\" gives \"jav a\" with a space"
+      - "== compares references; b is a new object made at runtime, so use b.equals(\"java\")"
+      - "Strings cannot be joined with +"
+      - "if-else needs curly braces on the same line"
+    answer: 1
+    explanation: "b is built at runtime from a variable, so it is a new String object, not the pooled literal \"java\". == compares references and gives false. equals compares characters and would give true. Joining with + works fine and adds no space."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Bug 2. This crashes with ArrayIndexOutOfBoundsException. What is wrong?"
+    code: |
+      int[] marks = {70, 85, 90};
+      int sum = 0;
+      for (int i = 0; i <= marks.length; i++) {
+          sum += marks[i];
+      }
+      System.out.println(sum);
+    options:
+      - "sum must be a long"
+      - "The loop should use i < marks.length; valid indexes are 0 to length - 1"
+      - "Arrays cannot be summed with +="
+      - "i should start at 1"
+    answer: 1
+    explanation: "Valid indexes are 0, 1, 2 for length 3. With <=, the loop also tries marks[3], which does not exist, giving \"Index 3 out of bounds for length 3\". Starting at 1 would skip the first mark and still crash at the end. A sum of three marks easily fits in an int."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "Bug 3. Two equal students are both stored in the set and it prints 2. Why?"
+    code: |
+      import java.util.*;
+
+      public class Dupes {
+          static class Student {
+              int roll;
+              Student(int roll) { this.roll = roll; }
+              @Override
+              public boolean equals(Object o) {
+                  return o instanceof Student s && s.roll == roll;
+              }
+          }
+
+          public static void main(String[] args) {
+              Set<Student> set = new HashSet<>();
+              set.add(new Student(7));
+              set.add(new Student(7));
+              System.out.println(set.size());
+          }
+      }
+    options:
+      - "equals is written wrongly; it should use =="
+      - "hashCode is not overridden, so equal objects get different hash codes and land in different buckets"
+      - "HashSet allows duplicates by design"
+      - "Student must implement Comparable"
+    answer: 1
+    explanation: "HashSet checks hashCode first. Object's default hashCode is different for the two objects, so they go to different buckets and equals is never even used: size is 2. Add @Override public int hashCode() { return Integer.hashCode(roll); } and size becomes 1. HashSet does not allow duplicates, and Comparable is only needed for TreeSet."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "Bug 4. When nobody is logged in, name is null. What happens and how do you fix it?"
+    code: |
+      String name = null;
+      if (name.equals("admin")) {
+          System.out.println("Welcome admin");
+      } else {
+          System.out.println("Welcome guest");
+      }
+    options:
+      - "It prints Welcome guest; nothing is wrong"
+      - "NullPointerException, because equals is called on null; write \"admin\".equals(name)"
+      - "Compile error: a String cannot be null"
+      - "It prints Welcome admin"
+    answer: 1
+    explanation: "Calling any method on a null reference throws NullPointerException. Putting the constant first, \"admin\".equals(name), is safe: it simply returns false when name is null, so \"Welcome guest\" prints. Strings can be null, so it compiles fine."
+  - id: q5
+    type: SPOT_THE_BUG
+    prompt: "Bug 5. Expected 2500000000, but the output is negative. Why?"
+    code: |
+      int a = 50000;
+      int b = 50000;
+      long product = a * b;
+      System.out.println(product);
+    options:
+      - "long cannot store 2500000000"
+      - "a * b is calculated in int and overflows BEFORE being stored in long; write (long) a * b"
+      - "println cannot print long values"
+      - "50000 is too big for an int"
+    answer: 1
+    explanation: "Both operands are int, so the multiplication happens in int, overflows past 2,147,483,647 and wraps to -1794967296. Only then is it widened to long, too late. (long) a * b makes the multiplication happen in long. long easily holds 2.5 billion, and 50000 fits in an int."
+  - id: q6
+    type: SPOT_THE_BUG
+    prompt: "Bug 6. Why does this not compile?"
+    code: |
+      int[] nums = {4, 7, 2};
+      int count;
+      for (int n : nums) {
+          if (n > 3) count++;
+      }
+      System.out.println(count);
+    options:
+      - "Enhanced for loops cannot be used with arrays"
+      - "Local variable count is never given a starting value; write int count = 0;"
+      - "count++ only works on long"
+      - "The if needs curly braces"
+    answer: 1
+    explanation: "javac reports \"variable count might not have been initialized\". Unlike fields, local variables get no default value, so you must initialise them. Fields would default to 0, which is why this surprises people. for-each works with arrays, and braces are optional for a single statement."
+  - id: q7
+    type: TRUE_FALSE
+    prompt: "Bug 7. This program prints Asha."
+    code: |
+      public class Shadow {
+          static class Employee {
+              String name;
+              Employee(String name) {
+                  name = name;
+              }
+          }
+
+          public static void main(String[] args) {
+              Employee e = new Employee("Asha");
+              System.out.println(e.name);
+          }
+      }
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False, it prints null. Inside the constructor, the parameter name hides (shadows) the field name, so name = name just assigns the parameter to itself. The field is never set and keeps its default value null. Fix: this.name = name;"
+  - id: q8
+    type: FILL_THE_CODE
+    prompt: "Bug 8. The average of 7 and 8 prints 7.0 instead of 7.5. Fill the blank to fix it."
+    code: |
+      int sum = 7 + 8;
+      int n = 2;
+      double avg = (____) sum / n;
+      System.out.println(avg);
+    acceptedAnswers: ["double"]
+    explanation: "Without the cast, sum / n is int division (15 / 2 = 7), and only then converted to 7.0. Casting sum to double first makes it 15.0 / 2 = 7.5. Note: (double) (sum / n) would still give 7.0, because the division would already be done in int."
+explainBack:
+  prompt: "Explain to a friend how you find a bug in code that runs but gives the wrong answer, and name four common bug families."
+  rubric:
+    - "I named the three kinds: compile-time, runtime and logic bugs"
+    - "I described the routine: reproduce small, dry run, edge cases, fix one thing, re-test"
+    - "I named at least four families (off-by-one, == on objects, null, overflow, int division, equals/hashCode...)"
+    - "I explained how to read a stack trace (exception name, first 'at' line)"
+    - "I used the doctor analogy or something similar"
+  modelAnswer: |
+    I debug like a doctor. First I read the report: if it crashed, the exception name and the first "at" line of the stack trace tell me what and where. If it just gives a wrong answer, that's a logic bug, so I reproduce it with the smallest failing input and dry run it with a table of variable values. I check the usual suspects: off-by-one loop bounds, using == on strings instead of equals, calling methods on null, integer division, and int overflow. I also test edge cases like an empty array, negative numbers and very big values. Then I fix one thing at a time and re-run all the tests.
+flashcards:
+  - front: "Three kinds of bugs"
+    back: "Compile-time (javac refuses), runtime (exception + stack trace), logic (wrong answer, no error)."
+  - front: "Where to look first in a stack trace"
+    back: "The exception line and the first 'at' line in your own code (file + line number)."
+  - front: "Safe string comparison with possible null"
+    back: "\"admin\".equals(name) or Objects.equals(a, b)."
+  - front: "Why is 50000 * 50000 negative in an int?"
+    back: "Overflow past Integer.MAX_VALUE (about 2.1 billion) wraps around. Use long: 50000L * 50000."
+  - front: "name = name; in a constructor"
+    back: "Assigns the parameter to itself (shadowing). Use this.name = name."
+  - front: "Edge cases to always test"
+    back: "Empty, one element, all equal, negatives, zero, very large values, null."
+keyTakeaways:
+  - "Bugs are compile-time, runtime or logic; logic bugs are the hardest."
+  - "Read the stack trace: exception name and first 'at' line."
+  - "Know the families: off-by-one, ==, null, int division, overflow, equals/hashCode, shadowing."
+  - "Dry run with small inputs and always test edge cases."
+  - "Fix one thing at a time and re-run every test."

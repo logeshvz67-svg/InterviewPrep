@@ -1,0 +1,367 @@
+slug: enums-records
+world: JAVA_CORE
+section: C
+order: 13
+title: "Enums and records"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT]
+infosysRelevance: "Modern Java knowledge that strengthens SP and DSE answers; records show you know Java 16+, and enums appear in design and output questions."
+otherCompanies: "Product companies expect enums and records in clean code; service companies ask enums more than records."
+why: |
+  Two small features that make your code look **professional**:
+  - An **enum** is for a **fixed set of named constants**: days of the week, order status, traffic-light colours. No more magic strings like `"PENDNG"` with a typo.
+  - A **record** (Java 16+) is a **compact data carrier**: one line gives you a class with private final fields, a constructor, getters, `equals`, `hashCode` and `toString`.
+
+  Interviewers ask "Can an enum have a constructor?", "What does `ordinal()` return?", "Why are enums good for Singletons?" and "What is a record and how is it different from a normal class?". Using them in a coding round also shows you write modern, clean Java.
+analogy: |
+  An **enum** is like the **size options on a T-shirt rack**: S, M, L, XL. You can't buy a size "Medium-ish". The list is fixed and known in advance, and each size can carry extra info (chest in cm).
+
+  A **record** is like an **Aadhaar card**: it just **carries data** (name, number, date of birth). Once printed, it doesn't change. Two cards with exactly the same details are considered the same data. Nobody writes a "behaviour manual" for it; it exists to hold values.
+visual:
+  diagram: |2
+    enum Size { S, M, L }
+    +---------------------------------------------+
+    |  Size.S  -> object, ordinal 0, name "S"     |
+    |  Size.M  -> object, ordinal 1, name "M"     |
+    |  Size.L  -> object, ordinal 2, name "L"     |
+    +---------------------------------------------+
+     exactly ONE object per constant, made by the JVM
+     (no "new Size()" ever)
+
+    record Point(int x, int y) { }
+          |
+          v  the compiler generates:
+    +---------------------------------------------+
+    | private final int x, y;                     |
+    | Point(int x, int y)        (constructor)    |
+    | int x(), int y()           (accessors)      |
+    | equals(), hashCode()       (by all fields)  |
+    | toString() -> "Point[x=1, y=2]"             |
+    +---------------------------------------------+
+  caption: "An enum is a class with a fixed list of single objects. A record is a class whose boilerplate the compiler writes for you."
+  visualizer: null
+explanation: |
+  ### Part 1: Enums
+
+  ### What is an enum?
+  An **enum** (enumeration) is a special class that has a **fixed, known list of objects**, called **constants**.
+  ```java
+  enum Status { PENDING, SHIPPED, DELIVERED }
+
+  Status s = Status.SHIPPED;
+  ```
+  - Each constant (`PENDING`, ...) is a `public static final` object of type `Status`, created **once** by the JVM.
+  - You can't write `new Status()`. Nobody can add a fourth status at run time.
+  - The compiler checks you: `Status s = "SHIPED";` doesn't compile, but a String typo would silently break your logic.
+
+  ### Built-in methods
+  | Method | Returns | Example |
+  |---|---|---|
+  | `values()` | array of all constants, in declared order | `Status.values()` |
+  | `valueOf(String)` | the constant with that exact name, else `IllegalArgumentException` | `Status.valueOf("SHIPPED")` |
+  | `name()` | the constant's name as written | `"SHIPPED"` |
+  | `ordinal()` | position, **starting at 0** | `SHIPPED.ordinal()` is 1 |
+  | `compareTo()` | compares by ordinal | |
+
+  Every enum automatically **extends `java.lang.Enum`**, so it **can't extend another class**. It **can implement interfaces**.
+
+  ### Enums with fields, constructors and methods
+  ```java
+  enum Size {
+      S(36), M(40), L(44);              // constants call the constructor
+
+      private final int chest;          // a field
+      Size(int chest) { this.chest = chest; }   // constructor: always private
+      int getChest() { return chest; }
+  }
+  System.out.println(Size.M.getChest());   // 40
+  ```
+  - The constant list must come **first**, ending with `;` if more code follows.
+  - The constructor is **implicitly private**. You can't make it public.
+
+  ### Enums in switch and comparison
+  ```java
+  switch (s) {
+      case PENDING -> System.out.println("Packing");
+      case SHIPPED -> System.out.println("On the way");
+      case DELIVERED -> System.out.println("Done");
+  }
+  ```
+  - Inside `case`, write `PENDING`, not `Status.PENDING` (older Java versions require the short name).
+  - Compare enums with **`==`**: there is only one object per constant, so `==` is safe and null-safe.
+
+  ### Why enums are useful
+  - Type-safe constants, readable code, built-in `values()` for loops.
+  - **`EnumMap`** and **`EnumSet`** are very fast collections keyed by enums.
+  - An enum with a single constant (`enum Config { INSTANCE; }`) is a recommended way to write a **Singleton**: the JVM guarantees exactly one instance, even with serialization and reflection tricks.
+
+  ### Part 2: Records (Java 16+)
+
+  ### What is a record?
+  A **record** is a short way to declare a class that **only holds data**.
+  ```java
+  record Point(int x, int y) { }
+  ```
+  The part in brackets is the **record header** (its **components**). From it, the compiler generates:
+  - `private final` fields `x` and `y`,
+  - a **canonical constructor** `Point(int x, int y)`,
+  - **accessor** methods `x()` and `y()` (no `get` prefix!),
+  - `equals()` and `hashCode()` that compare **all components**,
+  - `toString()` that prints `Point[x=1, y=2]`.
+
+  The normal-class version would be about 30 lines.
+
+  ### Rules of records
+  - Records are **implicitly `final`**: no class can extend them. They can't extend another class (they extend `java.lang.Record`), but they **can implement interfaces**.
+  - Fields are **final**: no setters, values can't change after creation (**shallow immutability**: if a field is a List, the list itself could still be modified).
+  - You **can't add extra instance fields**. You can add static fields, static methods and instance methods.
+
+  ### Validation with a compact constructor
+  ```java
+  record Age(int value) {
+      Age {                       // compact constructor: no parameter list
+          if (value < 0) throw new IllegalArgumentException("negative age");
+      }                           // fields are assigned automatically after this
+  }
+  ```
+
+  ### Enum vs record vs normal class
+  | | enum | record | normal class |
+  |---|---|---|---|
+  | Purpose | fixed set of constants | carry data | anything |
+  | Objects | fixed, made by JVM | any number via `new` | any number via `new` |
+  | Can extend a class? | No | No | Yes |
+  | Can implement interfaces? | Yes | Yes | Yes |
+  | Fields | any | final, from header only | any |
+  | equals/hashCode/toString | identity (from Enum) | generated from data | you write them |
+tinyCode:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            for (Size s : Size.values()) {
+                System.out.println(s + " ordinal=" + s.ordinal() + " chest=" + s.getChest());
+            }
+            Size pick = Size.valueOf("L");
+            System.out.println(pick == Size.L);
+
+            Point p1 = new Point(2, 3);
+            Point p2 = new Point(2, 3);
+            System.out.println(p1);
+            System.out.println(p1.x() + p1.y());
+            System.out.println(p1.equals(p2));
+        }
+    }
+
+    enum Size {
+        S(36), M(40), L(44);
+
+        private final int chest;
+        Size(int chest) { this.chest = chest; }
+        int getChest() { return chest; }
+    }
+
+    record Point(int x, int y) { }
+  walkthrough: |
+    - `Size.values()` returns `[S, M, L]` in declared order. `ordinal()` starts at 0. Each constant passed its chest size to the private constructor.
+    - `Size.valueOf("L")` finds the constant named "L". Since each constant is a single object, `==` is `true`.
+    - `record Point(int x, int y)` gives us a constructor, `x()`, `y()`, `toString()` and `equals()` for free.
+    - `p1` prints as `Point[x=2, y=3]`. `p1.x() + p1.y()` is 5.
+    - `p1.equals(p2)` is `true`: records compare by data, not by memory address.
+
+    Output:
+    ```
+    S ordinal=0 chest=36
+    M ordinal=1 chest=40
+    L ordinal=2 chest=44
+    true
+    Point[x=2, y=3]
+    5
+    true
+    ```
+tryIt:
+  instructions: "Type this order-tracking example. Then add a new status RETURNED with its own message and a matching case, and see how the compiler helps you."
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Order o = new Order(101, Status.SHIPPED);
+            System.out.println(o);
+            System.out.println(message(o.status()));
+        }
+
+        static String message(Status s) {
+            return switch (s) {
+                case PENDING -> "We are packing your order";
+                case SHIPPED -> "Your order is on the way";
+                case DELIVERED -> "Enjoy your purchase";
+            };
+        }
+    }
+
+    enum Status { PENDING, SHIPPED, DELIVERED }
+
+    record Order(int id, Status status) { }
+predict:
+  code: |
+    public class Main {
+        public static void main(String[] args) {
+            Level a = Level.HIGH;
+            System.out.println(a.ordinal());
+            System.out.println(a.name().length());
+            System.out.println(a.compareTo(Level.LOW));
+
+            Pair p = new Pair("tea", 2);
+            Pair q = new Pair("tea", 2);
+            System.out.println(p == q);
+            System.out.println(p.equals(q) + " " + p);
+        }
+    }
+
+    enum Level { LOW, MEDIUM, HIGH }
+
+    record Pair(String item, int qty) { }
+  expectedOutput: |
+    2
+    4
+    2
+    false
+    true Pair[item=tea, qty=2]
+  explanation: |
+    HIGH is third, so its ordinal is 2. Its name "HIGH" has 4 letters. `compareTo` returns the difference of ordinals: 2 - 0 = 2. `p == q` compares memory addresses: two separate `new` objects, so `false`. But records generate `equals()` from the data, so `p.equals(q)` is `true`, and `toString()` prints `Pair[item=tea, qty=2]`.
+commonMistakes:
+  - "Thinking ordinal() starts at 1. It starts at 0, and it changes if you reorder constants, so never store it in a database."
+  - "Trying to create an enum with new, or giving its constructor public access. Enum constructors are always private."
+  - "Calling Status.valueOf(\"shipped\") with the wrong case. It must match the name exactly, or you get IllegalArgumentException."
+  - "Calling getX() on a record. Record accessors are named after the component: x(), not getX()."
+  - "Trying to add instance fields or setters to a record, or to extend a record. Records are final and their fields are final."
+  - "Comparing records with ==. Use equals(); == compares references."
+interviewBox:
+  why: "Why interviewers ask this: it shows whether you write type-safe, modern Java instead of magic strings and boilerplate."
+  questions:
+    - q: "What is an enum and why use it instead of int or String constants?"
+      a: "An enum is a special class with a fixed set of named objects. It's type-safe, so the compiler stops invalid values and typos. It also gives useful methods like values() and valueOf(), works in switch, and can have fields, constructors and methods."
+    - q: "Can an enum have a constructor? Can it extend a class?"
+      a: "Yes, an enum can have a constructor, but it is always private, because only the constants inside the enum may call it. An enum cannot extend another class because it already extends java.lang.Enum, but it can implement interfaces."
+    - q: "What is a record in Java?"
+      a: "A record, added in Java 16, is a compact class for holding data. From the header, Java generates private final fields, a constructor, accessor methods, equals, hashCode and toString. Records are final and their fields can't change, so they are good for DTOs, keys in maps and returning multiple values."
+    - q: "How do you validate data in a record?"
+      a: "With a compact constructor: I write the record name and braces without parameters, put my checks inside, and throw an exception if a value is invalid. Java assigns the fields automatically after the checks."
+    - q: "Why is an enum a good way to implement a Singleton?"
+      a: "Because the JVM creates exactly one object per enum constant, and it protects that guarantee even against serialization and reflection, which can break normal Singleton code. So enum Config { INSTANCE; } is simple and safe."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Day d = Day.WED;
+              System.out.println(d.ordinal() + " " + Day.values().length);
+          }
+      }
+      enum Day { MON, TUE, WED, THU, FRI }
+    options: ["3 5", "2 5", "2 4", "WED 5"]
+    answer: 1
+    explanation: "ordinal() is zero-based: MON=0, TUE=1, WED=2. values() returns all 5 constants. '3 5' is the trap if you count from 1."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this fail to compile?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Book b = new Book("Java", 450);
+              System.out.println(b.getTitle());
+          }
+      }
+      record Book(String title, int pages) { }
+    options:
+      - "Records need a written constructor"
+      - "Record accessors are title() and pages(); there is no getTitle()"
+      - "Records can't have String components"
+      - "Records must be declared public"
+    answer: 1
+    explanation: "Records generate accessors with the component name: b.title(). There is no get prefix, so getTitle() is 'cannot find symbol'. The canonical constructor is generated automatically, so you don't need to write one."
+  - id: q3
+    type: MCQ
+    prompt: "Which statement about enums is FALSE?"
+    options:
+      - "An enum can implement interfaces"
+      - "An enum can have fields and methods"
+      - "An enum can extend another class"
+      - "An enum's constructor is implicitly private"
+    answer: 2
+    explanation: "Every enum already extends java.lang.Enum, and Java allows only one parent class, so an enum can't extend another class. All the other statements are true."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "Two different record objects with the same component values are equal according to equals()."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. A record's generated equals() compares every component. == would still be false because they are two separate objects."
+  - id: q5
+    type: FILL_THE_CODE
+    prompt: "Fill in the keyword that declares this compact data carrier (Java 16+)."
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              System.out.println(new Student("Asha", 91));
+          }
+      }
+      ____ Student(String name, int marks) { }
+    acceptedAnswers: ["record"]
+    explanation: "record Student(String name, int marks) generates the constructor, accessors, equals, hashCode and toString. It prints Student[name=Asha, marks=91]."
+  - id: q6
+    type: MATCH
+    prompt: "Match each method or feature to what it gives"
+    pairs:
+      - left: "Status.values()"
+        right: "Array of all constants in declared order"
+      - left: "Status.valueOf(\"PENDING\")"
+        right: "The constant with that exact name"
+      - left: "PENDING.ordinal()"
+        right: "Zero-based position of the constant"
+      - left: "Compact constructor"
+        right: "Validation code inside a record"
+    explanation: "values(), valueOf() and ordinal() are generated for every enum; a compact constructor is the record way to check data before fields are set."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "What happens here?"
+    code: |
+      public class Main {
+          public static void main(String[] args) {
+              Color c = Color.valueOf("red");
+              System.out.println(c);
+          }
+      }
+      enum Color { RED, GREEN }
+    options: ["RED", "red", "null", "IllegalArgumentException at run time"]
+    answer: 3
+    explanation: "valueOf() matches the name exactly and is case-sensitive. There is no constant named 'red', so it throws IllegalArgumentException ('No enum constant Color.red'). It never returns null."
+explainBack:
+  prompt: "Explain to a friend what enums and records are, and give one real use for each."
+  rubric:
+    - "I said an enum is a fixed set of named constants, one object each, and type-safe"
+    - "I mentioned values(), valueOf() and ordinal() starting at 0"
+    - "I said enum constructors are private and enums can't extend classes"
+    - "I said a record generates fields, constructor, accessors, equals, hashCode and toString"
+    - "I said records are final with final fields and mentioned compact constructor validation"
+  modelAnswer: |
+    An enum is a type with a fixed list of named values, like T-shirt sizes S, M, L. Each value is a single object created by the JVM, so I compare with ==, and the compiler stops invalid values. Enums can have fields, a private constructor and methods, and they come with values(), valueOf() and ordinal(), which starts from zero. I'd use one for order status. A record, from Java 16, is a short way to make a data class: record Point(int x, int y) gives private final fields, a constructor, x() and y(), plus equals, hashCode and toString. Records are final and immutable, and I can validate in a compact constructor. I'd use one for a DTO or a map key.
+flashcards:
+  - front: "Enum ordinal() starts at?"
+    back: "0. It's the declared position; reordering constants changes it."
+  - front: "Can an enum extend a class? Implement an interface?"
+    back: "Extend: no (it already extends java.lang.Enum). Implement interfaces: yes."
+  - front: "What does record Point(int x, int y) generate?"
+    back: "private final x, y; canonical constructor; x() and y(); equals, hashCode, toString (Point[x=.., y=..])."
+  - front: "How to validate in a record?"
+    back: "A compact constructor: record Age(int v) { Age { if (v < 0) throw ...; } }"
+  - front: "valueOf with a wrong name?"
+    back: "Throws IllegalArgumentException (case-sensitive), never returns null."
+keyTakeaways:
+  - "Enums are type-safe fixed sets of constants; each constant is a single JVM-created object."
+  - "values(), valueOf() (case-sensitive) and ordinal() (from 0) are built in; compare enums with ==."
+  - "Enums can have fields, methods and private constructors, and implement interfaces, but can't extend classes."
+  - "Records (Java 16+) generate fields, constructor, accessors, equals, hashCode and toString."
+  - "Records are final with final fields; use a compact constructor for validation; accessors have no get prefix."

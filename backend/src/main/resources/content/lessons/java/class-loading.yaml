@@ -1,0 +1,331 @@
+slug: class-loading
+world: JAVA_CORE
+section: H
+order: 2
+title: "Class loading"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT]
+infosysRelevance: "Depth topic for SP: the three built-in class loaders, the delegation model and when static blocks run are good follow-ups to 'How does the JVM work?'."
+otherCompanies: "Asked in product-company JVM discussions; static-block order questions also appear in output-prediction practice everywhere."
+why: |
+  In the very first lesson you saw that the JVM has a **class loader** that "loads `.class` files into memory". This lesson opens that box.
+
+  Why it matters:
+  - Interviewers ask **"What are the types of class loaders?"** and **"What is the delegation model?"**
+  - It explains **when a static block runs** (a common predict-the-output question).
+  - It explains two famous errors: **`ClassNotFoundException`** and **`NoClassDefFoundError`**, which you'll definitely meet in real projects when a JAR is missing.
+  - It's also why nobody can sneak in a fake `java.lang.String` class.
+analogy: |
+  Think of a **company with a three-level approval chain** for borrowing equipment.
+
+  - You ask your **team lead** (Application class loader) for a laptop.
+  - The team lead **first asks the department head** (Platform class loader), who **first asks the head office store** (Bootstrap class loader).
+  - If head office has it (like `String`), head office gives it. Only if head office says "not mine" does the department head check, and only if *they* say no does the team lead look in the team's own cupboard (your classpath).
+
+  This "ask your boss first" rule is the **parent delegation model**. It keeps things safe: the official `java.lang.String` always comes from head office, never from someone's cupboard.
+
+  And equipment is fetched **only when someone actually needs it** (lazy loading), not on the first day for everyone.
+visual:
+  diagram: |
+    PARENT DELEGATION: "ask your parent first"
+
+    +-----------------------------+
+    | Bootstrap class loader      |  java.lang.*, java.util.* ...
+    | (built into JVM, shows null)|  (the core modules)
+    +-----------------------------+
+                ^  1. asked first     | found? use it
+                |                     v
+    +-----------------------------+
+    | Platform class loader       |  java.sql, java.xml ...
+    +-----------------------------+
+                ^  2. asked next      | found? use it
+                |                     v
+    +-----------------------------+
+    | Application (system) loader |  YOUR classes on the classpath
+    +-----------------------------+
+                ^  3. tries itself only if parents can't
+                |
+          load("Student")
+
+    LOADING -> LINKING (verify, prepare, resolve) -> INITIALIZATION
+    find .class   check bytecode, give statics       run static
+    read bytes    default values (0/null/false)      blocks + values
+  caption: "A request goes up to the parent first; a loader looks for the class itself only if its parents can't find it. Each class then goes through loading, linking and initialization."
+  visualizer: null
+explanation: |
+  ### What is a class loader?
+  A **class loader** is a part of the JVM that **finds a class's bytecode** (usually a `.class` file inside a folder or a JAR) and **turns it into a `Class` object** in memory that the JVM can use.
+
+  Java loads classes **lazily** (only when needed): a class is loaded the first time your program actually uses it, not all at the start.
+
+  ### The three built-in class loaders (Java 9+)
+  | Loader | Loads | Notes |
+  |---|---|---|
+  | **Bootstrap** | Core Java classes: `java.lang`, `java.util`, `java.io`... | Written in native code inside the JVM. `getClassLoader()` returns **`null`** for these classes. |
+  | **Platform** (called **Extension** loader before Java 9) | Other JDK modules, e.g. `java.sql`, `java.xml` | Parent is Bootstrap. |
+  | **Application** (also called **System**) | **Your** classes and libraries on the **classpath** | Parent is Platform. This is the default loader for your code. |
+
+  > Interviewers may still say "Bootstrap, Extension, System". That's the Java 8 naming. Mention both: "In Java 9+, the Extension loader was replaced by the Platform loader."
+
+  ### The parent delegation model
+  When a loader is asked to load a class:
+  1. It first checks whether it has **already loaded** it (each class is loaded once per loader).
+  2. If not, it **delegates** (passes the request) to its **parent** first.
+  3. Only if the parent (and the parent's parent) can't find it does the loader **search on its own**.
+  4. If nobody finds it: `ClassNotFoundException`.
+
+  **Why?**
+  - **Security**: your own fake `java.lang.String` can never replace the real one, because Bootstrap always answers first.
+  - **No duplicates**: core classes are loaded only once, by one loader.
+
+  ### The three phases: loading, linking, initialization
+  | Phase | What happens |
+  |---|---|
+  | **Loading** | Find the `.class` bytes and create a `Class` object. |
+  | **Linking: Verify** | The **bytecode verifier** checks the bytecode is valid and safe. |
+  | **Linking: Prepare** | Memory for **static variables** is created with **default values** (0, null, false). |
+  | **Linking: Resolve** | Symbolic names (like "java/lang/String") are turned into real references (can happen lazily). |
+  | **Initialization** | Static variables get their **real values** and **static blocks run**, top to bottom. This happens **once per class**. |
+
+  ### When is a class initialized?
+  On its **first active use**, for example:
+  - Creating an object: `new Shop()`
+  - Calling a static method or reading/writing a static field (that isn't a compile-time constant)
+  - `Class.forName("Shop")`
+  - Initializing a subclass (the parent class is initialized first)
+  - Running it as the main class
+
+  **Not** triggered by:
+  - Declaring a variable: `Shop s;`
+  - Creating an array: `new Shop[10]`
+  - Reading a `static final` **compile-time constant** like `static final int MAX = 100;`. The compiler copies the value 100 directly into your code, so the class isn't even needed.
+
+  ### Order of blocks in a class
+  1. **Static block** `static { }`: once, when the class is initialized.
+  2. **Instance block** `{ }`: every time an object is created, before the constructor body.
+  3. **Constructor**: every time an object is created.
+
+  ### ClassNotFoundException vs NoClassDefFoundError
+  | | ClassNotFoundException | NoClassDefFoundError |
+  |---|---|---|
+  | Type | Checked **exception** | **Error** |
+  | When | You load a class **by name at runtime** (`Class.forName`, `loadClass`) and it isn't found | The class **was present at compile time** but is missing (or failed to initialize) at runtime |
+  | Typical cause | Wrong class name, missing JDBC driver JAR | JAR removed from classpath after compiling; a static block threw an exception earlier |
+
+  ### Custom class loaders (bonus)
+  You can extend `ClassLoader` to load classes from unusual places (network, encrypted files). Application servers like Tomcat use separate loaders per web app so two apps can use different versions of the same library. Two classes with the same name loaded by **different** loaders are treated as **different** classes.
+tinyCode:
+  code: |
+    public class Loaders {
+        public static void main(String[] args) {
+            ClassLoader app = Loaders.class.getClassLoader();
+            ClassLoader platform = java.sql.Date.class.getClassLoader();
+            ClassLoader boot = String.class.getClassLoader();
+
+            System.out.println("Loaders.class  -> " + app.getName());
+            System.out.println("java.sql.Date  -> " + platform.getName());
+            System.out.println("String.class   -> " + boot);
+            System.out.println("parent of app  -> " + app.getParent().getName());
+            System.out.println("parent of platform -> " + platform.getParent());
+        }
+    }
+  walkthrough: |
+    - `Loaders.class.getClassLoader()` returns the loader that loaded **our** class: the **application** loader. `getName()` (Java 9+) gives its short name, `app`.
+    - `java.sql.Date` is in the `java.sql` module, loaded by the **platform** loader.
+    - `String` is a core class loaded by **Bootstrap**, which is built into the JVM and has no Java object, so we get `null`.
+    - `getParent()` walks up the chain: app's parent is platform; platform's parent is Bootstrap, shown as `null`.
+
+    Compile and run it in the normal way:
+    ```
+    javac Loaders.java
+    java Loaders
+    ```
+    Output:
+    ```
+    Loaders.class  -> app
+    java.sql.Date  -> platform
+    String.class   -> null
+    parent of app  -> platform
+    parent of platform -> null
+    ```
+    > If you run it with the single-file shortcut `java Loaders.java`, the first lines differ: that shortcut compiles in memory and loads your class with its own extra loader (whose parent is `app`). A nice real example of a custom class loader!
+tryIt:
+  instructions: "Type this and predict the order before running. Notice the static block prints only once, even though two objects are created, while the instance block and constructor run for each object."
+  code: |
+    public class InitOrder {
+        static class Shop {
+            static {
+                System.out.println("1. static block (class loaded)");
+            }
+
+            {
+                System.out.println("2. instance block (new object)");
+            }
+
+            Shop() {
+                System.out.println("3. constructor");
+            }
+        }
+
+        public static void main(String[] args) {
+            System.out.println("main starts");
+            new Shop();
+            System.out.println("--- second object ---");
+            new Shop();
+        }
+    }
+predict:
+  code: |
+    public class LazyLoad {
+        static class Config {
+            static {
+                System.out.println("Config loaded");
+            }
+            static int port = 8080;
+        }
+
+        public static void main(String[] args) {
+            System.out.println("main starts");
+            System.out.println(Config.port);
+            System.out.println(Config.port);
+        }
+    }
+  expectedOutput: |
+    main starts
+    Config loaded
+    8080
+    8080
+  explanation: |
+    Classes are initialized **lazily**. `Config` is not initialized when the program starts, so "main starts" prints first. The first read of `Config.port` (a normal static field, not a `final` constant) is an active use, so the static block runs and prints "Config loaded", then 8080 is printed. The second read prints 8080 again, but the static block does **not** run again: initialization happens only once per class.
+commonMistakes:
+  - "Thinking all classes are loaded when the program starts. Loading and initialization are lazy, on first active use."
+  - "Saying the static block runs every time an object is created. It runs once per class; the instance block runs per object."
+  - "Mixing up ClassNotFoundException (loading by name failed, checked exception) and NoClassDefFoundError (class was there at compile time, missing at runtime)."
+  - "Expecting String.class.getClassLoader() to return a loader object. Bootstrap classes return null."
+  - "Using only the Java 8 names. Since Java 9 the Extension loader is the Platform loader."
+interviewBox:
+  why: "Why interviewers ask this: it checks whether you understand the JVM beyond 'it runs bytecode', and the static-block order shows up often in output questions."
+  questions:
+    - q: "What are the types of class loaders in Java?"
+      a: "There are three built-in loaders. The Bootstrap loader loads core classes like java.lang and is built into the JVM. The Platform loader, called the Extension loader before Java 9, loads other JDK modules. The Application or System loader loads our own classes from the classpath. We can also write custom class loaders."
+    - q: "What is the parent delegation model?"
+      a: "When a class loader is asked to load a class, it first asks its parent. The request goes up to the Bootstrap loader. Only if the parents can't find the class does the loader search itself. This prevents anyone from replacing core classes like String and avoids loading the same class twice."
+    - q: "What are the phases of class loading?"
+      a: "Loading, where the bytecode is found and read; linking, which has verify, prepare and resolve, where the bytecode is checked and static variables get default values; and initialization, where static variables get their real values and static blocks run, only once."
+    - q: "ClassNotFoundException vs NoClassDefFoundError?"
+      a: "ClassNotFoundException is a checked exception when we load a class by name at runtime, like Class.forName, and it isn't found. NoClassDefFoundError is an error when a class that existed at compile time is missing or failed to initialize at runtime, for example a JAR missing from the classpath."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (Single thread, so the output is fixed.)"
+    code: |
+      static class Limits {
+          static { System.out.println("Limits initialised"); }
+          static final int MAX = 100;
+          static int min = 1;
+      }
+      // in main:
+      System.out.println(Limits.MAX);
+      System.out.println(Limits.min);
+    options:
+      - "Limits initialised\n100\n1"
+      - "100\nLimits initialised\n1"
+      - "100\n1"
+      - "Limits initialised\n100\nLimits initialised\n1"
+    answer: 1
+    explanation: "MAX is a static final compile-time constant, so the compiler copies 100 into main and the class isn't initialized for it. Reading min (not a constant) is an active use, so the static block runs then, once. The first option is the tempting one if you think any static access initializes the class."
+  - id: q2
+    type: MCQ
+    prompt: "What does String.class.getClassLoader() return?"
+    code: null
+    options: ["The application class loader", "The platform class loader", "null, because String is loaded by the Bootstrap loader", "It throws ClassNotFoundException"]
+    answer: 2
+    explanation: "Bootstrap is built into the JVM in native code and has no Java object, so core classes report null. Your own classes report the application loader."
+  - id: q3
+    type: MATCH
+    prompt: "Match each class loader to what it loads"
+    pairs:
+      - left: "Bootstrap"
+        right: "Core classes like java.lang.String"
+      - left: "Platform (Extension before Java 9)"
+        right: "Other JDK modules like java.sql"
+      - left: "Application (System)"
+        right: "Your classes from the classpath"
+      - left: "Custom class loader"
+        right: "Classes from unusual places, e.g. per web app in Tomcat"
+    explanation: "Requests go up the chain (Application -> Platform -> Bootstrap) first; each loader looks itself only if its parents can't find the class."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "A static block runs every time you create a new object of the class."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. A static block runs once, when the class is initialized. The instance initializer block and the constructor run for every new object."
+  - id: q5
+    type: MCQ
+    prompt: "Why does Java use the parent delegation model?"
+    code: null
+    options:
+      - "To load classes faster by using many threads"
+      - "So core classes always come from the trusted Bootstrap loader and aren't loaded twice"
+      - "So every class is loaded by the application loader"
+      - "To allow two different java.lang.String classes"
+    answer: 1
+    explanation: "Asking the parent first means a fake java.lang.String on your classpath is never used: Bootstrap finds the real one first. It also avoids duplicate loading. It's about safety and consistency, not speed."
+  - id: q6
+    type: SPOT_THE_BUG
+    prompt: "This compiles, but at runtime it prints an error message. Which exception is caught, and why?"
+    code: |
+      try {
+          Class<?> c = Class.forName("com.example.Missing");
+      } catch (ClassNotFoundException e) {
+          System.out.println("ClassNotFoundException: " + e.getMessage());
+      }
+    options:
+      - "NoClassDefFoundError, because the class is missing at runtime"
+      - "ClassNotFoundException, because loading a class by name at runtime failed: no such class on the classpath"
+      - "Compile error, because the class doesn't exist"
+      - "NullPointerException, because forName returns null"
+    answer: 1
+    explanation: "Class.forName looks the class up by its name while running. The compiler doesn't check the String, so it compiles. When no loader finds it, ClassNotFoundException is thrown. NoClassDefFoundError is for classes that existed at compile time."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that loads (and initializes) a class by its name at runtime."
+    code: |
+      Class<?> driver = Class.____("com.mysql.cj.jdbc.Driver");
+    acceptedAnswers: ["forName"]
+    explanation: "Class.forName(name) loads, links and initializes the class, so its static block runs. Older JDBC code used it to register database drivers."
+  - id: q8
+    type: TRUE_FALSE
+    prompt: "Creating an array with new Item[3] initializes the Item class (runs its static block)."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Creating an array of Item references doesn't create any Item object, so Item is not initialized. Its static block runs only on first active use, like new Item() or calling a static method."
+explainBack:
+  prompt: "Explain to a friend how the JVM finds and loads a class, including the three class loaders, delegation, and when a static block runs."
+  rubric:
+    - "I named Bootstrap, Platform (Extension) and Application loaders and what each loads"
+    - "I explained parent delegation and why it's safe"
+    - "I named the phases: loading, linking, initialization"
+    - "I said static blocks run once, lazily, on first active use"
+  modelAnswer: |
+    When my program first uses a class, a class loader finds its bytecode and loads it. There are three main loaders in a chain. Bootstrap loads the core classes like String. Platform loads other JDK modules. Application loads my own classes from the classpath. They follow parent delegation: a loader always asks its parent first, like asking your boss before checking your own cupboard. That way nobody can replace String with a fake one. After loading, the class is verified and its static variables get default values. Then initialization runs the static blocks, only once, and only when the class is first really used.
+flashcards:
+  - front: "3 built-in class loaders (Java 9+)"
+    back: "Bootstrap (core java.lang etc., shows null), Platform (other JDK modules; was Extension), Application/System (your classpath)."
+  - front: "Parent delegation model"
+    back: "A loader asks its parent first; it searches itself only if the parents can't find the class. Keeps core classes safe and unique."
+  - front: "Phases of class loading"
+    back: "Loading -> Linking (verify, prepare, resolve) -> Initialization (static values and static blocks, once)."
+  - front: "What does NOT initialize a class?"
+    back: "Declaring a variable, creating an array of it, reading a static final compile-time constant."
+  - front: "ClassNotFoundException vs NoClassDefFoundError"
+    back: "CNFE: checked, loading by name at runtime failed. NCDFE: Error, class present at compile time but missing/broken at runtime."
+keyTakeaways:
+  - "Class loaders turn bytecode into Class objects, lazily, on first use."
+  - "Bootstrap -> Platform -> Application, with parent delegation (ask parent first)."
+  - "Loading, linking (verify, prepare, resolve), initialization."
+  - "Static blocks run once per class; instance blocks and constructors run per object."
+  - "ClassNotFoundException = lookup by name failed; NoClassDefFoundError = was there at compile time, missing at runtime."

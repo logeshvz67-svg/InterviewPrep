@@ -10,4 +10,6 @@ import java.util.List;
 public interface UserQuestRepository extends JpaRepository<UserQuest, Long> {
     @EntityGraph(attributePaths = "quest")
     List<UserQuest> findByUserIdAndForDateOrderById(Long userId, LocalDate forDate);
+
+    java.util.Optional<UserQuest> findByUserIdAndQuestIdAndForDate(Long userId, Long questId, LocalDate forDate);
 }

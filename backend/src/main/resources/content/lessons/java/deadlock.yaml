@@ -1,0 +1,344 @@
+slug: deadlock
+world: JAVA_CORE
+section: G
+order: 4
+title: "Deadlock"
+version: 1
+estimatedMinutes: 25
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common theory question in SP and DSE rounds: define deadlock, list the four conditions, and explain how to prevent it."
+otherCompanies: "A classic question at TCS, Wipro, Cognizant, Accenture, Capgemini (also asked from the Operating Systems angle) and in product-company concurrency rounds."
+why: |
+  In the last lesson, locks saved us from race conditions. But locks bring a new danger: **deadlock**, where threads wait for each other **forever** and the program simply freezes. No error, no exception, nothing.
+
+  Deadlock is asked in both **Java** and **Operating Systems** interviews. The expected answer has three parts:
+  1. **What** it is (with a small example).
+  2. The **four Coffman conditions** that must all be true for it to happen.
+  3. **How to prevent it**, especially **lock ordering**.
+
+  Learn the story in this lesson once and you can answer all three confidently.
+analogy: |
+  Two friends, **Ravi and Priya**, are filling exam forms. There is **one pen** and **one sheet of paper**, and you need both to write.
+
+  - Ravi grabs the **pen** and waits for the paper.
+  - Priya grabs the **paper** and waits for the pen.
+  - Neither will let go of what they have. Both wait. **Forever.**
+
+  That's a deadlock. The fix is simple: a rule that **everyone must pick up the pen first, then the paper**. Now whoever gets the pen first will also get the paper, finish, and hand both over. Nobody can hold the paper while waiting for the pen. This rule is called **lock ordering**.
+visual:
+  diagram: |
+    DEADLOCK: a cycle of waiting
+
+       Ravi (Thread 1)                 Priya (Thread 2)
+       holds  [ PEN ]                  holds  [ PAPER ]
+       wants  [ PAPER ] ---waits--->   (held by Priya)
+       (held by Ravi)   <---waits---   wants  [ PEN ]
+
+          +---------+   waits for   +---------+
+          | Thread1 | ------------> | Thread2 |
+          +---------+ <------------ +---------+
+                        waits for
+                  cycle = deadlock, both stuck forever
+
+    FIX (lock ordering): everyone locks PEN first, then PAPER
+       T1: lock PEN -> lock PAPER -> work -> unlock both
+       T2: lock PEN (waits until T1 is done) -> PAPER -> work
+  caption: "Each thread holds one lock and waits for the other's lock, forming a cycle. If every thread takes locks in the same order, no cycle can form."
+  visualizer: null
+explanation: |
+  ### What is a deadlock?
+  A **deadlock** is a situation where two or more threads are each **waiting for a lock held by another**, so none of them can ever continue. The threads stay in the **BLOCKED** state forever. The program doesn't crash; it just **hangs**.
+
+  ### A deadlock in Java
+  ```java
+  Thread ravi = new Thread(() -> {
+      synchronized (pen) {
+          pause();                     // small delay
+          synchronized (paper) { ... } // waits for Priya's paper
+      }
+  });
+  Thread priya = new Thread(() -> {
+      synchronized (paper) {
+          pause();
+          synchronized (pen) { ... }   // waits for Ravi's pen
+      }
+  });
+  ```
+  Ravi locks `pen`, Priya locks `paper`, then each waits for the other. The two locks are taken in **opposite order**: that's the root cause.
+
+  ### The four Coffman conditions
+  A deadlock can happen **only if all four** of these are true at the same time (named after E. G. Coffman, who described them):
+
+  | # | Condition | Plain meaning | In our story |
+  |---|---|---|---|
+  | 1 | **Mutual exclusion** | A resource can be held by only one thread at a time | Only one person can use the pen |
+  | 2 | **Hold and wait** | A thread holds one resource while waiting for another | Ravi keeps the pen while waiting for paper |
+  | 3 | **No preemption** | You can't forcibly take a resource away; the holder must release it | Nobody can snatch the pen from Ravi |
+  | 4 | **Circular wait** | A cycle: T1 waits for T2, T2 waits for T1 (or a longer loop) | Ravi waits for Priya, Priya waits for Ravi |
+
+  **Break any one condition and deadlock becomes impossible.** That's the key idea behind every prevention technique.
+
+  ### How to prevent deadlock
+  1. **Lock ordering (breaks circular wait).** Decide a global order for locks and always take them in that order. For example, always lock the account with the **smaller id first**. This is the most common and most important answer.
+  2. **Avoid nested locks (breaks hold and wait).** Try not to hold one lock while asking for another. Keep synchronized blocks small.
+  3. **Use `tryLock` with a timeout (breaks hold and wait / no preemption).** `ReentrantLock.tryLock(1, TimeUnit.SECONDS)` gives up if it can't get the lock in time. The thread then releases what it holds and retries later (lesson 6).
+  4. **Take all locks at once**, or use a single coarser lock, if that's acceptable for performance.
+  5. **Use higher-level tools** like `ConcurrentHashMap` or `BlockingQueue`, which manage locking for you.
+
+  ### How to detect a deadlock
+  - The program hangs and CPU use is low (threads are blocked, not working).
+  - Take a **thread dump** with `jstack <pid>` or a tool like VisualVM / JConsole. It shows `Found one Java-level deadlock` and which thread holds which lock.
+  - In code, `ThreadMXBean.findDeadlockedThreads()` can detect it.
+
+  ### Related problems (often asked together)
+  | Problem | What happens |
+  |---|---|
+  | **Deadlock** | Threads blocked forever, waiting for each other. No progress. |
+  | **Livelock** | Threads are *active* but keep reacting to each other and make no progress (two people in a corridor both stepping aside the same way, again and again). |
+  | **Starvation** | One thread never gets the CPU or lock because others always get it first (e.g. low priority, unfair lock). |
+
+  ### Can a thread deadlock with itself on synchronized?
+  No. Java's intrinsic locks are **reentrant**: if a thread already holds a lock, it can enter another `synchronized` method on the same object again without blocking.
+tinyCode:
+  code: |
+    public class SafeTransfer {
+        static class Account {
+            final int id;
+            int balance;
+
+            Account(int id, int balance) {
+                this.id = id;
+                this.balance = balance;
+            }
+        }
+
+        static void transfer(Account from, Account to, int amount) {
+            Account first = from.id < to.id ? from : to;   // always lock the
+            Account second = from.id < to.id ? to : from;  // smaller id first
+            synchronized (first) {
+                synchronized (second) {
+                    from.balance -= amount;
+                    to.balance += amount;
+                }
+            }
+        }
+
+        public static void main(String[] args) throws InterruptedException {
+            Account a = new Account(1, 1000);
+            Account b = new Account(2, 1000);
+            Thread t1 = new Thread(() -> {
+                for (int i = 0; i < 1000; i++) transfer(a, b, 1);
+            });
+            Thread t2 = new Thread(() -> {
+                for (int i = 0; i < 1000; i++) transfer(b, a, 2);
+            });
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+            System.out.println("A=" + a.balance + ", B=" + b.balance
+                    + ", total=" + (a.balance + b.balance));
+        }
+    }
+  walkthrough: |
+    - `t1` moves money from A to B; `t2` moves money from B to A **at the same time**. If each locked `from` first, they would lock in opposite orders and could deadlock.
+    - `first` / `second` pick the account with the **smaller id** to lock first, no matter which direction the money goes. Both threads now always lock A (id 1) then B (id 2). No cycle is possible.
+    - Inside both locks the balances change safely (no race condition either).
+    - `join()` waits for both threads, so the final values are fixed.
+    - A ends with 1000 - 1000 + 2000 = 2000 and B with 1000 + 1000 - 2000 = 0. The total stays 2000.
+
+    Output:
+    ```
+    A=2000, B=0, total=2000
+    ```
+tryIt:
+  instructions: "Type this program and run it. It WILL freeze after two lines: that's a real deadlock. Stop it with Ctrl+C (or the Stop button). Then fix it by making Priya also lock pen first and paper second, and run again: both will write."
+  code: |
+    public class DeadlockDemo {
+        static final Object pen = new Object();
+        static final Object paper = new Object();
+
+        static void pause() {
+            try { Thread.sleep(100); } catch (InterruptedException e) { }
+        }
+
+        public static void main(String[] args) {
+            Thread ravi = new Thread(() -> {
+                synchronized (pen) {
+                    System.out.println("Ravi has the pen");
+                    pause();
+                    synchronized (paper) { System.out.println("Ravi writes"); }
+                }
+            });
+            Thread priya = new Thread(() -> {
+                synchronized (paper) {
+                    System.out.println("Priya has the paper");
+                    pause();
+                    synchronized (pen) { System.out.println("Priya writes"); }
+                }
+            });
+            ravi.start();
+            priya.start();
+        }
+    }
+predict:
+  code: |
+    public class Reentrant {
+        synchronized void outer() {
+            System.out.println("outer");
+            inner();
+        }
+
+        synchronized void inner() {
+            System.out.println("inner");
+        }
+
+        public static void main(String[] args) {
+            new Reentrant().outer();
+            System.out.println("done");
+        }
+    }
+  expectedOutput: |
+    outer
+    inner
+    done
+  explanation: |
+    `outer()` takes the lock on the object, then calls `inner()`, which needs **the same lock**. You might fear the thread waits for itself, but Java's `synchronized` locks are **reentrant**: a thread that already holds a lock can take it again. So there's no deadlock, and the output is fixed because there is only one thread.
+commonMistakes:
+  - "Saying deadlock throws an exception. It doesn't; the program just hangs."
+  - "Listing only 'circular wait'. All four Coffman conditions must hold together."
+  - "Thinking Thread.sleep() causes deadlock. Sleep only makes the bad timing more likely; the cause is taking locks in different orders."
+  - "Confusing deadlock (blocked, no activity) with livelock (busy but no progress) and starvation (one thread never gets a turn)."
+  - "Believing a thread can deadlock on its own synchronized lock. Intrinsic locks are reentrant."
+interviewBox:
+  why: "Why interviewers ask this: deadlocks freeze real systems, and the question tests whether you can explain cause, conditions and prevention in a structured way."
+  questions:
+    - q: "What is a deadlock? Give an example."
+      a: "A deadlock is when two or more threads wait for each other's locks forever. For example, thread one locks A and wants B, while thread two locks B and wants A. Neither releases, so both stay blocked and the program hangs."
+    - q: "What are the four conditions for deadlock?"
+      a: "Mutual exclusion, meaning only one thread can hold a resource. Hold and wait, meaning a thread holds one resource and waits for another. No preemption, meaning we can't take a resource away by force. And circular wait, meaning the threads form a cycle of waiting. All four must be true; breaking any one prevents deadlock."
+    - q: "How do you prevent deadlock?"
+      a: "The main way is lock ordering: all threads take locks in the same fixed order, for example by account id, so a cycle can't form. Other ways are avoiding nested locks, using tryLock with a timeout so a thread can back off, and using concurrent collections."
+    - q: "Deadlock vs livelock vs starvation?"
+      a: "In deadlock, threads are blocked forever waiting for each other. In livelock, threads keep running and reacting to each other but make no progress. In starvation, one thread never gets the resource because others keep getting it first."
+    - q: "How would you find a deadlock in a running Java application?"
+      a: "I'd take a thread dump using jstack or a tool like VisualVM. It shows each thread's state and which locks it holds and waits for, and it reports a Java-level deadlock if it finds a cycle."
+quiz:
+  - id: q1
+    type: MATCH
+    prompt: "Match each Coffman condition to its meaning"
+    pairs:
+      - left: "Mutual exclusion"
+        right: "Only one thread can hold the resource at a time"
+      - left: "Hold and wait"
+        right: "Holding one resource while waiting for another"
+      - left: "No preemption"
+        right: "A resource can't be taken away by force"
+      - left: "Circular wait"
+        right: "Threads wait in a cycle: T1 for T2, T2 for T1"
+    explanation: "These four together allow deadlock. Lock ordering breaks circular wait; tryLock with timeout breaks hold and wait."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Two threads call transfer(a, b, 10) and transfer(b, a, 20) at the same time. What can go wrong?"
+    code: |
+      void transfer(Account from, Account to, int amount) {
+          synchronized (from) {
+              synchronized (to) {
+                  from.balance -= amount;
+                  to.balance += amount;
+              }
+          }
+      }
+    options:
+      - "A race condition on balance, because the code is not synchronized"
+      - "Deadlock: thread 1 locks a then waits for b, thread 2 locks b then waits for a"
+      - "Compile error: you can't nest synchronized blocks"
+      - "Nothing; this code is always safe"
+    answer: 1
+    explanation: "The lock order depends on the arguments, so the two calls lock in opposite orders, which can create a cycle. The balance updates are protected (no race), and nested synchronized blocks are legal. Fix: always lock the account with the smaller id first."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "pen and paper are two lock objects; pause() sleeps 100 ms. Both threads are started. What most realistically happens?"
+    code: |
+      // Thread 1
+      synchronized (pen) {
+          System.out.println("T1 has pen");
+          pause();
+          synchronized (paper) { System.out.println("T1 done"); }
+      }
+      // Thread 2
+      synchronized (paper) {
+          System.out.println("T2 has paper");
+          pause();
+          synchronized (pen) { System.out.println("T2 done"); }
+      }
+    options:
+      - "T1 has pen, T1 done, T2 has paper, T2 done"
+      - "'T1 has pen' and 'T2 has paper' print (order can vary), then the program hangs"
+      - "A DeadlockException is thrown"
+      - "Compile error"
+    answer: 1
+    explanation: "The 100 ms pause lets both threads grab their first lock. Then each waits for the other's lock: deadlock. The first two lines can appear in either order because thread scheduling varies. Java has no DeadlockException; the program just freezes."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "If you break even one of the four Coffman conditions, deadlock cannot happen."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Deadlock needs all four at once. Lock ordering removes circular wait, tryLock-and-back-off removes hold and wait, and so on."
+  - id: q5
+    type: MCQ
+    prompt: "What is the most common way to prevent deadlock when a thread needs two locks?"
+    code: null
+    options:
+      - "Add Thread.sleep() between the two locks"
+      - "Always acquire the locks in the same global order"
+      - "Mark the lock objects volatile"
+      - "Call System.gc() before locking"
+    answer: 1
+    explanation: "A fixed lock order makes a waiting cycle impossible. Sleep only changes timing (and actually makes deadlock MORE likely), volatile has nothing to do with locking, and GC is unrelated."
+  - id: q6
+    type: MCQ
+    prompt: "Two threads keep politely stepping aside for each other, again and again. Both are running, but neither finishes. This is:"
+    code: null
+    options: ["Deadlock", "Livelock", "Starvation", "Race condition"]
+    answer: 1
+    explanation: "Livelock: threads are active, not blocked, but make no progress. In deadlock they would be BLOCKED and idle. Starvation is one thread never getting a turn while others do progress."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the ReentrantLock method that tries to get the lock but gives up after a timeout, helping to avoid deadlock."
+    code: |
+      if (lock.____(1, TimeUnit.SECONDS)) {
+          try { /* work */ } finally { lock.unlock(); }
+      } else {
+          System.out.println("Could not get lock, will retry");
+      }
+    acceptedAnswers: ["tryLock"]
+    explanation: "tryLock(time, unit) returns false instead of waiting forever. The thread can release what it holds and retry, breaking hold-and-wait. synchronized has no such option."
+explainBack:
+  prompt: "Explain deadlock to a friend using a simple story, list the four conditions, and say how to prevent it."
+  rubric:
+    - "I described two threads each holding one lock and waiting for the other's"
+    - "I named all four Coffman conditions"
+    - "I explained lock ordering as the main fix"
+    - "I said the program hangs without an exception"
+  modelAnswer: |
+    Imagine Ravi takes the only pen and Priya takes the only paper. Ravi waits for the paper, Priya waits for the pen, and neither lets go. They wait forever. In Java, that's two threads each holding one lock and waiting for the other's lock, and the program just freezes without any error. It needs four conditions together: only one person can hold each item, people hold one thing while waiting for another, nobody can snatch things away, and the waiting forms a circle. Break any one and it's impossible. The usual fix is lock ordering: everyone always picks up the pen first, then the paper.
+flashcards:
+  - front: "What is a deadlock?"
+    back: "Two or more threads blocked forever, each waiting for a lock held by another."
+  - front: "The 4 Coffman conditions"
+    back: "Mutual exclusion, hold and wait, no preemption, circular wait. All four are needed."
+  - front: "Main fix for deadlock"
+    back: "Lock ordering: always acquire locks in the same global order (breaks circular wait)."
+  - front: "Deadlock vs livelock"
+    back: "Deadlock: blocked, idle, no progress. Livelock: running and reacting, still no progress."
+  - front: "How to find a deadlock in a running JVM?"
+    back: "Thread dump with jstack / VisualVM; it reports 'Found one Java-level deadlock'."
+keyTakeaways:
+  - "Deadlock = threads waiting for each other's locks forever; the program hangs, no exception."
+  - "All four Coffman conditions are needed: mutual exclusion, hold and wait, no preemption, circular wait."
+  - "Lock ordering is the go-to prevention; tryLock with timeout and avoiding nested locks also help."
+  - "Detect with a thread dump (jstack, VisualVM)."
+  - "synchronized locks are reentrant, so a thread does not deadlock on a lock it already holds."

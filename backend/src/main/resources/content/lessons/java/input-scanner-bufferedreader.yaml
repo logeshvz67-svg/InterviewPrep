@@ -1,0 +1,354 @@
+slug: input-scanner-bufferedreader
+world: JAVA_CORE
+section: A
+order: 6
+title: "Input: Scanner and BufferedReader"
+version: 1
+estimatedMinutes: 35
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, TCS, WIPRO, COGNIZANT, ACCENTURE, CAPGEMINI]
+infosysRelevance: "Essential for timed coding tests: SP-level problems often have large inputs, and slow or buggy input reading can cause time-limit or wrong-answer verdicts even with correct logic."
+otherCompanies: "Every online coding round (TCS, Wipro, Cognizant, Accenture, Capgemini) reads from standard input. The Scanner nextInt/nextLine trap is a very common reason for failing sample test cases."
+why: |
+  In an online coding test, your program does not get values from variables you type. It reads them from **standard input** (stdin): the text the platform feeds into your program, just as if someone typed it on the keyboard.
+
+  Two things can go wrong even when your logic is perfect:
+  1. **Wrong reading:** the famous `nextInt()` then `nextLine()` trap gives you an empty string, so names or sentences come out blank.
+  2. **Slow reading:** `Scanner` is easy but slow. With 10^5 or 10^6 numbers, it can push you past the **time limit** (TLE, "Time Limit Exceeded"). `BufferedReader` with `StringTokenizer` is several times faster.
+
+  This lesson gives you a safe, fast **input template** you can type from memory in under a minute.
+analogy: |
+  Think of **getting water from a well**.
+
+  - **Scanner** is like pulling up **one small cup at a time** and checking each cup carefully (is it a number? is it a word?). Easy and safe, but slow if you need a thousand cups.
+  - **BufferedReader** is like pulling up a **whole bucket** (a full line, from a big buffer in memory) in one go. Then **StringTokenizer** or `split` pours it into separate cups yourself. Much faster.
+  - The **nextLine trap**: after Scanner takes the number `21` from a line, the **newline** (the "Enter" key) is still sitting in the bucket. The next `nextLine()` happily grabs just that leftover newline and returns an empty string.
+visual:
+  diagram: |
+    INPUT TEXT:   "21\nRavi Kumar\n"
+
+    Scanner sc = new Scanner(System.in);
+    sc.nextInt()    reads 21          ->  2 1 [\n] R a v i ...
+                                               ^ cursor stops here
+    sc.nextLine()   reads up to \n    ->  ""   (empty! the trap)
+    sc.nextLine()   reads next line   ->  "Ravi Kumar"
+
+    BufferedReader + StringTokenizer (fast):
+    +------------+   readLine()   +-------------+  nextToken()  +-----+
+    | stdin      | -------------> | "5 8 2 9 1" | ------------> | "5" |
+    | (buffered) |  whole line    +-------------+  one by one   +-----+
+    +------------+                                     |
+                                     Integer.parseInt("5") -> 5
+  caption: "Scanner reads token by token and leaves the newline behind after nextInt. BufferedReader reads whole lines that you split yourself, which is much faster."
+  visualizer: null
+explanation: |
+  ### Scanner: the easy way
+  `Scanner` (in `java.util`) reads and converts input for you.
+  ```java
+  import java.util.Scanner;
+
+  Scanner sc = new Scanner(System.in);
+  int n = sc.nextInt();        // next whole number
+  long big = sc.nextLong();
+  double d = sc.nextDouble();
+  String word = sc.next();     // next word (stops at space or newline)
+  String line = sc.nextLine(); // rest of the current line
+  ```
+  - A **token** is one piece of input separated by spaces or newlines. `next()`, `nextInt()` and friends read **one token** and skip any spaces before it.
+  - `nextLine()` reads **everything up to the end of the current line** and removes the newline.
+  - `sc.hasNextInt()` / `sc.hasNext()` tell you if more input exists. Useful for "read until end of input" problems.
+
+  ### The nextInt + nextLine trap
+  Input:
+  ```
+  21
+  Ravi Kumar
+  ```
+  ```java
+  int age = sc.nextInt();      // 21, but the '\n' after 21 is still waiting
+  String name = sc.nextLine(); // reads that leftover '\n' -> ""  (WRONG)
+  ```
+  **Fix:** add an extra `sc.nextLine();` to throw away the rest of the line before reading the real line:
+  ```java
+  int age = sc.nextInt();
+  sc.nextLine();               // eat the leftover newline
+  String name = sc.nextLine(); // "Ravi Kumar"
+  ```
+  Another fix: read every line with `nextLine()` and convert yourself: `int age = Integer.parseInt(sc.nextLine().trim());`.
+
+  ### BufferedReader: the fast way
+  `BufferedReader` (in `java.io`) reads big chunks of input into memory (a **buffer**) and gives you whole lines with `readLine()`. It does **not** convert numbers; you do that with `Integer.parseInt`.
+  ```java
+  import java.io.*;
+  import java.util.*;
+
+  public class Main {
+      public static void main(String[] args) throws IOException {
+          BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+          int n = Integer.parseInt(br.readLine().trim());
+          StringTokenizer st = new StringTokenizer(br.readLine());
+          int[] a = new int[n];
+          for (int i = 0; i < n; i++) {
+              a[i] = Integer.parseInt(st.nextToken());
+          }
+      }
+  }
+  ```
+  Important points:
+  - `readLine()` can throw `IOException`, a **checked exception** (one the compiler forces you to handle). So write `throws IOException` on `main`, or the code will not compile.
+  - `readLine()` returns `null` when the input has ended. Use that to read until the end: `while ((line = br.readLine()) != null)`.
+  - **StringTokenizer** splits a line into tokens by spaces. `hasMoreTokens()` and `nextToken()` walk through them. It is a bit faster than `split`.
+  - **split** works too: `String[] parts = br.readLine().trim().split("\\s+");`. The pattern `"\\s+"` means "one or more spaces/tabs". Always `trim()` first: `"  4 5".split(" ")` gives `["", "", "4", "5"]`, with empty strings at the start.
+
+  ### Which one should I use?
+  | | Scanner | BufferedReader + StringTokenizer |
+  |---|---|---|
+  | Speed | Slow (parses with regular expressions) | Fast (big buffer, simple splitting) |
+  | Ease | Very easy, converts types for you | You parse with `Integer.parseInt` |
+  | Exceptions | No checked exception | Must handle `IOException` |
+  | nextLine trap | Yes, be careful | No: you always read full lines |
+  | Good for | Small inputs, quick practice | Timed tests, 10^5+ numbers |
+
+  Rule of thumb: for up to a few thousand numbers, Scanner is fine. For large inputs (10^5 or more), use BufferedReader.
+
+  ### Fast output too
+  Calling `System.out.println` 10^5 times is also slow. Collect output in a `StringBuilder` and print once:
+  ```java
+  StringBuilder sb = new StringBuilder();
+  for (int x : a) sb.append(x).append('\n');
+  System.out.print(sb);
+  ```
+  Or use `PrintWriter out = new PrintWriter(System.out);` and remember `out.flush()` at the end; without flush, nothing may appear.
+
+  ### A reusable fast-reader template
+  When numbers may be spread over many lines, this helper reads the next token wherever it is:
+  ```java
+  static BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+  static StringTokenizer st;
+
+  static String next() throws IOException {
+      while (st == null || !st.hasMoreTokens()) {
+          st = new StringTokenizer(br.readLine());
+      }
+      return st.nextToken();
+  }
+  static int nextInt() throws IOException {
+      return Integer.parseInt(next());
+  }
+  ```
+  Now `nextInt()` behaves like Scanner's, but fast, and without the newline trap.
+
+  ### Common input shapes
+  - **First line n, second line n numbers:** read n, then tokenize one line.
+  - **T test cases:** read T, then loop T times.
+  - **Matrix r x c:** loop r rows, tokenize each line into c numbers.
+  - **Unknown number of lines:** loop until `readLine()` returns `null` (or `sc.hasNext()` is false).
+tinyCode:
+  code: |
+    import java.io.*;
+    import java.util.*;
+
+    public class FastSum {
+        public static void main(String[] args) throws IOException {
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            int n = Integer.parseInt(br.readLine().trim());
+            StringTokenizer st = new StringTokenizer(br.readLine());
+            long sum = 0;
+            int max = Integer.MIN_VALUE;
+            for (int i = 0; i < n; i++) {
+                int x = Integer.parseInt(st.nextToken());
+                sum += x;
+                max = Math.max(max, x);
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("Sum: ").append(sum).append('\n');
+            sb.append("Max: ").append(max);
+            System.out.println(sb);
+        }
+    }
+  walkthrough: |
+    Input given to the program:
+    ```
+    5
+    4 9 1 7 3
+    ```
+    - `throws IOException` is required because `readLine()` may throw it.
+    - `br.readLine().trim()` reads `"5"`; `Integer.parseInt` turns it into the number 5.
+    - `new StringTokenizer(br.readLine())` takes the second line and prepares to hand out `"4"`, `"9"`, `"1"`, ... one by one.
+    - In the loop, each `nextToken()` is converted with `parseInt`, added to `sum` (a `long`, to be safe with big totals) and compared for the maximum.
+    - All output is built in a `StringBuilder` and printed once.
+
+    Output:
+    ```
+    Sum: 24
+    Max: 9
+    ```
+tryIt:
+  instructions: "Type this Scanner program. Run it and type: 3, press Enter, then your full name, press Enter. Then delete the line sc.nextLine(); and run again to see the trap: the name comes out empty."
+  code: |
+    import java.util.Scanner;
+
+    public class Greet {
+        public static void main(String[] args) {
+            Scanner sc = new Scanner(System.in);
+            System.out.println("How many greetings?");
+            int times = sc.nextInt();
+            sc.nextLine(); // throw away the leftover newline
+            System.out.println("Your full name?");
+            String name = sc.nextLine();
+            for (int i = 1; i <= times; i++) {
+                System.out.println(i + ". Hello, " + name + "!");
+            }
+            sc.close();
+        }
+    }
+predict:
+  code: |
+    import java.util.Scanner;
+
+    public class Trap {
+        public static void main(String[] args) {
+            // Input:
+            // 21
+            // Ravi Kumar
+            Scanner sc = new Scanner(System.in);
+            int age = sc.nextInt();
+            String name = sc.nextLine();
+            System.out.println("Age=" + age);
+            System.out.println("Name=[" + name + "]");
+        }
+    }
+  expectedOutput: |
+    Age=21
+    Name=[]
+  explanation: |
+    `nextInt()` reads `21` but leaves the newline character after it. `nextLine()` then reads from the cursor to the end of that same line, which is nothing, so `name` is an empty string. The brackets make the empty value visible. "Ravi Kumar" is never read. Fix: call `sc.nextLine();` once after `nextInt()`.
+commonMistakes:
+  - "Calling nextLine() right after nextInt() and getting an empty string. Add an extra sc.nextLine() to consume the leftover newline."
+  - "Forgetting throws IOException with BufferedReader, which gives a compile error 'unreported exception IOException'."
+  - "Splitting with split(\" \") without trim(), which creates empty strings when there are extra spaces. Use trim().split(\"\\\\s+\")."
+  - "Using Scanner for 10^5+ numbers in a timed test and getting Time Limit Exceeded."
+  - "Using PrintWriter and forgetting out.flush(), so no output appears."
+  - "Adding a package line or prompts like \"Enter n:\" in an online judge; extra printed text makes the output wrong."
+interviewBox:
+  why: "Why interviewers ask this: it shows practical coding-test experience. Knowing why Scanner is slow and how to avoid the nextLine trap signals that you have actually solved problems under time limits."
+  questions:
+    - q: "What is the difference between Scanner and BufferedReader?"
+      a: "Scanner is easy: it reads tokens and converts them to int, double and so on, but it is slow because it uses regular expressions. BufferedReader reads whole lines from a large buffer, so it is much faster, but it only gives Strings, and we convert them with Integer.parseInt. BufferedReader also needs us to handle IOException."
+    - q: "Why does nextLine() return an empty string after nextInt()?"
+      a: "nextInt reads only the number and leaves the newline character in the input. nextLine reads until the end of the current line, which is just that newline, so it returns an empty string. The fix is to call nextLine once more to consume the leftover newline."
+    - q: "How do you read input quickly in Java for large test cases?"
+      a: "I use BufferedReader with InputStreamReader on System.in, read lines with readLine, split them using StringTokenizer, and convert with Integer.parseInt. For output, I build everything in a StringBuilder and print once."
+    - q: "How do you read input until the end when the number of lines is not given?"
+      a: "With BufferedReader I loop while readLine() is not null, because readLine returns null at the end of input. With Scanner I loop while hasNext() or hasNextInt() is true."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "The input is: 5 (Enter) hello world (Enter). What is printed?"
+    code: |
+      Scanner sc = new Scanner(System.in);
+      int n = sc.nextInt();
+      String s = sc.nextLine();
+      System.out.println(n + "|" + s + "|");
+    options: ["5|hello world|", "5||", "5|hello|", "InputMismatchException"]
+    answer: 1
+    explanation: "nextInt reads 5 and leaves the newline. nextLine returns the rest of that line, which is empty, so the output is 5||. 5|hello world| is what beginners expect, but it needs an extra nextLine() first."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why does this not compile?"
+    code: |
+      import java.io.*;
+
+      public class Main {
+          public static void main(String[] args) {
+              BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+              String line = br.readLine();
+              System.out.println(line);
+          }
+      }
+    options:
+      - "BufferedReader needs a size argument"
+      - "readLine() throws IOException, a checked exception that is not handled or declared"
+      - "System.in cannot be used with BufferedReader"
+      - "line must be declared as char[]"
+    answer: 1
+    explanation: "IOException is checked, so the compiler forces you to catch it or declare it. Adding throws IOException to main fixes it. The constructor and System.in usage are correct as written."
+  - id: q3
+    type: MCQ
+    prompt: "A problem gives 10^6 integers on one line with a 1-second limit. What is the safest way to read them?"
+    code: null
+    options:
+      - "Scanner with nextInt() in a loop"
+      - "BufferedReader.readLine() plus StringTokenizer and Integer.parseInt"
+      - "Reading one character at a time with System.in.read() and printing each"
+      - "Scanner with nextLine() and charAt"
+    answer: 1
+    explanation: "BufferedReader reads big buffered chunks and StringTokenizer splits cheaply, which is several times faster than Scanner. Scanner.nextInt is easy but its regex parsing is slow for a million numbers."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "BufferedReader.readLine() returns null when there is no more input."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. That is how you read until the end of input: while ((line = br.readLine()) != null). It does not throw an exception at the end."
+  - id: q5
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      String line = "  4 7  2";
+      System.out.println(line.split(" ").length);
+      System.out.println(line.trim().split("\\s+").length);
+    options: ["3\n3", "6\n3", "5\n3", "6\n4"]
+    answer: 1
+    explanation: "Splitting on a single space keeps empty strings between neighbouring spaces: [\"\", \"\", \"4\", \"7\", \"\", \"2\"], which is 6 parts. Trimming removes the outer spaces and \\s+ treats any run of spaces as one separator, giving exactly 3 numbers."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that converts the token into an int."
+    code: |
+      StringTokenizer st = new StringTokenizer(br.readLine());
+      int x = Integer.____(st.nextToken());
+    acceptedAnswers: ["parseInt"]
+    explanation: "Integer.parseInt turns a String like \"42\" into the int 42. BufferedReader and StringTokenizer only give you Strings, so this step is always needed."
+  - id: q7
+    type: MATCH
+    prompt: "Match each method to what it reads"
+    pairs:
+      - left: "sc.next()"
+        right: "One word, stopping at a space or newline"
+      - left: "sc.nextLine()"
+        right: "The rest of the current line"
+      - left: "br.readLine()"
+        right: "A whole line, or null at end of input"
+      - left: "st.nextToken()"
+        right: "The next piece of an already-read line"
+    explanation: "next() is token based, nextLine() and readLine() are line based, and StringTokenizer hands out pieces of a line you already read."
+explainBack:
+  prompt: "Explain to a friend how you would read input in a timed Java coding test, and the one Scanner trap they must avoid."
+  rubric:
+    - "I said Scanner is easy but slow and BufferedReader is fast"
+    - "I described readLine + StringTokenizer (or split) + Integer.parseInt"
+    - "I mentioned throws IOException"
+    - "I explained the nextInt then nextLine trap and its fix"
+    - "I mentioned fast output with StringBuilder"
+  modelAnswer: |
+    For small inputs Scanner is fine because it converts numbers for me, but it is slow. For big inputs I use BufferedReader on System.in. I read a full line with readLine, break it into pieces with StringTokenizer, and convert each piece with Integer.parseInt. Because readLine can throw IOException, I add throws IOException to main. For output I collect everything in a StringBuilder and print once. The big Scanner trap is calling nextLine right after nextInt. nextInt leaves the newline behind, so nextLine returns an empty string. I fix it by calling nextLine once to throw away that leftover newline.
+flashcards:
+  - front: "Fast input template"
+    back: "BufferedReader br = new BufferedReader(new InputStreamReader(System.in)); StringTokenizer st = new StringTokenizer(br.readLine()); Integer.parseInt(st.nextToken())."
+  - front: "nextInt() then nextLine() gives \"\". Why?"
+    back: "nextInt leaves the newline; nextLine reads that empty rest of line. Add an extra sc.nextLine()."
+  - front: "What must main declare when using readLine()?"
+    back: "throws IOException (it is a checked exception)."
+  - front: "How to read until end of input with BufferedReader?"
+    back: "while ((line = br.readLine()) != null) { ... }"
+  - front: "Safe split for messy spaces"
+    back: "line.trim().split(\"\\\\s+\")"
+  - front: "Fast output"
+    back: "Append to a StringBuilder and print once (or PrintWriter + flush)."
+keyTakeaways:
+  - "Scanner is simple but slow; BufferedReader + StringTokenizer is fast for large inputs."
+  - "nextInt() leaves the newline behind; call nextLine() once before reading a real line."
+  - "BufferedReader gives Strings only; convert with Integer.parseInt / Long.parseLong."
+  - "readLine() needs throws IOException and returns null at end of input."
+  - "Use trim().split(\"\\\\s+\") or StringTokenizer to split lines safely."
+  - "Build output in a StringBuilder and print once in timed tests."

@@ -1,0 +1,341 @@
+slug: stack-heap
+world: JAVA_CORE
+section: H
+order: 1
+title: "Stack vs heap"
+version: 1
+estimatedMinutes: 30
+rebuild: false
+patternCode: null
+companies: [ALL]
+infosysRelevance: "Common theory question for SP and DSE rounds, and the key to solving 'pass by value' and String == output questions."
+otherCompanies: "A standard question at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies; also the base for garbage collection questions."
+why: |
+  When you write `int age = 21;` or `new Student()`, where does that data actually go? Java uses two main memory areas: the **stack** and the **heap**.
+
+  Understanding them explains a lot of "weird" behaviour that appears in output questions:
+  - Why `==` on two Strings is sometimes `true` and sometimes `false`.
+  - Why a method can change an object you pass in, but can't make your variable point to a new object (**Java is always pass-by-value**).
+  - What `StackOverflowError` and `OutOfMemoryError` really mean.
+
+  This is one of the most common JVM questions, and it's the foundation for garbage collection in lesson 3.
+analogy: |
+  Think of a **college hostel**.
+
+  - The **stack** is your **study table's notepad**. Each time you start a task (call a method) you tear off a fresh page (a **stack frame**) and write small notes on it: numbers and **room numbers** (references). When the task is done, you throw that page away. Fast and tidy, but small.
+  - The **heap** is the **hostel building** with many rooms. The actual **things** (objects) live in rooms. Your notepad only holds the **room number** where the object is.
+  - The **String pool** is a **common room** in the hostel for popular strings. If ten people write `"Pune"`, they all get the same room number for the same `"Pune"`, instead of ten copies. But `new String("Pune")` insists on a **private room**.
+  - Giving a friend your notepad entry is **copying the room number** (pass-by-value). They can go into the room and rearrange things, but if they scribble a different room number on *their* copy, *your* note doesn't change.
+visual:
+  diagram: |
+    int age = 21;
+    String city  = "Pune";
+    String same  = "Pune";
+    String other = new String("Pune");
+    Student s    = new Student("Asha", age);
+
+     STACK: main() frame         HEAP
+    +--------------------+     +--------------------------------+
+    | age   = 21         |     |  STRING POOL                   |
+    | city  = @A ------+ |     |  +--------------------------+  |
+    |                  +-|-----|->| @A "Pune"                |  |
+    | same  = @A ------+ |     |  | @C "Asha" <------------+ |  |
+    | other = @B ----+   |     |  +------------------------|-+  |
+    | s     = @D --+ |   |     |                           |    |
+    +--------------|-|---+     |                           |    |
+                   | +---------|-> @B String "Pune"        |    |
+                   |           |   (separate copy)         |    |
+                   +-----------|-> @D Student              |    |
+                               |     name = @C ------------+    |
+                               |     age  = 21                  |
+                               +--------------------------------+
+    city == same   -> true   (both hold @A, one pool object)
+    city == other  -> false  (@A vs @B)
+    city.equals(other) -> true (same characters)
+  caption: "Primitives and references sit in the stack frame. Objects live in the heap. String literals share one object in the String pool; new String() makes a separate heap object."
+  visualizer: null
+explanation: |
+  ### The stack
+  Every thread has its **own stack**. Each time a method is called, Java pushes a **stack frame** (a block of memory for that call) holding:
+  - The method's **local variables** and **parameters**.
+  - For primitives (`int`, `double`, `boolean`...), the **actual value**.
+  - For objects, only a **reference**: think of it as the object's address, not the object itself.
+
+  When the method returns, its frame is **popped** and the memory is freed instantly. No garbage collector needed.
+  - **Fast**, automatic, small (often around 512 KB to 1 MB per thread).
+  - Last-In-First-Out, like a stack of plates.
+  - Too many nested calls (e.g. recursion with no base case) fills it up: **`StackOverflowError`**.
+
+  ### The heap
+  The **heap** is one big shared area where **all objects and arrays** live (anything created with `new`, plus String literals). All threads share it.
+  - Objects stay as long as something **references** them. When nothing does, the **garbage collector (GC)** frees them later.
+  - Bigger but slower to manage than the stack.
+  - If it fills up and GC can't free enough: **`OutOfMemoryError: Java heap space`**.
+  - **Instance variables** (fields) live inside their object, so in the heap, even if they are `int`s. `Student.age` above is in the heap; the local `age` is on the stack.
+
+  ### Stack vs heap
+  | | Stack | Heap |
+  |---|---|---|
+  | Stores | Local variables, parameters, references, method frames | Objects, arrays, instance fields, String pool |
+  | Shared? | No, one stack per thread | Yes, shared by all threads |
+  | Lifetime | Until the method returns | Until no references remain and GC runs |
+  | Speed | Very fast | Slower (allocation + GC) |
+  | Size | Small | Large |
+  | Error when full | `StackOverflowError` | `OutOfMemoryError` |
+  | Thread-safety | Local variables are naturally thread-safe | Shared objects need synchronization |
+
+  ### The String pool
+  The **String pool** (or string constant pool) is a special area **inside the heap** (since Java 7) where Java keeps **one copy of each String literal**.
+  ```java
+  String city = "Pune";            // goes to the pool
+  String same = "Pune";            // reuses the same pool object
+  String other = new String("Pune"); // forces a NEW object in the heap
+  city == same;       // true: same object
+  city == other;      // false: different objects
+  city.equals(other); // true: same characters
+  ```
+  `==` compares **references** (are they the same object?). `equals()` compares **content**. This is safe only because Strings are **immutable** (they can never change).
+
+  ### Java is always pass-by-value
+  When you call a method, Java **copies** the value of each argument into the new frame.
+  - For a primitive, it copies the number. Changing it inside the method doesn't affect the caller.
+  - For an object, it copies the **reference** (the address). Both copies point to the **same object**, so the method **can change the object's fields**. But if the method makes its copy point to a **new** object, the caller's variable still points to the old one.
+
+  So Java never passes "the variable itself" (true pass-by-reference). It passes a **copy of the reference**. A classic proof: you **cannot** write a `swap(int a, int b)` that swaps the caller's variables.
+
+  ### Other JVM memory areas (good to name)
+  | Area | Holds |
+  |---|---|
+  | **Metaspace** (Java 8+, replaced PermGen) | Class information: method code, field names, static variable info (lives in native memory, outside the heap) |
+  | **PC register** | Each thread's current instruction |
+  | **Native method stack** | Frames for native (C/C++) methods |
+
+  > Detail for curious learners: the static **variables** themselves are stored with the class's object in the heap in modern JVMs, while class metadata lives in Metaspace. For interviews, "class data in Metaspace, objects in heap, locals on stack" is the expected answer.
+tinyCode:
+  code: |
+    public class Memory {
+        static class Student {
+            String name;
+            int age;
+
+            Student(String name, int age) {
+                this.name = name;
+                this.age = age;
+            }
+        }
+
+        public static void main(String[] args) {
+            int age = 21;
+            String city = "Pune";
+            String same = "Pune";
+            String other = new String("Pune");
+            Student s = new Student("Asha", age);
+
+            System.out.println(city == same);
+            System.out.println(city == other);
+            System.out.println(city.equals(other));
+            System.out.println(s.name + " " + s.age);
+        }
+    }
+  walkthrough: |
+    This is the exact code from the diagram.
+    - `int age = 21;` the value 21 sits directly in main's stack frame.
+    - `String city = "Pune";` the literal "Pune" goes into the **String pool** in the heap; `city` holds its reference (@A).
+    - `String same = "Pune";` Java finds "Pune" already in the pool and gives `same` the **same** reference @A.
+    - `new String("Pune")` always creates a **new** object (@B) in the heap, outside the pool.
+    - `new Student("Asha", age)` creates a Student object (@D) in the heap. Its `name` field points to "Asha" in the pool, and its `age` field (a copy of 21) lives **inside the object**, in the heap.
+    - `city == same` is `true` (same object), `city == other` is `false` (different objects), `equals` is `true` (same text).
+
+    Output:
+    ```
+    true
+    false
+    true
+    Asha 21
+    ```
+tryIt:
+  instructions: "Type this program and predict both lines before running it. The first swap fails because ints are copied. The second works because the method receives a copy of the array's reference, so it changes the same array object in the heap."
+  code: |
+    public class SwapTest {
+        static void swapInts(int a, int b) {
+            int t = a;
+            a = b;
+            b = t;
+        }
+
+        static void swapInArray(int[] arr) {
+            int t = arr[0];
+            arr[0] = arr[1];
+            arr[1] = t;
+        }
+
+        public static void main(String[] args) {
+            int x = 1, y = 2;
+            swapInts(x, y);
+            System.out.println("After swapInts: " + x + " " + y);
+
+            int[] pair = {1, 2};
+            swapInArray(pair);
+            System.out.println("After swapInArray: " + pair[0] + " " + pair[1]);
+        }
+    }
+predict:
+  code: |
+    public class PassByValue {
+        static class Box {
+            int value;
+        }
+
+        static void tryChange(int n, Box b) {
+            n = 100;          // changes only the local copy
+            b.value = 100;    // changes the shared object
+            b = new Box();    // b now points elsewhere; caller unaffected
+            b.value = 500;
+        }
+
+        public static void main(String[] args) {
+            int n = 1;
+            Box box = new Box();
+            box.value = 1;
+            tryChange(n, box);
+            System.out.println("n = " + n);
+            System.out.println("box.value = " + box.value);
+        }
+    }
+  expectedOutput: |
+    n = 1
+    box.value = 100
+  explanation: |
+    `tryChange` gets a **copy** of `n` (1) and a **copy of the reference** to the Box. Setting `n = 100` changes only the copy, so main's `n` stays 1. `b.value = 100` follows the copied reference to the **same Box object** in the heap, so main sees 100. Then `b = new Box()` points the local copy at a brand-new object; main's `box` still points at the old one, so `b.value = 500` affects only the new Box, which is thrown away. This is pass-by-value of references.
+commonMistakes:
+  - "Saying 'objects are passed by reference in Java'. Java passes a copy of the reference: always pass-by-value."
+  - "Thinking all ints live on the stack. Instance fields (like Student.age) live inside their object in the heap."
+  - "Using == to compare String content. It compares references; use equals()."
+  - "Believing the stack is shared between threads. Each thread has its own stack; the heap is shared."
+  - "Mixing up StackOverflowError (too-deep calls) and OutOfMemoryError (heap full)."
+interviewBox:
+  why: "Why interviewers ask this: it shows whether you understand what your code does in memory, which is the base for performance, GC and thread-safety questions."
+  questions:
+    - q: "What is the difference between stack and heap memory in Java?"
+      a: "The stack stores method calls, local variables and references. Each thread has its own stack, and memory is freed automatically when a method returns. The heap stores all objects and arrays, is shared by all threads, and is cleaned by the garbage collector. If the stack fills up we get StackOverflowError; if the heap fills up we get OutOfMemoryError."
+    - q: "Is Java pass-by-value or pass-by-reference?"
+      a: "Java is always pass-by-value. For objects, the value that is copied is the reference. So a method can change the fields of the object we pass, but if it assigns a new object to the parameter, the caller's variable doesn't change. That's why a swap method for two ints doesn't work."
+    - q: "What is the String pool?"
+      a: "It's a special area in the heap where Java stores one copy of each string literal. If two variables use the same literal, they point to the same object, which saves memory. new String always creates a separate object, so == can be false even when equals is true."
+    - q: "Where are instance variables and static variables stored?"
+      a: "Instance variables live inside their object in the heap. Local variables live on the stack. Class-level information is kept in the Metaspace, and static variables belong to the class rather than to any object, so there is only one copy shared by all objects."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "What does this print? (Single thread, so the output is fixed.)"
+    code: |
+      static void swap(int a, int b) {
+          int t = a;
+          a = b;
+          b = t;
+      }
+      // in main:
+      int x = 1, y = 2;
+      swap(x, y);
+      System.out.println(x + " " + y);
+    options: ["2 1", "1 2", "1 1", "Compile error"]
+    answer: 1
+    explanation: "swap receives copies of 1 and 2 in its own stack frame and swaps the copies. main's x and y never change. '2 1' is the tempting answer if you think Java passes variables by reference."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "What does this print?"
+    code: |
+      static void add(StringBuilder sb) {
+          sb.append(" Quest");
+          sb = new StringBuilder("Reset");
+      }
+      // in main:
+      StringBuilder sb = new StringBuilder("Code");
+      add(sb);
+      System.out.println(sb);
+    options: ["Code", "Code Quest", "Reset", "Reset Quest"]
+    answer: 1
+    explanation: "The method gets a copy of the reference to the same StringBuilder, so append changes the shared object: 'Code Quest'. Reassigning sb inside the method only changes the local copy, so main never sees 'Reset'."
+  - id: q3
+    type: MCQ
+    prompt: "Inside a method you write: Student s = new Student(); Where do 's' and the Student object live?"
+    code: null
+    options:
+      - "Both on the stack"
+      - "Both in the heap"
+      - "The reference s on the stack, the Student object in the heap"
+      - "The reference s in the heap, the object on the stack"
+    answer: 2
+    explanation: "Local variables, including references, are stored in the method's stack frame. Anything created with new lives in the heap. The variable just holds the object's address."
+  - id: q4
+    type: TRUE_FALSE
+    prompt: "All threads in a Java program share the same stack."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Each thread has its own stack; that's why local variables are thread-safe. The heap is what all threads share."
+  - id: q5
+    type: SPOT_THE_BUG
+    prompt: "Running this program crashes. Which error and why?"
+    code: |
+      static int count(int n) {
+          return 1 + count(n - 1);
+      }
+      public static void main(String[] args) {
+          System.out.println(count(5));
+      }
+    options:
+      - "OutOfMemoryError, because the heap fills with ints"
+      - "StackOverflowError, because there is no base case and every call adds a new stack frame"
+      - "ArithmeticException, because n becomes negative"
+      - "Compile error: a method can't call itself"
+    answer: 1
+    explanation: "With no base case like 'if (n == 0) return 0;', the recursion never stops. Each call pushes a stack frame until the thread's stack is full, causing StackOverflowError. No objects are created, so the heap is not the problem."
+  - id: q6
+    type: MATCH
+    prompt: "Match each item to where it lives"
+    pairs:
+      - left: "A local int inside a method"
+        right: "The thread's stack frame"
+      - left: "An object made with new"
+        right: "The heap"
+      - left: "The literal \"Pune\""
+        right: "The String pool (inside the heap)"
+      - left: "Class metadata (method code, field names)"
+        right: "Metaspace"
+    explanation: "Locals go in stack frames, objects in the heap, literals in the String pool part of the heap, and class structure in Metaspace (since Java 8)."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Fill in the method that compares the CONTENT of two Strings (not their references)."
+    code: |
+      String a = "Pune";
+      String b = new String("Pune");
+      System.out.println(a.____(b)); // true
+    acceptedAnswers: ["equals"]
+    explanation: "equals compares characters, so it's true. a == b would be false because b is a separate heap object, not the pooled one."
+explainBack:
+  prompt: "Explain stack vs heap to a friend using the snippet int age = 21; String city = \"Pune\"; Student s = new Student(); and say why Java is pass-by-value."
+  rubric:
+    - "I said locals and references live on the stack, one stack per thread"
+    - "I said objects live in the heap, shared by all threads and cleaned by GC"
+    - "I mentioned the String pool and == vs equals"
+    - "I explained that methods get a copy of the reference"
+    - "I used an analogy like a notepad (stack) and hostel rooms (heap)"
+  modelAnswer: |
+    The stack is like a notepad where each method call gets its own page. Small things go there: age equals 21 sits right on the page, and for objects we only write the room number. The heap is the hostel where objects actually live, like the Student object. Each thread has its own notepad, but everyone shares the hostel. String literals like "Pune" go to a common room called the String pool, so two "Pune" literals share one object. When I pass something to a method, Java copies what's on my page. For an object that's the room number, so the method can change the room's contents, but can't change my note.
+flashcards:
+  - front: "What lives on the stack vs the heap?"
+    back: "Stack: method frames, local variables, references (one stack per thread). Heap: objects, arrays, instance fields, String pool (shared)."
+  - front: "StackOverflowError vs OutOfMemoryError"
+    back: "StackOverflowError: too many nested calls fill a thread's stack. OutOfMemoryError: the heap is full and GC can't free space."
+  - front: "Is Java pass-by-value?"
+    back: "Always. For objects, a copy of the reference is passed, so fields can change but the caller's variable can't be re-pointed."
+  - front: "Where is the String pool?"
+    back: "Inside the heap (since Java 7). Literals are shared; new String() makes a separate object."
+  - front: "Where do instance fields live?"
+    back: "Inside their object, in the heap (even primitive fields)."
+keyTakeaways:
+  - "Stack = per-thread method frames with locals and references; freed when a method returns."
+  - "Heap = shared area for all objects; cleaned by the garbage collector."
+  - "String literals share one object in the String pool; new String() makes another; == compares references."
+  - "Java is always pass-by-value; for objects, the reference is copied."
+  - "StackOverflowError = deep recursion; OutOfMemoryError = heap full."

@@ -1,0 +1,1788 @@
+# Curated practice problems on free public pages (LeetCode free problems, HackerRank).
+# Company codes mean 'good practice in the style of' that hiring track, not that a company used the problem.
+# Grouped by pattern, easy -> hard within each pattern.
+problems:
+
+  # ---- COMPLEXITY ----
+  - slug: contains-duplicate
+    title: "Contains Duplicate"
+    url: "https://leetcode.com/problems/contains-duplicate/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: COMPLEXITY
+    companies: [INFOSYS_DSE, ALL]
+    why: "Compare a slow O(n^2) double loop with sorting O(n log n) and a HashSet O(n)."
+  - slug: check-if-n-and-its-double-exist
+    title: "Check If N and Its Double Exist"
+    url: "https://leetcode.com/problems/check-if-n-and-its-double-exist/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: COMPLEXITY
+    companies: [INFOSYS_DSE, ALL]
+    why: "Turn a nested-loop search into a single pass with a set and see the time saved."
+  - slug: how-many-numbers-are-smaller-than-the-current-number
+    title: "How Many Numbers Are Smaller Than the Current Number"
+    url: "https://leetcode.com/problems/how-many-numbers-are-smaller-than-the-current-number/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: COMPLEXITY
+    companies: [INFOSYS_DSE, ALL]
+    why: "Replace an O(n^2) count with a counting array when the value range is small."
+  - slug: find-all-numbers-disappeared-in-an-array
+    title: "Find All Numbers Disappeared in an Array"
+    url: "https://leetcode.com/problems/find-all-numbers-disappeared-in-an-array/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: COMPLEXITY
+    companies: [INFOSYS_DSE, ALL]
+    why: "Trade extra memory for speed, then remove the extra memory by marking the input itself."
+  - slug: arranging-coins
+    title: "Arranging Coins"
+    url: "https://leetcode.com/problems/arranging-coins/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: COMPLEXITY
+    companies: [INFOSYS_DSE, ALL]
+    why: "See how a loop, binary search and a math formula solve the same task at different speeds."
+  - slug: sum-of-all-odd-length-subarrays
+    title: "Sum of All Odd Length Subarrays"
+    url: "https://leetcode.com/problems/sum-of-all-odd-length-subarrays/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: COMPLEXITY
+    companies: [INFOSYS_DSE, ALL]
+    why: "Go from a brute-force O(n^3) answer down to O(n) by counting each element's contribution."
+  - slug: count-primes
+    title: "Count Primes"
+    url: "https://leetcode.com/problems/count-primes/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: COMPLEXITY
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Learn why the Sieve of Eratosthenes beats checking each number one by one."
+
+  # ---- ARRAY_BASICS ----
+  - slug: running-sum-of-1d-array
+    title: "Running Sum of 1d Array"
+    url: "https://leetcode.com/problems/running-sum-of-1d-array/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Walk an array once and reuse the previous answer at each index."
+  - slug: diagonal-difference
+    title: "Diagonal Difference"
+    url: "https://www.hackerrank.com/challenges/diagonal-difference/problem"
+    platform: HACKERRANK
+    difficulty: EASY
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Read a 2D array and pick elements by row and column index."
+  - slug: mini-max-sum
+    title: "Mini-Max Sum"
+    url: "https://www.hackerrank.com/challenges/mini-max-sum/problem"
+    platform: HACKERRANK
+    difficulty: EASY
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Find min, max and total in one pass and use long to avoid overflow."
+  - slug: remove-duplicates-from-sorted-array
+    title: "Remove Duplicates from Sorted Array"
+    url: "https://leetcode.com/problems/remove-duplicates-from-sorted-array/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Remove duplicates in place using the fact that the array is sorted."
+  - slug: plus-one
+    title: "Plus One"
+    url: "https://leetcode.com/problems/plus-one/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Handle carry when a number is stored as an array of digits."
+  - slug: majority-element
+    title: "Majority Element"
+    url: "https://leetcode.com/problems/majority-element/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Learn the Boyer-Moore voting idea to find the majority in O(1) space."
+  - slug: best-time-to-buy-and-sell-stock
+    title: "Best Time to Buy and Sell Stock"
+    url: "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Track the minimum so far to get the best profit in one pass."
+  - slug: best-time-to-buy-and-sell-stock-ii
+    title: "Best Time to Buy and Sell Stock II"
+    url: "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-ii/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Add up every upward move to get the total profit."
+  - slug: rotate-array
+    title: "Rotate Array"
+    url: "https://leetcode.com/problems/rotate-array/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Rotate an array in place with the three-reversals trick."
+  - slug: product-of-array-except-self
+    title: "Product of Array Except Self"
+    url: "https://leetcode.com/problems/product-of-array-except-self/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Combine left and right running products without using division."
+  - slug: spiral-matrix
+    title: "Spiral Matrix"
+    url: "https://leetcode.com/problems/spiral-matrix/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Walk a matrix layer by layer while shrinking four boundaries."
+  - slug: rotate-image
+    title: "Rotate Image"
+    url: "https://leetcode.com/problems/rotate-image/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Rotate a matrix in place with transpose plus row reversal."
+  - slug: next-permutation
+    title: "Next Permutation"
+    url: "https://leetcode.com/problems/next-permutation/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: ARRAY_BASICS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Find the next bigger arrangement of numbers with a careful scan from the right."
+
+  # ---- STRINGS ----
+  - slug: reverse-string
+    title: "Reverse String"
+    url: "https://leetcode.com/problems/reverse-string/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STRINGS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Reverse a char array in place by swapping from both ends."
+  - slug: camelcase
+    title: "CamelCase"
+    url: "https://www.hackerrank.com/challenges/camelcase/problem"
+    platform: HACKERRANK
+    difficulty: EASY
+    pattern: STRINGS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Scan characters and count uppercase letters with Character methods."
+  - slug: time-conversion
+    title: "Time Conversion"
+    url: "https://www.hackerrank.com/challenges/time-conversion/problem"
+    platform: HACKERRANK
+    difficulty: EASY
+    pattern: STRINGS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Parse a fixed-format string and rebuild it with substring and String.format."
+  - slug: reverse-words-in-a-string-iii
+    title: "Reverse Words in a String III"
+    url: "https://leetcode.com/problems/reverse-words-in-a-string-iii/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STRINGS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Reverse each word separately using a StringBuilder."
+  - slug: longest-common-prefix
+    title: "Longest Common Prefix"
+    url: "https://leetcode.com/problems/longest-common-prefix/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STRINGS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Compare characters column by column across many strings."
+  - slug: roman-to-integer
+    title: "Roman to Integer"
+    url: "https://leetcode.com/problems/roman-to-integer/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STRINGS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Map symbols to values and handle the subtract rule (like IV and IX)."
+  - slug: add-binary
+    title: "Add Binary"
+    url: "https://leetcode.com/problems/add-binary/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STRINGS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Add two numbers digit by digit from the right with a carry."
+  - slug: find-the-index-of-the-first-occurrence-in-a-string
+    title: "Find the Index of the First Occurrence in a String"
+    url: "https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STRINGS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Write a simple substring search by hand (the idea behind indexOf)."
+  - slug: reverse-words-in-a-string
+    title: "Reverse Words in a String"
+    url: "https://leetcode.com/problems/reverse-words-in-a-string/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STRINGS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Split, clean extra spaces and join words in reverse order."
+  - slug: string-to-integer-atoi
+    title: "String to Integer (atoi)"
+    url: "https://leetcode.com/problems/string-to-integer-atoi/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STRINGS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Parse a number carefully with signs, spaces and overflow checks."
+  - slug: string-compression
+    title: "String Compression"
+    url: "https://leetcode.com/problems/string-compression/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STRINGS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Compress repeated characters in place with read and write pointers."
+  - slug: multiply-strings
+    title: "Multiply Strings"
+    url: "https://leetcode.com/problems/multiply-strings/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STRINGS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Multiply big numbers stored as strings, like school multiplication."
+  - slug: longest-palindromic-substring
+    title: "Longest Palindromic Substring"
+    url: "https://leetcode.com/problems/longest-palindromic-substring/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STRINGS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Expand around each center to find the longest palindrome."
+
+  # ---- HASHING ----
+  - slug: two-sum
+    title: "Two Sum"
+    url: "https://leetcode.com/problems/two-sum/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HASHING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use a HashMap to find a pair with a target sum in one pass."
+  - slug: valid-anagram
+    title: "Valid Anagram"
+    url: "https://leetcode.com/problems/valid-anagram/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HASHING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Compare character counts with an int[26] or a HashMap."
+  - slug: first-unique-character-in-a-string
+    title: "First Unique Character in a String"
+    url: "https://leetcode.com/problems/first-unique-character-in-a-string/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HASHING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Count frequencies first, then scan again to find the first unique one."
+  - slug: ransom-note
+    title: "Ransom Note"
+    url: "https://leetcode.com/problems/ransom-note/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HASHING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Check if one set of letters can be built from another using counts."
+  - slug: intersection-of-two-arrays-ii
+    title: "Intersection of Two Arrays II"
+    url: "https://leetcode.com/problems/intersection-of-two-arrays-ii/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HASHING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use a frequency map when duplicates matter."
+  - slug: happy-number
+    title: "Happy Number"
+    url: "https://leetcode.com/problems/happy-number/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HASHING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Detect a repeating cycle by remembering seen values in a set."
+  - slug: isomorphic-strings
+    title: "Isomorphic Strings"
+    url: "https://leetcode.com/problems/isomorphic-strings/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HASHING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Keep a two-way character mapping and check it stays consistent."
+  - slug: contains-duplicate-ii
+    title: "Contains Duplicate II"
+    url: "https://leetcode.com/problems/contains-duplicate-ii/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HASHING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Store the last index of each value to check a distance limit."
+  - slug: group-anagrams
+    title: "Group Anagrams"
+    url: "https://leetcode.com/problems/group-anagrams/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HASHING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use a sorted string or a count signature as a HashMap key."
+  - slug: sort-characters-by-frequency
+    title: "Sort Characters By Frequency"
+    url: "https://leetcode.com/problems/sort-characters-by-frequency/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HASHING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count characters, then output them in order of frequency."
+  - slug: valid-sudoku
+    title: "Valid Sudoku"
+    url: "https://leetcode.com/problems/valid-sudoku/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HASHING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use sets for rows, columns and boxes to spot repeats."
+  - slug: 4sum-ii
+    title: "4Sum II"
+    url: "https://leetcode.com/problems/4sum-ii/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HASHING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Split the work in half and store pair sums in a map."
+  - slug: longest-consecutive-sequence
+    title: "Longest Consecutive Sequence"
+    url: "https://leetcode.com/problems/longest-consecutive-sequence/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HASHING
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Use a HashSet to find runs in O(n) by starting only at run beginnings."
+
+  # ---- TWO_POINTERS ----
+  - slug: valid-palindrome
+    title: "Valid Palindrome"
+    url: "https://leetcode.com/problems/valid-palindrome/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Move two pointers inward while skipping non-alphanumeric characters."
+  - slug: merge-sorted-array
+    title: "Merge Sorted Array"
+    url: "https://leetcode.com/problems/merge-sorted-array/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Merge from the back so you do not overwrite values you still need."
+  - slug: squares-of-a-sorted-array
+    title: "Squares of a Sorted Array"
+    url: "https://leetcode.com/problems/squares-of-a-sorted-array/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Fill the result from the largest end using two pointers."
+  - slug: move-zeroes
+    title: "Move Zeroes"
+    url: "https://leetcode.com/problems/move-zeroes/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use a slow and fast pointer to shift non-zero values forward in place."
+  - slug: is-subsequence
+    title: "Is Subsequence"
+    url: "https://leetcode.com/problems/is-subsequence/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Walk two strings with one pointer each to match characters in order."
+  - slug: two-sum-ii-input-array-is-sorted
+    title: "Two Sum II - Input Array Is Sorted"
+    url: "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use a sorted array to find a target pair with two pointers and O(1) space."
+  - slug: container-with-most-water
+    title: "Container With Most Water"
+    url: "https://leetcode.com/problems/container-with-most-water/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Learn why moving the shorter wall is always the right choice."
+  - slug: sort-colors
+    title: "Sort Colors"
+    url: "https://leetcode.com/problems/sort-colors/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Sort 0s, 1s and 2s in one pass with three pointers (Dutch flag)."
+  - slug: remove-duplicates-from-sorted-array-ii
+    title: "Remove Duplicates from Sorted Array II"
+    url: "https://leetcode.com/problems/remove-duplicates-from-sorted-array-ii/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Keep at most two copies in place with a write pointer."
+  - slug: boats-to-save-people
+    title: "Boats to Save People"
+    url: "https://leetcode.com/problems/boats-to-save-people/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Sort, then pair the lightest and heaviest with two pointers."
+  - slug: 3sum
+    title: "3Sum"
+    url: "https://leetcode.com/problems/3sum/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Sort, fix one number, then run two pointers and skip duplicates."
+  - slug: 4sum
+    title: "4Sum"
+    url: "https://leetcode.com/problems/4sum/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Extend two pointers with two outer loops and careful duplicate skipping."
+  - slug: trapping-rain-water
+    title: "Trapping Rain Water"
+    url: "https://leetcode.com/problems/trapping-rain-water/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: TWO_POINTERS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Use left and right max heights with two pointers to count trapped water."
+
+  # ---- SLIDING_WINDOW ----
+  - slug: maximum-average-subarray-i
+    title: "Maximum Average Subarray I"
+    url: "https://leetcode.com/problems/maximum-average-subarray-i/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_DSE, ALL]
+    why: "Slide a fixed-size window by adding one value and removing one."
+  - slug: minimum-difference-between-highest-and-lowest-of-k-scores
+    title: "Minimum Difference Between Highest and Lowest of K Scores"
+    url: "https://leetcode.com/problems/minimum-difference-between-highest-and-lowest-of-k-scores/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_DSE, ALL]
+    why: "Sort, then slide a window of size k to find the smallest range."
+  - slug: maximum-number-of-vowels-in-a-substring-of-given-length
+    title: "Maximum Number of Vowels in a Substring of Given Length"
+    url: "https://leetcode.com/problems/maximum-number-of-vowels-in-a-substring-of-given-length/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Keep a running count inside a fixed-size window over a string."
+  - slug: longest-substring-without-repeating-characters
+    title: "Longest Substring Without Repeating Characters"
+    url: "https://leetcode.com/problems/longest-substring-without-repeating-characters/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Grow and shrink a window so it never holds a repeated character."
+  - slug: minimum-size-subarray-sum
+    title: "Minimum Size Subarray Sum"
+    url: "https://leetcode.com/problems/minimum-size-subarray-sum/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Shrink a variable window while its sum still meets the target."
+  - slug: max-consecutive-ones-iii
+    title: "Max Consecutive Ones III"
+    url: "https://leetcode.com/problems/max-consecutive-ones-iii/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Allow at most k zeros inside the window."
+  - slug: longest-subarray-of-1s-after-deleting-one-element
+    title: "Longest Subarray of 1's After Deleting One Element"
+    url: "https://leetcode.com/problems/longest-subarray-of-1s-after-deleting-one-element/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Keep at most one zero in the window and measure its length."
+  - slug: fruit-into-baskets
+    title: "Fruit Into Baskets"
+    url: "https://leetcode.com/problems/fruit-into-baskets/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Keep a window with at most two distinct values using a map."
+  - slug: permutation-in-string
+    title: "Permutation in String"
+    url: "https://leetcode.com/problems/permutation-in-string/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Compare character counts of a fixed window with the target counts."
+  - slug: find-all-anagrams-in-a-string
+    title: "Find All Anagrams in a String"
+    url: "https://leetcode.com/problems/find-all-anagrams-in-a-string/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Slide a count window and record every start where counts match."
+  - slug: longest-repeating-character-replacement
+    title: "Longest Repeating Character Replacement"
+    url: "https://leetcode.com/problems/longest-repeating-character-replacement/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Keep window length minus top frequency within k replacements."
+  - slug: minimum-window-substring
+    title: "Minimum Window Substring"
+    url: "https://leetcode.com/problems/minimum-window-substring/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Expand to cover all needed characters, then shrink to the smallest window."
+  - slug: sliding-window-maximum
+    title: "Sliding Window Maximum"
+    url: "https://leetcode.com/problems/sliding-window-maximum/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: SLIDING_WINDOW
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Keep a monotonic deque so each window maximum is ready in O(1)."
+
+  # ---- PREFIX_SUM ----
+  - slug: find-the-highest-altitude
+    title: "Find the Highest Altitude"
+    url: "https://leetcode.com/problems/find-the-highest-altitude/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: PREFIX_SUM
+    companies: [INFOSYS_DSE, ALL]
+    why: "Build a running total and track its maximum."
+  - slug: minimum-value-to-get-positive-step-by-step-sum
+    title: "Minimum Value to Get Positive Step by Step Sum"
+    url: "https://leetcode.com/problems/minimum-value-to-get-positive-step-by-step-sum/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: PREFIX_SUM
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use the lowest prefix sum to find the needed start value."
+  - slug: range-sum-query-immutable
+    title: "Range Sum Query - Immutable"
+    url: "https://leetcode.com/problems/range-sum-query-immutable/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: PREFIX_SUM
+    companies: [INFOSYS_DSE, ALL]
+    why: "Precompute prefix sums so any range sum is O(1)."
+  - slug: find-pivot-index
+    title: "Find Pivot Index"
+    url: "https://leetcode.com/problems/find-pivot-index/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: PREFIX_SUM
+    companies: [INFOSYS_DSE, ALL]
+    why: "Compare left sum and right sum using the total sum."
+  - slug: subarray-sum-equals-k
+    title: "Subarray Sum Equals K"
+    url: "https://leetcode.com/problems/subarray-sum-equals-k/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: PREFIX_SUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count subarrays with a map of prefix sums seen so far."
+  - slug: continuous-subarray-sum
+    title: "Continuous Subarray Sum"
+    url: "https://leetcode.com/problems/continuous-subarray-sum/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: PREFIX_SUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Store prefix sums modulo k to find a multiple of k."
+  - slug: subarray-sums-divisible-by-k
+    title: "Subarray Sums Divisible by K"
+    url: "https://leetcode.com/problems/subarray-sums-divisible-by-k/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: PREFIX_SUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count equal prefix remainders, handling negative numbers safely."
+  - slug: range-sum-query-2d-immutable
+    title: "Range Sum Query 2D - Immutable"
+    url: "https://leetcode.com/problems/range-sum-query-2d-immutable/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: PREFIX_SUM
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Extend prefix sums to a 2D grid for O(1) rectangle sums."
+
+  # ---- RECURSION ----
+  - slug: fibonacci-number
+    title: "Fibonacci Number"
+    url: "https://leetcode.com/problems/fibonacci-number/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: RECURSION
+    companies: [INFOSYS_DSE, ALL]
+    why: "Write a basic recursive function, then see why memoization helps."
+  - slug: power-of-three
+    title: "Power of Three"
+    url: "https://leetcode.com/problems/power-of-three/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: RECURSION
+    companies: [INFOSYS_DSE, ALL]
+    why: "Reduce a problem by dividing and calling the same function again."
+  - slug: pascals-triangle-ii
+    title: "Pascal's Triangle II"
+    url: "https://leetcode.com/problems/pascals-triangle-ii/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: RECURSION
+    companies: [INFOSYS_DSE, ALL]
+    why: "Build one row from the previous row, recursively or iteratively."
+  - slug: swap-nodes-in-pairs
+    title: "Swap Nodes in Pairs"
+    url: "https://leetcode.com/problems/swap-nodes-in-pairs/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: RECURSION
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Solve a small part and let recursion handle the rest of the list."
+  - slug: powx-n
+    title: "Pow(x, n)"
+    url: "https://leetcode.com/problems/powx-n/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: RECURSION
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use fast power: halve the exponent each call for O(log n)."
+  - slug: k-th-symbol-in-grammar
+    title: "K-th Symbol in Grammar"
+    url: "https://leetcode.com/problems/k-th-symbol-in-grammar/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: RECURSION
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Find a value by tracing it back to its parent in the previous row."
+  - slug: recursive-digit-sum
+    title: "Recursive Digit Sum"
+    url: "https://www.hackerrank.com/challenges/recursive-digit-sum/problem"
+    platform: HACKERRANK
+    difficulty: MEDIUM
+    pattern: RECURSION
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Apply recursion on a digit sum and avoid building huge strings."
+  - slug: different-ways-to-add-parentheses
+    title: "Different Ways to Add Parentheses"
+    url: "https://leetcode.com/problems/different-ways-to-add-parentheses/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: RECURSION
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Split at each operator and combine results from both sides."
+
+  # ---- BACKTRACKING ----
+  - slug: binary-watch
+    title: "Binary Watch"
+    url: "https://leetcode.com/problems/binary-watch/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BACKTRACKING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Try all choices and keep the ones that match a rule."
+  - slug: subsets
+    title: "Subsets"
+    url: "https://leetcode.com/problems/subsets/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use the include or exclude choice to generate the power set."
+  - slug: permutations
+    title: "Permutations"
+    url: "https://leetcode.com/problems/permutations/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Build every order using a used[] array and undo each choice."
+  - slug: letter-combinations-of-a-phone-number
+    title: "Letter Combinations of a Phone Number"
+    url: "https://leetcode.com/problems/letter-combinations-of-a-phone-number/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Build strings one digit at a time from a key map."
+  - slug: generate-parentheses
+    title: "Generate Parentheses"
+    url: "https://leetcode.com/problems/generate-parentheses/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Add brackets only when the counts keep the string valid."
+  - slug: combination-sum
+    title: "Combination Sum"
+    url: "https://leetcode.com/problems/combination-sum/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Reuse numbers and stop early when the sum is too big."
+  - slug: word-search
+    title: "Word Search"
+    url: "https://leetcode.com/problems/word-search/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Do DFS on a grid, mark visited cells and undo on the way back."
+  - slug: palindrome-partitioning
+    title: "Palindrome Partitioning"
+    url: "https://leetcode.com/problems/palindrome-partitioning/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Cut a string into palindromes by trying every valid first piece."
+  - slug: n-queens
+    title: "N-Queens"
+    url: "https://leetcode.com/problems/n-queens/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Place queens row by row and track blocked columns and diagonals."
+  - slug: sudoku-solver
+    title: "Sudoku Solver"
+    url: "https://leetcode.com/problems/sudoku-solver/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: BACKTRACKING
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Fill empty cells with valid digits and backtrack on dead ends."
+
+  # ---- LINKED_LIST ----
+  - slug: middle-of-the-linked-list
+    title: "Middle of the Linked List"
+    url: "https://leetcode.com/problems/middle-of-the-linked-list/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: LINKED_LIST
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use slow and fast pointers to find the middle in one pass."
+  - slug: reverse-linked-list
+    title: "Reverse Linked List"
+    url: "https://leetcode.com/problems/reverse-linked-list/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: LINKED_LIST
+    companies: [INFOSYS_DSE, ALL]
+    why: "Reverse links with prev, curr and next pointers."
+  - slug: merge-two-sorted-lists
+    title: "Merge Two Sorted Lists"
+    url: "https://leetcode.com/problems/merge-two-sorted-lists/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: LINKED_LIST
+    companies: [INFOSYS_DSE, ALL]
+    why: "Merge with a dummy head node to keep code simple."
+  - slug: linked-list-cycle
+    title: "Linked List Cycle"
+    url: "https://leetcode.com/problems/linked-list-cycle/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: LINKED_LIST
+    companies: [INFOSYS_DSE, ALL]
+    why: "Detect a loop with Floyd's slow and fast pointers."
+  - slug: palindrome-linked-list
+    title: "Palindrome Linked List"
+    url: "https://leetcode.com/problems/palindrome-linked-list/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: LINKED_LIST
+    companies: [INFOSYS_DSE, ALL]
+    why: "Find the middle, reverse the second half and compare."
+  - slug: intersection-of-two-linked-lists
+    title: "Intersection of Two Linked Lists"
+    url: "https://leetcode.com/problems/intersection-of-two-linked-lists/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: LINKED_LIST
+    companies: [INFOSYS_DSE, ALL]
+    why: "Switch heads after reaching the end so both pointers meet."
+  - slug: remove-nth-node-from-end-of-list
+    title: "Remove Nth Node From End of List"
+    url: "https://leetcode.com/problems/remove-nth-node-from-end-of-list/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: LINKED_LIST
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Keep a gap of n between two pointers to find the node in one pass."
+  - slug: add-two-numbers
+    title: "Add Two Numbers"
+    url: "https://leetcode.com/problems/add-two-numbers/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: LINKED_LIST
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Add digits stored in lists with a carry, building a new list."
+  - slug: reorder-list
+    title: "Reorder List"
+    url: "https://leetcode.com/problems/reorder-list/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: LINKED_LIST
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Combine three skills: find middle, reverse, and merge."
+  - slug: sort-list
+    title: "Sort List"
+    url: "https://leetcode.com/problems/sort-list/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: LINKED_LIST
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Apply merge sort to a linked list."
+  - slug: copy-list-with-random-pointer
+    title: "Copy List with Random Pointer"
+    url: "https://leetcode.com/problems/copy-list-with-random-pointer/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: LINKED_LIST
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Deep copy a list using a map from old nodes to new nodes."
+  - slug: lru-cache
+    title: "LRU Cache"
+    url: "https://leetcode.com/problems/lru-cache/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: LINKED_LIST
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Design a cache with a HashMap plus a doubly linked list for O(1) operations."
+  - slug: reverse-nodes-in-k-group
+    title: "Reverse Nodes in k-Group"
+    url: "https://leetcode.com/problems/reverse-nodes-in-k-group/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: LINKED_LIST
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Reverse fixed-size groups and reconnect them carefully."
+
+  # ---- STACK_QUEUE ----
+  - slug: valid-parentheses
+    title: "Valid Parentheses"
+    url: "https://leetcode.com/problems/valid-parentheses/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use a stack to match each closing bracket with the last opening one."
+  - slug: remove-all-adjacent-duplicates-in-string
+    title: "Remove All Adjacent Duplicates In String"
+    url: "https://leetcode.com/problems/remove-all-adjacent-duplicates-in-string/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use a stack (or StringBuilder) to cancel equal neighbors."
+  - slug: implement-queue-using-stacks
+    title: "Implement Queue using Stacks"
+    url: "https://leetcode.com/problems/implement-queue-using-stacks/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_DSE, ALL]
+    why: "Build FIFO behavior from two LIFO stacks."
+  - slug: next-greater-element-i
+    title: "Next Greater Element I"
+    url: "https://leetcode.com/problems/next-greater-element-i/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_DSE, ALL]
+    why: "Meet the monotonic stack for next-greater lookups."
+  - slug: min-stack
+    title: "Min Stack"
+    url: "https://leetcode.com/problems/min-stack/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Keep the current minimum alongside each pushed value."
+  - slug: balanced-brackets
+    title: "Balanced Brackets"
+    url: "https://www.hackerrank.com/challenges/balanced-brackets/problem"
+    platform: HACKERRANK
+    difficulty: MEDIUM
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Check bracket balance with a stack across many test strings."
+  - slug: evaluate-reverse-polish-notation
+    title: "Evaluate Reverse Polish Notation"
+    url: "https://leetcode.com/problems/evaluate-reverse-polish-notation/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Evaluate a postfix expression with a stack of numbers."
+  - slug: daily-temperatures
+    title: "Daily Temperatures"
+    url: "https://leetcode.com/problems/daily-temperatures/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use a monotonic stack of indexes to find the next warmer day."
+  - slug: simplify-path
+    title: "Simplify Path"
+    url: "https://leetcode.com/problems/simplify-path/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Process folder names with a stack to handle \".\" and \"..\"."
+  - slug: asteroid-collision
+    title: "Asteroid Collision"
+    url: "https://leetcode.com/problems/asteroid-collision/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Simulate collisions with a stack and careful conditions."
+  - slug: decode-string
+    title: "Decode String"
+    url: "https://leetcode.com/problems/decode-string/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use stacks for counts and partial strings to handle nesting."
+  - slug: basic-calculator-ii
+    title: "Basic Calculator II"
+    url: "https://leetcode.com/problems/basic-calculator-ii/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Evaluate + - * / with correct precedence using a stack."
+  - slug: largest-rectangle-in-histogram
+    title: "Largest Rectangle in Histogram"
+    url: "https://leetcode.com/problems/largest-rectangle-in-histogram/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: STACK_QUEUE
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Use a monotonic stack to find each bar's left and right limits."
+
+  # ---- SORTING ----
+  - slug: sort-array-by-parity
+    title: "Sort Array By Parity"
+    url: "https://leetcode.com/problems/sort-array-by-parity/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: SORTING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Partition an array in place, the core step of quicksort."
+  - slug: height-checker
+    title: "Height Checker"
+    url: "https://leetcode.com/problems/height-checker/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: SORTING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Compare an array with its sorted copy (or use counting sort)."
+  - slug: relative-sort-array
+    title: "Relative Sort Array"
+    url: "https://leetcode.com/problems/relative-sort-array/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: SORTING
+    companies: [INFOSYS_DSE, ALL]
+    why: "Sort by a custom order using counting."
+  - slug: sort-an-array
+    title: "Sort an Array"
+    url: "https://leetcode.com/problems/sort-an-array/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SORTING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Write merge sort or heap sort yourself in O(n log n)."
+  - slug: merge-intervals
+    title: "Merge Intervals"
+    url: "https://leetcode.com/problems/merge-intervals/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SORTING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Sort by start time, then merge overlapping ranges."
+  - slug: insert-interval
+    title: "Insert Interval"
+    url: "https://leetcode.com/problems/insert-interval/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SORTING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Insert into sorted intervals and merge overlaps in one pass."
+  - slug: largest-number
+    title: "Largest Number"
+    url: "https://leetcode.com/problems/largest-number/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: SORTING
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Sort with a custom Comparator that compares a+b with b+a."
+
+  # ---- BINARY_SEARCH ----
+  - slug: binary-search
+    title: "Binary Search"
+    url: "https://leetcode.com/problems/binary-search/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Write the classic binary search with correct low, high and mid updates."
+  - slug: search-insert-position
+    title: "Search Insert Position"
+    url: "https://leetcode.com/problems/search-insert-position/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Return where a value would go when it is not found."
+  - slug: sqrtx
+    title: "Sqrt(x)"
+    url: "https://leetcode.com/problems/sqrtx/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Binary search on the answer and avoid overflow with long."
+  - slug: first-bad-version
+    title: "First Bad Version"
+    url: "https://leetcode.com/problems/first-bad-version/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Find the first true in a false-then-true sequence."
+  - slug: find-first-and-last-position-of-element-in-sorted-array
+    title: "Find First and Last Position of Element in Sorted Array"
+    url: "https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Run lower-bound and upper-bound searches for a range."
+  - slug: search-a-2d-matrix
+    title: "Search a 2D Matrix"
+    url: "https://leetcode.com/problems/search-a-2d-matrix/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Treat a sorted matrix as one long sorted array."
+  - slug: find-peak-element
+    title: "Find Peak Element"
+    url: "https://leetcode.com/problems/find-peak-element/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Move toward the higher neighbor to find a peak in O(log n)."
+  - slug: find-minimum-in-rotated-sorted-array
+    title: "Find Minimum in Rotated Sorted Array"
+    url: "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Compare mid with the right end to find the rotation point."
+  - slug: search-in-rotated-sorted-array
+    title: "Search in Rotated Sorted Array"
+    url: "https://leetcode.com/problems/search-in-rotated-sorted-array/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Decide which half is sorted, then search the correct half."
+  - slug: koko-eating-bananas
+    title: "Koko Eating Bananas"
+    url: "https://leetcode.com/problems/koko-eating-bananas/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Binary search on the answer (eating speed) with a check function."
+  - slug: capacity-to-ship-packages-within-d-days
+    title: "Capacity To Ship Packages Within D Days"
+    url: "https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Search the smallest capacity that passes a greedy check."
+  - slug: split-array-largest-sum
+    title: "Split Array Largest Sum"
+    url: "https://leetcode.com/problems/split-array-largest-sum/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Minimize the largest part sum by searching on the answer."
+  - slug: median-of-two-sorted-arrays
+    title: "Median of Two Sorted Arrays"
+    url: "https://leetcode.com/problems/median-of-two-sorted-arrays/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: BINARY_SEARCH
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Binary search on a partition of two arrays in O(log(min(m, n)))."
+
+  # ---- TREES ----
+  - slug: binary-tree-inorder-traversal
+    title: "Binary Tree Inorder Traversal"
+    url: "https://leetcode.com/problems/binary-tree-inorder-traversal/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TREES
+    companies: [INFOSYS_DSE, ALL]
+    why: "Write inorder traversal both recursively and with a stack."
+  - slug: maximum-depth-of-binary-tree
+    title: "Maximum Depth of Binary Tree"
+    url: "https://leetcode.com/problems/maximum-depth-of-binary-tree/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TREES
+    companies: [INFOSYS_DSE, ALL]
+    why: "Find tree height with a simple recursive formula."
+  - slug: invert-binary-tree
+    title: "Invert Binary Tree"
+    url: "https://leetcode.com/problems/invert-binary-tree/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TREES
+    companies: [INFOSYS_DSE, ALL]
+    why: "Swap children at every node with recursion."
+  - slug: same-tree
+    title: "Same Tree"
+    url: "https://leetcode.com/problems/same-tree/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TREES
+    companies: [INFOSYS_DSE, ALL]
+    why: "Compare two trees node by node recursively."
+  - slug: diameter-of-binary-tree
+    title: "Diameter of Binary Tree"
+    url: "https://leetcode.com/problems/diameter-of-binary-tree/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: TREES
+    companies: [INFOSYS_DSE, ALL]
+    why: "Track a global best while returning heights."
+  - slug: binary-tree-level-order-traversal
+    title: "Binary Tree Level Order Traversal"
+    url: "https://leetcode.com/problems/binary-tree-level-order-traversal/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TREES
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use a queue for BFS and group nodes level by level."
+  - slug: binary-tree-right-side-view
+    title: "Binary Tree Right Side View"
+    url: "https://leetcode.com/problems/binary-tree-right-side-view/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TREES
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Pick the last node of each level in BFS."
+  - slug: lowest-common-ancestor-of-a-binary-search-tree
+    title: "Lowest Common Ancestor of a Binary Search Tree"
+    url: "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TREES
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use BST order to find where two paths split."
+  - slug: validate-binary-search-tree
+    title: "Validate Binary Search Tree"
+    url: "https://leetcode.com/problems/validate-binary-search-tree/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TREES
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Pass min and max limits down the tree to check BST rules."
+  - slug: kth-smallest-element-in-a-bst
+    title: "Kth Smallest Element in a BST"
+    url: "https://leetcode.com/problems/kth-smallest-element-in-a-bst/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TREES
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use inorder traversal, which visits a BST in sorted order."
+  - slug: lowest-common-ancestor-of-a-binary-tree
+    title: "Lowest Common Ancestor of a Binary Tree"
+    url: "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TREES
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Find where two nodes meet using results from left and right subtrees."
+  - slug: construct-binary-tree-from-preorder-and-inorder-traversal
+    title: "Construct Binary Tree from Preorder and Inorder Traversal"
+    url: "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: TREES
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Rebuild a tree using a map of inorder indexes."
+  - slug: binary-tree-maximum-path-sum
+    title: "Binary Tree Maximum Path Sum"
+    url: "https://leetcode.com/problems/binary-tree-maximum-path-sum/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: TREES
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Return the best one-side path while updating the best full path."
+  - slug: serialize-and-deserialize-binary-tree
+    title: "Serialize and Deserialize Binary Tree"
+    url: "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: TREES
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Turn a tree into a string and back with preorder and null markers."
+
+  # ---- HEAPS ----
+  - slug: last-stone-weight
+    title: "Last Stone Weight"
+    url: "https://leetcode.com/problems/last-stone-weight/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HEAPS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use a max-heap (PriorityQueue with reverse order) to always pick the largest."
+  - slug: kth-largest-element-in-a-stream
+    title: "Kth Largest Element in a Stream"
+    url: "https://leetcode.com/problems/kth-largest-element-in-a-stream/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: HEAPS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Keep a min-heap of size k for a running kth largest."
+  - slug: kth-largest-element-in-an-array
+    title: "Kth Largest Element in an Array"
+    url: "https://leetcode.com/problems/kth-largest-element-in-an-array/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HEAPS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Compare a size-k heap with quickselect."
+  - slug: top-k-frequent-elements
+    title: "Top K Frequent Elements"
+    url: "https://leetcode.com/problems/top-k-frequent-elements/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HEAPS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count with a map, then keep the top k using a heap or buckets."
+  - slug: k-closest-points-to-origin
+    title: "K Closest Points to Origin"
+    url: "https://leetcode.com/problems/k-closest-points-to-origin/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HEAPS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use a max-heap of size k with a custom comparator."
+  - slug: task-scheduler
+    title: "Task Scheduler"
+    url: "https://leetcode.com/problems/task-scheduler/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: HEAPS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Plan tasks with cooldowns using counts and a greedy formula or heap."
+  - slug: merge-k-sorted-lists
+    title: "Merge k Sorted Lists"
+    url: "https://leetcode.com/problems/merge-k-sorted-lists/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: HEAPS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Merge many lists by always taking the smallest head from a heap."
+  - slug: find-median-from-data-stream
+    title: "Find Median from Data Stream"
+    url: "https://leetcode.com/problems/find-median-from-data-stream/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: HEAPS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Balance a max-heap and a min-heap to get the median fast."
+
+  # ---- GRAPHS ----
+  - slug: find-the-town-judge
+    title: "Find the Town Judge"
+    url: "https://leetcode.com/problems/find-the-town-judge/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: GRAPHS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use in-degree and out-degree counts."
+  - slug: flood-fill
+    title: "Flood Fill"
+    url: "https://leetcode.com/problems/flood-fill/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: GRAPHS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Spread through a grid with DFS or BFS."
+  - slug: find-if-path-exists-in-graph
+    title: "Find if Path Exists in Graph"
+    url: "https://leetcode.com/problems/find-if-path-exists-in-graph/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: GRAPHS
+    companies: [INFOSYS_DSE, ALL]
+    why: "Build an adjacency list and run BFS, DFS or union-find."
+  - slug: number-of-islands
+    title: "Number of Islands"
+    url: "https://leetcode.com/problems/number-of-islands/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count connected parts of a grid with DFS or BFS."
+  - slug: number-of-provinces
+    title: "Number of Provinces"
+    url: "https://leetcode.com/problems/number-of-provinces/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count connected components in an adjacency matrix."
+  - slug: rotting-oranges
+    title: "Rotting Oranges"
+    url: "https://leetcode.com/problems/rotting-oranges/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Run multi-source BFS and count time in levels."
+  - slug: clone-graph
+    title: "Clone Graph"
+    url: "https://leetcode.com/problems/clone-graph/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Deep copy a graph using a map from old nodes to new nodes."
+  - slug: course-schedule
+    title: "Course Schedule"
+    url: "https://leetcode.com/problems/course-schedule/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Detect a cycle in a directed graph (topological sort)."
+  - slug: course-schedule-ii
+    title: "Course Schedule II"
+    url: "https://leetcode.com/problems/course-schedule-ii/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Return a valid order with Kahn's BFS topological sort."
+  - slug: pacific-atlantic-water-flow
+    title: "Pacific Atlantic Water Flow"
+    url: "https://leetcode.com/problems/pacific-atlantic-water-flow/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Search backward from both oceans and take the overlap."
+  - slug: redundant-connection
+    title: "Redundant Connection"
+    url: "https://leetcode.com/problems/redundant-connection/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Use union-find to detect the edge that makes a cycle."
+  - slug: network-delay-time
+    title: "Network Delay Time"
+    url: "https://leetcode.com/problems/network-delay-time/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Find shortest paths from one source with Dijkstra's algorithm."
+  - slug: cheapest-flights-within-k-stops
+    title: "Cheapest Flights Within K Stops"
+    url: "https://leetcode.com/problems/cheapest-flights-within-k-stops/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Shortest path with a limit on stops (Bellman-Ford style or BFS)."
+  - slug: word-ladder
+    title: "Word Ladder"
+    url: "https://leetcode.com/problems/word-ladder/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: GRAPHS
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Find the shortest transformation using BFS on word neighbors."
+
+  # ---- GREEDY ----
+  - slug: assign-cookies
+    title: "Assign Cookies"
+    url: "https://leetcode.com/problems/assign-cookies/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: GREEDY
+    companies: [INFOSYS_DSE, ALL]
+    why: "Sort both lists and match the smallest fitting cookie."
+  - slug: lemonade-change
+    title: "Lemonade Change"
+    url: "https://leetcode.com/problems/lemonade-change/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: GREEDY
+    companies: [INFOSYS_DSE, ALL]
+    why: "Make the safest local choice when giving change."
+  - slug: maximum-units-on-a-truck
+    title: "Maximum Units on a Truck"
+    url: "https://leetcode.com/problems/maximum-units-on-a-truck/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: GREEDY
+    companies: [INFOSYS_DSE, ALL]
+    why: "Sort by value and take the best items first."
+  - slug: jump-game
+    title: "Jump Game"
+    url: "https://leetcode.com/problems/jump-game/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GREEDY
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Track the farthest reachable index as you scan."
+  - slug: jump-game-ii
+    title: "Jump Game II"
+    url: "https://leetcode.com/problems/jump-game-ii/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GREEDY
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count jumps by moving level by level over reachable ranges."
+  - slug: gas-station
+    title: "Gas Station"
+    url: "https://leetcode.com/problems/gas-station/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GREEDY
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Reset the start point when the running fuel goes negative."
+  - slug: partition-labels
+    title: "Partition Labels"
+    url: "https://leetcode.com/problems/partition-labels/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GREEDY
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use each character's last index to cut the string."
+  - slug: non-overlapping-intervals
+    title: "Non-overlapping Intervals"
+    url: "https://leetcode.com/problems/non-overlapping-intervals/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: GREEDY
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Sort by end time and keep intervals that finish earliest."
+
+  # ---- DP ----
+  - slug: climbing-stairs
+    title: "Climbing Stairs"
+    url: "https://leetcode.com/problems/climbing-stairs/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: DP
+    companies: [INFOSYS_DSE, ALL]
+    why: "Your first DP: each answer depends on the previous two."
+  - slug: house-robber
+    title: "House Robber"
+    url: "https://leetcode.com/problems/house-robber/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Choose take-or-skip at each house with a simple recurrence."
+  - slug: maximum-subarray
+    title: "Maximum Subarray"
+    url: "https://leetcode.com/problems/maximum-subarray/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Use Kadane's algorithm: extend the current sum or start fresh."
+  - slug: unique-paths
+    title: "Unique Paths"
+    url: "https://leetcode.com/problems/unique-paths/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count grid paths with a 2D DP table."
+  - slug: coin-change
+    title: "Coin Change"
+    url: "https://leetcode.com/problems/coin-change/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Find the fewest coins with an unbounded knapsack table."
+  - slug: decode-ways
+    title: "Decode Ways"
+    url: "https://leetcode.com/problems/decode-ways/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count decodings using one-digit and two-digit choices."
+  - slug: longest-increasing-subsequence
+    title: "Longest Increasing Subsequence"
+    url: "https://leetcode.com/problems/longest-increasing-subsequence/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Learn the O(n^2) DP, then the O(n log n) idea."
+  - slug: word-break
+    title: "Word Break"
+    url: "https://leetcode.com/problems/word-break/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Check if a string splits into dictionary words with a boolean DP."
+  - slug: longest-common-subsequence
+    title: "Longest Common Subsequence"
+    url: "https://leetcode.com/problems/longest-common-subsequence/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Learn the classic 2D DP on two strings."
+  - slug: partition-equal-subset-sum
+    title: "Partition Equal Subset Sum"
+    url: "https://leetcode.com/problems/partition-equal-subset-sum/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Turn the problem into 0/1 knapsack subset sum."
+  - slug: edit-distance
+    title: "Edit Distance"
+    url: "https://leetcode.com/problems/edit-distance/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: DP
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Find the fewest insert, delete and replace steps with a 2D table."
+  - slug: longest-valid-parentheses
+    title: "Longest Valid Parentheses"
+    url: "https://leetcode.com/problems/longest-valid-parentheses/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: DP
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Track valid lengths ending at each index (or use a stack)."
+  - slug: regular-expression-matching
+    title: "Regular Expression Matching"
+    url: "https://leetcode.com/problems/regular-expression-matching/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: DP
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Match '.' and '*' patterns with a 2D DP."
+  - slug: burst-balloons
+    title: "Burst Balloons"
+    url: "https://leetcode.com/problems/burst-balloons/"
+    platform: LEETCODE
+    difficulty: HARD
+    pattern: DP
+    companies: [INFOSYS_SP, PRODUCT]
+    why: "Think about the last balloon to burst in an interval DP."
+
+  # ---- BIT_MANIPULATION ----
+  - slug: single-number
+    title: "Single Number"
+    url: "https://leetcode.com/problems/single-number/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BIT_MANIPULATION
+    companies: [INFOSYS_DSE, ALL]
+    why: "Use XOR to cancel out pairs."
+  - slug: number-of-1-bits
+    title: "Number of 1 Bits"
+    url: "https://leetcode.com/problems/number-of-1-bits/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BIT_MANIPULATION
+    companies: [INFOSYS_DSE, ALL]
+    why: "Count set bits with n & (n - 1)."
+  - slug: power-of-two
+    title: "Power of Two"
+    url: "https://leetcode.com/problems/power-of-two/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BIT_MANIPULATION
+    companies: [INFOSYS_DSE, ALL]
+    why: "Check a single set bit with n & (n - 1) == 0."
+  - slug: missing-number
+    title: "Missing Number"
+    url: "https://leetcode.com/problems/missing-number/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BIT_MANIPULATION
+    companies: [INFOSYS_DSE, ALL]
+    why: "Find the missing value with XOR or the sum formula."
+  - slug: hamming-distance
+    title: "Hamming Distance"
+    url: "https://leetcode.com/problems/hamming-distance/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BIT_MANIPULATION
+    companies: [INFOSYS_DSE, ALL]
+    why: "XOR two numbers and count the different bits."
+  - slug: counting-bits
+    title: "Counting Bits"
+    url: "https://leetcode.com/problems/counting-bits/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: BIT_MANIPULATION
+    companies: [INFOSYS_DSE, ALL]
+    why: "Reuse earlier answers: bits(i) = bits(i >> 1) + (i & 1)."
+  - slug: single-number-ii
+    title: "Single Number II"
+    url: "https://leetcode.com/problems/single-number-ii/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BIT_MANIPULATION
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count bits at each position modulo 3."
+  - slug: sum-of-two-integers
+    title: "Sum of Two Integers"
+    url: "https://leetcode.com/problems/sum-of-two-integers/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: BIT_MANIPULATION
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Add without + using XOR for sum and AND for carry."
+
+  # ---- MATH ----
+  - slug: fizz-buzz
+    title: "Fizz Buzz"
+    url: "https://leetcode.com/problems/fizz-buzz/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: MATH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Practice loops, modulo and clean if-else order."
+  - slug: palindrome-number
+    title: "Palindrome Number"
+    url: "https://leetcode.com/problems/palindrome-number/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: MATH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Reverse digits with % and / without turning the number into a string."
+  - slug: add-digits
+    title: "Add Digits"
+    url: "https://leetcode.com/problems/add-digits/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: MATH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Find the digital root by looping or with a math shortcut."
+  - slug: ugly-number
+    title: "Ugly Number"
+    url: "https://leetcode.com/problems/ugly-number/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: MATH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Divide out allowed prime factors."
+  - slug: excel-sheet-column-number
+    title: "Excel Sheet Column Number"
+    url: "https://leetcode.com/problems/excel-sheet-column-number/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: MATH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Convert a base-26 style label to a number."
+  - slug: greatest-common-divisor-of-strings
+    title: "Greatest Common Divisor of Strings"
+    url: "https://leetcode.com/problems/greatest-common-divisor-of-strings/"
+    platform: LEETCODE
+    difficulty: EASY
+    pattern: MATH
+    companies: [INFOSYS_DSE, ALL]
+    why: "Apply GCD (Euclid's algorithm) to string lengths."
+  - slug: reverse-integer
+    title: "Reverse Integer"
+    url: "https://leetcode.com/problems/reverse-integer/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: MATH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Reverse digits and check for int overflow before it happens."
+  - slug: factorial-trailing-zeroes
+    title: "Factorial Trailing Zeroes"
+    url: "https://leetcode.com/problems/factorial-trailing-zeroes/"
+    platform: LEETCODE
+    difficulty: MEDIUM
+    pattern: MATH
+    companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+    why: "Count factors of 5 instead of computing the factorial."

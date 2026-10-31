@@ -1,13 +1,16 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import type { BankProblem, PatternCoverage, Suggestion } from '../api/learning'
+import { HintLadder } from './mentor/MentorPage'
 import { api } from '../api/client'
 import type { MistakeCategoryView, MistakeTrend, MistakeView, Page, PatternMap, PatternView, ProblemSaved, ProblemView, RevisitView, XpAward } from '../api/types'
 import { ErrorBox, Section, Spinner, Stars, Tabs, XpToast } from '../components/ui'
 import { errorMessage, useApi } from '../lib/hooks'
 
-type Tab = 'problems' | 'log' | 'patterns' | 'revisits' | 'mistakes'
+type Tab = 'problems' | 'suggested' | 'bank' | 'log' | 'patterns' | 'revisits' | 'mistakes'
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'log', label: '➕ Log problem' }, { id: 'problems', label: '📚 My problems' }, { id: 'patterns', label: '🗺️ Pattern map' },
+  { id: 'suggested', label: '✨ Suggested' }, { id: 'log', label: '➕ Log problem' }, { id: 'problems', label: '📚 My problems' },
+  { id: 'bank', label: '🗃️ Problem bank' }, { id: 'patterns', label: '🗺️ Pattern map' },
   { id: 'revisits', label: '🔁 Revisits' }, { id: 'mistakes', label: '📓 Mistakes' },
 ]
 
@@ -24,6 +27,8 @@ export default function GymPage() {
       <Tabs tabs={TABS} value={current} onChange={(t) => nav(t === 'problems' ? '/gym' : `/gym/${t}`)} />
       <Routes>
         <Route index element={<ProblemList />} />
+        <Route path="suggested" element={<Suggested />} />
+        <Route path="bank" element={<Bank />} />
         <Route path="log" element={<LogProblem onAward={setAward} />} />
         <Route path="patterns" element={<PatternMapView />} />
         <Route path="revisits" element={<Revisits onAward={setAward} />} />
@@ -75,10 +80,14 @@ const HINTS = [
 function LogProblem({ onAward }: { onAward: (a: XpAward) => void }) {
   const patterns = useApi<PatternView[]>('/api/patterns')
   const nav = useNavigate()
+  const loc = useLocation()
+  const fromBank = (loc.state as { bank?: BankProblem } | null)?.bank
   const [f, setF] = useState({
-    title: '', link: '', platform: 'LEETCODE', difficulty: 'EASY', patternCodes: [] as string[], timeTakenMinutes: 30, attempts: 1,
-    hintLevel: 'NONE', attemptedBeforeHint: true, confidence: 3, approach: '', code: '',
+    title: fromBank?.title ?? '', link: fromBank?.url ?? '', platform: fromBank?.platform ?? 'LEETCODE', difficulty: fromBank?.difficulty ?? 'EASY',
+    patternCodes: fromBank ? [fromBank.patternCode] : [] as string[], timeTakenMinutes: 30, attempts: 1,
+    hintLevel: 'NONE', attemptedBeforeHint: true, confidence: 3, approach: '', code: '', bankSlug: fromBank?.slug ?? null as string | null,
   })
+  const [showHints, setShowHints] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<ProblemSaved | null>(null)
   const [busy, setBusy] = useState(false)
@@ -107,7 +116,7 @@ function LogProblem({ onAward }: { onAward: (a: XpAward) => void }) {
         {!saved.attemptXp.awarded && saved.attemptXp.reason && <p className="text-sm text-muted">{saved.attemptXp.reason}</p>}
         <p className="text-sm text-muted">It will come back for a rematch on {saved.revisitDates.join(', ')}. Solve it from scratch then.</p>
         <div className="flex gap-2 justify-center">
-          <button className="btn-primary" onClick={() => { setSaved(null); setF({ ...f, title: '', link: '', approach: '', code: '', patternCodes: [] }) }}>Log another</button>
+          <button className="btn-primary" onClick={() => { setSaved(null); setF({ ...f, title: '', link: '', approach: '', code: '', patternCodes: [], bankSlug: null }) }}>Log another</button>
           <button className="btn-ghost" onClick={() => nav('/gym/mistakes')}>Record a mistake</button>
         </div>
       </div>
@@ -117,6 +126,10 @@ function LogProblem({ onAward }: { onAward: (a: XpAward) => void }) {
   return (
     <div className="space-y-4">
       <FrameworkCard />
+      <div className="card">
+        <button className="w-full flex justify-between font-semibold" onClick={() => setShowHints(!showHints)} aria-expanded={showHints}>🪜 Stuck? Use the hint ladder (smallest hint first) <span>{showHints ? '−' : '+'}</span></button>
+        {showHints && <div className="mt-3"><HintLadder initialTitle={f.title} initialPattern={f.patternCodes[0] ?? ''} /></div>}
+      </div>
       <form className="card space-y-4" onSubmit={submit} noValidate>
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
@@ -431,6 +444,7 @@ function Mistakes({ onAward }: { onAward: (a: XpAward) => void }) {
                 {m.topic && <p className="text-muted">{m.topic}</p>}
                 <p>{m.whatHappened}</p>
                 <p className="text-accent">→ {m.lessonLearned}</p>
+                <button className="chip mt-1" onClick={async () => { try { await api(`/api/mistakes/${m.id}/flashcard`, { method: 'POST' }); alert('Flashcard created: it will come back for review tomorrow.') } catch (e) { alert(errorMessage(e)) } }}>🃏 Make a flashcard</button>
               </li>
             ))}
             {list.data?.items.length === 0 && <li className="text-muted">Nothing here.</li>}
@@ -439,4 +453,86 @@ function Mistakes({ onAward }: { onAward: (a: XpAward) => void }) {
       </Section>
     </div>
   )
+}
+
+// ------------------------------------------------------------------ suggestions + bank
+
+function Suggested() {
+  const list = useApi<Suggestion[]>('/api/problem-bank/suggestions')
+  const nav = useNavigate()
+  if (list.loading && !list.data) return <Spinner />
+  if (list.error) return <ErrorBox message={list.error} onRetry={list.reload} />
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted">Picked from your Pattern Map: shaky patterns first, then the next new core pattern, at the right difficulty. Solve on the site (free), then log it here with your own approach.</p>
+      {list.data?.length === 0 && <div className="card">🎉 You've solved everything we'd suggest right now. Try the Problem bank.</div>}
+      {list.data?.map(({ problem: p, reason }) => (
+        <div key={p.id} className="card space-y-2">
+          <div className="flex justify-between gap-2 items-start">
+            <div><p className="font-semibold">{p.title}</p><p className="text-xs text-muted">{p.patternName} · {p.platform.toLowerCase()} · {p.difficulty.toLowerCase()}</p></div>
+            <DiffChip d={p.difficulty} />
+          </div>
+          <p className="text-sm">💡 {reason}</p>
+          <p className="text-sm text-muted">Trains: {p.why}</p>
+          <div className="flex flex-wrap gap-2">
+            <a className="btn-primary text-sm" href={p.url} target="_blank" rel="noreferrer">Solve it ↗</a>
+            <button className="btn-ghost text-sm" onClick={() => nav('/gym/log', { state: { bank: p } })}>I solved it: log it</button>
+          </div>
+        </div>
+      ))}
+      <p className="text-xs text-muted">Practice problems from free public sites, chosen for the Infosys style of preparation. Not claimed to be actual test questions.</p>
+    </div>
+  )
+}
+
+function Bank() {
+  const [pattern, setPattern] = useState('')
+  const [difficulty, setDifficulty] = useState('')
+  const [status, setStatus] = useState('')
+  const [page, setPage] = useState(0)
+  const nav = useNavigate()
+  const cov = useApi<PatternCoverage[]>('/api/problem-bank/coverage')
+  const list = useApi<Page<BankProblem>>(`/api/problem-bank?page=${page}&size=25&pattern=${pattern}&difficulty=${difficulty}&status=${status}`)
+  return (
+    <div className="space-y-3">
+      <div className="grid sm:grid-cols-3 gap-2">
+        <select className="input" value={pattern} onChange={(e) => { setPattern(e.target.value); setPage(0) }} aria-label="Pattern">
+          <option value="">All patterns</option>
+          {cov.data?.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.solved}/{c.total})</option>)}
+        </select>
+        <select className="input" value={difficulty} onChange={(e) => { setDifficulty(e.target.value); setPage(0) }} aria-label="Difficulty">
+          <option value="">All levels</option><option value="EASY">Easy</option><option value="MEDIUM">Medium</option><option value="HARD">Hard</option>
+        </select>
+        <select className="input" value={status} onChange={(e) => { setStatus(e.target.value); setPage(0) }} aria-label="Status">
+          <option value="">All</option><option value="UNSOLVED">Not solved yet</option><option value="SOLVED">Solved</option>
+        </select>
+      </div>
+      {list.loading && !list.data ? <Spinner /> : (
+        <ul className="space-y-2">
+          {list.data?.items.map((p) => (
+            <li key={p.id} className={`card flex items-center gap-3 ${p.solved ? 'opacity-70' : ''}`}>
+              <span aria-hidden>{p.solved ? '✅' : '⬜'}</span>
+              <div className="flex-1 min-w-0">
+                <a href={p.url} target="_blank" rel="noreferrer" className="font-medium hover:text-primary">{p.title} ↗</a>
+                <p className="text-xs text-muted truncate">{p.patternName} · {p.why}</p>
+              </div>
+              <DiffChip d={p.difficulty} />
+              {!p.solved && <button className="chip px-3" onClick={() => nav('/gym/log', { state: { bank: p } })}>Log</button>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {list.data && list.data.totalPages > 1 && (
+        <div className="flex justify-between items-center text-sm">
+          <button className="btn-ghost" disabled={page === 0} onClick={() => setPage(page - 1)}>←</button>
+          <span className="text-muted">Page {page + 1} of {list.data.totalPages} · {list.data.totalItems} problems</span>
+          <button className="btn-ghost" disabled={page + 1 >= list.data.totalPages} onClick={() => setPage(page + 1)}>→</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DiffChip({ d }: { d: string }) {
+  return <span className={`chip ${d === 'EASY' ? 'text-good' : d === 'MEDIUM' ? 'text-warn' : 'text-bad'}`}>{d.toLowerCase()}</span>
 }

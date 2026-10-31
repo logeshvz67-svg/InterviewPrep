@@ -7,6 +7,7 @@ export interface ProfileView {
   characterName: string; avatar: string; primaryCompany: string; laterCompanies: string[]
   testDate: string | null; timezone: string; dailyMinutes: number; whyStatement: string | null
   selfAssessment: Record<string, number>; onboardingComplete: boolean; totalXp: number; gold: number; soundEnabled: boolean
+  settings: Record<string, unknown>
 }
 
 export interface RoadmapWeek { week: number; startDate: string; phase: string; title: string; focus: string[]; laterLane: boolean }

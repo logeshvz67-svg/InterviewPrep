@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { Link } from 'react-router-dom'
+import { api, clearTokens, downloadFile } from '../api/client'
 import type { CompanyView, Page, ProfileView, XpEventView } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Section, Spinner } from '../components/ui'
@@ -97,6 +98,17 @@ export default function SettingsPage({ onProfileChanged }: { onProfileChanged: (
         </div>
       </Section>
 
+      <Section title="Voice, reminders and goals">
+        <VoiceAndReminders profile={form} onSaved={(p) => { setForm(p); flash('Saved ✓') }} />
+      </Section>
+
+      <Section title="Exam pattern">
+        <div className="card text-sm space-y-2">
+          <p>Enter the current Infosys test pattern (sections, questions, time, cutoffs) after checking the <b>official Infosys careers page</b>. Timed mock tests use exactly what you enter. Code Quest never guesses or hardcodes it.</p>
+          <Link className="btn-ghost text-sm" to="/interview?tab=mocks">Open the exam pattern editor →</Link>
+        </div>
+      </Section>
+
       <Section title="Theme">
         <div className="card flex flex-wrap gap-2">
           {(Object.keys(themes) as ThemeName[]).map((t) => (
@@ -118,9 +130,89 @@ export default function SettingsPage({ onProfileChanged }: { onProfileChanged: (
         <div className="card space-y-2 text-sm">
           <p>Signed in as {user?.email} {user?.role === 'ADMIN' && <span className="chip ml-1">admin</span>}</p>
           <button className="btn-ghost" onClick={() => void logout()}>Log out</button>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <button className="btn-ghost text-sm" onClick={() => downloadFile('/api/export/json', 'code-quest-export.json').catch((e) => flash(e.message))}>⬇️ Export all my data (JSON)</button>
+            <button className="btn-ghost text-sm" onClick={() => downloadFile('/api/export/problems.csv', 'problems.csv').catch((e) => flash(e.message))}>⬇️ Problems (CSV)</button>
+          </div>
+          <DeleteAccount />
+          <p className="text-xs text-muted">AI: answers come from a free OpenRouter model run by the server; free models may log prompts, so never paste passwords or private data. The AI can be wrong; lessons are the source of truth. Speech: recognition runs in your browser (Chrome/Edge work best and may send audio to the browser vendor's service); Code Quest stores only transcripts and scores, never audio.</p>
           <p className="text-xs text-muted">Code Quest is a personal study tool. Practice questions are written "in the style of" companies and are never claimed to be actual test questions.</p>
         </div>
       </Section>
+    </div>
+  )
+}
+
+function VoiceAndReminders({ profile, onSaved }: { profile: ProfileView; onSaved: (p: ProfileView) => void }) {
+  const st = profile.settings ?? {}
+  const [voiceLang, setVoiceLang] = useState(String(st.voiceLang ?? 'en-IN'))
+  const [voiceRate, setVoiceRate] = useState(Number(st.voiceRate ?? 1))
+  const [reminderTime, setReminderTime] = useState(String(st.reminderTime ?? ''))
+  const [notificationsOn, setNotificationsOn] = useState(Boolean(st.notificationsOn))
+  const [readyThreshold, setReadyThreshold] = useState(Number(st.readyThreshold ?? 75))
+  const [err, setErr] = useState<string | null>(null)
+
+  async function save() {
+    setErr(null)
+    if (notificationsOn && 'Notification' in window && Notification.permission === 'default') await Notification.requestPermission()
+    try {
+      onSaved(await api<ProfileView>('/api/profile/settings', { method: 'PUT', body: { voiceLang, voiceRate, reminderTime: reminderTime || null, notificationsOn, readyThreshold } }))
+    } catch (e) { setErr(errorMessage(e)) }
+  }
+
+  function preview() {
+    if (!('speechSynthesis' in window)) return
+    const u = new SpeechSynthesisUtterance('Hello! Explain polymorphism to me in simple words.')
+    u.lang = voiceLang; u.rate = voiceRate
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u)
+  }
+
+  return (
+    <div className="card space-y-3">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="label" htmlFor="vl">Voice language / accent</label>
+          <select id="vl" className="input" value={voiceLang} onChange={(e) => setVoiceLang(e.target.value)}>
+            <option value="en-IN">English (India)</option><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option>
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="vr">Speaking speed: {voiceRate.toFixed(1)}x</label>
+          <input id="vr" type="range" min={0.5} max={1.5} step={0.1} value={voiceRate} onChange={(e) => setVoiceRate(+e.target.value)} className="w-full" />
+        </div>
+      </div>
+      <button className="btn-ghost text-sm" onClick={preview}>🔊 Preview voice</button>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={notificationsOn} onChange={(e) => setNotificationsOn(e.target.checked)} /> Gentle daily reminder</label>
+        <input type="time" className="input" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} aria-label="Reminder time" disabled={!notificationsOn} />
+      </div>
+      <p className="text-xs text-muted">Reminders show only while Code Quest is open (or installed and running): the free hosting has no push server. No guilt messages, ever.</p>
+      <div>
+        <label className="label" htmlFor="rt">"Infosys Ready" badge threshold: {readyThreshold}%</label>
+        <input id="rt" type="range" min={40} max={100} step={5} value={readyThreshold} onChange={(e) => setReadyThreshold(+e.target.value)} className="w-full" />
+      </div>
+      {err && <p className="text-bad text-sm">{err}</p>}
+      <button className="btn-primary" onClick={save}>Save</button>
+    </div>
+  )
+}
+
+function DeleteAccount() {
+  const [open, setOpen] = useState(false)
+  const [pw, setPw] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  if (!open) return <button className="text-bad text-xs underline" onClick={() => setOpen(true)}>Delete my account and all data…</button>
+  return (
+    <div className="rounded-xl border border-bad/50 p-3 space-y-2">
+      <p className="text-sm">This permanently deletes everything (progress, problems, notes). Export first if you want a copy.</p>
+      <input type="password" className="input" placeholder="Your password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" />
+      {err && <p className="text-bad text-sm">{err}</p>}
+      <div className="flex gap-2">
+        <button className="btn text-white bg-bad" disabled={!pw} onClick={async () => {
+          try { await api('/api/account/delete', { method: 'POST', body: { password: pw } }); clearTokens(); window.location.href = '/' } catch (e) { setErr(errorMessage(e)) }
+        }}>Delete forever</button>
+        <button className="btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
+      </div>
     </div>
   )
 }

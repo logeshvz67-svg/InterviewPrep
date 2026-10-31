@@ -26,3 +26,19 @@
 }
 
 @keyframes fadein { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* Markdown inside lessons */
+.prose-cq { @apply text-ink leading-relaxed space-y-3; }
+.prose-cq h1, .prose-cq h2, .prose-cq h3 { @apply font-display font-semibold mt-5 mb-2; }
+.prose-cq h3 { @apply text-lg text-primary; }
+.prose-cq ul { @apply list-disc pl-5 space-y-1; }
+.prose-cq ol { @apply list-decimal pl-5 space-y-1; }
+.prose-cq code { @apply font-mono text-[0.9em] bg-raised rounded px-1 py-0.5; }
+.prose-cq pre { @apply bg-raised rounded-xl p-3 overflow-x-auto text-sm; }
+.prose-cq pre code { @apply bg-transparent p-0; }
+.prose-cq table { @apply w-full text-sm border-collapse block overflow-x-auto; }
+.prose-cq th, .prose-cq td { @apply border border-line px-2 py-1 text-left align-top; }
+.prose-cq th { @apply bg-raised; }
+.prose-cq blockquote { @apply border-l-4 border-accent pl-3 text-muted; }
+.prose-cq a { @apply text-primary underline; }
+.prose-cq strong { @apply text-ink font-semibold; }

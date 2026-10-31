@@ -118,3 +118,56 @@ Try to explain each one out loud in 3 sentences:
 8. Why do we inject a `Clock` instead of calling `Instant.now()`?
 9. Why `LocalDate` for streak days but `Instant` for `created_at`?
 10. Why is the Hikari pool only 3 connections?
+
+---
+
+# Phases 2-4: what's new in the code
+
+## Where things live
+| Feature | Backend | Frontend |
+|---|---|---|
+| Lessons, quiz gate, Prove-it, explain-back | `service/LessonService`, `content/ContentSeeder` (YAML → DB), `domain/QuizGrader` | `pages/learn/*`, `components/QuizRunner.tsx` |
+| Flashcards + warm-up recall | `service/FlashcardService`, `service/RecallService`, `domain/Sm2Scheduler` | `pages/recall/RecallPage.tsx` |
+| Problem bank + suggestions | `service/ProblemBankService` | `pages/GymPage.tsx` (Suggested / Problem bank tabs) |
+| Quests, badges, records, reports | `service/QuestBoardService`, `AchievementService`, `StatsService`, `RecordsService`, `ReportService` | `pages/progress/*` |
+| AI gateway | `ai/AiService` (+ `OpenRouterClient`, `AiText`, `AiProperties`) | — |
+| AI features | `service/MentorService`, `AiDiagnosticsService` | `pages/mentor/MentorPage.tsx`, `pages/AdminPage.tsx` |
+| Speaking + mock interviews | `domain/SpeakingMetrics`, `service/SpeakingService`, `MockInterviewService` | `pages/speak/*` |
+| Colosseum, aptitude, exam patterns, mock tests, diary | `service/PracticeService`, `ExamService`, `DiaryService` | `pages/colosseum/*` |
+| Spring track | `service/SpringTrackService`, `content/ContentCatalog` | `pages/colosseum/Spring*.tsx` |
+| Visualizers | — (pure frontend) | `components/viz/*`, `pages/viz/*` |
+
+## New Spring/Java concepts to study (and where)
+
+1. **`ApplicationRunner`** (`ContentSeeder`): code that runs once after the app starts. Runs *after* Flyway created the
+   tables and *after* Tomcat opened the port, so Render's health check passes while content imports.
+2. **`TransactionTemplate`** (`ContentSeeder`): a transaction started by code instead of `@Transactional`. Each file gets
+   its own transaction, so one broken file can't undo the others.
+3. **Two data-access styles on purpose**: JPA entities for things you load, change and save (lessons, flashcards,
+   mock tests); `JdbcTemplate` + plain SQL for *aggregate questions* ("count X per week") and append-only logs
+   (`StatsService`, `RecordsService`, `ai_call_log`). Rule of thumb: if you'd never edit the row as an object, SQL is simpler.
+4. **JSONB columns** (`@JdbcTypeCode(SqlTypes.JSON)`): lesson content, quiz answers, transcripts. Flexible documents
+   inside a relational DB. The quiz `answer` column never leaves the server before submission.
+5. **`@ConfigurationProperties` records** (`AiProperties`): typed config from env vars. Model names come only from
+   `OPENROUTER_MODEL` / `OPENROUTER_FALLBACK_MODELS`.
+6. **Programming to an interface** (`ChatClient` ← `OpenRouterClient`): `AiServiceFallbackTest` swaps in a scripted
+   fake model to test retries, fallbacks and limits without any network. This is *why* interfaces + DI matter.
+7. **Resilience patterns** (`AiService.ask`): retry with exponential backoff, fallback chain, rate limiting from DB
+   counts (no in-memory state, survives the free server sleeping), caching by hash, graceful degradation.
+8. **Defensive parsing** (`AiText.extractJson`): never trust model output; strip fences, parse, validate, retry once, fall back.
+9. **Pure domain logic** (`Sm2Scheduler`, `QuizGrader`, `SpeakingMetrics`): no Spring, no DB, 100% unit-testable.
+   The server **re-computes** speaking metrics instead of trusting the browser.
+10. **Optional<T> injection** (`AiService(…, Optional<Sleeper>)`): an optional dependency; tests pass a no-wait sleeper.
+11. **`ON CONFLICT … DO UPDATE` (upsert)** in Postgres (`ai_usage`, `reports`, `content_imports`): atomic counters
+    without race conditions.
+12. **Full-text search** (`AiConversationRepository.search`): `to_tsvector … @@ plainto_tsquery` with a GIN index.
+
+## Phases 2-4 "explain it out loud" checklist
+1. Why does the lesson API never send quiz answers, and where is grading done?
+2. How does the 80% gate decide if a lesson is locked? What does Prove-it change?
+3. Walk through SM-2: what happens to a card's interval on AGAIN vs GOOD vs EASY?
+4. What exactly happens in `AiService.ask` when the first model returns HTTP 429 three times?
+5. Why is the AI throttle counted in the database and not in a Java variable?
+6. Why do we strip `<think>` blocks, and what if a reply is *only* reasoning?
+7. Why is the Infosys exam pattern a user-entered table instead of constants in code?
+8. When would you choose `JdbcTemplate` over a JPA repository?

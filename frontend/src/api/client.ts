@@ -109,3 +109,17 @@ export async function wakeServer(onTick: (s: number) => void, maxSeconds = 180):
   }
   return false
 }
+
+/** Download a file from the API (with auth, refresh and retries) and save it in the browser. */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  if (!accessToken && getRefreshToken()) await tryRefresh()
+  let res = await rawFetch(path, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} })
+  if (res.status === 401 && (await tryRefresh())) res = await rawFetch(path, { headers: { Authorization: `Bearer ${accessToken}` } })
+  if (!res.ok) throw new ApiError(res.status, `Download failed (${res.status})`)
+  const blob = await res.blob()
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}

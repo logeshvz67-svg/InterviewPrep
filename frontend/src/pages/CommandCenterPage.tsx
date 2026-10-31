@@ -82,7 +82,7 @@ export default function CommandCenterPage() {
       </Section>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label={labels.recallQueue} value={data.recallQueueCount} hint="Problems due for a re-solve" to="/gym/revisits" />
+        <Stat label={labels.recallQueue} value={data.recallQueueCount} hint="Flashcards + re-solves due" to="/recall" />
         <Stat label="Days to test" value={data.daysToTest ?? '—'} hint={data.daysToTest == null ? 'Add a date in Settings' : 'Countdown'} to="/settings" />
         <Stat label="Roadmap week" value={data.currentWeek || '—'} hint={data.currentWeekTitle ?? ''} to="/roadmap" />
         <Stat label={labels.readiness} value={`${data.readiness.score}%`} hint={data.readiness.companyCode.replace('_', ' ')} to="#readiness" />
@@ -107,17 +107,21 @@ export default function CommandCenterPage() {
               ))}
             </ul>
             <p className="text-sm"><b>Improve next:</b> {data.readiness.improveNextTip}</p>
-            <p className="text-xs text-muted">Only {data.readiness.trackedWeightPercent}% of this score can be measured today; the rest unlocks as you use more of the app. The weights are our prep estimate, not an official formula.</p>
+            <p className="text-xs text-muted">{data.readiness.trackedWeightPercent < 100 ? `Only ${data.readiness.trackedWeightPercent}% of this score has data so far; parts you haven't practised count as 0. ` : ''}The weights are our prep estimate, not an official formula. <Link to="/interview" className="text-primary">Compare companies →</Link></p>
           </div>
         </Section>
       </div>
 
       <Section title="Quick actions">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Link className="btn-primary" to="/curriculum">📖 Start Learning</Link>
-          <Link className="btn-ghost" to="/gym/log">🧩 Solve a Problem</Link>
-          <button className="btn-ghost" disabled title="Arrives in Phase 3">🎙️ Practice Speaking</button>
-          <button className="btn-ghost" disabled title="Arrives in Phase 3">🧙 Ask Mentor</button>
+          <Link className="btn-primary" to="/learn/JAVA_CORE">📖 Start Learning</Link>
+          <Link className="btn-ghost" to="/gym/suggested">🧩 Solve a Problem</Link>
+          <Link className="btn-ghost" to="/speak">🎙️ Practice Speaking</Link>
+          <Link className="btn-ghost" to="/mentor">🧙 Ask Mentor</Link>
+          <Link className="btn-ghost" to="/recall">🧠 Warm-up Recall</Link>
+          <Link className="btn-ghost" to="/interview">🏟️ Colosseum</Link>
+          <Link className="btn-ghost" to="/visualizers">🎞️ Visualizers</Link>
+          <Link className="btn-ghost" to="/mentor?tab=briefing">☀️ Today's briefing</Link>
         </div>
       </Section>
     </div>

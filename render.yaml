@@ -45,6 +45,11 @@ services:
         value: "1500"
       - key: AI_TIMEOUT_SECONDS
         value: "60"
+      - key: AI_GLOBAL_PER_MINUTE
+        value: "8"
+      # Optional code runner (Judge0 CE). Leave empty to keep it off.
+      - key: JUDGE0_URL
+        sync: false
 
   # ---------- Frontend: static site (free, never sleeps) ----------
   - type: web

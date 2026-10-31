@@ -6,6 +6,7 @@ services:
     name: code-quest-api
     runtime: docker
     plan: free
+    region: frankfurt              # closest Render region to the Supabase DB (eu-west-3, Paris)
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health

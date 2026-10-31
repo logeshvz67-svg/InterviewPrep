@@ -42,13 +42,13 @@ export function WakeGate({ children }: { children: ReactNode }) {
         <h1 className="text-2xl font-bold">{failed ? 'The server is still asleep' : 'Waking the server…'}</h1>
         <p className="text-muted">
           {failed
-            ? 'It took longer than 2 minutes. It might be a free-tier hiccup or no internet.'
-            : `${game.title} runs on a free server that naps when nobody uses it. Waking it takes up to a minute.`}
+            ? 'It took longer than 3 minutes. It might be a free-tier hiccup, a paused Supabase project, or no internet.'
+            : `${game.title} runs on a free server that naps when nobody uses it. Waking it can take 1-2 minutes.`}
         </p>
         {!failed && (
           <>
             <div className="h-2 rounded-full bg-raised overflow-hidden">
-              <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, (waited / 60) * 100)}%` }} />
+              <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, (waited / 100) * 100)}%` }} />
             </div>
             <p className="text-sm text-muted">{waited}s · {TIPS[Math.floor(waited / 10) % TIPS.length]}</p>
           </>

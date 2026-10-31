@@ -94,7 +94,7 @@ export async function api<T>(path: string, opts: { method?: string; body?: unkno
 }
 
 /** Ping /health until the free server is awake. Calls onTick with seconds waited. */
-export async function wakeServer(onTick: (s: number) => void, maxSeconds = 120): Promise<boolean> {
+export async function wakeServer(onTick: (s: number) => void, maxSeconds = 180): Promise<boolean> {
   const start = Date.now()
   while ((Date.now() - start) / 1000 < maxSeconds) {
     try {

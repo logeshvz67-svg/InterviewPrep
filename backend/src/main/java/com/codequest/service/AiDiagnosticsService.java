@@ -51,7 +51,7 @@ public class AiDiagnosticsService {
     /** "Test AI connection": one tiny call straight to each model in the chain until one answers. */
     public TestResult test() {
         if (!props.usable()) return new TestResult(false, null, 0, null, "AI is not configured: set AI_ENABLED=true, OPENROUTER_API_KEY and OPENROUTER_MODEL.");
-        String lastError = null;
+        java.util.List<String> errors = new java.util.ArrayList<>();
         for (String model : props.modelChain()) {
             long t0 = System.nanoTime();
             try {
@@ -59,10 +59,13 @@ public class AiDiagnosticsService {
                 long ms = (System.nanoTime() - t0) / 1_000_000;
                 return new TestResult(true, model, ms, AiText.stripReasoning(raw), null);
             } catch (ChatClient.AiCallException e) {
-                lastError = model + ": " + e.getMessage();
+                errors.add(model + ": " + e.getMessage());
             }
         }
-        return new TestResult(false, null, 0, null, lastError);
+        String hint = errors.stream().anyMatch(x -> x.contains("(404)"))
+                ? " | Tip: a 404 usually means the model id is wrong/retired, or your OpenRouter privacy settings block free models (openrouter.ai/settings/privacy)."
+                : errors.stream().anyMatch(x -> x.contains("(401)")) ? " | Tip: 401 = the API key is wrong." : "";
+        return new TestResult(false, null, 0, null, String.join(" | ", errors) + hint);
     }
 
     public Instant now() { return time.now(); }

@@ -28,6 +28,17 @@ public class OpenRouterClient implements ChatClient {
         this.json = json;
     }
 
+    /** OpenRouter's own error text (e.g. "No endpoints found matching your data policy"), safe to show to an admin. */
+    private String providerMessage(String body) {
+        try {
+            String m = json.readTree(body).path("error").path("message").asText("");
+            m = m.replaceAll("sk-or-[A-Za-z0-9-]+", "[key]");
+            return m.isBlank() ? "" : ": " + (m.length() > 200 ? m.substring(0, 200) : m);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     @Override
     public String complete(String model, List<Message> messages, int maxTokens, int timeoutSeconds) {
         try {
@@ -50,8 +61,9 @@ public class OpenRouterClient implements ChatClient {
                     .build();
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
             int code = res.statusCode();
-            if (code == 429 || code >= 500) throw new AiCallException(code, true, "Provider busy (" + code + ")");
-            if (code >= 400) throw new AiCallException(code, false, "Request rejected (" + code + ")");
+            String reason = providerMessage(res.body());
+            if (code == 429 || code >= 500) throw new AiCallException(code, true, "Provider busy (" + code + ")" + reason);
+            if (code >= 400) throw new AiCallException(code, false, "Request rejected (" + code + ")" + reason);
 
             JsonNode root = json.readTree(res.body());
             // Some providers return HTTP 200 with an error object inside.

@@ -1,0 +1,431 @@
+slug: sd-lld-patterns
+world: SYSTEM_DESIGN
+section: SD
+order: 12
+title: "Low-level design: design patterns in practice"
+version: 1
+estimatedMinutes: 50
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+infosysRelevance: "Core for SP and DSE: Singleton, Factory, Builder, Observer and Strategy are among the most discussed OOP topics, and using them in one small design shows real understanding."
+otherCompanies: "Design patterns come up everywhere, from service-company theory questions to product-company LLD and machine-coding rounds."
+why: |
+  Interviewers often ask "What design patterns do you know?" Most freshers recite definitions. The ones who stand out say **where** they'd use a pattern and **why**, inside a real design.
+
+  A **design pattern** is a proven, reusable solution to a common design problem: a shared vocabulary among developers. When you say "the pricing is a Strategy", every experienced developer instantly understands the structure.
+
+  In this final lesson of the tower we take the five patterns that come up most often in LLD interviews and use them **together in one food-delivery app**:
+  - **Singleton:** one shared app configuration.
+  - **Builder:** creating an `Order` with many optional fields, readably.
+  - **Factory:** creating the right payment processor (UPI, card, cash) from a type.
+  - **Strategy:** swappable delivery-fee rules (free above Rs.199, distance-based, rain surge).
+  - **Observer:** notifying the customer app, restaurant and rider when the order status changes.
+
+  If you did the "Design basics" lesson in the Java world (Section I), this is the applied, interview-style version.
+analogy: |
+  Think of **how a Swiggy/Zomato order actually flows**:
+
+  - **Singleton:** there is **one** rule book for the whole app ("free delivery above Rs.199"). Every screen reads the same copy.
+  - **Builder:** placing an order is step by step: add dosa, add coffee, choose address, add instructions ("less spicy"), then **Place order**. You don't fill one giant form with 15 boxes at once.
+  - **Factory:** at checkout you just choose "UPI" and the app hands you the right payment flow. You don't need to know how the UPI flow is created.
+  - **Strategy:** the delivery fee rule changes with the situation: normal, free above Rs.199, or **rain surge**. Same checkout, different rule plugged in.
+  - **Observer:** when the order becomes "Out for delivery", **everyone who subscribed** (your app, the restaurant screen, the rider's app) is told automatically, like a WhatsApp group announcement.
+visual:
+  diagram: |
+    FOOD DELIVERY CHECKOUT: WHERE EACH PATTERN FITS
+
+     AppConfig.getInstance()   <-- SINGLETON (one shared config)
+             |
+             v
+     new Order.Builder("ORD-101","Ravi")      <-- BUILDER
+          .addItem(..).addItem(..).address(..).build()
+             |
+             v
+     DeliveryFeeStrategy  <<interface>>        <-- STRATEGY
+       |-- FreeDelivery       (total >= 199)
+       |-- DistanceFee(km)    (10 x km)
+             |
+             v
+     PaymentFactory.create("UPI") -> PaymentProcessor  <-- FACTORY
+             |
+             v
+     OrderTracker.updateStatus("CONFIRMED")    <-- OBSERVER
+          |                 |                 |
+     CustomerApp   RestaurantDashboard   RiderApp (subscribers)
+  caption: "One checkout flow uses five patterns: a single shared config, a builder for the order, a strategy for the fee, a factory for payment, and observers for status updates."
+  visualizer: null
+explanation: |
+  ### How to talk about any pattern (the 4-line answer)
+  1. **Problem:** what goes wrong without it.
+  2. **Idea:** the structure in one sentence.
+  3. **Example:** where you'd use it (preferably in the current design).
+  4. **Trade-off:** when *not* to use it.
+
+  ### 1. Singleton
+  **Problem:** some objects must exist **only once**: app configuration, a connection pool, a logger. Creating many copies wastes resources or causes inconsistent settings.
+  **Idea:** private constructor + one static instance + a static access method.
+  ```java
+  final class AppConfig {
+      private static final AppConfig INSTANCE = new AppConfig();   // eager, thread-safe
+      private AppConfig() {}
+      static AppConfig getInstance() { return INSTANCE; }
+  }
+  ```
+  Thread-safe options: eager initialisation (above), the **holder class** idiom, an **enum** singleton (`enum AppConfig { INSTANCE; }`, also safe from reflection and serialization tricks), or double-checked locking with `volatile`.
+  **Trade-off:** a singleton is **global state**: hard to replace in tests, and it hides dependencies. In Spring, beans are singletons *per container* by default and are **injected**, which is the cleaner way.
+
+  ### 2. Builder
+  **Problem:** an object with many fields, several optional (`Order`: items, address, coupon, instructions, tip...). A constructor with 8 parameters is unreadable (`new Order("x", null, null, 0, true, ...)`), and many overloaded constructors ("telescoping constructors") are a mess.
+  **Idea:** a nested `Builder` class with one method per field that **returns `this`** (so calls can be chained), and a `build()` method that **validates** and creates an **immutable** object.
+  **Example:** `new Order.Builder("ORD-101", "Ravi").addItem("Masala Dosa", 80).address("HSR Layout").build()`.
+  **Trade-off:** more code; overkill for a class with 2-3 required fields. (Lombok's `@Builder` generates it for you.)
+
+  ### 3. Factory (Simple Factory / Factory Method)
+  **Problem:** the caller should not need to know **which concrete class** to create or how. `if (type == UPI) new UpiProcessor(...) else if ...` scattered everywhere is fragile.
+  **Idea:** one place that takes a type (or context) and **returns an object through an interface**: `PaymentProcessor p = PaymentFactory.create("UPI");`.
+  **Example:** payment processors, notification senders (SMS/email/push), file parsers (CSV/JSON).
+  **Trade-off:** the factory's switch must change when a new type is added (you can register types in a map to avoid that). Not needed if there is only one implementation.
+
+  ### 4. Strategy
+  **Problem:** an algorithm that varies (delivery fee, discounts, parking price, sorting rule) written as a big if-else inside a class. Every new rule edits that class.
+  **Idea:** define an **interface** for the algorithm; each rule is its **own class**; the context class holds a reference and calls it. Rules can be swapped at runtime.
+  **Example:** `DeliveryFeeStrategy` with `FreeDelivery`, `DistanceFee`, `RainSurgeFee`. Java's own `Comparator` is a strategy for sorting!
+  **Strategy vs Factory:** Factory decides **which object to create**; Strategy is about **which behaviour to use**. They often work together: a factory picks the strategy.
+
+  ### 5. Observer (publish-subscribe inside one program)
+  **Problem:** when an order's status changes, many parts must react (customer app, restaurant, rider, analytics). Calling each one directly from `Order` couples everything together.
+  **Idea:** the **subject** (`OrderTracker`) keeps a list of **observers** (subscribers) behind an interface and notifies all of them on every change. Observers can subscribe and unsubscribe at runtime.
+  **Example:** order tracking, UI event listeners (button click listeners in Java Swing/Android), Spring's `ApplicationEvent` listeners.
+  **Trade-off:** notification order isn't guaranteed by design, a slow observer slows everyone (use async or a queue), and forgotten subscriptions can leak memory. Across services, the same idea becomes a **message queue / pub-sub** (Lesson 6).
+
+  ### Quick map: pattern -> family
+  | Pattern | Family | One-line purpose |
+  |---|---|---|
+  | Singleton | Creational | Exactly one instance |
+  | Builder | Creational | Step-by-step creation of complex objects |
+  | Factory | Creational | Hide which concrete class gets created |
+  | Strategy | Behavioural | Swap algorithms behind an interface |
+  | Observer | Behavioural | Notify many subscribers on a change |
+
+  Others worth knowing by name: **Adapter** (wrap an old/third-party API to fit your interface, like a travel plug adapter), **Decorator** (add behaviour by wrapping: `BufferedReader(new FileReader(...))`), **Facade** (one simple entry point over a complex subsystem).
+
+  ### Don't overuse patterns
+  Patterns solve **specific** problems. Using five patterns for a 30-line program is a red flag. Say: *"I'd start simple and introduce a Strategy when the second pricing rule appears."*
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class FoodApp {
+        public static void main(String[] args) {
+            AppConfig config = AppConfig.getInstance();                 // Singleton
+
+            Order order = new Order.Builder("ORD-101", "Ravi")         // Builder
+                    .addItem("Masala Dosa", 80)
+                    .addItem("Filter Coffee", 30)
+                    .address("HSR Layout")
+                    .build();
+
+            DeliveryFeeStrategy feeRule = order.total() >= config.freeDeliveryAbove()
+                    ? new FreeDelivery() : new DistanceFee(4);          // Strategy
+            int payable = order.total() + feeRule.fee();
+            System.out.println(order + " | fee Rs." + feeRule.fee() + " | pay Rs." + payable);
+
+            PaymentProcessor payment = PaymentFactory.create("UPI");    // Factory
+            System.out.println(payment.pay(payable));
+
+            OrderTracker tracker = new OrderTracker();                  // Observer
+            tracker.subscribe(new CustomerApp());
+            tracker.subscribe(new RestaurantDashboard());
+            tracker.updateStatus(order, "CONFIRMED");
+
+            System.out.println(AppConfig.getInstance() == config);
+        }
+    }
+
+    // ---------- Singleton: one shared configuration ----------
+    final class AppConfig {
+        private static final AppConfig INSTANCE = new AppConfig();
+        private AppConfig() {}
+        static AppConfig getInstance() { return INSTANCE; }
+        int freeDeliveryAbove() { return 199; }
+    }
+
+    // ---------- Builder: readable creation of an object with many fields ----------
+    class Order {
+        private final String id, customer, address;
+        private final Map<String, Integer> items;
+
+        private Order(Builder b) {
+            this.id = b.id; this.customer = b.customer; this.address = b.address; this.items = b.items;
+        }
+        int total() { return items.values().stream().mapToInt(Integer::intValue).sum(); }
+        String id() { return id; }
+        public String toString() { return id + " for " + customer + " to " + address + ": Rs." + total(); }
+
+        static class Builder {
+            private final String id, customer;
+            private String address = "Pickup";
+            private final Map<String, Integer> items = new LinkedHashMap<>();
+
+            Builder(String id, String customer) { this.id = id; this.customer = customer; }
+            Builder addItem(String name, int price) { items.put(name, price); return this; }
+            Builder address(String address) { this.address = address; return this; }
+            Order build() {
+                if (items.isEmpty()) throw new IllegalStateException("Order needs at least one item");
+                return new Order(this);
+            }
+        }
+    }
+
+    // ---------- Strategy: interchangeable delivery fee rules ----------
+    interface DeliveryFeeStrategy { int fee(); }
+
+    class FreeDelivery implements DeliveryFeeStrategy {
+        public int fee() { return 0; }
+    }
+
+    class DistanceFee implements DeliveryFeeStrategy {
+        private final int km;
+        DistanceFee(int km) { this.km = km; }
+        public int fee() { return 10 * km; }
+    }
+
+    // ---------- Factory: create the right payment object from a type ----------
+    interface PaymentProcessor { String pay(int amount); }
+
+    class PaymentFactory {
+        static PaymentProcessor create(String type) {
+            return switch (type) {
+                case "UPI" -> amount -> "UPI collect request for Rs." + amount;
+                case "CARD" -> amount -> "Card charged Rs." + amount;
+                case "COD" -> amount -> "Collect Rs." + amount + " in cash";
+                default -> throw new IllegalArgumentException("Unknown payment: " + type);
+            };
+        }
+    }
+
+    // ---------- Observer: notify everyone who subscribed ----------
+    interface OrderObserver { void onStatus(String orderId, String status); }
+
+    class CustomerApp implements OrderObserver {
+        public void onStatus(String id, String s) { System.out.println("Customer app: " + id + " is " + s); }
+    }
+
+    class RestaurantDashboard implements OrderObserver {
+        public void onStatus(String id, String s) { System.out.println("Restaurant: start cooking " + id); }
+    }
+
+    class OrderTracker {
+        private final List<OrderObserver> observers = new ArrayList<>();
+        void subscribe(OrderObserver o) { observers.add(o); }
+        void updateStatus(Order order, String status) {
+            for (OrderObserver o : observers) o.onStatus(order.id(), status);
+        }
+    }
+  walkthrough: |
+    Save as `FoodApp.java` and run `java FoodApp.java` (the class with `main` is first).
+
+    - **Singleton (`AppConfig`):** `private` constructor, one `static final INSTANCE` created when the class loads (eager, so thread-safe), `getInstance()` returns it. The last line prints `true` because both references point to the same object.
+    - **Builder (`Order.Builder`):** required fields (`id`, `customer`) go in the builder's constructor; optional ones have defaults (`address = "Pickup"`). Each setter **returns `this`**, enabling the chain. `build()` **validates** (no empty orders) and calls the **private** `Order` constructor, so an `Order` can only be made through the builder, and its fields are `final`.
+    - **Strategy (`DeliveryFeeStrategy`):** the total is 80 + 30 = 110, below the free-delivery limit of 199, so `DistanceFee(4)` is chosen: 10 x 4 = Rs.40. Payable = 110 + 40 = **150**.
+    - **Factory (`PaymentFactory`):** `create("UPI")` returns a `PaymentProcessor`. `PaymentProcessor` has one abstract method, so each case returns a **lambda** that implements it. The caller never sees concrete classes. Unknown types fail loudly.
+    - **Observer (`OrderTracker`):** keeps a list of `OrderObserver`s; `updateStatus` calls each one in subscription order.
+
+    Output:
+    ```
+    ORD-101 for Ravi to HSR Layout: Rs.110 | fee Rs.40 | pay Rs.150
+    UPI collect request for Rs.150
+    Customer app: ORD-101 is CONFIRMED
+    Restaurant: start cooking ORD-101
+    true
+    ```
+tryIt:
+  instructions: "Type this Observer demo. Observers are lambdas here (OrderObserver has one method, so it's a functional interface). Predict the output, especially after the rider unsubscribes."
+  code: |
+    import java.util.*;
+
+    public class Observer {
+        interface OrderObserver { void onStatus(String status); }
+
+        static class OrderTracker {
+            private final List<OrderObserver> observers = new ArrayList<>();
+            void subscribe(OrderObserver o) { observers.add(o); }
+            void unsubscribe(OrderObserver o) { observers.remove(o); }
+            void update(String status) {
+                for (OrderObserver o : observers) o.onStatus(status);
+            }
+        }
+
+        public static void main(String[] args) {
+            OrderTracker tracker = new OrderTracker();
+            OrderObserver customer = s -> System.out.println("Customer: order " + s);
+            OrderObserver rider = s -> System.out.println("Rider: order " + s);
+            tracker.subscribe(customer);
+            tracker.subscribe(rider);
+            tracker.update("READY");
+            tracker.unsubscribe(rider);
+            tracker.update("DELIVERED");
+        }
+    }
+predict:
+  code: |
+    public class Predict {
+        interface DeliveryFee { int fee(int total); }
+
+        static class FreeAbove199 implements DeliveryFee {
+            public int fee(int total) { return total >= 199 ? 0 : 30; }
+        }
+
+        static class RainSurge implements DeliveryFee {
+            public int fee(int total) { return 50; }
+        }
+
+        static class Config {
+            private static final Config INSTANCE = new Config();
+            private Config() {}
+            static Config get() { return INSTANCE; }
+            boolean raining = true;
+        }
+
+        static DeliveryFee pickRule() {
+            return Config.get().raining ? new RainSurge() : new FreeAbove199();
+        }
+
+        public static void main(String[] args) {
+            DeliveryFee first = pickRule();
+            Config.get().raining = false;          // rain stops; every caller sees the same Config
+            DeliveryFee second = pickRule();
+            System.out.println(first.fee(250) + " " + second.fee(250) + " " + second.fee(150));
+        }
+    }
+  expectedOutput: |
+    50 0 30
+  explanation: |
+    - `Config` is a **singleton**: every `Config.get()` returns the same object, so changing `raining` is seen everywhere.
+    - `first` is picked while raining -> `RainSurge` -> fee **50** whatever the total.
+    - After `raining = false`, `pickRule()` returns `FreeAbove199` (a different **strategy**). For 250: 250 >= 199 -> **0**. For 150: below 199 -> **30**.
+    - Note `first` is still the `RainSurge` object: changing config later doesn't change a strategy object you already picked.
+
+    Also notice the shared mutable singleton made the behaviour depend on *when* you call `pickRule()`. That's exactly why global mutable state is risky and why singletons should usually hold read-only settings.
+commonMistakes:
+  - "Reciting pattern definitions without saying where and why you would use them."
+  - "Writing a lazy Singleton with if (instance == null) and no synchronization; two threads can create two instances. Use eager init, a holder class or an enum."
+  - "Forgetting return this in Builder methods, which breaks method chaining."
+  - "Confusing Factory (which object to create) with Strategy (which behaviour to run)."
+  - "Observers that do slow work synchronously, blocking the subject; use async processing or a queue."
+  - "Forcing patterns into tiny problems; add a pattern only when the problem appears."
+interviewBox:
+  why: "Why interviewers ask this: patterns show whether you can structure code for change; applying them to a concrete example proves you understand them beyond definitions."
+  questions:
+    - q: "Practice: Which design patterns would you use in a food delivery app, and where?"
+      a: "I'd use a Builder to create orders, because an order has many optional fields like address, coupon and instructions. A Factory to create the right payment processor from the user's choice, UPI, card or cash. A Strategy for delivery fee rules like free above 199, distance-based or rain surge, so new rules are new classes. Observer for order status updates, so the customer app, restaurant and rider are all notified when the status changes. And possibly a Singleton for read-only app config, though in Spring I'd just inject a singleton bean."
+    - q: "Practice: How do you make a Singleton thread-safe?"
+      a: "The simplest way is eager initialisation: a private static final instance created when the class loads, which the JVM makes thread-safe. If I need lazy loading, I use the holder class idiom, where a nested static class holds the instance and is only loaded on first use. An enum with one constant is also thread-safe and safe from reflection and serialization. Double-checked locking works too, but the field must be volatile."
+    - q: "Practice: What is the difference between Strategy and Factory?"
+      a: "Factory is a creational pattern: it decides which object to create and hides the concrete class. Strategy is a behavioural pattern: it lets me swap an algorithm behind an interface at runtime. They often work together, for example a factory can pick which delivery fee strategy to use based on the city or the weather."
+    - q: "Practice: When would you NOT use the Observer pattern?"
+      a: "When there's only one listener that will never change, a direct method call is simpler. And when the listeners are in different services or do slow work, an in-process observer isn't enough; I'd publish an event to a message queue instead, so failures and retries are handled separately."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Using PaymentFactory from Tiny code, what happens?"
+    code: |
+      System.out.println(PaymentFactory.create("COD").pay(150));
+      System.out.println(PaymentFactory.create("PAYTM").pay(150));
+    options:
+      - "Collect Rs.150 in cash, then Card charged Rs.150"
+      - "Collect Rs.150 in cash, then an IllegalArgumentException: Unknown payment: PAYTM"
+      - "Both lines print null"
+      - "Compile error: switch must cover every String"
+    answer: 1
+    explanation: "\"COD\" matches its case and returns a processor that prints the cash message. \"PAYTM\" hits the default branch, which throws IllegalArgumentException. A switch on String with a default compiles fine."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "Why doesn't this Builder compile?"
+    code: |
+      static class Builder {
+          private String address;
+          private int items;
+          Builder address(String a) { this.address = a; }
+          Builder addItem() { items++; return this; }
+      }
+      // usage: new Builder().address("HSR").addItem();
+    options:
+      - "Builder must be an interface"
+      - "address() declares a Builder return type but has no return statement; it needs return this"
+      - "Fields in a builder must be final"
+      - "addItem() cannot return this"
+    answer: 1
+    explanation: "javac reports 'missing return statement' for address(). Builder setters must return this so calls can be chained. addItem() is correct."
+  - id: q3
+    type: MATCH
+    prompt: "Match each pattern to its use in the food delivery app"
+    pairs:
+      - left: "Singleton"
+        right: "One shared read-only app config"
+      - left: "Builder"
+        right: "Create an Order with many optional fields"
+      - left: "Factory"
+        right: "Return the right PaymentProcessor for UPI/card/cash"
+      - left: "Strategy"
+        right: "Swap delivery fee rules"
+      - left: "Observer"
+        right: "Notify customer, restaurant and rider of status changes"
+    explanation: "Each pattern solves one specific problem in the flow; together they keep the checkout code small and easy to extend."
+  - id: q4
+    type: MCQ
+    prompt: "Java's Collections.sort(list, comparator) lets you pass different Comparator objects to change the sort order. Which pattern is this?"
+    options: ["Singleton", "Strategy", "Builder", "Observer"]
+    answer: 1
+    explanation: "The sorting algorithm stays the same while the comparison behaviour is passed in behind an interface: that's Strategy. Nothing here limits instances (Singleton), builds objects (Builder) or notifies subscribers (Observer)."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "This lazy Singleton is thread-safe: if (instance == null) { instance = new Config(); } return instance;"
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Two threads can both see null and both create an instance. Use eager initialisation, the holder-class idiom, an enum, or synchronized/double-checked locking with volatile."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in what every Builder setter must return so calls can be chained."
+    code: |
+      Builder address(String address) {
+          this.address = address;
+          return ____;
+      }
+    acceptedAnswers: ["this", "this;"]
+    explanation: "Returning this (the same builder) lets you write .addItem(...).address(...).build() in one chain."
+  - id: q7
+    type: MCQ
+    prompt: "Order status updates must reach the customer app, which runs on a different service across the network. What is the best evolution of the in-process Observer?"
+    options: ["Make OrderTracker a Singleton", "Publish an OrderStatusChanged event to a message queue/topic that other services subscribe to", "Call every service synchronously in a loop", "Use a Builder for the status"]
+    answer: 1
+    explanation: "Across services, Observer becomes pub-sub over a message queue (Lesson 6): decoupled, async, with retries. A synchronous loop of network calls is slow and fragile; Singleton and Builder don't address notification."
+explainBack:
+  prompt: "Explain the five patterns to a friend by walking through one food delivery order."
+  rubric:
+    - "I explained Singleton with the single shared config and mentioned thread safety or its testing downside"
+    - "I explained Builder as step-by-step order creation with build() validating"
+    - "I explained Factory as choosing the payment flow without knowing concrete classes"
+    - "I explained Strategy as swappable delivery fee rules"
+    - "I explained Observer as notifying all subscribers of status changes"
+  modelAnswer: |
+    Picture one food order. The app reads a single shared rule book, like free delivery above 199; that's a Singleton, and it should be read-only and thread-safe. The order is built step by step: add dosa, add coffee, set the address, then build, which checks the order isn't empty; that's the Builder. At checkout I pick UPI and a factory gives me the right payment processor without me knowing its class; that's Factory. The delivery fee rule can be free, distance-based or rain surge, each a separate class behind one interface; that's Strategy. When the status changes, the customer, restaurant and rider all get notified because they subscribed; that's Observer.
+flashcards:
+  - front: "Singleton: idea and safest Java forms"
+    back: "Exactly one instance via private constructor + static access. Safe forms: eager static final, holder class, enum."
+  - front: "Builder: when and key rule"
+    back: "Many (optional) fields; setters return this for chaining; build() validates and creates an immutable object."
+  - front: "Factory vs Strategy"
+    back: "Factory decides WHICH OBJECT to create. Strategy decides WHICH BEHAVIOUR to run (swappable algorithm)."
+  - front: "Observer: idea and risk"
+    back: "Subject keeps a list of subscribers and notifies all on change. Risks: slow observers, memory leaks from forgotten subscriptions."
+  - front: "4-line pattern answer"
+    back: "Problem -> Idea -> Example in this design -> Trade-off (when not to use it)."
+keyTakeaways:
+  - "Explain each pattern as problem, idea, example and trade-off, not as a memorised definition."
+  - "Singleton: one instance; prefer eager, holder or enum for thread safety; beware global state."
+  - "Builder: readable creation of complex objects with validation in build()."
+  - "Factory hides which class is created; Strategy swaps behaviour; they often work together."
+  - "Observer notifies subscribers in-process; across services it becomes pub-sub over a queue."
+  - "Use patterns when the problem appears, not by default."

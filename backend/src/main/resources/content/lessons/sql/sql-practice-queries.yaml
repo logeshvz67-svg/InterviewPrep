@@ -1,0 +1,434 @@
+slug: sql-practice-queries
+world: SQL
+section: SQL
+order: 12
+title: "Common practice queries"
+version: 1
+estimatedMinutes: 45
+rebuild: false
+patternCode: null
+companies: [ALL, INFOSYS_SP, INFOSYS_DSE]
+infosysRelevance: "These classic query patterns (Nth highest salary, duplicates, employee vs manager, per-group max) are the most useful SQL practice for SP and DSE coding and technical rounds."
+otherCompanies: "Nth highest salary and duplicate-row questions are very common practice questions at TCS, Wipro, Cognizant, Accenture, Capgemini and product companies."
+why: |
+  SQL interviews reuse a small set of **classic problems**. Once you have solved each one yourself, you'll recognise them instantly, even when the table names change.
+
+  This lesson collects them all on our sample tables, with **verified results**:
+  1. Nth highest salary (3 ways)
+  2. Find duplicate rows
+  3. Delete duplicates, keeping one
+  4. Employees earning more than their manager
+  5. Department-wise highest salary (with names)
+  6. Second highest salary in each department
+  7. Customers with no orders
+  8. Running total
+
+  Each one is just a combination of what you learned earlier: joins, GROUP BY, subqueries and window functions. The skill is **choosing the right tool**.
+analogy: |
+  Think of these like **standard cricket shots**. A batter doesn't invent a new shot for every ball. They recognise the ball (short, full, wide) and play the shot they have practised hundreds of times.
+
+  "Nth highest" = DENSE_RANK shot. "Rows with no match" = LEFT JOIN + IS NULL (or NOT EXISTS) shot. "Compare a row with a related row in the same table" = self join shot. Practise the shots here until they are automatic.
+visual:
+  diagram: |
+    employees (salaries sorted)        DENSE_RANK
+    Asha   90000  mgr -                   1
+    Divya  80000  mgr Ravi (75000) *      2   <- 2nd highest
+    Ravi   75000  mgr Asha                3
+    Priya  60000  mgr Asha                4
+    Kiran  60000  mgr Priya               4   <- tie
+    Meena  50000  mgr Asha                5
+    Arjun  45000  mgr Priya               6
+    * Divya earns more than her manager
+
+    Pattern finder
+    "Nth highest / top N"            -> DENSE_RANK() or LIMIT/OFFSET
+    "duplicates"                     -> GROUP BY ... HAVING COUNT(*) > 1
+    "compare with manager / parent"  -> self join
+    "max per group, with names"      -> window function or (col, MAX) IN
+    "has no matching row"            -> LEFT JOIN ... IS NULL / NOT EXISTS
+    "running / cumulative"           -> SUM() OVER (ORDER BY ...)
+  caption: "Our 7 employees ranked by salary, with their managers. The right-hand question patterns map to the SQL tool that solves them."
+  visualizer: null
+explanation: |
+  All results below were produced on our sample tables in PostgreSQL. Distinct salaries, highest first: 90000, 80000, 75000, 60000, 50000, 45000 (60000 appears twice).
+
+  ### 1. Nth highest salary (N = 2)
+  **Way 1: DENSE_RANK (best general answer)**
+  ```sql
+  SELECT DISTINCT salary
+  FROM (SELECT salary,
+               DENSE_RANK() OVER (ORDER BY salary DESC) AS dr
+        FROM employees) t
+  WHERE dr = 2;                                  -- 80000
+  ```
+  DENSE_RANK gives tied salaries the same rank with no gaps, so `dr = N` is always the Nth distinct salary. Change `salary` to `name, salary` (and drop DISTINCT) to also see **who** earns it.
+
+  **Way 2: DISTINCT + LIMIT/OFFSET**
+  ```sql
+  SELECT DISTINCT salary
+  FROM employees
+  ORDER BY salary DESC
+  LIMIT 1 OFFSET 1;                              -- skip N-1 rows; 80000
+  ```
+  The DISTINCT matters: without it, ties are counted twice. For N = 5, `LIMIT 1 OFFSET 4` without DISTINCT returns 60000 (the second copy of 60000), but the correct 5th highest distinct salary is 50000.
+
+  **Way 3: correlated subquery (works everywhere, even without window functions)**
+  ```sql
+  SELECT DISTINCT e1.salary
+  FROM employees e1
+  WHERE 1 = (SELECT COUNT(DISTINCT e2.salary)   -- N-1 = 1
+             FROM employees e2
+             WHERE e2.salary > e1.salary);       -- 80000
+  ```
+  "The Nth highest salary is the one with exactly N-1 distinct salaries above it."
+
+  **Second highest only (classic short form):**
+  ```sql
+  SELECT MAX(salary) AS second_highest
+  FROM employees
+  WHERE salary < (SELECT MAX(salary) FROM employees);   -- 80000
+  ```
+  If N is bigger than the number of distinct salaries, Ways 1-3 return **no row**. If the question says "return NULL", wrap it: `SELECT (SELECT DISTINCT salary ... LIMIT 1 OFFSET 9) AS tenth_highest;` gives NULL.
+
+  ### 2. Find duplicate rows
+  Imagine a `customer_signups` table where an import ran more than once:
+  ```
+   signup_id | name  |   city
+  -----------+-------+-----------
+           1 | Anil  | Bengaluru
+           2 | Sneha | Mumbai
+           3 | Anil  | Bengaluru
+           4 | Rahul | Pune
+           5 | Sneha | Mumbai
+           6 | Anil  | Bengaluru
+  ```
+  ```sql
+  SELECT name, city, COUNT(*) AS copies
+  FROM customer_signups
+  GROUP BY name, city
+  HAVING COUNT(*) > 1;
+  -- Anil Bengaluru 3 | Sneha Mumbai 2
+  ```
+  Group by **all the columns that define "the same"**, then keep groups with more than one row.
+
+  ### 3. Delete duplicates, keep the first (lowest id)
+  ```sql
+  -- Way A: keep MIN(id) of each group
+  DELETE FROM customer_signups
+  WHERE signup_id NOT IN (SELECT MIN(signup_id)
+                          FROM customer_signups
+                          GROUP BY name, city);
+
+  -- Way B: ROW_NUMBER, delete everything after the first
+  DELETE FROM customer_signups
+  WHERE signup_id IN (
+    SELECT signup_id FROM (
+      SELECT signup_id,
+             ROW_NUMBER() OVER (PARTITION BY name, city ORDER BY signup_id) AS rn
+      FROM customer_signups) t
+    WHERE rn > 1);
+
+  -- Way C (PostgreSQL): self join with USING
+  DELETE FROM customer_signups a
+  USING customer_signups b
+  WHERE a.name = b.name AND a.city = b.city
+    AND a.signup_id > b.signup_id;
+  ```
+  All three leave rows 1 (Anil), 2 (Sneha) and 4 (Rahul). Run them inside `BEGIN ... ROLLBACK` first to test safely.
+
+  > MySQL difference: MySQL refuses a subquery that reads the same table you are deleting from (error 1093). Wrap the subquery in one more derived table (as Way B already does), or use MySQL's join syntax: `DELETE a FROM customer_signups a JOIN customer_signups b ON a.name = b.name AND a.city = b.city AND a.signup_id > b.signup_id;`
+
+  ### 4. Employees earning more than their manager
+  ```sql
+  SELECT e.name AS employee, e.salary, m.name AS manager, m.salary AS manager_salary
+  FROM employees e
+  JOIN employees m ON e.manager_id = m.emp_id
+  WHERE e.salary > m.salary;
+  ```
+  ```
+   employee | salary | manager | manager_salary
+  ----------+--------+---------+----------------
+   Divya    |  80000 | Ravi    |          75000
+  ```
+  A **self join**: `e` is the employee copy, `m` the manager copy. INNER JOIN is fine here because Asha (no manager) can't earn more than nobody.
+
+  ### 5. Department-wise highest salary, with names
+  Max only: `SELECT dept_id, MAX(salary) FROM employees GROUP BY dept_id;`
+
+  With the employee's name (keeps ties):
+  ```sql
+  SELECT d.dept_name, e.name, e.salary
+  FROM employees e
+  JOIN departments d ON d.dept_id = e.dept_id
+  WHERE (e.dept_id, e.salary) IN (SELECT dept_id, MAX(salary)
+                                  FROM employees
+                                  GROUP BY dept_id)
+  ORDER BY d.dept_name, e.name;
+  ```
+  ```
+    dept_name  | name  | salary
+  -------------+-------+--------
+   Engineering | Asha  |  90000
+   HR          | Meena |  50000
+   Sales       | Kiran |  60000
+   Sales       | Priya |  60000
+  ```
+  You can't just add `name` to the GROUP BY query: GROUP BY would then make one group per name. The `(col1, col2) IN (subquery)` form compares pairs. A window version (`DENSE_RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) = 1`) works too.
+
+  ### 6. Second highest salary in each department
+  ```sql
+  SELECT dept_id, name, salary
+  FROM (SELECT dept_id, name, salary,
+               DENSE_RANK() OVER (PARTITION BY dept_id
+                                  ORDER BY salary DESC) AS dr
+        FROM employees) t
+  WHERE dr = 2;
+  -- 10 | Divya | 80000
+  ```
+  Only Engineering has a second distinct salary. Sales has two people but both earn 60000 (both rank 1), so there is no second highest there. Explain this edge case out loud in an interview.
+
+  ### 7. Customers with no orders
+  ```sql
+  SELECT c.name
+  FROM customers c
+  LEFT JOIN orders o ON o.customer_id = c.customer_id
+  WHERE o.order_id IS NULL;                      -- Fatima
+
+  SELECT c.name
+  FROM customers c
+  WHERE NOT EXISTS (SELECT 1 FROM orders o
+                    WHERE o.customer_id = c.customer_id);   -- Fatima
+  ```
+  Avoid `NOT IN (SELECT customer_id FROM orders)` if customer_id in orders could ever be NULL (the NOT IN trap from the subqueries lesson).
+
+  ### 8. Running total
+  ```sql
+  SELECT order_id, order_date, amount,
+         SUM(amount) OVER (ORDER BY order_date, order_id) AS running_total
+  FROM orders;
+  -- 2500, 3700, 4500, 7500, 8700, 10200
+  ```
+  Without window functions (old MySQL), use a correlated subquery: `(SELECT SUM(o2.amount) FROM orders o2 WHERE o2.order_date <= o.order_date)`.
+
+  ### How to talk through any query in an interview
+  1. Repeat the question and name the tables and columns you need.
+  2. Say the **pattern** ("this is a per-group ranking, so DENSE_RANK with PARTITION BY").
+  3. Write it step by step, inner query first.
+  4. Check **edge cases**: ties, NULLs, empty groups, N larger than the number of rows.
+tinyCode:
+  code: |
+    -- 2nd highest salary, three ways (all return 80000)
+
+    SELECT DISTINCT salary
+    FROM (SELECT salary,
+                 DENSE_RANK() OVER (ORDER BY salary DESC) AS dr
+          FROM employees) t
+    WHERE dr = 2;
+
+    SELECT DISTINCT salary
+    FROM employees
+    ORDER BY salary DESC
+    LIMIT 1 OFFSET 1;
+
+    SELECT DISTINCT e1.salary
+    FROM employees e1
+    WHERE 1 = (SELECT COUNT(DISTINCT e2.salary)
+               FROM employees e2
+               WHERE e2.salary > e1.salary);
+  walkthrough: |
+    - **Way 1**: the inner query ranks salaries: 90000 gets 1, 80000 gets 2, 75000 gets 3, both 60000s get 4... The outer query keeps rank 2. DISTINCT avoids repeats if two people share that salary.
+    - **Way 2**: `DISTINCT` removes repeated salaries, `ORDER BY salary DESC` puts the biggest first, `OFFSET 1` skips one value (90000), and `LIMIT 1` takes the next one. For the Nth highest, use `OFFSET N-1`.
+    - **Way 3**: for each salary, the subquery counts how many **different** salaries are bigger. Only 80000 has exactly one bigger salary (90000), so it's the 2nd highest. For the Nth highest, compare with N-1.
+    - All three agree: **80000** (Divya).
+tryIt:
+  instructions: "Type these three classic queries from memory as much as you can, then compare. Predict each result before running: who earns more than their manager? Who has no orders? Who is second in each department?"
+  code: |
+    -- 1. Employees earning more than their manager
+    SELECT e.name, e.salary, m.name AS manager, m.salary AS mgr_salary
+    FROM employees e
+    JOIN employees m ON e.manager_id = m.emp_id
+    WHERE e.salary > m.salary;
+
+    -- 2. Customers with no orders
+    SELECT c.name
+    FROM customers c
+    LEFT JOIN orders o ON o.customer_id = c.customer_id
+    WHERE o.order_id IS NULL;
+
+    -- 3. Second highest salary in each department
+    SELECT dept_id, name, salary
+    FROM (SELECT dept_id, name, salary,
+                 DENSE_RANK() OVER (PARTITION BY dept_id
+                                    ORDER BY salary DESC) AS dr
+          FROM employees) t
+    WHERE dr = 2;
+predict:
+  code: |
+    SELECT d.dept_name, e.name, e.salary
+    FROM employees e
+    JOIN departments d ON d.dept_id = e.dept_id
+    WHERE (e.dept_id, e.salary) IN (SELECT dept_id, MAX(salary)
+                                    FROM employees
+                                    GROUP BY dept_id)
+    ORDER BY d.dept_name, e.name;
+  expectedOutput: |2
+      dept_name  | name  | salary
+    -------------+-------+--------
+     Engineering | Asha  |  90000
+     HR          | Meena |  50000
+     Sales       | Kiran |  60000
+     Sales       | Priya |  60000
+  explanation: |
+    The subquery returns pairs (10, 90000), (20, 60000), (30, 50000) and (NULL, 45000). Each employee row is kept if its (dept_id, salary) pair is in that list.
+
+    - Sales returns **two** people because Kiran and Priya both earn the maximum 60000. Ties are kept, which is usually what the interviewer wants.
+    - Arjun is missing for two reasons: the JOIN to departments drops him (no department), and anyway `(NULL, 45000) = (NULL, 45000)` is not true because NULL never equals NULL.
+    - Marketing has no employees, so it has no maximum and doesn't appear.
+commonMistakes:
+  - "Using LIMIT/OFFSET for Nth highest without DISTINCT, so tied salaries are counted twice."
+  - "Using ROW_NUMBER or RANK for 'Nth highest distinct salary'; DENSE_RANK is the safe choice."
+  - "Adding name to a GROUP BY dept_id query to get 'max salary with name'; use (dept_id, salary) IN (...) or a window function."
+  - "Finding 'customers with no orders' with NOT IN when the subquery column can be NULL."
+  - "Deleting duplicates without testing inside BEGIN ... ROLLBACK first."
+  - "Forgetting edge cases: ties, NULL departments, and N larger than the number of distinct values."
+interviewBox:
+  why: "Why interviewers ask this: these are the standard 'write a query' tasks; they test whether you can combine joins, grouping, subqueries and window functions under pressure."
+  questions:
+    - q: "Write a query to find the second highest salary."
+      a: "SELECT MAX(salary) FROM employees WHERE salary < (SELECT MAX(salary) FROM employees). For a general Nth highest, I'd use DENSE_RANK() OVER (ORDER BY salary DESC) in a subquery and filter where the rank equals N, which handles ties correctly."
+    - q: "How do you find and delete duplicate rows?"
+      a: "To find them, GROUP BY all the columns that define a duplicate and use HAVING COUNT(*) > 1. To delete them while keeping one, I keep the minimum id in each group, for example DELETE WHERE id NOT IN (SELECT MIN(id) ... GROUP BY name, city), or I number rows with ROW_NUMBER partitioned by those columns and delete where the number is greater than 1."
+    - q: "Find employees who earn more than their managers."
+      a: "I self join employees: employees e joined with employees m on e.manager_id = m.emp_id, and then WHERE e.salary > m.salary. On our data that returns Divya, who earns 80000 while her manager Ravi earns 75000."
+    - q: "Find the highest-paid employee in each department."
+      a: "I use a window function: DENSE_RANK over PARTITION BY dept_id ORDER BY salary DESC in a subquery, and keep rank 1. That also keeps ties. Another way is WHERE (dept_id, salary) IN (SELECT dept_id, MAX(salary) FROM employees GROUP BY dept_id)."
+    - q: "Find customers who have never placed an order."
+      a: "LEFT JOIN customers to orders and keep rows where the order id is NULL, or use NOT EXISTS with a correlated subquery. I avoid NOT IN because a NULL in the subquery makes it return nothing."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Salaries: 90000, 80000, 75000, 60000, 60000, 50000, 45000. What does this return?"
+    code: |
+      SELECT salary
+      FROM employees
+      ORDER BY salary DESC
+      LIMIT 1 OFFSET 4;
+    options: ["50000", "60000", "45000", "75000"]
+    answer: 1
+    explanation: "Without DISTINCT, OFFSET 4 skips 90000, 80000, 75000 and the first 60000, landing on the second 60000. The real 5th highest distinct salary is 50000; adding DISTINCT (or using DENSE_RANK = 5) gives that."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "Which rows does this return on the sample employees table?"
+    code: |
+      SELECT dept_id, name, salary
+      FROM (SELECT dept_id, name, salary,
+                   DENSE_RANK() OVER (PARTITION BY dept_id
+                                      ORDER BY salary DESC) AS dr
+            FROM employees) t
+      WHERE dr = 2;
+    options:
+      - "Divya (dept 10) and Kiran (dept 20)"
+      - "Only Divya (dept 10, 80000)"
+      - "Divya, Kiran and Meena"
+      - "No rows"
+    answer: 1
+    explanation: "In dept 10 the ranks are Asha 1, Divya 2, Ravi 3. In dept 20 Kiran and Priya both earn 60000 and both get rank 1, so there is no rank 2. Dept 30 and the NULL dept have one person each."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This query should list each department's highest salary along with the employee's name, but PostgreSQL rejects it. Why?"
+    code: |
+      SELECT dept_id, name, MAX(salary)
+      FROM employees
+      GROUP BY dept_id;
+    options:
+      - "MAX cannot be used with GROUP BY"
+      - "name is neither in GROUP BY nor inside an aggregate; use (dept_id, salary) IN (...) or a window function"
+      - "dept_id must be inside MAX"
+      - "You must add ORDER BY"
+    answer: 1
+    explanation: "The error is: column \"employees.name\" must appear in the GROUP BY clause or be used in an aggregate function. Adding name to GROUP BY would make one group per person, so the max would just be each person's own salary."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "This 'customers with no orders' query returns nothing, even though Fatima has no orders. Assume orders.customer_id contains a NULL row. What's the bug?"
+    code: |
+      SELECT name
+      FROM customers
+      WHERE customer_id NOT IN (SELECT customer_id FROM orders);
+    options:
+      - "NOT IN can't be used with subqueries"
+      - "A NULL in the subquery result makes NOT IN unknown for every customer; use NOT EXISTS or LEFT JOIN ... IS NULL"
+      - "customer_id must be quoted"
+      - "You need DISTINCT inside the subquery"
+    answer: 1
+    explanation: "x NOT IN (..., NULL) can never be true, so no rows return. NOT EXISTS and the LEFT JOIN anti-join are NULL-safe. DISTINCT doesn't remove the NULL."
+  - id: q5
+    type: MCQ
+    prompt: "Which query finds duplicate (name, city) pairs in customer_signups?"
+    code: null
+    options:
+      - "SELECT DISTINCT name, city FROM customer_signups"
+      - "SELECT name, city, COUNT(*) FROM customer_signups GROUP BY name, city HAVING COUNT(*) > 1"
+      - "SELECT name, city FROM customer_signups WHERE COUNT(*) > 1"
+      - "SELECT name, city, COUNT(*) FROM customer_signups GROUP BY name HAVING COUNT(*) > 1"
+    answer: 1
+    explanation: "Group by every column that defines a duplicate, then HAVING COUNT(*) > 1 (Anil 3, Sneha 2). DISTINCT hides duplicates instead of finding them, COUNT in WHERE is an error, and grouping by name alone while selecting city fails the GROUP BY rule."
+  - id: q6
+    type: MATCH
+    prompt: "Match each problem to the pattern that solves it"
+    pairs:
+      - left: "Nth highest distinct salary"
+        right: "DENSE_RANK() and keep rank N"
+      - left: "Employee earns more than manager"
+        right: "Self join on manager_id"
+      - left: "Customers with no orders"
+        right: "LEFT JOIN ... WHERE right side IS NULL"
+      - left: "Find duplicate rows"
+        right: "GROUP BY ... HAVING COUNT(*) > 1"
+      - left: "Running total"
+        right: "SUM() OVER (ORDER BY ...)"
+    explanation: "Recognising the pattern is most of the work; the SQL follows from it."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the classic second-highest-salary query."
+    code: |
+      SELECT MAX(salary)
+      FROM employees
+      WHERE salary < (SELECT ____(salary) FROM employees);
+    acceptedAnswers: ["MAX", "max"]
+    explanation: "The inner query finds the top salary (90000); the outer MAX finds the biggest salary below it, 80000."
+  - id: q8
+    type: TRUE_FALSE
+    prompt: "In the employee-earns-more-than-manager query, an INNER self join is fine even though Asha has no manager."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Asha can't earn more than a manager she doesn't have, so dropping her row doesn't change the answer. (For 'list everyone with their manager', you'd need a LEFT JOIN.)"
+explainBack:
+  prompt: "Explain to a friend three ways to find the Nth highest salary and why ties matter."
+  rubric:
+    - "I explained DENSE_RANK and why it handles ties"
+    - "I explained DISTINCT + ORDER BY + LIMIT/OFFSET N-1"
+    - "I explained the correlated subquery 'N-1 distinct salaries above it'"
+    - "I gave the example where forgetting DISTINCT gives the wrong answer"
+    - "I mentioned what happens when N is larger than the number of salaries"
+  modelAnswer: |
+    The cleanest way is DENSE_RANK: rank salaries from highest to lowest, where equal salaries share a rank and no numbers are skipped, then keep the row with rank N. The second way is to take distinct salaries, sort them descending, skip N minus one, and take one row with LIMIT and OFFSET. The third way is a correlated subquery: the Nth highest salary is the one with exactly N minus one distinct salaries above it. Ties matter because two people can earn 60,000; without DISTINCT, the fifth highest wrongly comes out as 60,000 instead of 50,000. If N is too big, these return no row.
+flashcards:
+  - front: "Nth highest salary (window way)"
+    back: "SELECT DISTINCT salary FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) dr FROM employees) t WHERE dr = N"
+  - front: "Nth highest salary (LIMIT way)"
+    back: "SELECT DISTINCT salary FROM employees ORDER BY salary DESC LIMIT 1 OFFSET N-1"
+  - front: "Delete duplicates keeping lowest id"
+    back: "DELETE FROM t WHERE id NOT IN (SELECT MIN(id) FROM t GROUP BY dup_columns)"
+  - front: "Employees earning more than manager"
+    back: "employees e JOIN employees m ON e.manager_id = m.emp_id WHERE e.salary > m.salary"
+  - front: "Customers with no orders"
+    back: "customers c LEFT JOIN orders o ON ... WHERE o.order_id IS NULL (or NOT EXISTS)"
+  - front: "Max salary per department with names"
+    back: "WHERE (dept_id, salary) IN (SELECT dept_id, MAX(salary) FROM employees GROUP BY dept_id)"
+keyTakeaways:
+  - "Nth highest: DENSE_RANK, DISTINCT + LIMIT/OFFSET, or a correlated COUNT(DISTINCT) subquery."
+  - "Duplicates: GROUP BY the defining columns HAVING COUNT(*) > 1; delete all but MIN(id) or ROW_NUMBER() = 1."
+  - "Compare a row with a related row in the same table using a self join."
+  - "Per-group max with names: (col, MAX) IN subquery or a window function; ties are kept."
+  - "No matching row: LEFT JOIN ... IS NULL or NOT EXISTS, never NOT IN with NULLs."
+  - "Always check ties, NULLs and empty groups before saying 'done'."

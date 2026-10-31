@@ -1,0 +1,401 @@
+slug: sd-lld-parking-lot
+world: SYSTEM_DESIGN
+section: SD
+order: 11
+title: "Low-level design: parking lot"
+version: 1
+estimatedMinutes: 50
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+infosysRelevance: "Excellent SP and DSE practice: the parking lot is the classic OOP design exercise, testing classes, enums, relationships and clean Java."
+otherCompanies: "The most common beginner LLD / machine-coding practice question at product companies; also a popular OOP discussion in service-company interviews."
+why: |
+  **"Design a parking lot"** is the most famous low-level design question. It's popular because everyone understands parking, so the interview can focus on **how you model it in code**:
+  - Which **classes** do you need, and what does each one own?
+  - Which things are **enums** (vehicle types, spot sizes)?
+  - How do the classes **relate** (a lot has many spots; a ticket refers to a vehicle and a spot)?
+  - Where will requirements **change** (pricing rules!) and how do you keep that change in one place (**Strategy pattern**)?
+
+  In this lesson you'll go through the full LLD template from Lesson 10 and finish with a **runnable Java skeleton** that parks vehicles, handles a full lot and calculates fees. Once you can do this one, Library Management, Movie Ticket Booking and Elevator design follow the same steps.
+analogy: |
+  Picture the parking at a **big mall in Bengaluru on a Saturday**.
+
+  - At the **entry gate**, the guard sees your vehicle type, finds a suitable free spot (bikes in the bike area, cars in car bays), and gives you a **paper ticket** with the time stamped.
+  - The building has **levels**; each level has **spots** of different sizes.
+  - At the **exit gate**, the cashier reads the ticket, works out the **fee** from the time spent and the vehicle type, and frees your spot.
+  - On weekends the mall changes the price to a **flat rate**. The guard and cashier don't change their routine; only the **rate card** on the wall is swapped. That rate card is your **PricingStrategy**.
+visual:
+  diagram: |
+    CLASS DIAGRAM (simplified)
+
+    +------------------+ 1      * +------------------+
+    |   ParkingLot     |<#>------>|   ParkingSpot    |
+    +------------------+          +------------------+
+    | - spots: List    |          | - id: String     |
+    | - pricing        |          | - size: SpotSize |
+    +------------------+          | - parked: Vehicle|
+    | + park(v, time)  |          +------------------+
+    | + unpark(t, time)|          | + canFit(v)      |
+    +------------------+          | + assign(v)      |
+         |  uses                  | + release()      |
+         v                        +------------------+
+    +--------------------+
+    | <<interface>>      |       +------------------+
+    |  PricingStrategy   |       |     Ticket       |
+    +--------------------+       +------------------+
+    | + fee(type, mins)  |       | - id, entryMinute|
+    +--------------------+       | - vehicle, spot  |
+       ^              ^          +------------------+
+    HourlyPricing  WeekendFlatPricing
+                                 <<enum>> VehicleType: BIKE, CAR, TRUCK
+    Vehicle(number, type)        <<enum>> SpotSize: SMALL, MEDIUM, LARGE
+  caption: "A ParkingLot owns many ParkingSpots and uses a PricingStrategy. A Ticket links a Vehicle to the Spot it got and the entry time. Enums hold the fixed vehicle types and spot sizes."
+  visualizer: null
+explanation: |
+  ### Step 1: Clarify requirements (ask, then write them down)
+  - Multiple **levels**, each with spots of sizes **SMALL, MEDIUM, LARGE**.
+  - Vehicle types: **BIKE, CAR, TRUCK**. A vehicle can use a spot of its size **or bigger** (a bike may use a car spot if bike spots are full).
+  - **Entry:** assign a spot, issue a ticket. If nothing fits, say the lot is full.
+  - **Exit:** calculate the fee from the duration and vehicle type, free the spot.
+  - **Pricing:** hourly rates per vehicle type, rounded up to the next hour; may change (weekend flat rate).
+  - Out of scope for now (say so): online pre-booking, EV charging, multiple payment methods, display boards. Mention them later as extensions.
+
+  ### Step 2: Nouns -> classes, verbs -> methods
+  | Noun | Becomes | Responsibility |
+  |---|---|---|
+  | Parking lot | `ParkingLot` | Holds spots, finds a spot, issues tickets, handles exit |
+  | Level | `Level` (optional) | A group of spots on one floor |
+  | Spot | `ParkingSpot` | Knows its size and whether it's free |
+  | Vehicle | `Vehicle` (record) | Number plate and type |
+  | Ticket | `Ticket` | Vehicle, spot, entry time, id |
+  | Rate card | `PricingStrategy` (interface) | Calculates the fee |
+
+  Verbs: `park(vehicle, time)`, `unpark(ticket, time)`, `canFit(vehicle)`, `fee(type, minutes)`.
+
+  ### Step 3: Enums for fixed sets
+  `VehicleType { BIKE, CAR, TRUCK }` and `SpotSize { SMALL, MEDIUM, LARGE }`. A neat trick: each `VehicleType` stores the **minimum spot size it needs**, and since enum constants have an `ordinal()` (position: SMALL=0, MEDIUM=1, LARGE=2), "fits" is just `spot.size.ordinal() >= vehicle.needs.ordinal()`. No if-else chains.
+
+  ### Step 4: Relationships
+  - `ParkingLot` **has many** `ParkingSpot`s (composition: spots don't exist without the lot). In the full version: `ParkingLot 1 -> * Level`, `Level 1 -> * ParkingSpot`.
+  - `Ticket` **refers to** one `Vehicle` and one `ParkingSpot` (association).
+  - `ParkingLot` **uses** a `PricingStrategy` (injected through the constructor).
+  - `HourlyPricing` and `WeekendFlatPricing` **implement** `PricingStrategy`.
+
+  ### Step 5: Put what changes behind an interface (Strategy pattern)
+  Pricing is the part most likely to change: weekend rates, first 30 minutes free, monthly passes, EV discounts. The **Strategy pattern** means: define a family of algorithms (pricing rules) behind one interface and make them swappable. `ParkingLot` just calls `pricing.fee(type, minutes)`. A new rule is a new class; `ParkingLot` doesn't change (Open/Closed from Lesson 10).
+
+  Spot allocation can be a strategy too (`NearestToEntrance`, `SmallestFitFirst`, `LowestLevelFirst`).
+
+  ### Step 6: Code the core and run a scenario
+  See the Tiny code. Things the interviewer will check:
+  - Fields are `private`/`final` where possible; enums instead of strings.
+  - `park` returns a `Ticket` (or reports full); `unpark` frees the spot **and** returns the fee.
+  - Fee rounding: `(minutes + 59) / 60` rounds up to whole hours using integer maths; `Math.max(1, ...)` charges at least 1 hour.
+
+  ### Step 7: Discuss concurrency and extensions
+  - **Concurrency:** two entry gates may try to grab the **same last spot** at the same moment. Make `park` `synchronized`, or lock per level, or use an atomic "try to assign" on the spot (`compareAndSet`). If backed by a database, use a transaction with row locking.
+  - **Faster spot search:** instead of scanning all spots, keep a **free-spot queue per size** (`Map<SpotSize, Deque<ParkingSpot>>`): O(1) to find and release.
+  - **Extensions:** levels and display boards (Observer pattern updates "Level 2: 14 car spots free"), payments (`PaymentMethod` interface), EV spots (new `SpotSize` or a feature flag), a `ParkingLot` **Singleton** if the system manages one lot (but be ready to explain why Singleton hurts testing).
+
+  ### What to say while coding (spoken structure)
+  "I'll start with the enums, then the Vehicle and ParkingSpot, then Ticket, then the PricingStrategy interface, and finally ParkingLot that ties them together. Then I'll run a scenario: park a car and two bikes, show a full lot, and exit with a fee."
+tinyCode:
+  code: |
+    import java.util.*;
+
+    public class ParkingLotDemo {
+        public static void main(String[] args) {
+            ParkingLot lot = new ParkingLot(new HourlyPricing());
+            lot.addSpot(new ParkingSpot("S1", SpotSize.SMALL));
+            lot.addSpot(new ParkingSpot("M1", SpotSize.MEDIUM));
+            lot.addSpot(new ParkingSpot("M2", SpotSize.MEDIUM));
+            lot.addSpot(new ParkingSpot("L1", SpotSize.LARGE));
+
+            Ticket car = lot.park(new Vehicle("KA01AB1234", VehicleType.CAR), 600);    // 10:00
+            lot.park(new Vehicle("KA05XY9999", VehicleType.BIKE), 605);
+            lot.park(new Vehicle("KA02CD5678", VehicleType.BIKE), 610);                // S1 taken -> M2
+            lot.park(new Vehicle("MH12TR0001", VehicleType.TRUCK), 615);
+            lot.park(new Vehicle("TN09ZZ4321", VehicleType.CAR), 620);                 // no spot left
+            System.out.println("Fee: Rs." + lot.unpark(car, 735));                     // 2 h 15 min
+            System.out.println("Free spots: " + lot.freeSpots());
+        }
+    }
+
+    enum VehicleType {
+        BIKE(SpotSize.SMALL), CAR(SpotSize.MEDIUM), TRUCK(SpotSize.LARGE);
+        final SpotSize needs;
+        VehicleType(SpotSize needs) { this.needs = needs; }
+    }
+
+    enum SpotSize { SMALL, MEDIUM, LARGE }
+
+    record Vehicle(String number, VehicleType type) {}
+
+    class ParkingSpot {
+        final String id;
+        final SpotSize size;
+        private Vehicle parked;                       // null = free
+
+        ParkingSpot(String id, SpotSize size) { this.id = id; this.size = size; }
+        boolean isFree() { return parked == null; }
+        boolean canFit(Vehicle v) { return isFree() && size.ordinal() >= v.type().needs.ordinal(); }
+        void assign(Vehicle v) { parked = v; }
+        void release() { parked = null; }
+    }
+
+    class Ticket {
+        private static int counter = 0;
+        final String id;
+        final Vehicle vehicle;
+        final ParkingSpot spot;
+        final int entryMinute;
+
+        Ticket(Vehicle vehicle, ParkingSpot spot, int entryMinute) {
+            this.id = "T" + (++counter);
+            this.vehicle = vehicle;
+            this.spot = spot;
+            this.entryMinute = entryMinute;
+        }
+    }
+
+    interface PricingStrategy {
+        int fee(VehicleType type, int minutes);
+    }
+
+    class HourlyPricing implements PricingStrategy {
+        private static final Map<VehicleType, Integer> RATE =
+            Map.of(VehicleType.BIKE, 20, VehicleType.CAR, 40, VehicleType.TRUCK, 100);
+
+        public int fee(VehicleType type, int minutes) {
+            int hours = Math.max(1, (minutes + 59) / 60);   // round up, minimum 1 hour
+            return hours * RATE.get(type);
+        }
+    }
+
+    class ParkingLot {
+        private final List<ParkingSpot> spots = new ArrayList<>();
+        private final PricingStrategy pricing;
+
+        ParkingLot(PricingStrategy pricing) { this.pricing = pricing; }
+
+        void addSpot(ParkingSpot s) { spots.add(s); }
+
+        Ticket park(Vehicle v, int minute) {
+            for (ParkingSpot s : spots) {             // spots are kept smallest first
+                if (s.canFit(v)) {
+                    s.assign(v);
+                    Ticket t = new Ticket(v, s, minute);
+                    System.out.println(t.id + ": " + v.number() + " -> " + s.id);
+                    return t;
+                }
+            }
+            System.out.println("FULL: no spot for " + v.number());
+            return null;
+        }
+
+        int unpark(Ticket t, int exitMinute) {
+            t.spot.release();
+            return pricing.fee(t.vehicle.type(), exitMinute - t.entryMinute);
+        }
+
+        long freeSpots() { return spots.stream().filter(ParkingSpot::isFree).count(); }
+    }
+  walkthrough: |
+    Save as `ParkingLotDemo.java` and run `java ParkingLotDemo.java` (the class with `main` is first, so the source launcher finds it). Time is in **minutes since midnight** (600 = 10:00) to keep the demo simple; real code would use `LocalDateTime` and `Duration`.
+
+    - **Enums:** `VehicleType` stores the smallest `SpotSize` it `needs`. `SpotSize` order gives ordinals SMALL=0, MEDIUM=1, LARGE=2.
+    - **`Vehicle`** is a `record`: an immutable data class with `number()` and `type()` accessors.
+    - **`ParkingSpot.canFit`**: free **and** big enough (`size.ordinal() >= needs.ordinal()`).
+    - **`Ticket`**: a static counter gives ids T1, T2...; it remembers vehicle, spot and entry time.
+    - **`PricingStrategy` / `HourlyPricing`**: rate per hour by type; `(minutes + 59) / 60` rounds up; minimum 1 hour.
+    - **`ParkingLot.park`**: scans spots (added smallest first) and takes the first that fits. **`unpark`** releases the spot and asks the strategy for the fee.
+
+    Scenario trace:
+    - Car -> S1 is too small -> **M1**.
+    - Bike -> **S1**.
+    - Second bike -> S1 is taken, M1 is taken -> **M2** (a bike may use a bigger spot).
+    - Truck -> only L1 is large -> **L1**.
+    - Second car -> M1, M2 taken, L1 taken -> **FULL**.
+    - Car leaves at 735: 135 minutes -> rounds up to 3 hours x Rs.40 = **Rs.120**. M1 becomes free.
+
+    Output:
+    ```
+    T1: KA01AB1234 -> M1
+    T2: KA05XY9999 -> S1
+    T3: KA02CD5678 -> M2
+    T4: MH12TR0001 -> L1
+    FULL: no spot for TN09ZZ4321
+    Fee: Rs.120
+    Free spots: 1
+    ```
+tryIt:
+  instructions: "Type this Strategy-pattern pricing demo. The weekday and weekend rules are separate classes behind one interface; swapping them changes the fee without touching any other code. Predict each line, especially 60 vs 61 minutes."
+  code: |
+    public class Pricing {
+        interface PricingStrategy {
+            int fee(int minutes);
+        }
+
+        static class HourlyPricing implements PricingStrategy {
+            public int fee(int minutes) {
+                int hours = Math.max(1, (minutes + 59) / 60);   // round up, minimum 1 hour
+                return hours * 40;
+            }
+        }
+
+        static class WeekendFlatPricing implements PricingStrategy {
+            public int fee(int minutes) { return 150; }        // one flat price all day
+        }
+
+        public static void main(String[] args) {
+            PricingStrategy weekday = new HourlyPricing();
+            PricingStrategy weekend = new WeekendFlatPricing();
+            int[] stays = {20, 60, 61, 300};
+            for (int m : stays) {
+                System.out.println(m + " min: weekday Rs." + weekday.fee(m) + ", weekend Rs." + weekend.fee(m));
+            }
+        }
+    }
+predict:
+  code: |
+    public class Fit {
+        enum SpotSize { SMALL, MEDIUM, LARGE }
+
+        enum VehicleType {
+            BIKE(SpotSize.SMALL), CAR(SpotSize.MEDIUM), TRUCK(SpotSize.LARGE);
+            final SpotSize needs;
+            VehicleType(SpotSize needs) { this.needs = needs; }
+        }
+
+        static boolean fits(VehicleType v, SpotSize s) {
+            return s.ordinal() >= v.needs.ordinal();
+        }
+
+        public static void main(String[] args) {
+            System.out.println(fits(VehicleType.BIKE, SpotSize.LARGE));
+            System.out.println(fits(VehicleType.TRUCK, SpotSize.MEDIUM));
+            System.out.println(VehicleType.CAR.needs + " " + SpotSize.LARGE.ordinal());
+        }
+    }
+  expectedOutput: |
+    true
+    false
+    MEDIUM 2
+  explanation: |
+    - Ordinals follow declaration order: SMALL=0, MEDIUM=1, LARGE=2.
+    - Bike needs SMALL (0); LARGE is 2; 2 >= 0 -> **true** (a bike can use a big spot).
+    - Truck needs LARGE (2); MEDIUM is 1; 1 >= 2 -> **false**.
+    - `VehicleType.CAR.needs` is `MEDIUM` (printing an enum prints its name), and `SpotSize.LARGE.ordinal()` is **2**.
+
+    Storing data inside enum constants (`BIKE(SpotSize.SMALL)`) removes the need for if-else chains like `if (type == BIKE) ... else if (type == CAR) ...`.
+commonMistakes:
+  - "Starting to code before listing requirements, classes and relationships."
+  - "Using strings like \"car\" and \"small\" instead of enums, which allows typos and invalid values."
+  - "Hard-coding pricing inside ParkingLot with if-else; any pricing change then edits the core class. Use a PricingStrategy."
+  - "Forgetting to check that the spot is free in canFit, so two vehicles get the same spot."
+  - "Ignoring concurrency: two gates can grab the same last spot unless park() is synchronized or the assignment is atomic."
+  - "Forgetting edge cases: full lot, very short stays (minimum charge), lost tickets."
+interviewBox:
+  why: "Why interviewers ask this: it's a compact way to see your OOP modelling, use of enums and interfaces, clean Java, and how you handle change and concurrency."
+  questions:
+    - q: "Practice: Design a parking lot. Walk me through your classes."
+      a: "First I'd confirm requirements: multiple levels, small, medium and large spots, bikes, cars and trucks, a ticket at entry and an hourly fee at exit. Then the classes: ParkingLot holds levels or spots and has park and unpark. ParkingSpot knows its size and whether it's free. Vehicle has a number and a type. Ticket links the vehicle, the spot and the entry time. VehicleType and SpotSize are enums. Pricing goes behind a PricingStrategy interface with HourlyPricing as one implementation. ParkingLot gets the strategy through its constructor, so weekend pricing is just a new class."
+    - q: "Practice: How would you support a new pricing rule, like the first 30 minutes free?"
+      a: "I'd add a new class implementing PricingStrategy, for example FirstHalfHourFreePricing, that returns zero for stays up to 30 minutes and otherwise uses the hourly rule. ParkingLot doesn't change; I just pass the new strategy when creating it. That's the Strategy pattern and the Open/Closed principle."
+    - q: "Practice: Two cars arrive at two gates at the same time and there is one spot left. What happens in your design?"
+      a: "Without protection, both could see the spot as free and both get assigned. I'd make the park method synchronized, or lock per level, or make the spot assignment atomic, for example with an AtomicReference and compareAndSet, so only one car wins and the other gets the next spot or a full message. If spots are in a database, I'd use a transaction with row locking."
+    - q: "Practice: How would you find a free spot faster than scanning every spot?"
+      a: "Keep a separate queue of free spots for each size, like a map from SpotSize to a deque. Parking takes from the right queue in O(1), and unparking adds the spot back. To allow a bike in a car spot, I'd check the next bigger size's queue if its own is empty."
+quiz:
+  - id: q1
+    type: PREDICT_OUTPUT
+    prompt: "Using HourlyPricing from Tiny code (BIKE 20, CAR 40, TRUCK 100 per hour, rounded up, minimum 1 hour). What prints?"
+    code: |
+      HourlyPricing p = new HourlyPricing();
+      System.out.println(p.fee(VehicleType.TRUCK, 90) + " " + p.fee(VehicleType.BIKE, 0));
+    options: ["150 0", "200 20", "100 0", "200 0"]
+    answer: 1
+    explanation: "90 minutes: (90 + 59) / 60 = 2 hours, x 100 = 200. 0 minutes: (0 + 59) / 60 = 0, but Math.max(1, 0) = 1 hour, x 20 = 20. '150' would be exact proportional billing, which this rule does not use."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "After this change, two bikes are both assigned to spot S1. What is the bug?"
+    code: |
+      boolean canFit(Vehicle v) {
+          return size.ordinal() >= v.type().needs.ordinal();
+      }
+    options:
+      - "ordinal() cannot be compared with >="
+      - "It no longer checks isFree(), so an occupied spot still 'fits'"
+      - "needs should be a String"
+      - "The method must be static"
+    answer: 1
+    explanation: "Size is fine, but the spot must also be free. Without isFree() the first suitable spot is returned again and again, and assign() overwrites the earlier vehicle. The original code is: isFree() && size.ordinal() >= needs.ordinal()."
+  - id: q3
+    type: MCQ
+    prompt: "Which design pattern lets the mall switch from hourly to weekend flat pricing without changing ParkingLot?"
+    options: ["Singleton", "Strategy", "Builder", "Adapter"]
+    answer: 1
+    explanation: "Strategy puts interchangeable algorithms (pricing rules) behind one interface, and ParkingLot just calls pricing.fee(). Singleton controls instance count; Builder builds complex objects step by step."
+  - id: q4
+    type: MATCH
+    prompt: "Match each class or type to its responsibility"
+    pairs:
+      - left: "ParkingLot"
+        right: "Finds a spot, issues tickets, handles exit"
+      - left: "ParkingSpot"
+        right: "Knows its size and whether it is free"
+      - left: "Ticket"
+        right: "Links vehicle, spot and entry time"
+      - left: "PricingStrategy"
+        right: "Calculates the fee for a stay"
+      - left: "VehicleType"
+        right: "Fixed set: BIKE, CAR, TRUCK"
+    explanation: "Each class has one clear job (Single Responsibility), which keeps the design easy to explain and extend."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "In this design, a bike is allowed to park in a MEDIUM spot when all SMALL spots are taken."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. canFit allows any free spot whose size ordinal is greater than or equal to what the vehicle needs, which is how the second bike got M2 in the scenario."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Fill in the integer expression that rounds minutes UP to whole hours (before applying the 1-hour minimum)."
+    code: |
+      int hours = Math.max(1, (minutes + ____) / 60);
+    acceptedAnswers: ["59"]
+    explanation: "Adding 59 before integer division rounds up: 60 -> 119/60 = 1, 61 -> 120/60 = 2. Adding 60 would wrongly turn exactly 60 minutes into 2 hours."
+  - id: q7
+    type: MCQ
+    prompt: "What is the best way to handle two gates assigning the last spot at the same moment?"
+    options: ["Hope it doesn't happen", "Make spot assignment atomic (synchronized park, a lock, or compareAndSet; DB row lock if stored in a database)", "Add more gates", "Use a bigger ArrayList"]
+    answer: 1
+    explanation: "This is a race condition: both threads see the spot as free. Making the check-and-assign step atomic ensures only one wins. More gates or bigger lists don't fix the race."
+explainBack:
+  prompt: "Explain your parking lot design to a friend, using the mall parking as the example."
+  rubric:
+    - "I listed the requirements and what is out of scope"
+    - "I named the main classes and enums and what each one does"
+    - "I explained relationships (lot has spots; ticket links vehicle and spot)"
+    - "I explained the PricingStrategy and why it makes changes easy"
+    - "I mentioned concurrency for the last spot"
+  modelAnswer: |
+    At a mall, the entry guard finds a spot that fits your vehicle and gives you a ticket with the time, and the exit cashier charges by time and vehicle type. So my classes are ParkingLot, which holds the spots and has park and unpark; ParkingSpot, which knows its size and if it's free; Vehicle; and Ticket, which links the vehicle, the spot and the entry time. Vehicle types and spot sizes are enums. Pricing sits behind a PricingStrategy interface, so the weekend flat rate is just another class and ParkingLot never changes. And if two gates grab the last spot together, I make the assignment atomic so only one wins.
+flashcards:
+  - front: "Parking lot core classes"
+    back: "ParkingLot, (Level), ParkingSpot, Vehicle, Ticket, PricingStrategy + enums VehicleType, SpotSize."
+  - front: "How to check if a vehicle fits a spot"
+    back: "spot is free AND spot.size.ordinal() >= vehicleType.needs.ordinal()."
+  - front: "Round minutes up to hours with ints"
+    back: "(minutes + 59) / 60, with Math.max(1, ...) for a minimum charge of 1 hour."
+  - front: "Why a PricingStrategy interface?"
+    back: "Pricing changes often; each rule is its own class and ParkingLot stays unchanged (Strategy + Open/Closed)."
+  - front: "Last-spot race condition fix"
+    back: "Make check-and-assign atomic: synchronized park, per-level lock, compareAndSet, or a DB transaction with row lock."
+keyTakeaways:
+  - "Follow the LLD template: requirements, classes, enums, relationships, interfaces, code, scenario."
+  - "Enums with data (BIKE needs SMALL) replace if-else chains."
+  - "Each class has one job: lot coordinates, spot tracks occupancy, ticket records the stay."
+  - "Pricing goes behind a Strategy interface so new rules are new classes."
+  - "Handle edge cases: full lot, minimum charge, rounding up."
+  - "Mention concurrency for the last spot and a free-spot queue per size for speed."

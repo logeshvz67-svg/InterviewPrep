@@ -1,0 +1,405 @@
+slug: spring-controllers-validation
+world: SPRING
+section: SPRING
+order: 5
+title: "Controllers, validation and DTOs"
+version: 1
+estimatedMinutes: 40
+rebuild: true
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+infosysRelevance: "Hands-on core for SP and DSE: writing a REST endpoint with @PathVariable, @RequestParam, @RequestBody and @Valid is a typical practical Spring task and a common source of 'what is the difference' questions."
+otherCompanies: "@PathVariable vs @RequestParam, @Controller vs @RestController and Bean Validation are standard questions at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies expect clean DTOs and correct 400 handling."
+why: |
+  The controller is the **front door** of your backend. Every request from the browser or mobile app enters here. If the door is careless, bad data walks straight into your database: empty names, negative prices, emails like "abc".
+
+  In this lesson you rebuild, properly, the annotations you have probably copied before:
+  - `@RestController`, `@GetMapping`, `@PostMapping`...
+  - where values come from: **`@PathVariable`**, **`@RequestParam`**, **`@RequestBody`**,
+  - **Bean Validation** with `@Valid`, `@NotBlank`, `@Email`, `@Size`, `@Min`,
+  - **records as DTOs**.
+
+  These are some of the most practical Spring interview questions, and your `backend` project uses every one of them.
+analogy: |
+  Think of a **railway reservation counter**.
+
+  - The **counter clerk** is the controller. Different windows handle different jobs: "Booking" (POST), "Enquiry" (GET), "Cancellation" (DELETE). That is request mapping.
+  - Your **PNR number** written on the ticket (`/tickets/4521`) identifies *which* ticket: a **path variable**.
+  - Extra choices like "berth preference = lower" are **request parameters** (`?berth=lower`): optional extras.
+  - The filled **reservation form** you hand over is the **request body**.
+  - Before accepting the form, the clerk checks it: name not empty, age a valid number, phone has 10 digits. That is **validation**. A wrong form is handed back immediately (**400 Bad Request**) and never reaches the booking system (service).
+visual:
+  diagram: |
+    POST /api/users/7/orders?coupon=DIWALI      Content-Type: application/json
+         |          |          |                {"item":"Laptop","qty":2}
+         |          |          |                          |
+         v          v          v                          v
+    @PostMapping  @PathVariable  @RequestParam      @Valid @RequestBody
+    ("/{id}/orders") Long id=7   String coupon       OrderRequest req
+                                 ="DIWALI"                |
+                                                 Bean Validation
+                                          @NotBlank item? @Min(1) qty?
+                                             |                 |
+                                          all OK            any fail
+                                             v                 v
+                                     controller method    400 Bad Request
+                                     -> service           (method never runs)
+  caption: "Each part of the HTTP request is read by a different annotation, and @Valid checks the body before your method runs."
+  visualizer: null
+explanation: |
+  ### @Controller vs @RestController
+  - `@Controller` returns **view names** (HTML pages) by default.
+  - `@RestController` = `@Controller` + `@ResponseBody`: the return value is written straight into the response, usually as **JSON** by Jackson (the JSON library Spring Boot includes).
+
+  For REST APIs, always use `@RestController`.
+
+  ### Mapping URLs to methods
+  - `@RequestMapping("/api/users")` on the class: a common prefix for every method.
+  - `@GetMapping`, `@PostMapping`, `@PutMapping`, `@PatchMapping`, `@DeleteMapping` on methods: the HTTP method plus the rest of the path.
+  - Curly braces mark a **path template**: `@GetMapping("/{id}")`.
+
+  ### Where input comes from
+  | Annotation | Reads | Example request | Typical use |
+  |---|---|---|---|
+  | `@PathVariable` | a part of the path | `/api/users/7` | Which resource (an id) |
+  | `@RequestParam` | a query parameter | `?city=Pune&page=2` | Filters, sorting, paging, optional choices |
+  | `@RequestBody` | the JSON body | `{"email":"..."}` | Data to create or update |
+  | `@RequestHeader` | an HTTP header | `Authorization: Bearer ...` | Tokens, metadata |
+
+  Details that interviewers like:
+  - `@RequestParam` is **required by default**. Missing it gives **400**. Use `required = false` or `defaultValue = "0"` for optional ones.
+  - If the text cannot be converted (`/api/users/abc` for a `Long id`), Spring returns **400** before your method runs.
+  - The parameter name must match the placeholder (`{id}` and `Long id`). If they differ, write `@PathVariable("orderId") Long oid`. This works because Spring Boot compiles with the `-parameters` option, which keeps parameter names.
+  - `@RequestBody` needs the header `Content-Type: application/json`. Sending `text/plain` gives **415 Unsupported Media Type**. Broken JSON gives **400**.
+
+  Open `backend/src/main/java/com/codequest/controller/MistakeController.java`: it uses all three: `@PathVariable Long id`, `@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size`, and `@Valid @RequestBody MistakeRequest req`.
+
+  ### Records as DTOs
+  A **record** is a short immutable data class: `record SignupRequest(String email, String password) {}` gives you the constructor, getters (`email()`), `equals`, `hashCode` and `toString`. Jackson can read JSON into records and write records as JSON. Your `backend/src/main/java/com/codequest/dto/AuthDtos.java` groups the auth DTOs as records inside one class.
+
+  ### Bean Validation
+  **Bean Validation** (the `jakarta.validation` standard, implemented by Hibernate Validator) lets you put rules on fields with annotations. It comes with `spring-boot-starter-validation`.
+
+  | Annotation | Rule | Note |
+  |---|---|---|
+  | `@NotNull` | not null | Use for numbers, objects |
+  | `@NotEmpty` | not null and length/size > 0 | `" "` (a space) passes |
+  | `@NotBlank` | not null and has a non-space character | Strings only. Best for text |
+  | `@Size(min, max)` | length of a String / size of a list | |
+  | `@Min` / `@Max` | number limits | |
+  | `@Email` | looks like an email | `null` passes; add `@NotBlank` |
+  | `@Pattern(regexp = ...)` | matches a regex | e.g. 10-digit phone |
+  | `@Past` / `@Future` | dates | |
+
+  Rules are only checked when you ask: put **`@Valid`** before `@RequestBody`. If any rule fails, Spring throws **MethodArgumentNotValidException** and returns **400**. Your method never runs, so the service only ever sees valid data.
+
+  Constraints directly on `@RequestParam` / `@PathVariable` (like `@Max(100) int size`) are also checked: Spring 6.1+ validates them for you and returns 400. Your `MistakeController` also has `@Validated` on the class; that older style turns violations into `ConstraintViolationException`, which `GlobalExceptionHandler` maps to 400.
+
+  Custom messages: `@Size(min = 8, max = 72, message = "Password must be 8-72 characters")`, exactly as in `RegisterRequest`. (Why 72? BCrypt only uses the first 72 bytes of a password.)
+
+  ### Primitive vs wrapper trap
+  If a JSON field is missing, a primitive `int` becomes **0**, while an `Integer` becomes **null**. So `@Min(18) int age` with a missing age fails with "must be greater than or equal to 18", a confusing message. For required numbers use `@NotNull Integer age`.
+
+  ### Validation is not the same as business rules
+  `@Email` checks the **format**. "This email is already registered" needs the database, so it belongs in the service and results in **409 Conflict** (next lesson).
+tinyCode:
+  code: |
+    package demo.signup;
+
+    import jakarta.validation.Valid;
+    import jakarta.validation.constraints.*;
+    import org.springframework.http.HttpStatus;
+    import org.springframework.http.MediaType;
+    import org.springframework.test.web.servlet.MockMvc;
+    import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+    import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+    import org.springframework.web.bind.annotation.*;
+
+    import java.util.List;
+
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+
+    record SignupRequest(
+            @NotBlank @Email String email,
+            @NotBlank @Size(min = 8, max = 72) String password,
+            @NotNull @Min(16) Integer age) {}
+
+    record SignupResponse(String email, String message) {}
+
+    @RestController
+    @RequestMapping("/api/users")
+    class UserController {
+        @PostMapping
+        @ResponseStatus(HttpStatus.CREATED)
+        SignupResponse signup(@Valid @RequestBody SignupRequest req) {
+            return new SignupResponse(req.email(), "Welcome!");
+        }
+
+        @GetMapping
+        List<String> search(@RequestParam String city,
+                            @RequestParam(defaultValue = "0") @Min(0) int page,
+                            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+            return List.of(city + " page " + page + " size " + size);
+        }
+
+        @GetMapping("/{id}/orders/{orderId}")
+        String order(@PathVariable Long id, @PathVariable Long orderId) {
+            return "user " + id + " order " + orderId;
+        }
+    }
+
+    public class SignupDemo {
+        static MockMvc mvc = MockMvcBuilders.standaloneSetup(new UserController()).build();
+
+        static void show(MockHttpServletRequestBuilder req) throws Exception {
+            var res = mvc.perform(req).andReturn().getResponse();
+            String body = res.getContentAsString();
+            System.out.println(res.getStatus() + (body.isEmpty() ? "" : " " + body));
+        }
+
+        public static void main(String[] args) throws Exception {
+            show(post("/api/users").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"asha@mail.com\",\"password\":\"secret123\",\"age\":22}"));
+            show(post("/api/users").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"asha\",\"password\":\"123\",\"age\":22}"));
+            show(get("/api/users?city=Pune"));
+            show(get("/api/users?city=Pune&page=1&size=500"));
+            show(get("/api/users/7/orders/42"));
+        }
+    }
+    // Output (plus Spring's log lines):
+    // 201 {"email":"asha@mail.com","message":"Welcome!"}
+    // 400
+    // 200 ["Pune page 0 size 20"]
+    // 400
+    // 200 user 7 order 42
+  walkthrough: |
+    - `SignupRequest` is a **record DTO** with rules on each field. `Integer age` with `@NotNull` makes age truly required.
+    - `@Valid @RequestBody SignupRequest req`: Jackson turns the JSON body into the record, then `@Valid` runs the rules.
+    - Request 1 is valid: the method runs and returns **201** with JSON.
+    - Request 2 has a bad email and a 3-character password: validation fails, the method **never runs**, and the answer is **400**. The body is empty here because we have no error handler yet; the next lesson adds a clear JSON error message.
+    - `search(...)`: `city` is required; `page` and `size` have defaults, so `?city=Pune` gives page 0 and size 20.
+    - Request 4 asks for `size=500`, but `@Max(100)` forbids it: **400**. This protects the database from huge queries.
+    - `order(...)`: two path variables, matched by name to `{id}` and `{orderId}`.
+    - `MockMvc` sends fake HTTP requests without a real server. In your real app you would test the same thing with Postman or curl.
+tryIt:
+  instructions: "Type this controller into a Spring Boot project, run it, and call it from Postman or curl: POST /api/feedback with {\"rating\":6,\"comment\":\"\"} and then with {\"rating\":5,\"comment\":\"Great lessons\"}. Note the status code each time."
+  code: |
+    package com.example.feedback;
+
+    import jakarta.validation.Valid;
+    import jakarta.validation.constraints.*;
+    import org.springframework.http.HttpStatus;
+    import org.springframework.web.bind.annotation.*;
+
+    record FeedbackRequest(
+            @NotNull @Min(1) @Max(5) Integer rating,
+            @NotBlank @Size(max = 200) String comment) {}
+
+    record FeedbackResponse(int rating, String comment, String status) {}
+
+    @RestController
+    @RequestMapping("/api/feedback")
+    public class FeedbackController {
+
+        @PostMapping
+        @ResponseStatus(HttpStatus.CREATED)
+        public FeedbackResponse create(@Valid @RequestBody FeedbackRequest req) {
+            return new FeedbackResponse(req.rating(), req.comment().trim(), "SAVED");
+        }
+
+        @GetMapping("/{id}")
+        public String one(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean full) {
+            return "feedback " + id + (full ? " (full)" : "");
+        }
+    }
+predict:
+  code: |
+    package demo.age;
+
+    import jakarta.validation.Valid;
+    import jakarta.validation.constraints.Min;
+    import org.springframework.http.MediaType;
+    import org.springframework.test.web.servlet.MockMvc;
+    import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+    import org.springframework.web.bind.annotation.*;
+
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
+    record AgeRequest(@Min(18) int age) {}
+
+    @RestController
+    class VoteController {
+        @PostMapping("/a")
+        String a(@Valid @RequestBody AgeRequest r) { return "A ok " + r.age(); }
+
+        @PostMapping("/b")
+        String b(@RequestBody AgeRequest r) { return "B ok " + r.age(); }
+    }
+
+    public class AgePredict {
+        public static void main(String[] args) throws Exception {
+            MockMvc mvc = MockMvcBuilders.standaloneSetup(new VoteController()).build();
+            String[][] calls = {{"/a", "{\"age\":20}"}, {"/a", "{}"}, {"/b", "{\"age\":5}"}, {"/a", "{\"age\":\"twenty\"}"}};
+            for (String[] c : calls) {
+                var res = mvc.perform(post(c[0]).contentType(MediaType.APPLICATION_JSON).content(c[1])).andReturn().getResponse();
+                String body = res.getContentAsString();
+                System.out.println(c[0] + " " + c[1] + " -> " + res.getStatus() + (body.isEmpty() ? "" : " " + body));
+            }
+        }
+    }
+  expectedOutput: |
+    /a {"age":20} -> 200 A ok 20
+    /a {} -> 400
+    /b {"age":5} -> 200 B ok 5
+    /a {"age":"twenty"} -> 400
+  explanation: |
+    1. `{"age":20}` passes `@Min(18)`: 200 (no `@ResponseStatus`, so the default 200).
+    2. `{}` has no age. `age` is a primitive `int`, so it becomes **0**, and 0 fails `@Min(18)`: 400. A surprising message for a *missing* field; use `@NotNull Integer` to say "required" clearly.
+    3. `/b` has **no `@Valid`**, so the rule is never checked and age 5 is accepted: 200. This is the classic forgotten-`@Valid` bug.
+    4. `"twenty"` cannot become an `int`; Jackson fails to read the body (HttpMessageNotReadableException): 400 before validation even starts.
+    (Spring also prints WARN log lines for the 400s; ignore them.)
+commonMistakes:
+  - "Forgetting @Valid before @RequestBody. The constraint annotations are then ignored and bad data reaches your service."
+  - "Using @NotNull on a String that should not be empty. \"\" and \"   \" pass @NotNull; use @NotBlank for text."
+  - "Using primitive int for a required number. A missing value silently becomes 0; use @NotNull Integer."
+  - "Using @RequestParam for something that identifies the resource (/users?id=7). Use a path variable: /users/7."
+  - "Forgetting the Content-Type: application/json header when testing in Postman, which gives 415 Unsupported Media Type."
+  - "Putting database checks (email already exists) in validation annotations. Format checks go in the DTO; data checks go in the service."
+interviewBox:
+  why: "Why interviewers ask this: this is everyday Spring work. They check that you know where each value comes from and that you never trust client input."
+  questions:
+    - q: "What is the difference between @PathVariable and @RequestParam?"
+      a: "@PathVariable reads a part of the URL path, like 7 in /users/7, and identifies the resource. @RequestParam reads a query parameter after the question mark, like ?city=Pune&page=2, and is used for filters, sorting and paging. RequestParam is required by default, but I can give it a defaultValue or set required to false."
+    - q: "What is the difference between @Controller and @RestController?"
+      a: "@RestController is @Controller plus @ResponseBody. A plain @Controller returns view names for HTML pages, while @RestController writes the return value directly into the response as JSON. For REST APIs I use @RestController."
+    - q: "How do you validate a request body in Spring Boot?"
+      a: "I put Bean Validation annotations like @NotBlank, @Email, @Size and @Min on the DTO record fields and add @Valid before @RequestBody. If a rule fails, Spring throws MethodArgumentNotValidException and returns 400 before my method runs. A global exception handler turns it into a clean JSON error with a message per field."
+    - q: "@NotNull vs @NotEmpty vs @NotBlank?"
+      a: "@NotNull only rejects null. @NotEmpty also rejects an empty string or empty list. @NotBlank is for strings and also rejects strings that are only spaces. For names and emails I use @NotBlank; for numbers, @NotNull."
+    - q: "Why use records as DTOs?"
+      a: "They are short and immutable: one line gives the constructor, accessors, equals, hashCode and toString. Jackson supports them, and validation annotations work on their components. They are perfect for data that only travels in and out of the API."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "For GET /api/users/7/orders?status=PAID, which annotations read 7 and PAID?"
+    code: null
+    options:
+      - "7: @RequestParam, PAID: @PathVariable"
+      - "7: @PathVariable, PAID: @RequestParam"
+      - "Both: @RequestBody"
+      - "Both: @PathVariable"
+    answer: 1
+    explanation: "7 is part of the path (/users/{id}), so @PathVariable. status=PAID comes after the ?, so @RequestParam. A GET request has no body, so @RequestBody is wrong."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "A client sends {\"email\":\"abc\",\"password\":\"123\"} and gets 201 Created. Why did validation not stop it?"
+    code: |
+      record SignupRequest(
+              @NotBlank @Email String email,
+              @NotBlank @Size(min = 8) String password) {}
+
+      @PostMapping("/api/users")
+      @ResponseStatus(HttpStatus.CREATED)
+      SignupResponse signup(@RequestBody SignupRequest req) {
+          return service.register(req);
+      }
+    options:
+      - "@Email does not work on records"
+      - "@Valid is missing before @RequestBody, so the constraints are never checked"
+      - "@Size needs a max value"
+      - "The method must return ResponseEntity"
+    answer: 1
+    explanation: "Constraint annotations do nothing on their own; @Valid (or @Validated) tells Spring to run them. With @Valid, this request would get 400. Records support validation fine, and max is optional in @Size."
+  - id: q3
+    type: PREDICT_OUTPUT
+    prompt: "What status does GET /api/users (with no query string) return?"
+    code: |
+      @GetMapping("/api/users")
+      List<String> search(@RequestParam String city,
+                          @RequestParam(defaultValue = "0") int page) {
+          return service.search(city, page);
+      }
+    options: ["200 with an empty list", "200 with city = null", "400", "404"]
+    answer: 2
+    explanation: "@RequestParam is required by default. city is missing, so Spring throws MissingServletRequestParameterException and returns 400. page is fine because it has a defaultValue. The URL exists, so it is not 404."
+  - id: q4
+    type: MATCH
+    prompt: "Match each constraint to what it rejects"
+    pairs:
+      - left: "@NotNull"
+        right: "Only null"
+      - left: "@NotEmpty"
+        right: "null and \"\" (but \"  \" passes)"
+      - left: "@NotBlank"
+        right: "null, \"\" and strings of only spaces"
+      - left: "@Size(min = 8, max = 72)"
+        right: "Text shorter than 8 or longer than 72 characters"
+      - left: "@Email"
+        right: "Text that is not shaped like an email"
+    explanation: "Choose the strictest one that fits: @NotBlank for text fields, @NotNull for numbers and objects. Note that @Email accepts null, so pair it with @NotBlank."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "@RestController is the same as @Controller plus @ResponseBody on every method."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. @ResponseBody tells Spring to write the return value into the HTTP response (as JSON) instead of treating it as the name of an HTML view."
+  - id: q6
+    type: FILL_THE_CODE
+    prompt: "Make Spring check the rules on RegisterRequest before the method runs."
+    code: |
+      @PostMapping("/register")
+      @ResponseStatus(HttpStatus.CREATED)
+      public TokenResponse register(@____ @RequestBody RegisterRequest req) {
+          return auth.register(req);
+      }
+    acceptedAnswers: ["Valid", "@Valid", "Validated", "@Validated"]
+    explanation: "@Valid (jakarta.validation.Valid) triggers Bean Validation on the body. Spring's @Validated also works here. This is exactly how AuthController.register is written."
+  - id: q7
+    type: PREDICT_OUTPUT
+    prompt: "A client sends the body hello with the header Content-Type: text/plain to this endpoint. What status comes back?"
+    code: |
+      @PostMapping("/api/users")
+      @ResponseStatus(HttpStatus.CREATED)
+      SignupResponse signup(@Valid @RequestBody SignupRequest req) { ... }
+    options: ["201", "400", "415", "500"]
+    answer: 2
+    explanation: "Spring has no converter that turns text/plain into a SignupRequest record, so it answers 415 Unsupported Media Type before reading anything. 400 would be for JSON that is broken or fails validation."
+  - id: q8
+    type: MCQ
+    prompt: "A required 'quantity' field must be at least 1. Which declaration gives the clearest error when the client forgets the field?"
+    code: null
+    options:
+      - "@Min(1) int quantity"
+      - "@NotNull @Min(1) Integer quantity"
+      - "@NotBlank int quantity"
+      - "@NotEmpty Integer quantity"
+    answer: 1
+    explanation: "With Integer, a missing field is null and @NotNull says 'must not be null'. With int (option A), missing becomes 0 and the error says 'must be greater than or equal to 1', which is confusing. @NotBlank and @NotEmpty are for text and collections, not numbers."
+explainBack:
+  prompt: "Explain to a friend how a Spring controller reads a request and protects the app from bad input."
+  rubric:
+    - "I explained @PathVariable, @RequestParam and @RequestBody with examples"
+    - "I said @RestController writes return values as JSON"
+    - "I explained @Valid plus constraint annotations and the 400 response"
+    - "I mentioned records as DTOs"
+    - "I mentioned at least one trap (missing @Valid, @NotNull vs @NotBlank, or int vs Integer)"
+  modelAnswer: |
+    A controller is like the counter clerk at a railway station. In Spring I write a @RestController, so whatever I return becomes JSON. The URL path gives me ids through @PathVariable, like 7 in /users/7. Extras like ?page=2 come through @RequestParam, which is required unless I give a default. The JSON body comes in through @RequestBody into a record DTO. To protect the app, I put rules like @NotBlank, @Email and @Size on the record fields and add @Valid. If anything fails, Spring returns 400 and my method never runs. The common trap is forgetting @Valid; then the rules are silently ignored.
+flashcards:
+  - front: "@PathVariable vs @RequestParam"
+    back: "PathVariable: part of the path (/users/7), identifies the resource. RequestParam: query string (?page=2), required by default, can have defaultValue."
+  - front: "What triggers Bean Validation on a request body?"
+    back: "@Valid (or @Validated) before @RequestBody. Failure -> MethodArgumentNotValidException -> 400."
+  - front: "@NotNull vs @NotEmpty vs @NotBlank"
+    back: "NotNull: not null. NotEmpty: not null and not empty. NotBlank: not null and has a non-space char (Strings only)."
+  - front: "Missing JSON field mapped to int vs Integer"
+    back: "int becomes 0; Integer becomes null. Use @NotNull Integer for required numbers."
+  - front: "Status for wrong Content-Type / broken JSON / failed validation"
+    back: "415 / 400 / 400"
+keyTakeaways:
+  - "@RestController = @Controller + @ResponseBody: return values become JSON."
+  - "@PathVariable reads the path, @RequestParam the query string (required by default), @RequestBody the JSON body."
+  - "Put constraints on record DTOs and add @Valid; failures return 400 before your method runs."
+  - "Use @NotBlank for text, @NotNull for numbers and objects, and Integer (not int) for required numbers."
+  - "Format checks go in the DTO; checks that need the database go in the service."

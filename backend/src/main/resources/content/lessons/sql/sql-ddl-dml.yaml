@@ -22,7 +22,7 @@ analogy: |
   - **DROP**: you throw away the **whole notebook**, cover and label included. There's nothing left to write in.
   - **DDL** is about the notebook itself (buy, relabel, throw away). **DML** is about what you write inside it.
 visual:
-  diagram: |
+  diagram: |2
                   DELETE FROM t       TRUNCATE t        DROP TABLE t
                   WHERE ...;
     rows          some or all gone    all gone          all gone

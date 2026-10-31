@@ -33,9 +33,9 @@ visual:
     BEGIN;
       UPDATE ... balance - 2000 WHERE Asha  -> Asha 3000 (not yet final)
       UPDATE ... balance + 2000 WHERE Ravi  -> Ravi 3000 (not yet final)
-    COMMIT;      -> both changes saved permanently   (Asha 3000, Ravi 3000)
+    COMMIT;    -> both changes saved     (Asha 3000, Ravi 3000)
       or
-    ROLLBACK;    -> both changes undone               (Asha 5000, Ravi 1000)
+    ROLLBACK;  -> both changes undone    (Asha 5000, Ravi 1000)
 
     Session A (READ COMMITTED)        Session B
     BEGIN;

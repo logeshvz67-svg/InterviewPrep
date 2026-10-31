@@ -1,0 +1,453 @@
+slug: spring-exception-handling
+world: SPRING
+section: SPRING
+order: 6
+title: "Global exception handling"
+version: 1
+estimatedMinutes: 35
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+infosysRelevance: "A favourite SP and DSE practice question: 'How do you handle exceptions in a Spring Boot REST API?' The expected answer is @RestControllerAdvice + @ExceptionHandler with proper status codes."
+otherCompanies: "Asked regularly at TCS, Wipro, Cognizant, Accenture and Capgemini; product companies also look for a consistent error format (ProblemDetail), no leaking of internals, and correct 4xx vs 5xx choices."
+why: |
+  Things go wrong all the time: a topic does not exist, an email is already registered, a field is blank, someone sends DELETE to a GET-only URL, or there is a real bug. What the client sees in those moments matters a lot:
+  - a **clear status code** (404, 409, 400...) so the frontend knows what happened,
+  - a **consistent JSON shape** so the frontend can show the message,
+  - **no stack traces or secrets** leaked to the outside world.
+
+  Writing try/catch in every controller method is repetitive and easy to forget. Spring lets you handle errors in **one place**. Your project does exactly this in `GlobalExceptionHandler`, which you will fully understand by the end of this lesson.
+analogy: |
+  Think of a **hospital's casualty (emergency) desk**.
+
+  - Doctors in every ward (controllers and services) do not each handle every emergency themselves. When something goes wrong, they **send the patient to casualty** (throw an exception).
+  - The casualty desk (**@RestControllerAdvice**) has a **specialist for each type of case** (**@ExceptionHandler** methods): fracture, burn, fever. The **most specific** specialist takes the case.
+  - Unknown cases go to the **general duty doctor** (the `Exception.class` catch-all), who treats it and **writes a calm report for the family** (a polite 500 message) while the detailed notes go into the hospital records (the server log), not to the family.
+  - Every report uses the **same printed form** (ProblemDetail), so families always know where to look.
+visual:
+  diagram: |
+    Controller / Service
+        throw ApiException.notFound("Topic")
+                 |
+                 v
+    DispatcherServlet catches it
+                 |
+                 v
+    @RestControllerAdvice GlobalExceptionHandler
+     +-------------------------------------------+
+     | ApiException                  -> its status|  <- most specific
+     | MethodArgumentNotValidException -> 400     |     handler wins
+     | HttpRequestMethodNotSupported   -> 405     |
+     | NoResourceFoundException        -> 404     |
+     | Exception (anything else)       -> 500     |  <- last resort
+     +-------------------------------------------+
+                 |
+                 v
+    HTTP 404   Content-Type: application/problem+json
+    {"type":"about:blank","title":"Not Found","status":404,
+     "detail":"Topic not found","instance":"/api/topics/99"}
+  caption: "Exceptions travel up to one advice class; the most specific @ExceptionHandler turns each one into the same ProblemDetail JSON."
+  visualizer: null
+explanation: |
+  ### Without central handling
+  If an exception escapes a controller, Spring Boot sends a generic 500 error. Writing `try/catch` in every method is messy and inconsistent, and a common beginner bug is catching the exception and returning **200** with an error string. The client then thinks everything worked.
+
+  ### @ExceptionHandler
+  A method marked `@ExceptionHandler(SomeException.class)` is called when that exception (or a subclass) is thrown. Its return value becomes the response.
+  - Inside **one controller**: handles errors from that controller only.
+  - Inside a **@RestControllerAdvice** class: handles errors from **all** controllers. This is what you want.
+
+  `@RestControllerAdvice` = `@ControllerAdvice` + `@ResponseBody`, so return values are written as JSON.
+
+  ### Which handler wins?
+  Spring picks the handler whose exception type is **closest** to the thrown one in the class hierarchy. The order of the methods in the file does not matter. So `@ExceptionHandler(Exception.class)` only runs when nothing more specific matches. Two handlers for exactly the same exception type in one advice is an error at startup ("Ambiguous @ExceptionHandler method").
+
+  ### ProblemDetail: a standard error shape
+  **ProblemDetail** (Spring 6+) follows the RFC 7807 standard (updated as RFC 9457) for HTTP error bodies. Its fields:
+
+  | Field | Meaning |
+  |---|---|
+  | `type` | A URI naming the error type (`about:blank` by default) |
+  | `title` | Short text for the status, e.g. "Not Found" |
+  | `status` | The HTTP status code |
+  | `detail` | Human-friendly explanation for this case |
+  | `instance` | The request path where it happened |
+
+  You can add your own fields with `pd.setProperty("errors", map)`. The response content type is `application/problem+json`.
+
+  ### Your app's handler, line by line
+  Open `backend/src/main/java/com/codequest/exception/GlobalExceptionHandler.java` and `ApiException.java`:
+  - **`ApiException`** is your own `RuntimeException` that carries an `HttpStatus`. Static helpers make throwing readable: `throw ApiException.notFound("Profile")`, `ApiException.conflict("...")`. Services throw it; the handler turns it into a ProblemDetail with that status. (`XpService.award` uses `orElseThrow(() -> ApiException.notFound("Profile"))`.)
+  - **`MethodArgumentNotValidException` -> 400** with an `errors` map: field name to message. That is how the frontend shows "Password must be 8-72 characters" under the right box.
+  - **`ConstraintViolationException`**, **`HttpMessageNotReadableException`**, **`MethodArgumentTypeMismatchException` -> 400**: broken JSON or `/topics/abc`.
+  - **`BadCredentialsException` -> 401**, **`AccessDeniedException` -> 403**.
+  - **`HttpRequestMethodNotSupportedException` -> 405** and **`NoResourceFoundException` -> 404**.
+  - **`Exception` -> 500**: logs the full stack trace with `log.error`, but sends only "Something went wrong on our side".
+
+  ### Why so many specific handlers? The catch-all trap
+  A catch-all `@ExceptionHandler(Exception.class)` catches **everything**, including Spring's own exceptions that normally become 400, 404 or 405. Without the specific handlers, `/api/topics/abc` would turn into **500** instead of 400, and DELETE on a GET-only URL would also become 500. Rule: if you add a catch-all, also add handlers for the framework exceptions you care about (or extend `ResponseEntityExceptionHandler`, which already maps Spring MVC exceptions to the right ProblemDetail).
+
+  ### Status code guide
+  | Situation | Status |
+  |---|---|
+  | Invalid input, failed validation, unreadable JSON | 400 |
+  | Not logged in / wrong password | 401 |
+  | Logged in, not allowed | 403 |
+  | Resource or URL does not exist | 404 |
+  | Wrong HTTP method | 405 |
+  | Duplicate / state conflict (email taken) | 409 |
+  | Unexpected bug | 500 |
+
+  ### Errors that happen before controllers
+  Spring Security filters run **before** the DispatcherServlet, so a missing token never reaches `@RestControllerAdvice`. That is why `SecurityConfig` writes its own 401/403 ProblemDetail in `authenticationEntryPoint` and `accessDeniedHandler`. The `AccessDeniedException` handler in `GlobalExceptionHandler` covers method-level checks like `@PreAuthorize` that run inside the controller call.
+
+  ### Other options you may hear about
+  - `@ResponseStatus(HttpStatus.NOT_FOUND)` on a custom exception class: simple, but you can't control the body well.
+  - `throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found")`: quick, no custom class.
+  - `spring.mvc.problemdetails.enabled=true`: Spring returns ProblemDetail for its own MVC exceptions automatically.
+tinyCode:
+  code: |
+    package demo.advice;
+
+    import jakarta.validation.Valid;
+    import jakarta.validation.constraints.NotBlank;
+    import org.springframework.http.HttpStatus;
+    import org.springframework.http.MediaType;
+    import org.springframework.http.ProblemDetail;
+    import org.springframework.test.web.servlet.MockMvc;
+    import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+    import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+    import org.springframework.web.HttpRequestMethodNotSupportedException;
+    import org.springframework.web.bind.MethodArgumentNotValidException;
+    import org.springframework.web.bind.annotation.*;
+
+    import java.util.LinkedHashMap;
+    import java.util.Map;
+
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+
+    class ApiException extends RuntimeException {
+        private final HttpStatus status;
+        ApiException(HttpStatus status, String message) { super(message); this.status = status; }
+        HttpStatus getStatus() { return status; }
+        static ApiException notFound(String what) { return new ApiException(HttpStatus.NOT_FOUND, what + " not found"); }
+        static ApiException conflict(String msg) { return new ApiException(HttpStatus.CONFLICT, msg); }
+    }
+
+    record TopicRequest(@NotBlank String name) {}
+
+    @RestController
+    @RequestMapping("/api/topics")
+    class TopicController {
+        @GetMapping("/{id}")
+        String get(@PathVariable Long id) {
+            if (id == 99) throw ApiException.notFound("Topic");
+            if (id == 13) throw new IllegalStateException("db password is hunter2");
+            return "Topic " + id;
+        }
+
+        @PostMapping
+        String create(@Valid @RequestBody TopicRequest req) {
+            if (req.name().equals("Java")) throw ApiException.conflict("Topic already exists");
+            return "created";
+        }
+    }
+
+    @RestControllerAdvice
+    class GlobalExceptionHandler {
+        @ExceptionHandler(ApiException.class)
+        ProblemDetail handleApi(ApiException ex) {
+            return ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
+        }
+
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+            Map<String, String> errors = new LinkedHashMap<>();
+            ex.getBindingResult().getFieldErrors().forEach(fe -> errors.putIfAbsent(fe.getField(), fe.getDefaultMessage()));
+            ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Some fields need fixing");
+            pd.setProperty("errors", errors);
+            return pd;
+        }
+
+        @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+        ProblemDetail handleMethod(HttpRequestMethodNotSupportedException ex) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.METHOD_NOT_ALLOWED, ex.getMessage());
+        }
+
+        @ExceptionHandler(Exception.class)
+        ProblemDetail handleUnknown(Exception ex) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong on our side.");
+        }
+    }
+
+    public class AdviceDemo {
+        static MockMvc mvc = MockMvcBuilders.standaloneSetup(new TopicController())
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        static void show(String label, MockHttpServletRequestBuilder req) throws Exception {
+            var res = mvc.perform(req).andReturn().getResponse();
+            System.out.println(label + " -> " + res.getContentAsString());
+        }
+
+        public static void main(String[] args) throws Exception {
+            show("ok", get("/api/topics/1"));
+            show("404", get("/api/topics/99"));
+            show("500", get("/api/topics/13"));
+            show("400", post("/api/topics").contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\"}"));
+            show("409", post("/api/topics").contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Java\"}"));
+            show("405", delete("/api/topics/1"));
+        }
+    }
+    // Output:
+    // ok -> Topic 1
+    // 404 -> {"type":"about:blank","title":"Not Found","status":404,"detail":"Topic not found","instance":"/api/topics/99"}
+    // 500 -> {"type":"about:blank","title":"Internal Server Error","status":500,"detail":"Something went wrong on our side.","instance":"/api/topics/13"}
+    // 400 -> {"type":"about:blank","title":"Bad Request","status":400,"detail":"Some fields need fixing","instance":"/api/topics","errors":{"name":"must not be blank"}}
+    // 409 -> {"type":"about:blank","title":"Conflict","status":409,"detail":"Topic already exists","instance":"/api/topics"}
+    // 405 -> {"type":"about:blank","title":"Method Not Allowed","status":405,"detail":"Request method 'DELETE' is not supported","instance":"/api/topics/1"}
+  walkthrough: |
+    - `ApiException` is a `RuntimeException` that carries the HTTP status. The static helpers `notFound` and `conflict` keep service code readable, just like your project's `ApiException`.
+    - The controller has **no try/catch**. It just throws.
+    - `@RestControllerAdvice class GlobalExceptionHandler`: one class that handles errors from all controllers.
+    - `handleApi`: turns any `ApiException` into a `ProblemDetail` with the exception's own status (404 or 409 here).
+    - `handleValidation`: `@Valid` failed. We collect each field's first message into an `errors` map and return 400. `putIfAbsent` keeps only the first message per field.
+    - `handleMethod`: DELETE is not mapped, so Spring throws `HttpRequestMethodNotSupportedException`; we answer 405.
+    - `handleUnknown`: the last resort for real bugs. Notice the 500 response does **not** contain "hunter2". The secret stays in the server log (your real handler calls `log.error`).
+    - Spring fills `instance` with the request path automatically. The content type of every error is `application/problem+json`.
+tryIt:
+  instructions: "Type this custom exception and handler. Then, in a service, throw ApiException.conflict(\"Email already registered\") and call the endpoint: check that you get 409 with your detail message."
+  code: |
+    package com.example.errors;
+
+    import org.springframework.http.HttpStatus;
+    import org.springframework.http.ProblemDetail;
+    import org.springframework.web.bind.annotation.ExceptionHandler;
+    import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+    class ApiException extends RuntimeException {
+        private final HttpStatus status;
+
+        ApiException(HttpStatus status, String message) {
+            super(message);
+            this.status = status;
+        }
+
+        HttpStatus getStatus() { return status; }
+
+        static ApiException notFound(String what) { return new ApiException(HttpStatus.NOT_FOUND, what + " not found"); }
+        static ApiException conflict(String msg) { return new ApiException(HttpStatus.CONFLICT, msg); }
+    }
+
+    @RestControllerAdvice
+    public class ErrorHandler {
+        @ExceptionHandler(ApiException.class)
+        public ProblemDetail handleApi(ApiException ex) {
+            return ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
+        }
+    }
+predict:
+  code: |
+    package demo.advicep;
+
+    import org.springframework.http.HttpStatus;
+    import org.springframework.http.ProblemDetail;
+    import org.springframework.test.web.servlet.MockMvc;
+    import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+    import org.springframework.web.bind.annotation.*;
+
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+
+    class ApiException extends RuntimeException {
+        final HttpStatus status;
+        ApiException(HttpStatus status, String message) { super(message); this.status = status; }
+    }
+
+    @RestController
+    class TopicController {
+        @GetMapping("/api/topics/{id}")
+        String get(@PathVariable Long id) {
+            if (id == 99) throw new ApiException(HttpStatus.NOT_FOUND, "Topic not found");
+            return "Topic " + id;
+        }
+    }
+
+    @RestControllerAdvice
+    class Handler {
+        @ExceptionHandler(ApiException.class)
+        ProblemDetail api(ApiException ex) {
+            return ProblemDetail.forStatusAndDetail(ex.status, ex.getMessage());
+        }
+
+        @ExceptionHandler(Exception.class)
+        ProblemDetail any(Exception ex) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong");
+        }
+    }
+
+    public class AdvicePredict {
+        public static void main(String[] args) throws Exception {
+            MockMvc mvc = MockMvcBuilders.standaloneSetup(new TopicController())
+                    .setControllerAdvice(new Handler()).build();
+            System.out.println(mvc.perform(get("/api/topics/7")).andReturn().getResponse().getStatus());
+            System.out.println(mvc.perform(get("/api/topics/99")).andReturn().getResponse().getStatus());
+            System.out.println(mvc.perform(get("/api/topics/abc")).andReturn().getResponse().getStatus());
+            System.out.println(mvc.perform(delete("/api/topics/7")).andReturn().getResponse().getStatus());
+        }
+    }
+  expectedOutput: |
+    200
+    404
+    500
+    500
+  explanation: |
+    `/7` works: 200. `/99` throws ApiException, and the specific handler returns 404. The surprises are the last two. `/abc` cannot become a Long, so Spring throws `MethodArgumentTypeMismatchException`, and DELETE throws `HttpRequestMethodNotSupportedException`. Without any advice, Spring would answer 400 and 405. But the catch-all `@ExceptionHandler(Exception.class)` catches them first and turns them into **500**. That is exactly why your project's `GlobalExceptionHandler` has separate handlers for type mismatches (400), unsupported methods (405) and unknown URLs (404) next to its catch-all.
+commonMistakes:
+  - "Catching exceptions in the controller and returning 200 with an error message. The client thinks the call succeeded."
+  - "Sending ex.getMessage() or stack traces of unexpected errors to the client. Log them; send a polite generic 500 message."
+  - "Adding a catch-all Exception handler without handlers for framework exceptions, so bad input and wrong methods turn into 500 instead of 400/405."
+  - "Using 500 for client mistakes (validation, not found, duplicate). 4xx means the client must change something; 5xx means the server failed."
+  - "Expecting @RestControllerAdvice to catch errors thrown inside security filters. Filters run before controllers; handle 401/403 in the security configuration."
+  - "Forgetting @RestControllerAdvice on the handler class. The @ExceptionHandler methods are then never used."
+interviewBox:
+  why: "Why interviewers ask this: error handling shows whether you build APIs that clients can rely on, and whether you think about security (no leaked internals)."
+  questions:
+    - q: "How do you handle exceptions globally in Spring Boot?"
+      a: "I create one class with @RestControllerAdvice and add @ExceptionHandler methods for each exception type. Each method returns a ProblemDetail with the right status code. My services throw a custom ApiException with a status, like notFound or conflict, and the handler converts it. There is also a catch-all for unexpected errors that logs the stack trace and returns a generic 500 message."
+    - q: "What is ProblemDetail?"
+      a: "It's Spring's class for the RFC 7807 standard error format. It has type, title, status, detail and instance, and I can add extra properties like a map of field errors. Using it means every error from my API has the same JSON shape with content type application/problem+json."
+    - q: "@ControllerAdvice vs @RestControllerAdvice?"
+      a: "@RestControllerAdvice is @ControllerAdvice plus @ResponseBody, so the handler return values are written as JSON. For REST APIs I use @RestControllerAdvice."
+    - q: "If two handlers can handle an exception, which one runs?"
+      a: "The one whose exception type is closest to the thrown exception in the class hierarchy. So a handler for ApiException beats a handler for Exception, regardless of the order in the file."
+    - q: "Which status code for validation errors, not found, duplicate email and unexpected errors?"
+      a: "400 Bad Request for validation, 404 Not Found when the resource doesn't exist, 409 Conflict for a duplicate email, and 500 Internal Server Error for unexpected bugs, with no internal details in the response."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "What does @RestControllerAdvice do?"
+    code: null
+    options:
+      - "Gives advice to developers in the IDE"
+      - "Holds @ExceptionHandler methods that apply to all controllers, writing their return values as JSON"
+      - "Makes every controller method transactional"
+      - "Validates request bodies automatically"
+    answer: 1
+    explanation: "It is a global place for exception handlers (and a few other cross-controller features), with @ResponseBody included. It has nothing to do with transactions or validation itself; it handles the exceptions those features throw."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "The advice has handlers for ApiException and for Exception. The service throws ApiException.notFound(\"Topic\") (status 404). What status does the client get?"
+    code: |
+      @RestControllerAdvice
+      class Handler {
+          @ExceptionHandler(Exception.class)
+          ProblemDetail any(Exception ex) {
+              return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Oops");
+          }
+
+          @ExceptionHandler(ApiException.class)
+          ProblemDetail api(ApiException ex) {
+              return ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
+          }
+      }
+    options: ["404", "500", "200", "The app fails to start: two handlers match"]
+    answer: 0
+    explanation: "Spring chooses the closest matching exception type, not the first method in the file. ApiException is more specific than Exception, so api() runs and returns 404. Two handlers for DIFFERENT types is normal; only two for the SAME type would be ambiguous."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "What is wrong with this controller method?"
+    code: |
+      @PostMapping("/api/users")
+      String register(@Valid @RequestBody RegisterRequest req) {
+          try {
+              service.register(req);
+              return "ok";
+          } catch (Exception e) {
+              return "error: " + e.getMessage();
+          }
+      }
+    options:
+      - "Nothing; catching every exception is the safest choice"
+      - "It returns 200 even on failure and can leak internal messages; let exceptions reach the global handler for proper status codes"
+      - "@Valid cannot be used with try/catch"
+      - "The method must be void"
+    answer: 1
+    explanation: "The client sees 200 for a duplicate email or even a database crash, and e.getMessage() may expose SQL or table names. Throw (or let through) exceptions and let @RestControllerAdvice return 409, 500 and so on in one consistent format."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "Services throw ApiException.notFound(...), but clients get 500 with Spring's default error instead of 404. Why?"
+    code: |
+      public class GlobalExceptionHandler {
+
+          @ExceptionHandler(ApiException.class)
+          public ProblemDetail handleApi(ApiException ex) {
+              return ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
+          }
+      }
+    options:
+      - "ProblemDetail cannot be returned from a handler"
+      - "The class is missing @RestControllerAdvice, so Spring never registers its handlers"
+      - "ApiException must be a checked exception"
+      - "The method must be static"
+    answer: 1
+    explanation: "Without @RestControllerAdvice (or @ControllerAdvice) the class is not a bean and Spring never looks at its @ExceptionHandler methods, so ApiException escapes as an unhandled RuntimeException: 500. ProblemDetail return values are fully supported."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "A request with no JWT token is rejected by the security filter chain. Your @RestControllerAdvice handler for AuthenticationException will build that 401 response."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Security filters run before the DispatcherServlet and controllers, so controller advice never sees that exception. That is why SecurityConfig sets an authenticationEntryPoint that writes the 401 ProblemDetail itself."
+  - id: q6
+    type: MATCH
+    prompt: "Match each exception to the status your GlobalExceptionHandler returns"
+    pairs:
+      - left: "MethodArgumentNotValidException"
+        right: "400 with an errors map per field"
+      - left: "ApiException.conflict(...)"
+        right: "409"
+      - left: "HttpRequestMethodNotSupportedException"
+        right: "405"
+      - left: "NoResourceFoundException"
+        right: "404"
+      - left: "Any other Exception"
+        right: "500 with a generic message"
+    explanation: "Specific handlers keep the right 4xx codes; the catch-all is only for real bugs and never shows internal details."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the handler so it runs for every ApiException thrown by any controller."
+    code: |
+      @RestControllerAdvice
+      public class GlobalExceptionHandler {
+          @____(ApiException.class)
+          public ProblemDetail handleApi(ApiException ex) {
+              return ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
+          }
+      }
+    acceptedAnswers: ["ExceptionHandler", "@ExceptionHandler"]
+    explanation: "@ExceptionHandler(ApiException.class) maps that exception type (and its subclasses) to this method."
+explainBack:
+  prompt: "Explain to a friend how your Spring Boot API turns errors into clean responses."
+  rubric:
+    - "I said exceptions are thrown from services and handled in one @RestControllerAdvice class"
+    - "I explained that the most specific @ExceptionHandler wins"
+    - "I described ProblemDetail fields and the consistent JSON shape"
+    - "I matched errors to status codes (400, 404, 409, 500)"
+    - "I said unexpected errors are logged but not leaked to the client"
+  modelAnswer: |
+    In my project, controllers and services don't use try/catch to build error responses. They just throw, for example ApiException.notFound("Topic") or ApiException.conflict("Email already registered"). One class, GlobalExceptionHandler, is marked @RestControllerAdvice, and it has @ExceptionHandler methods for each exception type. Spring picks the most specific one. Each returns a ProblemDetail, the standard error JSON with status, title, detail and the request path, so the frontend always reads errors the same way. Validation errors give 400 with a message per field, missing things 404, duplicates 409. Anything unexpected is logged on the server and the client only gets a polite 500 message, so no secrets leak.
+flashcards:
+  - front: "@RestControllerAdvice ="
+    back: "@ControllerAdvice + @ResponseBody: global @ExceptionHandler methods for all controllers, results written as JSON."
+  - front: "Which @ExceptionHandler runs if several match?"
+    back: "The one with the closest (most specific) exception type. Method order doesn't matter."
+  - front: "ProblemDetail fields"
+    back: "type, title, status, detail, instance (+ custom properties). Content-Type application/problem+json. RFC 7807/9457."
+  - front: "Catch-all Exception handler trap"
+    back: "It also catches Spring's 400/404/405 exceptions and turns them into 500 unless you add specific handlers."
+  - front: "Why doesn't advice handle a missing JWT?"
+    back: "Security filters run before controllers; use authenticationEntryPoint / accessDeniedHandler."
+keyTakeaways:
+  - "Throw exceptions in services; convert them to responses in one @RestControllerAdvice class."
+  - "The most specific @ExceptionHandler wins; keep a catch-all only as the last resort."
+  - "Return ProblemDetail for a standard, consistent error JSON (plus an errors map for validation)."
+  - "Use 4xx for client mistakes (400, 404, 405, 409) and 500 only for real bugs, without leaking internals."
+  - "Security filter errors happen before controllers; handle them in the security configuration."

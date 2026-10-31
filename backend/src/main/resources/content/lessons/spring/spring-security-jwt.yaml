@@ -1,0 +1,378 @@
+slug: spring-security-jwt
+world: SPRING
+section: SPRING
+order: 9
+title: "Spring Security and JWT"
+version: 1
+estimatedMinutes: 50
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, PRODUCT, ALL]
+infosysRelevance: "Strong SP practice topic and a common DSE project question: authentication vs authorization, BCrypt, how JWT login works, and 401 vs 403 come up whenever your project has a login."
+otherCompanies: "Service companies (TCS, Wipro, Cognizant, Accenture, Capgemini) ask the basics (JWT structure, BCrypt, roles). Product companies go deeper: filter chain order, refresh token rotation, stateless sessions, CORS and CSRF."
+why: |
+  Almost every project you will talk about has a **login**. The moment you say "JWT", the interviewer will ask: *How does the token travel? Where is it checked? Why BCrypt? What is a refresh token? Why did you disable CSRF?*
+
+  Security is also where small mistakes are expensive: plain-text passwords, tokens that never expire, an admin URL open to everyone.
+
+  Your `backend` has a complete, well-commented JWT setup: `SecurityConfig`, `JwtAuthFilter`, `JwtService` and `AuthService`. This lesson walks through it so you can explain **your own code** step by step.
+analogy: |
+  Think of an **IT company office building**.
+
+  - At the **gate**, security checks your ID card: "Who are you?" That is **authentication**.
+  - On each floor, your card opens only some doors: the server room needs an "ADMIN" card. "What are you allowed to do?" That is **authorization**.
+  - The gate is a **line of checkpoints** (metal detector, ID scan, register): the **security filter chain**. Every visitor passes through all checkpoints before reaching any desk (controller).
+  - Your **access card** (JWT) has your name and floor access printed on it, plus a **hologram seal** (signature). Guards don't phone HR each time; they just check the seal. If someone edits the printed text, the seal no longer matches.
+  - The card expires every evening (short-lived **access token**). Each morning you show your **long-term employee letter** (refresh token) at reception to get a new card. If the letter is reported stolen, HR cancels it (revocation).
+visual:
+  diagram: |
+    LOGIN
+    POST /api/auth/login {email, password}
+       -> AuthService: find user, BCrypt.matches(raw, hash)
+       <- {accessToken (JWT, 15 min), refreshToken (14 days)}
+
+    EVERY LATER REQUEST
+    GET /api/command-center   Authorization: Bearer eyJhbGciOi...
+       |
+       v  Security filter chain (before any controller)
+    [CorsFilter] -> [JwtAuthFilter] -> ... -> [AuthorizationFilter]
+                    verify signature        rule: anyRequest()
+                    + expiry, then put       .authenticated()
+                    user + ROLE_USER in      admin URLs:
+                    SecurityContext          hasRole("ADMIN")
+       |                                         |
+       | no/invalid token -> 401   wrong role -> 403
+       v
+    DispatcherServlet -> Controller (@AuthenticationPrincipal me)
+
+    JWT = header . payload . signature   (base64url, NOT encrypted)
+          {"alg":"HS256"} . {"sub":"42","role":"USER","exp":...} . HMAC
+  caption: "Login returns two tokens; afterwards every request carries the access token, which a filter verifies before the authorization rules and the controller run."
+  visualizer: null
+explanation: |
+  ### Authentication vs authorization
+  - **Authentication**: proving *who you are* (email + password, or a valid token). Failure: **401 Unauthorized**.
+  - **Authorization**: deciding *what you may do* (roles like USER or ADMIN). Failure: **403 Forbidden**.
+
+  ### The security filter chain
+  A **filter** is code that runs on every HTTP request **before** the DispatcherServlet and your controllers. Spring Security adds a chain of filters (CORS, CSRF, authentication, exception translation, authorization...). You configure it with a `SecurityFilterChain` bean.
+
+  Open `backend/src/main/java/com/codequest/config/SecurityConfig.java`:
+  - `.csrf(csrf -> csrf.disable())` and `.cors(cors -> {})`: explained below.
+  - `.sessionManagement(... STATELESS)`: no HTTP session. The server remembers nothing between requests; every request carries its own token. This makes it easy to run several server instances.
+  - `.authorizeHttpRequests(...)`: rules are checked **top to bottom, first match wins**: `/health` and `/error` are public, login/register are public, `/api/admin/**` needs `hasRole("ADMIN")`, and `.anyRequest().authenticated()` protects everything else. Put specific rules before general ones.
+  - `.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)`: our JWT filter runs early in the chain.
+  - `authenticationEntryPoint` (401) and `accessDeniedHandler` (403) write ProblemDetail JSON. These are needed because filter errors never reach `@RestControllerAdvice`.
+  - `/error` is permitted because Spring forwards errors to `/error`; if that URL were protected, a 403 or 404 could turn into a confusing 401.
+  - `@EnableMethodSecurity` allows `@PreAuthorize("hasRole('ADMIN')")` on methods.
+
+  ### The JWT filter
+  `backend/src/main/java/com/codequest/security/JwtAuthFilter.java` extends `OncePerRequestFilter` (runs once per request):
+  1. Read the `Authorization` header. If it starts with `Bearer `, take the token.
+  2. Ask `JwtService.parseAccessToken` to verify the signature and expiry.
+  3. If valid, create an `Authentication` with authority `"ROLE_" + role` and store it in the **SecurityContextHolder** (the place where Spring keeps "who is calling" for this request).
+  4. **Always** call `chain.doFilter(...)`. If there was no valid token, the later authorization rules reject protected URLs with 401.
+
+  Why `"ROLE_"`? `hasRole("ADMIN")` checks for the authority `ROLE_ADMIN`. (`hasAuthority("ROLE_ADMIN")` is the same check written in full.)
+
+  `SecurityConfig` also has a `FilterRegistrationBean` with `setEnabled(false)`. Spring Boot automatically registers every `Filter` bean as a normal servlet filter, which would run the JWT filter a second time outside the security chain. Disabling the registration keeps it only inside the chain.
+
+  Controllers then get the caller with `@AuthenticationPrincipal UserPrincipal me` (see `AuthController.me`).
+
+  ### Passwords: BCrypt
+  Never store passwords in plain text, and never use a fast hash like MD5 or SHA-256 for passwords. **BCrypt** is a password hashing function that is:
+  - **Salted**: a random value is mixed in, so the same password gives a **different hash every time** (identical passwords don't look identical in the database).
+  - **Slow on purpose**: the **cost factor** (10 in your app = 2^10 rounds) makes guessing millions of passwords expensive.
+
+  A BCrypt hash looks like `$2a$10$...` (60 characters): version, cost, then salt and hash. To check a login you call `encoder.matches(rawPassword, storedHash)`. You can **never** compare `encode(raw).equals(storedHash)`, because the new salt makes a different string. BCrypt only uses the first 72 bytes of a password, which is why `RegisterRequest` limits passwords to 72 characters.
+
+  ### JWT structure
+  A **JWT (JSON Web Token)** is three base64url parts joined with dots: `header.payload.signature`.
+  | Part | Contains |
+  |---|---|
+  | Header | the algorithm, e.g. `{"alg":"HS256"}` |
+  | Payload (claims) | `sub` (subject: user id), `exp` (expiry), `iat` (issued at), custom claims like `email`, `role` |
+  | Signature | HMAC-SHA256 of header + payload using the server's secret key |
+
+  Important: the payload is only **encoded, not encrypted**. Anyone can read it, so never put passwords or secrets in it. What stops tampering is the **signature**: change one letter in the payload and the signature check fails. HS256 needs a secret of at least 256 bits, which is why `AppProperties` requires `JWT_SECRET` to be at least 32 characters.
+
+  ### Access token and refresh token
+  Read the comment at the top of `backend/src/main/java/com/codequest/security/JwtService.java`:
+  - **Access token**: a signed JWT, valid **15 minutes**. The server does not store it; the signature proves it is genuine. Short life limits damage if it leaks, because a JWT cannot easily be "cancelled" before it expires.
+  - **Refresh token**: a long random string, valid **14 days**, stored in the database **as a SHA-256 hash** (so a database leak does not leak usable tokens). `POST /api/auth/refresh` exchanges it for a new pair.
+  - **Rotation**: each refresh revokes the old refresh token and issues a new one. If a revoked token is used again, `AuthService.refresh` assumes it was stolen and **revokes all of that user's tokens** ("log out everywhere").
+  - **Logout** revokes the refresh token; the access token simply expires.
+
+  ### CORS and CSRF basics
+  - **CORS (Cross-Origin Resource Sharing)**: browsers block JavaScript on `site-a.com` from reading responses from `api.site-b.com` unless the API says that origin is allowed. Before some requests the browser sends a **preflight** `OPTIONS` request. Your `corsConfigurationSource` allows only `CORS_ALLOWED_ORIGINS` (your frontend), the needed methods, and the `Authorization` and `Content-Type` headers. CORS protects browser users; it does not stop curl or Postman.
+  - **CSRF (Cross-Site Request Forgery)**: a malicious site makes your browser send a request to your bank, and the browser **automatically attaches the bank's cookies**. CSRF protection requires a secret token in each state-changing request. Your API does not use cookies for login; the JWT is sent in a header that other sites cannot add, so CSRF is disabled. If you ever store the JWT in a cookie, you must keep CSRF protection on.
+
+  ### Roles
+  Use URL rules (`.requestMatchers("/api/admin/**").hasRole("ADMIN")`) for whole areas and `@PreAuthorize` for single methods. Your app gives `ADMIN` to emails listed in the `ADMIN_EMAILS` environment variable when they register.
+tinyCode:
+  code: |
+    package demo.jwt;
+
+    import io.jsonwebtoken.Claims;
+    import io.jsonwebtoken.JwtException;
+    import io.jsonwebtoken.Jwts;
+    import io.jsonwebtoken.security.Keys;
+
+    import javax.crypto.SecretKey;
+    import java.nio.charset.StandardCharsets;
+    import java.util.Base64;
+    import java.util.Date;
+
+    public class JwtDemo {
+        public static void main(String[] args) {
+            SecretKey key = Keys.hmacShaKeyFor("a-very-long-secret-of-at-least-32-chars!".getBytes(StandardCharsets.UTF_8));
+            long now = System.currentTimeMillis();
+            String token = Jwts.builder()
+                    .subject("42")
+                    .claim("role", "USER")
+                    .issuedAt(new Date(now))
+                    .expiration(new Date(now + 15 * 60 * 1000))
+                    .signWith(key)
+                    .compact();
+
+            String[] parts = token.split("\\.");
+            System.out.println("parts: " + parts.length);
+            System.out.println("header: " + new String(Base64.getUrlDecoder().decode(parts[0])));
+
+            Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+            System.out.println("user " + claims.getSubject() + " role " + claims.get("role", String.class));
+
+            String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
+            String hacked = payload.replace("USER", "ADMIN");
+            String forged = parts[0] + "." + Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(hacked.getBytes(StandardCharsets.UTF_8)) + "." + parts[2];
+            try {
+                Jwts.parser().verifyWith(key).build().parseSignedClaims(forged);
+                System.out.println("accepted");
+            } catch (JwtException e) {
+                System.out.println("rejected: " + e.getClass().getSimpleName());
+            }
+        }
+    }
+    // Output:
+    // parts: 3
+    // header: {"alg":"HS256"}
+    // user 42 role USER
+    // rejected: SignatureException
+  walkthrough: |
+    - This uses **jjwt 0.12**, the same library as your `JwtService` (`jjwt-api`, `jjwt-impl`, `jjwt-jackson` in `pom.xml`).
+    - `Keys.hmacShaKeyFor(...)` builds an HMAC key from the secret. It must be at least 32 bytes for HS256, or jjwt refuses it.
+    - `Jwts.builder()`: `subject("42")` is the user id (`sub` claim), `claim("role", "USER")` is a custom claim, `issuedAt` and `expiration` set `iat` and `exp` (15 minutes, like your app). `signWith(key)` picks the strongest HMAC algorithm the key size allows: this 40-byte key gets HS256 (a key of 48 bytes or more would get HS384). `compact()` produces the `xxx.yyy.zzz` string.
+    - `token.split("\\.")` gives **3 parts**. Decoding the first part with a plain Base64 decoder shows the header `{"alg":"HS256"}`: no key needed, because it is only encoded.
+    - `Jwts.parser().verifyWith(key).build().parseSignedClaims(token)` checks the signature **and** the expiry, then gives the claims. Same call as `JwtService.parseAccessToken`.
+    - The attack: we decode the payload, change `USER` to `ADMIN`, re-encode it and keep the old signature. The parser recomputes the signature, it does not match, and it throws `SignatureException`. Your `JwtService` catches `JwtException` and returns `Optional.empty()`, so the request stays anonymous and gets 401.
+tryIt:
+  instructions: "Type this minimal security configuration. Then explain each line out loud: which URLs are public, which need ADMIN, and why CSRF is disabled and sessions are STATELESS."
+  code: |
+    package com.example.security;
+
+    import org.springframework.context.annotation.Bean;
+    import org.springframework.context.annotation.Configuration;
+    import org.springframework.http.HttpMethod;
+    import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+    import org.springframework.security.config.http.SessionCreationPolicy;
+    import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+    import org.springframework.security.crypto.password.PasswordEncoder;
+    import org.springframework.security.web.SecurityFilterChain;
+
+    @Configuration
+    public class ApiSecurityConfig {
+
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+            http
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/health", "/error").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    .anyRequest().authenticated());
+            return http.build();
+        }
+
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+            return new BCryptPasswordEncoder(10);
+        }
+    }
+predict:
+  code: |
+    package demo.bcrypt;
+
+    import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+    import org.springframework.security.crypto.password.PasswordEncoder;
+
+    public class BcryptDemo {
+        public static void main(String[] args) {
+            PasswordEncoder encoder = new BCryptPasswordEncoder(10);
+            String h1 = encoder.encode("password123");
+            String h2 = encoder.encode("password123");
+            System.out.println(h1.substring(0, 7) + " length " + h1.length());
+            System.out.println(h1.equals(h2));
+            System.out.println(encoder.matches("password123", h1) + " " + encoder.matches("password123", h2));
+            System.out.println(encoder.matches("Password123", h1));
+        }
+    }
+  expectedOutput: |
+    $2a$10$ length 60
+    false
+    true true
+    false
+  explanation: |
+    Every BCrypt hash starts with the version (`$2a$`) and the cost (`10$`) and is always 60 characters long. Encoding the **same** password twice gives **different** hashes because each call uses a new random salt, so `equals` is false. `matches` reads the salt stored inside the hash, re-hashes the raw password with it, and compares: true for both. Passwords are case-sensitive, so "Password123" does not match. This is why login code must use `matches`, never `equals`.
+commonMistakes:
+  - "Comparing encoder.encode(raw).equals(storedHash). Every encode uses a new salt, so this is always false; use encoder.matches(raw, storedHash)."
+  - "Thinking a JWT is encrypted. The payload is only base64url-encoded; anyone can read it. Never put passwords or secrets in it."
+  - "Giving access tokens a very long life. A stolen JWT works until it expires; keep it short and use refresh tokens."
+  - "Mixing up 401 and 403. 401 = not authenticated (no or bad token); 403 = authenticated but not allowed."
+  - "Putting .anyRequest().authenticated() before more specific rules. Rules are matched top to bottom; the first match wins."
+  - "Disabling CSRF while storing the login token in a cookie. CSRF is safe to disable only when the token is sent in a header."
+interviewBox:
+  why: "Why interviewers ask this: security mistakes are costly, and JWT login is in almost every fresher project. They check whether you understand the flow, not just the dependency."
+  questions:
+    - q: "How does JWT authentication work in your project?"
+      a: "On login, AuthService checks the password with BCrypt and returns a 15-minute access token, which is a signed JWT with the user id and role, plus a 14-day refresh token. The frontend sends the access token in the Authorization header as Bearer. For every request, JwtAuthFilter, which runs in the security filter chain before the controllers, verifies the signature and expiry and puts the user into the SecurityContext. Then the rules in SecurityConfig decide: anyRequest authenticated, admin URLs need ROLE_ADMIN. It's stateless; no session is stored."
+    - q: "What is the difference between authentication and authorization?"
+      a: "Authentication is checking who you are, like email and password or a valid token. If it fails, the answer is 401. Authorization is checking what you're allowed to do, like only admins can open /api/admin. If you are logged in but not allowed, the answer is 403."
+    - q: "Why BCrypt and not SHA-256 for passwords?"
+      a: "SHA-256 is designed to be fast, so attackers can try billions of guesses. BCrypt is slow on purpose, with a cost factor, and adds a random salt to every hash, so two users with the same password get different hashes and precomputed tables don't work. I check passwords with encoder.matches, not equals."
+    - q: "What are access and refresh tokens, and why both?"
+      a: "The access token is a short-lived JWT, 15 minutes, checked by signature without a database call. Because a JWT can't be cancelled, it should be short. The refresh token is a long random value stored as a hash in the database, so it can be revoked. When the access token expires, the client sends the refresh token to get a new pair. We rotate it every time, and if an old one is reused, we revoke all of that user's tokens because it may have been stolen."
+    - q: "Why is CSRF disabled in your API?"
+      a: "CSRF attacks work because browsers automatically attach cookies to requests. Our login doesn't use cookies; the token is in the Authorization header, which another site cannot add. So CSRF protection isn't needed. If we stored the token in a cookie, we would keep CSRF enabled."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "A logged-in USER calls GET /api/admin/stats, which requires ADMIN. Which concept fails, and which status is returned?"
+    code: null
+    options:
+      - "Authentication fails, 401"
+      - "Authorization fails, 403"
+      - "Authentication fails, 403"
+      - "Authorization fails, 401"
+    answer: 1
+    explanation: "The user IS authenticated (valid token), so it is not a 401 case. They are not allowed to do this, which is authorization, answered with 403 Forbidden."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "The security config below is active, and the JWT filter sets ROLE_USER or ROLE_ADMIN from valid tokens. What statuses do these three requests get? (1) GET /api/me with no token, (2) GET /api/admin/stats with a USER token, (3) GET /api/admin/stats with an ADMIN token."
+    code: |
+      http.csrf(c -> c.disable())
+          .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+          .authorizeHttpRequests(a -> a
+              .requestMatchers("/health", "/error").permitAll()
+              .requestMatchers("/api/admin/**").hasRole("ADMIN")
+              .anyRequest().authenticated())
+          .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+          .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+    options: ["401, 403, 200", "403, 403, 200", "401, 401, 200", "200, 403, 200"]
+    answer: 0
+    explanation: "No token means anonymous: the entry point answers 401. A USER token is authenticated but lacks ROLE_ADMIN: 403. The ADMIN token passes hasRole(\"ADMIN\"): 200. Option C would happen if /error were NOT permitted, because the 403 error forward would then be rejected as unauthenticated; that is why /error is in permitAll."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "This API uses JWT in the Authorization header. GET requests work, but every POST from a logged-in user returns 403. Why?"
+    code: |
+      @Bean
+      SecurityFilterChain chain(HttpSecurity http, JwtAuthFilter jwt) throws Exception {
+          http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+              .authorizeHttpRequests(a -> a.anyRequest().authenticated())
+              .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class);
+          return http.build();
+      }
+    options:
+      - "POST requests need hasRole(\"POST\")"
+      - "CSRF protection is still on (it is on by default), so POST without a CSRF token is rejected; disable it for a header-token API"
+      - "STATELESS sessions block POST requests"
+      - "addFilterBefore must use addFilterAfter"
+    answer: 1
+    explanation: "Spring Security enables CSRF protection by default for state-changing methods (POST, PUT, PATCH, DELETE). A token-in-header API has no CSRF token, so the CsrfFilter returns 403. Add .csrf(csrf -> csrf.disable()) as SecurityConfig does. GET is not CSRF-checked, which is why GETs worked."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "Users always get 'wrong password', even with the correct password. Why?"
+    code: |
+      public boolean checkLogin(String rawPassword, User user) {
+          String hash = passwordEncoder.encode(rawPassword);   // BCrypt
+          return hash.equals(user.getPasswordHash());
+      }
+    options:
+      - "BCrypt hashes are case-insensitive"
+      - "encode() uses a new random salt each time, so the new hash never equals the stored one; use passwordEncoder.matches(rawPassword, user.getPasswordHash())"
+      - "The password must be trimmed first"
+      - "equals should be =="
+    answer: 1
+    explanation: "Two encodes of the same password give different strings because of the salt. matches() extracts the salt from the stored hash, re-hashes the raw password with it and compares. == would compare object references and be even more wrong."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "The payload of a JWT is encrypted, so it is safe to store the user's password in it."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. The payload is only base64url-encoded; anyone can decode it, as the demo does with the header. The signature only prevents changes; it does not hide content."
+  - id: q6
+    type: MATCH
+    prompt: "Match each security piece to its job"
+    pairs:
+      - left: "JwtAuthFilter"
+        right: "Reads the Bearer token and puts the user into the SecurityContext"
+      - left: "BCryptPasswordEncoder"
+        right: "Slow, salted hashing of passwords"
+      - left: "Refresh token"
+        right: "Long-lived random value, stored hashed, exchanged for new tokens"
+      - left: "JWT signature"
+        right: "Proves the token was issued by the server and not changed"
+      - left: "CORS configuration"
+        right: "Tells browsers which frontend origins may call the API"
+    explanation: "Each part solves one problem: identify the caller per request, store passwords safely, renew sessions safely, detect tampering, and control browser cross-origin access."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "hasRole(\"ADMIN\") must work for admins. Complete the authority created in the JWT filter."
+    code: |
+      var auth = new UsernamePasswordAuthenticationToken(principal, null,
+              List.of(new SimpleGrantedAuthority("____" + principal.role().name())));
+      SecurityContextHolder.getContext().setAuthentication(auth);
+    acceptedAnswers: ["ROLE_"]
+    explanation: "hasRole(\"ADMIN\") looks for the authority ROLE_ADMIN. Without the ROLE_ prefix the authority would be just ADMIN, and only hasAuthority(\"ADMIN\") would match it."
+  - id: q8
+    type: MCQ
+    prompt: "Why does the backend store refresh tokens as SHA-256 hashes and rotate them on every use?"
+    code: null
+    options:
+      - "To make the tokens shorter"
+      - "So a database leak does not expose usable tokens, and a reused (possibly stolen) old token can be detected and all sessions revoked"
+      - "Because JWTs require it"
+      - "To make login faster"
+    answer: 1
+    explanation: "Hashing means stolen database rows are useless as tokens. Rotation means each refresh token works once; if an already-revoked one shows up, AuthService.refresh revokes all of that user's tokens. A fast hash like SHA-256 is fine here because the token is a long random value, unlike a human password."
+explainBack:
+  prompt: "Explain to a friend, step by step, how a user logs in to your app and how the next request is checked."
+  rubric:
+    - "I explained authentication vs authorization (401 vs 403)"
+    - "I explained BCrypt (salt, slow, matches)"
+    - "I explained the JWT parts and that the signature prevents tampering"
+    - "I explained the filter chain and JwtAuthFilter setting the SecurityContext"
+    - "I explained access vs refresh tokens and why CSRF is disabled"
+  modelAnswer: |
+    When a user logs in, the server finds them by email and checks the password with BCrypt's matches. BCrypt is salted and slow, so stolen hashes are hard to crack. If it matches, the server returns a short access token, a signed JWT with the user id and role that lasts 15 minutes, and a refresh token that lasts 14 days and is stored hashed in the database. On every next request the frontend sends the JWT in the Authorization header. Before any controller, the security filter chain runs; my JwtAuthFilter checks the signature and expiry and puts the user in the SecurityContext. Then the rules decide: not logged in gives 401, wrong role gives 403. It's stateless, and since no cookies are used, CSRF is disabled.
+flashcards:
+  - front: "Authentication vs authorization (status codes)"
+    back: "Authentication: who are you? fail = 401. Authorization: what may you do? fail = 403."
+  - front: "JWT structure"
+    back: "header.payload.signature (base64url). Payload is readable, not encrypted; the signature prevents tampering."
+  - front: "Why BCrypt?"
+    back: "Random salt per hash + slow cost factor. Check with matches(raw, hash), never encode().equals()."
+  - front: "Access vs refresh token (codequest)"
+    back: "Access: JWT, 15 min, not stored. Refresh: random, 14 days, stored as SHA-256 hash, rotated, revocable."
+  - front: "hasRole(\"ADMIN\") checks which authority?"
+    back: "ROLE_ADMIN"
+  - front: "When is it safe to disable CSRF?"
+    back: "When the API does not rely on cookies for auth (token sent in the Authorization header)."
+keyTakeaways:
+  - "Authentication = who you are (401 on failure); authorization = what you may do (403 on failure)."
+  - "The security filter chain runs before controllers; JwtAuthFilter verifies the token and fills the SecurityContext."
+  - "Store passwords with BCrypt and check them with matches(); hashes differ every time because of the salt."
+  - "A JWT is signed, not encrypted: keep it short-lived and pair it with a revocable, rotated refresh token."
+  - "Stateless + token in header means CSRF can be off; CORS limits which browser origins may call the API."

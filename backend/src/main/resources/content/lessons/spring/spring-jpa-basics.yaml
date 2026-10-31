@@ -1,0 +1,487 @@
+slug: spring-jpa-basics
+world: SPRING
+section: SPRING
+order: 7
+title: "JPA entities, repositories and relationships"
+version: 1
+estimatedMinutes: 45
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, INFOSYS_DSE, ALL]
+infosysRelevance: "Core for SP and DSE: JPA vs Hibernate, JpaRepository, derived query methods, @Query and one-to-many mapping with mappedBy are standard Spring Data practice topics."
+otherCompanies: "A very common area at TCS, Wipro, Cognizant, Accenture and Capgemini ('JPA vs Hibernate', 'CrudRepository vs JpaRepository'); product companies dig into the owning side, cascade and orphanRemoval."
+why: |
+  Almost every backend stores data in a relational database. Writing raw SQL plus JDBC code for every insert and select is long and repetitive. **JPA** lets you work with **Java objects**, and **Spring Data JPA** even writes the repository code for you from a method name like `findByEmail`.
+
+  In interviews, this is one of the busiest Spring areas:
+  - "What is the difference between JPA, Hibernate and Spring Data JPA?"
+  - "How does `findByEmailAndCity` work without any code?"
+  - "Explain `@OneToMany(mappedBy = ...)`. What is the owning side? What do cascade and orphanRemoval do?"
+
+  Your `backend` project has real examples of all of these, so you can explain them with confidence.
+analogy: |
+  Think of a **school register**.
+
+  - Each **page format** (columns: roll number, name, class) is like an **entity class**; each **filled row** is one entity object = one table row. The **roll number** is the `@Id`.
+  - The **class teacher** who reads and updates the register for you is the **repository**. You just say "give me the student with roll number 12" or "all students from Pune"; the teacher knows how to search. That is `findById` and `findByCity`.
+  - A **class** has **many students**, and each student belongs to **one class**. The student's row has a "class" column: the student row **owns** the link (it holds the foreign key). The class page only *refers back* to its students (`mappedBy`).
+  - **Cascade** is like: "when the class is enrolled, enrol its students too". **orphanRemoval** is: "if a student is removed from the class list, strike them off the register completely".
+visual:
+  diagram: |
+    Java objects                       Database tables
+    -----------------                  -------------------------------
+    Customer                           customers
+      id     (@Id)          <------>     id | email         | city
+      email                              1  | asha@mail.com | Pune
+      city
+      orders (List) ---+                orders
+       @OneToMany      |                  id | amount | customer_id (FK)
+       (mappedBy =     |                  1  | 300    | 1
+        "customer")    |                  2  | 900    | 1
+                       |
+    PurchaseOrder <----+                OWNING side = the one with the
+      id                                foreign key column: PurchaseOrder
+      amount                            (@ManyToOne + @JoinColumn)
+      customer  @ManyToOne
+                @JoinColumn(name = "customer_id")
+  caption: "One customer has many orders; the orders table holds the foreign key, so PurchaseOrder.customer is the owning side and Customer.orders just points back with mappedBy."
+  visualizer: null
+explanation: |
+  ### ORM, JPA, Hibernate, Spring Data JPA
+  - **ORM (Object-Relational Mapping)**: the idea of mapping classes to tables and objects to rows, so you work with objects instead of SQL rows.
+  - **JPA (Jakarta Persistence API)**: the *standard*: a set of interfaces and annotations (`jakarta.persistence.*`). It is only a specification, not working code.
+  - **Hibernate**: the most popular *implementation* of JPA. It generates and runs the SQL. Spring Boot uses it by default.
+  - **Spring Data JPA**: a Spring layer **on top of** JPA that creates repository implementations for you from interfaces.
+
+  So: you write JPA annotations, Hibernate does the work, and Spring Data saves you from writing DAO classes.
+
+  ### Entities
+  An **entity** is a class mapped to a table:
+  ```java
+  @Entity
+  @Table(name = "customers")
+  class Customer {
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      private Long id;
+
+      @Column(nullable = false, unique = true)
+      private String email;
+
+      protected Customer() {}   // JPA needs a no-argument constructor
+  }
+  ```
+  - `@Id` marks the primary key. `GenerationType.IDENTITY` lets the database generate it (PostgreSQL `BIGSERIAL`).
+  - `@Column` sets the column name and rules. Without it, the field name is used (`createdAt` becomes `created_at` with Boot's default naming).
+  - `@Enumerated(EnumType.STRING)` stores enum names like `"ADMIN"` instead of numbers 0/1. Your `User` entity does this for `role`, so reordering the enum never corrupts data.
+  - Entities need a no-arg constructor (can be `protected`) and must not be `final`, because Hibernate creates proxy subclasses.
+
+  In your app, `backend/src/main/java/com/codequest/entity/BaseEntity.java` is a `@MappedSuperclass`: shared `id`, `createdAt`, `updatedAt` for every table, with `@PrePersist` and `@PreUpdate` setting the times.
+
+  ### Repositories
+  ```java
+  interface CustomerRepository extends JpaRepository<Customer, Long> { }
+  ```
+  That is all. Spring Data creates a class at startup with `save`, `saveAll`, `findById` (returns `Optional`), `findAll`, `findAll(Pageable)`, `count`, `existsById`, `deleteById`, `delete` and more.
+
+  | Interface | Adds |
+  |---|---|
+  | `CrudRepository` | basic save/find/delete |
+  | `PagingAndSortingRepository` | paging and sorting |
+  | `JpaRepository` | all of the above + JPA extras (`flush`, `saveAndFlush`, batch deletes), returns `List` |
+
+  ### Derived query methods
+  Spring Data reads the **method name** and builds the query:
+  - `Optional<Customer> findByEmail(String email)`
+  - `List<Customer> findByCityOrderByEmailAsc(String city)`
+  - `long countByCity(String city)`
+  - `boolean existsByUserIdAndActionAndSourceKey(...)` (in your `XpEventRepository`)
+  - Keywords: `And`, `Or`, `Between`, `LessThan`, `GreaterThanEqual`, `Like`, `Containing`, `In`, `IsNull`, `OrderBy...Desc`, `Top3`/`First`.
+
+  The names are checked **at startup**. A typo like `findByEmial` stops the app with *No property 'emial' found for type 'Customer'*. That is good: you find the bug immediately.
+
+  ### @Query for anything bigger
+  ```java
+  @Query("select c from Customer c join c.orders o group by c having sum(o.amount) > :min")
+  List<Customer> bigSpenders(int min);
+  ```
+  This is **JPQL**: it uses **entity and field names** (`Customer`, `c.orders`), not table names. Add `nativeQuery = true` to write real SQL. For `update`/`delete` queries add `@Modifying` (see `RefreshTokenRepository.revokeAllForUser` in your app). Named parameters like `:min` match method parameter names.
+
+  ### Relationships
+  | Annotation | Example | Default fetch |
+  |---|---|---|
+  | `@ManyToOne` | many orders -> one customer | EAGER |
+  | `@OneToMany` | one customer -> many orders | LAZY |
+  | `@OneToOne` | user -> profile | EAGER |
+  | `@ManyToMany` | problems <-> patterns (join table) | LAZY |
+
+  (Fetch types are the topic of the next lesson. Your project sets `@ManyToOne(fetch = FetchType.LAZY)` on purpose; see the comment in `entity/JavaTopicProgress.java`.)
+
+  ### Owning side and mappedBy
+  In a database, a one-to-many link is **one foreign key column** on the "many" table (`orders.customer_id`). In Java you may have the link on **both** sides (bidirectional). JPA must know which side controls the column:
+  - The **owning side** is the side with the foreign key: `@ManyToOne @JoinColumn(name = "customer_id") Customer customer` in `PurchaseOrder`. **Only changes to the owning side are saved.**
+  - The **inverse side** says `@OneToMany(mappedBy = "customer")`. `"customer"` is the **name of the field** in `PurchaseOrder`, not a column name. A wrong name fails at startup.
+  - Without `mappedBy`, Hibernate thinks there are two separate relationships and expects an extra join table.
+
+  Keep both sides in sync with a helper method:
+  ```java
+  void addOrder(PurchaseOrder o) { orders.add(o); o.setCustomer(this); }
+  ```
+
+  Many-to-many uses a join table. See `ProblemSolved.patterns` in your project: `@ManyToMany` with `@JoinTable(name = "problem_patterns", ...)`.
+
+  ### Cascade and orphanRemoval
+  - **Cascade** passes an operation from parent to children. `cascade = CascadeType.ALL` on `Customer.orders` means saving or deleting a customer also saves or deletes its orders. Without it, new orders added to the list are simply **not saved**.
+  - **orphanRemoval = true**: removing an order from the list deletes its row.
+  - Use cascade only from a real parent to its own children. Never `CascadeType.REMOVE` on a `@ManyToOne` (deleting one order would delete the customer!).
+
+  ### Who creates the tables?
+  `spring.jpa.hibernate.ddl-auto=create`/`update` lets Hibernate create tables: fine for demos, risky in production. Your app uses `ddl-auto: validate`: **Flyway** migrations create the schema and Hibernate only checks that the entities match it (lesson 10).
+tinyCode:
+  code: |
+    package demo.jpa;
+
+    import jakarta.persistence.*;
+    import org.springframework.boot.CommandLineRunner;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.data.jpa.repository.JpaRepository;
+    import org.springframework.data.jpa.repository.Query;
+
+    import java.util.ArrayList;
+    import java.util.List;
+    import java.util.Optional;
+
+    @Entity
+    @Table(name = "customers")
+    class Customer {
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Long id;
+
+        @Column(nullable = false, unique = true)
+        private String email;
+
+        private String city;
+
+        @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+        private List<PurchaseOrder> orders = new ArrayList<>();
+
+        protected Customer() {}
+        Customer(String email, String city) { this.email = email; this.city = city; }
+
+        void addOrder(PurchaseOrder o) { orders.add(o); o.setCustomer(this); }
+
+        Long getId() { return id; }
+        String getEmail() { return email; }
+        String getCity() { return city; }
+        List<PurchaseOrder> getOrders() { return orders; }
+    }
+
+    @Entity
+    @Table(name = "orders")
+    class PurchaseOrder {
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Long id;
+
+        private int amount;
+
+        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+        @JoinColumn(name = "customer_id")
+        private Customer customer;
+
+        protected PurchaseOrder() {}
+        PurchaseOrder(int amount) { this.amount = amount; }
+
+        void setCustomer(Customer c) { this.customer = c; }
+        int getAmount() { return amount; }
+    }
+
+    interface CustomerRepository extends JpaRepository<Customer, Long> {
+        Optional<Customer> findByEmail(String email);
+        List<Customer> findByCityOrderByEmailAsc(String city);
+        long countByCity(String city);
+
+        @Query("select c from Customer c join c.orders o group by c having sum(o.amount) > :min")
+        List<Customer> bigSpenders(int min);
+    }
+
+    interface OrderRepository extends JpaRepository<PurchaseOrder, Long> {}
+
+    @SpringBootApplication
+    public class JpaDemo implements CommandLineRunner {
+        private final CustomerRepository customers;
+        private final OrderRepository orders;
+
+        JpaDemo(CustomerRepository customers, OrderRepository orders) {
+            this.customers = customers; this.orders = orders;
+        }
+
+        @Override
+        public void run(String... args) {
+            Customer asha = new Customer("asha@mail.com", "Pune");
+            asha.addOrder(new PurchaseOrder(300));
+            asha.addOrder(new PurchaseOrder(900));
+            customers.save(asha);
+            customers.save(new Customer("ravi@mail.com", "Pune"));
+            customers.save(new Customer("meena@mail.com", "Chennai"));
+
+            System.out.println("orders saved: " + orders.count());
+            System.out.println("in Pune: " + customers.countByCity("Pune"));
+            System.out.println("found: " + customers.findByEmail("ravi@mail.com").map(Customer::getCity).orElse("none"));
+            System.out.println("missing: " + customers.findByEmail("x@mail.com").isPresent());
+            System.out.println("big spenders: " + customers.bigSpenders(1000).stream().map(Customer::getEmail).toList());
+            customers.delete(customers.findByEmail("asha@mail.com").orElseThrow());
+            System.out.println("orders after delete: " + orders.count());
+        }
+
+        public static void main(String[] args) {
+            SpringApplication.run(JpaDemo.class, args);
+        }
+    }
+    // application.yml: a datasource URL + spring.jpa.hibernate.ddl-auto: create-drop
+    // Output (plus log lines):
+    // orders saved: 2
+    // in Pune: 2
+    // found: Pune
+    // missing: false
+    // big spenders: [asha@mail.com]
+    // orders after delete: 0
+  walkthrough: |
+    - `@Entity @Table(name = "customers") class Customer`: one object = one row in `customers`. `@Id` + `IDENTITY`: the database generates the id.
+    - `@OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)`: the **inverse** side. `"customer"` is the field name in `PurchaseOrder`. Cascade ALL means saving/deleting a customer also saves/deletes its orders.
+    - `PurchaseOrder.customer` with `@ManyToOne` + `@JoinColumn(name = "customer_id")` is the **owning** side: it controls the foreign key column.
+    - `addOrder` sets **both** sides, so the Java objects and the database agree.
+    - `CustomerRepository extends JpaRepository<Customer, Long>`: no class written by us. `findByEmail`, `findByCityOrderByEmailAsc` and `countByCity` are derived from their names. `bigSpenders` uses JPQL with a join, `group by` and `having`.
+    - `customers.save(asha)` inserts asha **and**, through cascade, her two orders: `orders saved: 2`.
+    - `countByCity("Pune")` is 2 (asha and ravi). `findByEmail` returns an `Optional`: present for ravi, empty for x@mail.com.
+    - Only asha's orders sum to more than 1000 (300 + 900), so she is the only big spender.
+    - Deleting asha cascades to her orders, so `orders after delete: 0`.
+    - `ddl-auto: create-drop` lets Hibernate create the tables for this demo. Your real app uses Flyway + `validate` instead.
+tryIt:
+  instructions: "Type this entity and repository for your own project idea (a library). Then add a CommandLineRunner (like in Tiny code) that saves three books and prints findByAuthorOrderByTitleAsc(\"Kathy Sierra\")."
+  code: |
+    package com.example.library;
+
+    import jakarta.persistence.*;
+    import org.springframework.data.jpa.repository.JpaRepository;
+    import org.springframework.data.jpa.repository.Query;
+
+    import java.util.List;
+
+    @Entity
+    @Table(name = "books")
+    public class Book {
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Long id;
+
+        @Column(nullable = false)
+        private String title;
+
+        private String author;
+        private int pages;
+
+        protected Book() {}
+        public Book(String title, String author, int pages) { this.title = title; this.author = author; this.pages = pages; }
+
+        public String getTitle() { return title; }
+        public int getPages() { return pages; }
+    }
+
+    interface BookRepository extends JpaRepository<Book, Long> {
+        List<Book> findByAuthorOrderByTitleAsc(String author);
+        List<Book> findByPagesGreaterThan(int pages);
+
+        @Query("select avg(b.pages) from Book b")
+        Double averagePages();
+    }
+predict:
+  code: |
+    // Same Customer, PurchaseOrder and repositories as in Tiny code
+    // (cascade = ALL, orphanRemoval = true). Empty tables at the start.
+    Customer asha = new Customer("asha@mail.com", "Pune");
+    asha.addOrder(new PurchaseOrder(300));
+    asha.addOrder(new PurchaseOrder(900));
+    customers.save(asha);
+    customers.save(new Customer("ravi@mail.com", "Pune"));
+    customers.save(new Customer("meena@mail.com", "Chennai"));
+
+    System.out.println(orders.count());
+    System.out.println(customers.countByCity("Pune"));
+    System.out.println(customers.findByCityOrderByEmailAsc("Pune").stream().map(Customer::getEmail).toList());
+    System.out.println(customers.findByEmail("x@mail.com").isPresent());
+    customers.delete(customers.findByEmail("asha@mail.com").orElseThrow());
+    System.out.println(orders.count());
+  expectedOutput: |
+    2
+    2
+    [asha@mail.com, ravi@mail.com]
+    false
+    0
+  explanation: |
+    Saving asha cascades to her two orders, so the orders table has 2 rows. Two customers live in Pune. `findByCityOrderByEmailAsc` sorts by email alphabetically: "asha" comes before "ravi". `findByEmail` for an unknown email returns an empty `Optional`, so `isPresent()` is false (no exception, no null). Deleting asha cascades the delete to her orders (cascade ALL includes REMOVE), so the final count is 0.
+commonMistakes:
+  - "Saying JPA and Hibernate are the same. JPA is the specification; Hibernate is one implementation; Spring Data JPA builds repositories on top."
+  - "Putting mappedBy on the wrong side, or using the column name (customer_id) instead of the Java field name (customer)."
+  - "Adding children to a parent's list without cascade. The new children are silently not saved."
+  - "Setting only one side of a bidirectional relationship. Only the owning side (with @JoinColumn) is written to the database."
+  - "Using CascadeType.REMOVE (or ALL) on a @ManyToOne. Deleting one order would delete the customer and all their other orders."
+  - "Using table and column names in a JPQL @Query. JPQL uses entity class and field names; use nativeQuery = true for raw SQL."
+interviewBox:
+  why: "Why interviewers ask this: almost every Spring project uses JPA. They check whether you understand what is generated for you and how relationships really map to tables."
+  questions:
+    - q: "What is the difference between JPA, Hibernate and Spring Data JPA?"
+      a: "JPA is the Jakarta standard: interfaces and annotations for mapping objects to tables. Hibernate is an implementation of JPA that actually generates and runs the SQL. Spring Data JPA sits on top and creates repository implementations from interfaces, so I just extend JpaRepository and declare methods like findByEmail."
+    - q: "How do derived query methods work?"
+      a: "Spring Data parses the method name at startup. findByCityOrderByEmailAsc becomes a query with where city = ? order by email asc. It supports keywords like And, Or, Between, LessThan, Containing and OrderBy. If a property name is wrong, the app fails at startup, which catches typos early. For complex queries I use @Query with JPQL."
+    - q: "Explain mappedBy and the owning side."
+      a: "In one-to-many, the database has a single foreign key column on the many side, like orders.customer_id. The entity with that @ManyToOne and @JoinColumn is the owning side, and only its changes are saved. The other side, the list in Customer, uses @OneToMany(mappedBy = \"customer\") to say: this is the same relationship, mapped by the customer field over there. Without mappedBy, Hibernate would expect a separate join table."
+    - q: "What do cascade and orphanRemoval do?"
+      a: "Cascade passes operations like persist and remove from a parent to its children, so saving a customer also saves its new orders. orphanRemoval deletes a child row when it is removed from the parent's collection. I use them only from a real owner to its own children, never from a child up to a parent."
+    - q: "CrudRepository vs JpaRepository?"
+      a: "CrudRepository has the basic create, read, update, delete methods. JpaRepository extends it with paging and sorting, returns Lists instead of Iterables, and adds JPA-specific methods like flush and saveAndFlush. In Spring Boot projects I normally use JpaRepository."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "Which statement about JPA and Hibernate is correct?"
+    code: null
+    options:
+      - "Hibernate is the specification and JPA implements it"
+      - "JPA is a specification; Hibernate is an implementation of it"
+      - "They are two names for the same library"
+      - "JPA is a database like PostgreSQL"
+    answer: 1
+    explanation: "JPA (jakarta.persistence) defines the annotations and interfaces; Hibernate is the engine that implements them and is Spring Boot's default. Option A is the common mix-up the interviewer is testing."
+  - id: q2
+    type: SPOT_THE_BUG
+    prompt: "The app fails at startup with an AnnotationException. Why?"
+    code: |
+      @Entity
+      class Customer {
+          @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
+
+          @OneToMany(mappedBy = "customerId", cascade = CascadeType.ALL)
+          List<PurchaseOrder> orders = new ArrayList<>();
+      }
+
+      @Entity
+      class PurchaseOrder {
+          @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
+
+          @ManyToOne
+          @JoinColumn(name = "customer_id")
+          Customer customer;
+      }
+    options:
+      - "@JoinColumn must be on the Customer side"
+      - "mappedBy must name the Java field in PurchaseOrder (\"customer\"), not a column; there is no property called customerId"
+      - "cascade cannot be used with mappedBy"
+      - "List must be replaced with Set"
+    answer: 1
+    explanation: "Hibernate reports: 'mappedBy a property named customerId which does not exist in the target entity'. mappedBy refers to the field name, here customer. The @JoinColumn is correctly on the owning (many) side, and cascade with mappedBy is normal."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "After this runs, orders.count() prints 0, even though asha has two orders in her list. Why?"
+    code: |
+      @OneToMany(mappedBy = "customer")
+      private List<PurchaseOrder> orders = new ArrayList<>();
+
+      // in the runner:
+      Customer asha = new Customer("asha@mail.com", "Pune");
+      asha.addOrder(new PurchaseOrder(300));   // sets both sides
+      asha.addOrder(new PurchaseOrder(900));
+      customers.save(asha);
+      System.out.println(orders.count());
+    options:
+      - "addOrder must call orders.save itself"
+      - "There is no cascade, so saving the customer does not save the new orders"
+      - "mappedBy makes the list read-only, so orders can never be added"
+      - "count() only counts orders older than one second"
+    answer: 1
+    explanation: "Without cascade = CascadeType.PERSIST (or ALL), save(customer) inserts only the customer; the new PurchaseOrder objects stay unsaved. Add cascade, or save each order with orderRepository. mappedBy does not make the list read-only; it just marks the inverse side."
+  - id: q4
+    type: PREDICT_OUTPUT
+    prompt: "The customers table has asha (Pune), ravi (Pune) and meena (Chennai). What is printed?"
+    code: |
+      interface CustomerRepository extends JpaRepository<Customer, Long> {
+          Optional<Customer> findByEmail(String email);
+          long countByCity(String city);
+      }
+
+      System.out.println(customers.countByCity("Pune"));
+      System.out.println(customers.findByEmail("x@mail.com").isPresent());
+    options: ["2 and false", "2 and an exception", "3 and false", "2 and null"]
+    answer: 0
+    explanation: "countByCity counts matching rows: 2. findByEmail with Optional returns Optional.empty() when nothing matches, so isPresent() is false. It neither throws nor returns null; that is the point of Optional."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "A derived query method with a typo, such as findByEmial(String email), compiles fine but makes the application fail at startup."
+    options: ["True", "False"]
+    answer: 0
+    explanation: "True. Java only sees a normal method declaration, so it compiles. Spring Data parses method names while creating the repository and fails with 'No property emial found for type Customer'. Failing early is helpful."
+  - id: q6
+    type: MATCH
+    prompt: "Match each annotation to its job"
+    pairs:
+      - left: "@Id"
+        right: "Marks the primary key field"
+      - left: "@JoinColumn(name = \"customer_id\")"
+        right: "Names the foreign key column on the owning side"
+      - left: "@OneToMany(mappedBy = \"customer\")"
+        right: "Inverse side of a relationship owned by another entity's field"
+      - left: "@Enumerated(EnumType.STRING)"
+        right: "Stores enum names instead of numbers"
+      - left: "@Modifying"
+        right: "Marks a @Query that updates or deletes rows"
+    explanation: "These are the annotations you will see most in entity and repository code, including in your own project (User.role, RefreshTokenRepository)."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Complete the repository so Spring Data generates save, findById, findAll and paging for Book entities with Long ids."
+    code: |
+      public interface BookRepository extends ____<Book, Long> {
+          List<Book> findByAuthor(String author);
+      }
+    acceptedAnswers: ["JpaRepository"]
+    explanation: "JpaRepository<Entity, IdType> gives CRUD, paging, sorting and JPA extras. CrudRepository would also compile but has fewer features and returns Iterable."
+  - id: q8
+    type: MCQ
+    prompt: "In JPQL, which query is correct for the Customer entity mapped to the table customers?"
+    code: null
+    options:
+      - "select * from customers where city = :city"
+      - "select c from Customer c where c.city = :city"
+      - "select c from customers c where c.city_name = :city"
+      - "find Customer where city = :city"
+    answer: 1
+    explanation: "JPQL uses entity names and field names (Customer, c.city). Option A is native SQL, which needs nativeQuery = true. Option C mixes table names into JPQL."
+explainBack:
+  prompt: "Explain to a friend how Spring Data JPA saves and reads objects, and how a one-to-many relationship is mapped."
+  rubric:
+    - "I explained JPA vs Hibernate vs Spring Data JPA"
+    - "I explained entities (@Entity, @Id) and repositories (JpaRepository, derived queries)"
+    - "I explained the owning side, @JoinColumn and mappedBy"
+    - "I explained cascade (and orphanRemoval)"
+    - "I mentioned @Query with JPQL for complex queries"
+  modelAnswer: |
+    JPA is the Java standard for mapping classes to tables, Hibernate is the engine that implements it, and Spring Data JPA writes the repository code for me. I mark a class with @Entity and its key with @Id, then create an interface that extends JpaRepository. I get save, findById and paging for free, and methods like findByEmail are built from the method name. For complex queries I use @Query with JPQL. For one customer with many orders, the orders table holds customer_id, so PurchaseOrder has @ManyToOne with @JoinColumn: that's the owning side. Customer has @OneToMany(mappedBy = "customer"). With cascade ALL, saving or deleting the customer also saves or deletes its orders.
+flashcards:
+  - front: "JPA vs Hibernate vs Spring Data JPA"
+    back: "JPA = specification (jakarta.persistence). Hibernate = implementation. Spring Data JPA = auto-generated repositories on top."
+  - front: "Owning side of one-to-many"
+    back: "The @ManyToOne side with @JoinColumn (holds the FK). Only its changes are saved. The other side uses mappedBy = \"fieldName\"."
+  - front: "cascade vs orphanRemoval"
+    back: "cascade: pass persist/remove from parent to children. orphanRemoval: delete a child when removed from the parent's collection."
+  - front: "Default fetch types"
+    back: "@ManyToOne / @OneToOne: EAGER. @OneToMany / @ManyToMany: LAZY."
+  - front: "JPQL vs native query"
+    back: "JPQL uses entity/field names (select c from Customer c). Native SQL needs nativeQuery = true. Updates need @Modifying."
+  - front: "Typo in a derived query name?"
+    back: "Compiles, but the app fails at startup: No property 'x' found for type."
+keyTakeaways:
+  - "JPA is the standard, Hibernate implements it, Spring Data JPA generates repositories."
+  - "Entities map classes to tables: @Entity, @Id, @GeneratedValue, @Column, @Enumerated(STRING)."
+  - "Extend JpaRepository; use derived query names for simple queries and @Query (JPQL) for complex ones."
+  - "The @ManyToOne side with @JoinColumn owns the relationship; the other side uses mappedBy with the field name."
+  - "Cascade from parent to its own children only; without it, new children are not saved."

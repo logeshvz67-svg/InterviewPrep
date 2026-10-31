@@ -1,0 +1,526 @@
+slug: spring-transactions-lazy
+world: SPRING
+section: SPRING
+order: 8
+title: "Transactions, lazy loading and N+1"
+version: 1
+estimatedMinutes: 45
+rebuild: false
+patternCode: null
+companies: [INFOSYS_SP, PRODUCT, ALL]
+infosysRelevance: "Advanced SP practice area: @Transactional behaviour, LazyInitializationException and the N+1 problem separate 'used Spring' from 'understands Spring' in deeper technical rounds."
+otherCompanies: "Product companies ask these often (self-invocation, propagation, N+1 fixes, open-in-view). Service companies (TCS, Wipro, Cognizant, Accenture, Capgemini) usually ask what @Transactional does and lazy vs eager."
+why: |
+  These three topics cause the most **real production bugs** in Spring apps, and interviewers know it:
+  - **Transactions**: "XP was added but the problem was not saved". Half-finished work in the database.
+  - **Lazy loading**: the famous **LazyInitializationException** that every Spring developer meets.
+  - **N+1 queries**: a page that runs 1 query on your laptop runs **101 queries** in production and becomes slow.
+
+  This lesson explains each with code you can run, and your own `backend` project has a real example of every fix: `XpService` (transactions and dirty checking), `JavaTopic` + `JavaTopicRepository` (lazy loading and `@EntityGraph`) and `spring.jpa.open-in-view: false` in `application.yml`.
+analogy: |
+  **Transaction**: an **ATM withdrawal**. The machine must (1) reduce your balance and (2) give cash. If the cash gets stuck, the balance change is **reversed** (rollback). Either both happen or neither: that is a transaction.
+
+  **Lazy loading**: a **library catalogue card** that says "see shelf B4 for the 10 chapters". You get the card quickly, and walk to the shelf only if you need the chapters. But if the **library has closed** (the transaction ended) and you then try to walk to the shelf, the door is locked: **LazyInitializationException**.
+
+  **N+1**: going to the **kirana shop** for a list of 10 items, but making **one trip per item**: 1 trip to read the list + 10 trips = 11 trips. The fix is to **collect everything in one trip** (a join fetch).
+visual:
+  diagram: |
+    N+1 problem: 5 authors, each with a LAZY list of books
+    --------------------------------------------------------
+    select * from author                         <- 1 query
+    for each author: author.books.size()
+       select * from book where author_id = 1    <- +1
+       select * from book where author_id = 2    <- +1
+       ...                                        (5 more)
+    TOTAL = 1 + N = 6 queries   (N = 100 -> 101 queries!)
+
+    Fix: @EntityGraph(attributePaths = "books") or JOIN FETCH
+    select a.*, b.* from author a
+           left join book b on b.author_id = a.id  <- 1 query
+
+    Transaction proxy
+    caller --> [Spring proxy: BEGIN] --> service.method()
+                                    <-- returns: COMMIT
+                                    <-- RuntimeException: ROLLBACK
+  caption: "A lazy collection touched in a loop fires one extra query per row; a fetch join loads everything at once. @Transactional works through a proxy that begins, commits or rolls back around your method."
+  visualizer: null
+explanation: |
+  ### What is a transaction?
+  A **transaction** is a group of database operations that succeed or fail **as one unit**. It follows **ACID**:
+  - **Atomic**: all or nothing.
+  - **Consistent**: rules (constraints) are respected.
+  - **Isolated**: other transactions don't see half-done work.
+  - **Durable**: once committed, it survives a crash.
+
+  ### @Transactional
+  Put `@Transactional` (from `org.springframework.transaction.annotation`) on a service method. Spring then:
+  1. starts a transaction before the method,
+  2. **commits** if the method returns normally,
+  3. **rolls back** if it throws a `RuntimeException` (unchecked) or an `Error`.
+
+  **Checked exceptions do NOT roll back by default.** If you need that, write `@Transactional(rollbackFor = Exception.class)`.
+
+  Spring Data repository methods like `save` are already transactional on their own, but **each call is a separate transaction**. Put `@Transactional` on the service method when several steps must succeed together. In `backend/src/main/java/com/codequest/service/AuthService.java`, `register` saves the user, the profile, the streak and the refresh token in one transaction, so you never get half-created accounts.
+
+  ### Propagation basics
+  **Propagation** decides what happens when a transactional method calls another transactional method:
+  | Propagation | Meaning |
+  |---|---|
+  | `REQUIRED` (default) | Join the caller's transaction if there is one, otherwise start a new one |
+  | `REQUIRES_NEW` | Pause the caller's transaction and start a separate one (commits independently, e.g. audit logs) |
+  | `SUPPORTS` / `MANDATORY` / `NEVER` ... | Less common; know that they exist |
+
+  Read the comment above `XpService.award`: *"Propagation REQUIRED: if the caller already has a transaction (e.g. GymService.logProblem), we join it, so 'save problem + give XP' succeed or fail together."*
+
+  `@Transactional(readOnly = true)` is a hint for read methods: Hibernate skips dirty checking, which saves work. `XpService.history` uses it.
+
+  ### How it works: the proxy, and the self-invocation trap
+  Spring does not change your class. It wraps the bean in a **proxy**: a generated subclass that sits in front of your object. Other beans receive the proxy, and the proxy starts and ends the transaction around the real call.
+
+  **Self-invocation**: if a method calls another method **of the same class** (`this.inner()`), the call goes directly to the object and **skips the proxy**, so `@Transactional` on `inner()` is ignored. Fixes: put `@Transactional` on the outer public method, or move `inner()` to another bean. Also, `@Transactional` on a **private** method never works, because the proxy cannot override it.
+
+  ### Persistence context and dirty checking
+  Inside a transaction, Hibernate keeps a **persistence context**: a memory of every entity it loaded. These entities are **managed**. At commit, Hibernate compares each managed entity with its original state, and if something changed, it writes an `UPDATE` automatically. This is **dirty checking**.
+
+  So inside `@Transactional` you do **not** need `save()` after changing a loaded entity. `XpService.award` changes `p.setTotalXp(...)` and the comment says: *"No profiles.save(p) needed: p is managed inside this transaction, so Hibernate's dirty checking writes the change automatically."*
+
+  Outside a transaction, `findById` returns a **detached** entity (no one is watching it). Changing it does nothing until you call `save()`.
+
+  ### LAZY vs EAGER
+  | Fetch type | Meaning | Default for |
+  |---|---|---|
+  | `EAGER` | Load the related data immediately with the parent | `@ManyToOne`, `@OneToOne` |
+  | `LAZY` | Load only when you first touch it (Hibernate puts a placeholder "proxy") | `@OneToMany`, `@ManyToMany`, `@ElementCollection` |
+
+  The usual advice: make **everything LAZY** (including `@ManyToOne(fetch = FetchType.LAZY)`, as in your `JavaTopicProgress`), then fetch exactly what each use case needs.
+
+  ### LazyInitializationException
+  A lazy field can only load while the persistence context (the transaction) is **open**. Touch it after the transaction ended (in a controller, or while Jackson writes JSON) and you get `LazyInitializationException: could not initialize proxy - no Session`.
+  Fixes:
+  - Read the lazy data **inside** a `@Transactional` service method and return a **DTO** (your `Mappers` comment says this).
+  - Fetch it up front with `@EntityGraph` or `join fetch`.
+  - Not a fix: switching to EAGER everywhere (slow, causes more N+1).
+
+  ### open-in-view
+  Spring Boot's default `spring.jpa.open-in-view=true` keeps the persistence context open until the HTTP response is written, so lazy loading "works" in controllers. The cost: a database connection is held for the whole request, and hidden queries run during JSON writing. Boot even logs a warning about it. Your `application.yml` sets `open-in-view: false` (with only 3 pool connections, holding them longer would hurt), so all loading must happen in services.
+
+  ### The N+1 problem and its fixes
+  **N+1**: 1 query loads N parents, then **one more query per parent** loads its lazy children. With 78 Java topics that is 79 queries instead of 1.
+  - **`@EntityGraph(attributePaths = "companyCodes")`** on a repository method tells Hibernate to load that association in the same query. Open `backend/src/main/java/com/codequest/repository/JavaTopicRepository.java`: its comment describes exactly this 1 + 78 problem.
+  - **JPQL `join fetch`**: `select distinct a from Author a left join fetch a.books`.
+  - **Batch fetching** (`hibernate.default_batch_fetch_size`): loads lazy children in groups with `IN (...)`.
+  - Spot it by logging SQL (`spring.jpa.show-sql=true` or `logging.level.org.hibernate.SQL=debug`) and counting queries.
+tinyCode:
+  code: |
+    package demo.nplus1;
+
+    import jakarta.persistence.*;
+    import org.hibernate.SessionFactory;
+    import org.hibernate.stat.Statistics;
+    import org.springframework.boot.CommandLineRunner;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.data.jpa.repository.EntityGraph;
+    import org.springframework.data.jpa.repository.JpaRepository;
+    import org.springframework.data.jpa.repository.Query;
+    import org.springframework.stereotype.Service;
+    import org.springframework.transaction.annotation.Transactional;
+
+    import java.util.ArrayList;
+    import java.util.List;
+
+    @Entity
+    class Author {
+        @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
+        String name;
+        @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
+        List<Book> books = new ArrayList<>();
+        protected Author() {}
+        Author(String name) { this.name = name; }
+        void add(Book b) { books.add(b); b.author = this; }
+    }
+
+    @Entity
+    class Book {
+        @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
+        String title;
+        @ManyToOne(fetch = FetchType.LAZY) Author author;
+        protected Book() {}
+        Book(String title) { this.title = title; }
+    }
+
+    interface AuthorRepository extends JpaRepository<Author, Long> {
+        List<Author> findAllByOrderByIdAsc();
+
+        @EntityGraph(attributePaths = "books")
+        List<Author> findWithBooksByOrderByIdAsc();
+
+        @Query("select distinct a from Author a left join fetch a.books order by a.id")
+        List<Author> fetchAllWithBooks();
+    }
+
+    @Service
+    class LibraryService {
+        private final AuthorRepository repo;
+        LibraryService(AuthorRepository repo) { this.repo = repo; }
+
+        @Transactional(readOnly = true)
+        public int countBooksLazy() {
+            int n = 0;
+            for (Author a : repo.findAllByOrderByIdAsc()) n += a.books.size();
+            return n;
+        }
+
+        @Transactional(readOnly = true)
+        public int countBooksGraph() {
+            int n = 0;
+            for (Author a : repo.findWithBooksByOrderByIdAsc()) n += a.books.size();
+            return n;
+        }
+
+        @Transactional(readOnly = true)
+        public int countBooksFetchJoin() {
+            int n = 0;
+            for (Author a : repo.fetchAllWithBooks()) n += a.books.size();
+            return n;
+        }
+    }
+
+    @SpringBootApplication
+    public class NPlusOneDemo implements CommandLineRunner {
+        private final AuthorRepository repo;
+        private final LibraryService service;
+        private final Statistics stats;
+
+        NPlusOneDemo(AuthorRepository repo, LibraryService service, EntityManagerFactory emf) {
+            this.repo = repo;
+            this.service = service;
+            this.stats = emf.unwrap(SessionFactory.class).getStatistics();
+        }
+
+        @Override
+        public void run(String... args) {
+            for (int i = 1; i <= 5; i++) {
+                Author a = new Author("Author " + i);
+                a.add(new Book("Book " + i + "a"));
+                a.add(new Book("Book " + i + "b"));
+                repo.save(a);
+            }
+            stats.clear();
+            int n1 = service.countBooksLazy();
+            System.out.println("lazy loop:    books=" + n1 + " queries=" + stats.getPrepareStatementCount());
+            stats.clear();
+            int n2 = service.countBooksGraph();
+            System.out.println("@EntityGraph: books=" + n2 + " queries=" + stats.getPrepareStatementCount());
+            stats.clear();
+            int n3 = service.countBooksFetchJoin();
+            System.out.println("join fetch:   books=" + n3 + " queries=" + stats.getPrepareStatementCount());
+
+            Author outside = repo.findAllByOrderByIdAsc().get(0);
+            try {
+                System.out.println(outside.books.size());
+            } catch (Exception e) {
+                System.out.println("outside a transaction: " + e.getClass().getSimpleName());
+            }
+        }
+
+        public static void main(String[] args) {
+            SpringApplication.run(NPlusOneDemo.class, args);
+        }
+    }
+    // application.yml: datasource + ddl-auto: create-drop + open-in-view: false
+    //   + spring.jpa.properties.hibernate.generate_statistics: true
+    // Output (plus log lines):
+    // lazy loop:    books=10 queries=6
+    // @EntityGraph: books=10 queries=1
+    // join fetch:   books=10 queries=1
+    // outside a transaction: LazyInitializationException
+  walkthrough: |
+    - Five authors, each with two books. `Author.books` is `@OneToMany`, so it is **LAZY** by default.
+    - `stats` is Hibernate's statistics object; `getPrepareStatementCount()` tells us how many SQL statements ran since `stats.clear()`.
+    - `countBooksLazy()`: one query loads 5 authors; then `a.books.size()` inside the loop fires **one query per author**. 1 + 5 = **6 queries**. That is N+1.
+    - `countBooksGraph()`: `@EntityGraph(attributePaths = "books")` makes Hibernate join the books into the same SQL: **1 query**. This is the same fix as `JavaTopicRepository` in your app.
+    - `countBooksFetchJoin()`: a JPQL `left join fetch` does the same: **1 query**. `distinct` avoids duplicate authors in the result list.
+    - All three methods are `@Transactional(readOnly = true)`, so lazy loading is allowed inside them.
+    - Last part: `repo.findAllByOrderByIdAsc()` is called from `run()`, which has no transaction. The repository's own transaction ends when it returns, so touching `books` afterwards throws **LazyInitializationException**. (With `open-in-view: false`, nothing keeps the session open for you.)
+tryIt:
+  instructions: "Type this self-invocation demo into a Spring Boot project that has spring-boot-starter-data-jpa and a database configured. Predict both lines first: is inner() transactional when called from outer()?"
+  code: |
+    package demo.selfcall;
+
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.stereotype.Service;
+    import org.springframework.transaction.annotation.Transactional;
+    import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+    @Service
+    class ReportService {
+        public void outer() {
+            inner();   // calls this.inner(), NOT through the Spring proxy
+        }
+
+        @Transactional
+        public void inner() {
+            boolean active = TransactionSynchronizationManager.isActualTransactionActive();
+            System.out.println("inner() in a transaction? " + active);
+        }
+    }
+
+    @SpringBootApplication
+    public class SelfCallDemo {
+        public static void main(String[] args) {
+            var ctx = SpringApplication.run(SelfCallDemo.class, args);
+            ReportService service = ctx.getBean(ReportService.class);
+            service.outer();
+            service.inner();
+            ctx.close();
+        }
+    }
+predict:
+  code: |
+    package demo.rollback;
+
+    import jakarta.persistence.*;
+    import org.springframework.boot.CommandLineRunner;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.data.jpa.repository.JpaRepository;
+    import org.springframework.stereotype.Service;
+    import org.springframework.transaction.annotation.Transactional;
+
+    @Entity
+    class Player {
+        @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
+        int xp;
+    }
+
+    interface PlayerRepository extends JpaRepository<Player, Long> {}
+
+    class NotEnoughGold extends Exception {
+        NotEnoughGold(String msg) { super(msg); }
+    }
+
+    @Service
+    class PlayerService {
+        private final PlayerRepository repo;
+        PlayerService(PlayerRepository repo) { this.repo = repo; }
+
+        @Transactional
+        public void addXp(Long id, int xp) {
+            Player p = repo.findById(id).orElseThrow();
+            p.xp += xp;                                // no save() call
+        }
+
+        public void addXpWithoutTx(Long id, int xp) {
+            Player p = repo.findById(id).orElseThrow();
+            p.xp += xp;                                // no save(), no transaction
+        }
+
+        @Transactional
+        public void addXpThenCrash(Long id) {
+            repo.findById(id).orElseThrow().xp += 1000;
+            throw new IllegalStateException("boom");   // unchecked
+        }
+
+        @Transactional
+        public void addXpThenChecked(Long id) throws NotEnoughGold {
+            repo.findById(id).orElseThrow().xp += 1000;
+            throw new NotEnoughGold("checked");         // checked
+        }
+    }
+
+    @SpringBootApplication
+    public class RollbackDemo implements CommandLineRunner {
+        private final PlayerRepository repo;
+        private final PlayerService service;
+
+        RollbackDemo(PlayerRepository repo, PlayerService service) { this.repo = repo; this.service = service; }
+
+        int xp(Long id) { return repo.findById(id).orElseThrow().xp; }
+
+        @Override
+        public void run(String... args) {
+            Long id = repo.save(new Player()).id;
+
+            service.addXp(id, 10);
+            System.out.println("A: " + xp(id));
+            service.addXpWithoutTx(id, 5);
+            System.out.println("B: " + xp(id));
+            try { service.addXpThenCrash(id); } catch (Exception e) { }
+            System.out.println("C: " + xp(id));
+            try { service.addXpThenChecked(id); } catch (Exception e) { }
+            System.out.println("D: " + xp(id));
+        }
+
+        public static void main(String[] args) {
+            SpringApplication.run(RollbackDemo.class, args);
+        }
+    }
+  expectedOutput: |
+    A: 10
+    B: 10
+    C: 10
+    D: 1010
+  explanation: |
+    **A: 10**: inside `@Transactional`, the loaded `Player` is managed; dirty checking writes the change at commit even without `save()`.
+    **B: 10**: without a transaction, `findById` returns a detached copy. Changing it is never written, so the +5 is lost.
+    **C: 10**: a `RuntimeException` makes Spring roll back, so the +1000 disappears.
+    **D: 1010**: `NotEnoughGold` is a **checked** exception, and by default Spring **commits** on checked exceptions. The +1000 is saved even though the method failed. Use `@Transactional(rollbackFor = Exception.class)` if that is not what you want.
+commonMistakes:
+  - "Calling a @Transactional method from another method of the same class. The call skips the proxy, so no transaction starts."
+  - "Expecting a rollback on checked exceptions. By default only RuntimeException and Error roll back; use rollbackFor."
+  - "Calling save() after every change inside a transaction (harmless but noisy), or forgetting that changes OUTSIDE a transaction are not saved without save()."
+  - "Fixing LazyInitializationException by making everything EAGER. It loads too much and causes more N+1 queries; fetch what you need with @EntityGraph or join fetch instead."
+  - "Returning entities with lazy fields from controllers when open-in-view is false. Map to DTOs inside the transactional service."
+  - "Putting @Transactional on private methods. Proxies cannot intercept them, so the annotation is ignored."
+interviewBox:
+  why: "Why interviewers ask this: these are the bugs that hurt real systems. Explaining the proxy, rollback rules and N+1 shows real backend experience."
+  questions:
+    - q: "How does @Transactional work internally?"
+      a: "Spring wraps the bean in a proxy. When another bean calls the method, the proxy starts a transaction, calls the real method, and commits if it returns normally or rolls back if it throws a runtime exception. Because it works through a proxy, calling the method from inside the same class skips the proxy and no transaction is started."
+    - q: "Does @Transactional roll back on checked exceptions?"
+      a: "No. By default it rolls back only on RuntimeException and Error. For checked exceptions it commits. If I want a rollback, I write @Transactional(rollbackFor = Exception.class)."
+    - q: "What is the N+1 problem and how do you fix it?"
+      a: "It happens when I load N parent rows with one query and then touch a lazy collection on each, which fires one more query per parent, so 1 plus N queries. I fix it by fetching the children in the same query with @EntityGraph or a JPQL join fetch, or with batch fetching. In my project, JavaTopicRepository uses @EntityGraph so 78 topics load their company tags in one query instead of 79."
+    - q: "What is LazyInitializationException and how do you avoid it?"
+      a: "It is thrown when code touches a lazy association after the Hibernate session, meaning the transaction, has closed, for example in a controller. I avoid it by loading what I need inside a @Transactional service method, using an entity graph or join fetch, and returning DTOs instead of entities. I keep open-in-view false so this can't be hidden."
+    - q: "What is dirty checking?"
+      a: "Inside a transaction, Hibernate remembers every entity it loaded. At commit it compares them with their original state and automatically runs UPDATE for changed ones. So in my XpService, I change the profile's total XP and don't call save; Hibernate writes it at commit."
+quiz:
+  - id: q1
+    type: MCQ
+    prompt: "A method saves an order and then reduces stock. Stock reduction throws a RuntimeException. With @Transactional on the method, what happens to the saved order?"
+    code: null
+    options:
+      - "It stays saved, because save() already ran"
+      - "It is rolled back together with everything else in the method"
+      - "It is saved twice"
+      - "Spring retries the method automatically"
+    answer: 1
+    explanation: "Both steps are in one transaction, and a RuntimeException causes a rollback of the whole unit. Without @Transactional on the method, option A would be true, because each repository call would commit separately."
+  - id: q2
+    type: PREDICT_OUTPUT
+    prompt: "There are 20 authors, each with 3 books. books is a LAZY @OneToMany and no entity graph or join fetch is used. How many SQL queries does this @Transactional method run?"
+    code: |
+      @Transactional(readOnly = true)
+      public int countBooks() {
+          int n = 0;
+          for (Author a : repo.findAll()) {   // query 1
+              n += a.books.size();
+          }
+          return n;
+      }
+    options: ["1", "3", "21", "60"]
+    answer: 2
+    explanation: "One query loads the 20 authors, then the first touch of each author's lazy books fires one query per author: 1 + 20 = 21. That is the N+1 problem. It is not 60, because each query loads all 3 books of one author. With @EntityGraph(attributePaths = \"books\") it would be 1."
+  - id: q3
+    type: SPOT_THE_BUG
+    prompt: "If saving the second item fails, the first item stays saved. The developer expected all-or-nothing. Why?"
+    code: |
+      @Service
+      public class CartService {
+          public void checkout(List<Item> items) {
+              saveAll(items);
+          }
+
+          @Transactional
+          public void saveAll(List<Item> items) {
+              for (Item i : items) repo.save(i);
+          }
+      }
+      // controller calls cartService.checkout(items)
+    options:
+      - "repo.save cannot be called in a loop"
+      - "checkout() calls saveAll() on 'this', which bypasses the Spring proxy, so no transaction is started"
+      - "@Transactional only works on interfaces"
+      - "List parameters disable transactions"
+    answer: 1
+    explanation: "This is self-invocation. The controller calls checkout() through the proxy, but checkout has no @Transactional, and its internal call to saveAll() never passes through the proxy. Put @Transactional on checkout() or move saveAll() to another bean."
+  - id: q4
+    type: SPOT_THE_BUG
+    prompt: "open-in-view is false. This endpoint throws LazyInitializationException. Why, and what is the best fix?"
+    code: |
+      @GetMapping("/api/topics/{id}/companies")
+      Set<String> companies(@PathVariable Long id) {
+          JavaTopic topic = topicRepository.findById(id).orElseThrow();
+          return topic.getCompanyCodes();   // @ElementCollection(fetch = LAZY)
+      }
+    options:
+      - "findById should be findOne"
+      - "The lazy collection is first touched after the repository's transaction ended; load it inside a @Transactional service (or with @EntityGraph) and return a DTO"
+      - "Set cannot be returned as JSON"
+      - "The fix is to set every relationship to EAGER"
+    answer: 1
+    explanation: "The repository call opens and closes its own transaction, so the session is gone when Jackson touches companyCodes. Fetch it inside a transactional service or with an entity graph, and return a DTO. Switching everything to EAGER 'works' but loads too much and creates N+1 problems elsewhere."
+  - id: q5
+    type: TRUE_FALSE
+    prompt: "By default, a @Transactional method that throws a checked exception (like IOException) rolls back the transaction."
+    options: ["True", "False"]
+    answer: 1
+    explanation: "False. Only unchecked exceptions (RuntimeException) and Errors trigger a rollback by default; checked exceptions commit. Use rollbackFor = Exception.class to change it."
+  - id: q6
+    type: MATCH
+    prompt: "Match each setting to its meaning"
+    pairs:
+      - left: "Propagation.REQUIRED"
+        right: "Join the caller's transaction, or start one if none exists"
+      - left: "Propagation.REQUIRES_NEW"
+        right: "Pause the caller's transaction and run in a separate one"
+      - left: "readOnly = true"
+        right: "Hint for read-only work; Hibernate skips dirty checking"
+      - left: "rollbackFor = Exception.class"
+        right: "Also roll back on checked exceptions"
+      - left: "spring.jpa.open-in-view=false"
+        right: "Close the persistence context when the service transaction ends"
+    explanation: "REQUIRED is the default (XpService.award joins the caller's transaction). REQUIRES_NEW is for work that must commit independently, like an audit log."
+  - id: q7
+    type: FILL_THE_CODE
+    prompt: "Load each topic's lazy companyCodes in the same query, as in JavaTopicRepository."
+    code: |
+      public interface JavaTopicRepository extends JpaRepository<JavaTopic, Long> {
+          @____(attributePaths = "companyCodes")
+          List<JavaTopic> findAllByOrderBySectionAscSortOrderAsc();
+      }
+    acceptedAnswers: ["EntityGraph", "@EntityGraph"]
+    explanation: "@EntityGraph(attributePaths = ...) tells Spring Data to fetch those associations with a join, removing the N+1 queries."
+  - id: q8
+    type: MCQ
+    prompt: "Inside @Transactional XpService.award, the code changes profile.setTotalXp(...) but never calls profiles.save(profile). Why is the new XP still stored?"
+    code: null
+    options:
+      - "Spring Data saves every entity every 5 seconds"
+      - "The profile is a managed entity, so Hibernate's dirty checking writes an UPDATE at commit"
+      - "setTotalXp runs SQL directly"
+      - "It is not stored; this is a bug"
+    answer: 1
+    explanation: "Entities loaded inside a transaction are managed by the persistence context. At commit Hibernate compares them with their original state and flushes the changes. Outside a transaction (detached entity), option D would be right."
+explainBack:
+  prompt: "Explain @Transactional, lazy loading and the N+1 problem to a friend, using the ATM and kirana-shop examples."
+  rubric:
+    - "I explained a transaction as all-or-nothing and that RuntimeExceptions roll back (checked do not by default)"
+    - "I explained the proxy and the self-invocation trap"
+    - "I explained dirty checking"
+    - "I explained LAZY loading and LazyInitializationException"
+    - "I explained N+1 and the @EntityGraph / join fetch fix"
+  modelAnswer: |
+    A transaction is like an ATM withdrawal: reduce the balance and give cash, both or neither. In Spring I put @Transactional on a service method; a proxy starts the transaction, commits at the end, and rolls back on a runtime exception, but not on checked exceptions unless I say rollbackFor. Because it's a proxy, calling the method from the same class skips it. Inside a transaction, Hibernate tracks loaded entities and saves changes automatically; that's dirty checking. Lazy collections load only when touched, and only while the transaction is open, otherwise I get LazyInitializationException. If I touch a lazy list for each of N rows, that's N+1 trips to the kirana shop. I fix it with @EntityGraph or join fetch to get everything in one query.
+flashcards:
+  - front: "@Transactional rollback rule"
+    back: "Rolls back on RuntimeException and Error; COMMITS on checked exceptions unless rollbackFor = Exception.class."
+  - front: "Self-invocation trap"
+    back: "this.method() inside the same bean skips the proxy, so @Transactional on the inner method is ignored."
+  - front: "Dirty checking"
+    back: "Managed entities changed inside a transaction are UPDATEd automatically at commit; no save() needed."
+  - front: "N+1 problem and fixes"
+    back: "1 query for N parents + 1 per parent for lazy children. Fix: @EntityGraph, join fetch, or batch fetching."
+  - front: "LazyInitializationException"
+    back: "Touching a lazy association after the session/transaction closed. Load inside @Transactional service, use fetch joins, return DTOs."
+  - front: "open-in-view"
+    back: "Default true keeps the session open during the web request (hides lazy problems, holds DB connections). Codequest sets it false."
+keyTakeaways:
+  - "@Transactional = all-or-nothing through a proxy; RuntimeExceptions roll back, checked exceptions commit by default."
+  - "Self-invocation and private methods skip the proxy, so no transaction starts."
+  - "Managed entities are saved automatically at commit (dirty checking); detached ones are not."
+  - "Prefer LAZY everywhere; load what you need with @EntityGraph or join fetch inside the service, and return DTOs."
+  - "N+1 = 1 + N queries; spot it by counting SQL and fix it with a fetch join or entity graph."
